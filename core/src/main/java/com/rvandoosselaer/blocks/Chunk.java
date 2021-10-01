@@ -8,10 +8,8 @@ import com.jme3.scene.Node;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
-import org.delaunois.ialon.ChunkBlock;
 
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -79,7 +77,7 @@ public class Chunk {
     private byte[] lightMap;
 
     // To avoid many instanciation of Vec3i (costly)
-    private Vec3i v = new Vec3i();
+    private final Vec3i v = new Vec3i();
 
     public Chunk(@NonNull Vec3i location) {
         setLocation(location);
@@ -335,66 +333,6 @@ public class Chunk {
         return null;
     }
 
-    public ChunkBlock getChunkBlock(int x, int y, int z, int dx, int dy, int dz) {
-        // Beware of CPU optimization : method heavily used
-        int blx = x + dx;
-        int bly = y + dy;
-        int blz = z + dz;
-
-        if (isInsideChunk(blx, bly, blz)) {
-            return new ChunkBlock(this, getBlock(blx, bly, blz));
-        }
-
-        if (hasChunkResolver()) {
-            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, blx, bly, blz);
-            Chunk chunk = chunkResolver.unsafeFastGet(v.set(loc[0], loc[1], loc[2]));
-            if (chunk != null) {
-                return new ChunkBlock(chunk, chunk.getBlock(loc[3], loc[4], loc[5]));
-            }
-        }
-
-        return new ChunkBlock(this, null);
-    }
-
-    public Block[] getNeighboursY(@NonNull Vec3i blockLocation, int dy) {
-        return new Block[] {
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 0, dy, -1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, dy, -1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, dy, 0),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, dy, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 0, dy, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, dy, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, dy, 0),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, dy, -1),
-        };
-    }
-
-    public Block[] getNeighboursX(@NonNull Vec3i blockLocation, int dx) {
-        return new Block[] {
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, 0, -1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, 1, -1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, 1, 0),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, 1, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, 0, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, -1, 1),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, -1, 0),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, dx, -1, -1),
-        };
-    }
-
-    public Block[] getNeighboursZ(@NonNull Vec3i blockLocation, int dz) {
-        return new Block[] {
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 0, -1, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, -1, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, 0, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 1, 1, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, 0, 1, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, 1, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, 0, dz),
-                getNeighbour(blockLocation.x, blockLocation.y, blockLocation.z, -1, -1, dz),
-        };
-    }
-
     public Vector4f applyAO(Vector4f color, int ao) {
         int shift = 3 - ao;
         int torchlight = ((int)color.x) & 0xF;
@@ -431,7 +369,7 @@ public class Chunk {
      * @return true if the face is visible
      */
     public boolean isFaceVisible(@NonNull Vec3i location, @NonNull Direction direction) {
-        return isFaceVisible(location, direction, null, null);
+        return isFaceVisible(location, direction, getBlock(location), getNeighbour(location, direction));
     }
 
     public boolean isFaceVisible(@NonNull BlockNeighborhood neighborhood, @NonNull Direction direction) {
@@ -444,8 +382,7 @@ public class Chunk {
             // Optimisation : Do not render faces below the world
             return false;
         }
-        return isFaceVisible(block == null ? getBlock(location) : block,
-                neighbour == null ? getNeighbour(location, direction) : neighbour);
+        return isFaceVisible(block, neighbour);
     }
 
     public boolean isFaceVisible(Block block, Block neighbour) {
@@ -632,46 +569,6 @@ public class Chunk {
     private static int calculateIndex(int x, int y, int z) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
         return z + (y * chunkSize.z) + (x * chunkSize.y * chunkSize.z);
-    }
-
-    /**
-     * A function that checks if the shared face between the 2 adjacent blocks should be visible (rendered).
-     * The first block argument is the block that checks if it's face should be rendered, the second block argument is
-     * the neighbouring block on that direction.
-     * <p>
-     * The default behaviour states that the face of a block is visible when:
-     * - the neighbour block is not set
-     * - the neighbour block is transparent and the asking block is not transparent
-     * - the neighbour block are leaves and the asking block are also leaves
-     * - neighbour block is not a cube
-     */
-    private static class DefaultFaceVisibleFunction implements BiFunction<Block, Block, Boolean> {
-
-        public DefaultFaceVisibleFunction() {
-        }
-
-        @Override
-        public Boolean apply(Block block, Block neighbour) {
-            if (neighbour == null) {
-                // Optimization on android : avoid convert boolean to Boolean
-                return Boolean.TRUE;
-            }
-            if (neighbour.isTransparent() && !block.isTransparent()) {
-                return Boolean.TRUE;
-            }
-            if (block.isTransparent() && !neighbour.isTransparent()) {
-                return Boolean.TRUE;
-            }
-            if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {
-                return Boolean.TRUE;
-            }
-            if (!(ShapeIds.CUBE.equals(neighbour.getShape()) || ShapeIds.SQUARE_CUBOID_NINE_TENTHS.equals(neighbour.getShape()))) {
-                return Boolean.TRUE;
-            } else {
-                return Boolean.FALSE;
-            }
-        }
-
     }
 
 }

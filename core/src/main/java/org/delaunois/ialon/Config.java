@@ -12,7 +12,7 @@ public class Config {
     public static final int MAX_UPDATE_PER_FRAME = 3;
 
     // Grid
-    public static final int GRID_DIAMETER = 25;
+    public static final int GRID_DIAMETER = 7;
     public static final int PHYSICS_GRID_DIAMETER = 1;
     public static final int CHUNK_SIZE = 16;
     public static final int CHUNK_HEIGHT = 16;
