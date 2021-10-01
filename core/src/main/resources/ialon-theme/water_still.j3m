@@ -1,0 +1,19 @@
+Material water-still : Blocks/MatDefs/Ialon.j3md {
+
+    MaterialParameters {
+        VertexLighting: true
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 0.8
+        Diffuse: 1.0 1.0 1.0 0.8
+        Specular: 0.3 0.3 0.3 1.0
+        Shininess: 96
+        DiffuseMap: Flip MagNearest MinNearestNoMipMaps ialon-theme/water.png
+        UseVertexColor: true
+        AlphaDiscardThreshold : 0
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+    }
+
+}

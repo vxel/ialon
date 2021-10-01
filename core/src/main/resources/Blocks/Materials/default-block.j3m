@@ -1,0 +1,14 @@
+Material normal-block : Blocks/MatDefs/Ialon.j3md {
+
+    MaterialParameters {
+        Shininess: 0
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
+        VertexLighting: true
+        DiffuseMap: Flip MagBilinear MinNearestLinearMipMap ialon-theme/dummy.png
+        UseVertexColor: true
+        AlphaDiscardThreshold : 0
+    }
+
+}

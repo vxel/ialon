@@ -1,0 +1,19 @@
+Material palm_tree_leaves : Blocks/MatDefs/Ialon.j3md {
+
+    MaterialParameters {
+        Shininess: 0
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
+        Specular: 0 0 0 1.0
+        VertexLighting: true
+        DiffuseMap: MagNearest MinNearestNoMipMaps ialon-theme/palm_tree_leaves.png
+        AlphaDiscardThreshold : 0.05
+        UseVertexColor: true
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+    }
+
+}

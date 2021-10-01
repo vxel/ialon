@@ -1,0 +1,25 @@
+Material water-still : Blocks/MatDefs/Fluid.j3md {
+
+    MaterialParameters {
+        VertexLighting: false
+        UseMaterialColors: true
+        Ambient: 0.145 0.421 0.548 1.0
+        Diffuse: 0.145 0.421 0.548 1.0
+        Specular: 0.3 0.3 0.3 1.0
+        Shininess: 96
+        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water.png
+        NormalMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water-normal.png
+
+        // custom
+        WaveSpeed : 0
+        WaveHeight : 0
+        WaveSize : 0
+        TextureScrollSpeedX : 0.05
+        TextureScrollSpeedY : 0.01
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+    }
+
+}
