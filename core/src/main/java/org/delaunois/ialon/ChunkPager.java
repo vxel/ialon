@@ -67,6 +67,7 @@ public class ChunkPager {
     private final ChunkManagerListener listener = new ChunkPagerListener();
     private final Node node;
     private ExecutorService requestExecutor;
+    private long lastUpdate = System.currentTimeMillis();
 
     public ChunkPager(Node node, ChunkManager chunkManager) {
         this.node = node;
@@ -87,6 +88,13 @@ public class ChunkPager {
         if (location == null) {
             return;
         }
+
+        long now = System.currentTimeMillis();
+        if (now - lastUpdate < 5) {
+            return;
+        }
+
+        lastUpdate = now;
 
         updateCenterPage();
 
