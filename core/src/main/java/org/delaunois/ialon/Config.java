@@ -9,10 +9,10 @@ public class Config {
     public static final int SCREEN_WIDTH = 1520;
     public static final int SCREEN_HEIGHT = 720;
     public static final int FPS_LIMIT = 120;
-    public static final int MAX_UPDATE_PER_FRAME = 3;
+    public static final int MAX_UPDATE_PER_FRAME = 1;
 
     // Grid
-    public static final int GRID_DIAMETER = 7;
+    public static final int GRID_DIAMETER = 5;
     public static final int PHYSICS_GRID_DIAMETER = 1;
     public static final int CHUNK_SIZE = 16;
     public static final int CHUNK_HEIGHT = 16;
@@ -38,7 +38,7 @@ public class Config {
     public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.2f;
-    public static final float JUMP_SPEED = 4;
+    public static final float JUMP_SPEED = 5;
 
     // Player
     public static final float ROTATION_SPEED = 1f;
