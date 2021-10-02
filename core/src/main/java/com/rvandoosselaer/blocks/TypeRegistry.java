@@ -551,6 +551,7 @@ public class TypeRegistry {
         int dstWidth = srcWidth * 2;
         int height = endHeight - startHeight;
         int dstHeight = height * 2;
+        int s = startHeight * 2 + dstHeight - 1;
 
         for (int y = startHeight; y < endHeight; y++) {
             int dstY = startHeight + y + height / 2;
@@ -573,8 +574,8 @@ public class TypeRegistry {
                 dst[i + 2] = src.get(j + 2);
                 dst[i + 3] = src.get(j + 3);
 
-                // North/South Tile
-                int tdstY = startHeight * 2 + (dstY + height) % dstHeight;
+                // North/South Tile, flipped upside down to get seamless tiling
+                int tdstY = s - (dstY + height) % dstHeight;
                 i = (dstX + tdstY * dstWidth) * 4;
                 dst[i] = src.get(j);
                 dst[i + 1] = src.get(j + 1);
