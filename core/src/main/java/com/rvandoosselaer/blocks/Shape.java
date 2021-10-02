@@ -22,7 +22,7 @@ import static com.rvandoosselaer.blocks.Direction.WEST;
  */
 public interface Shape {
 
-    float UV_PADDING = 0.02f;
+    float UV_PADDING = 0.25f;
 
     // Static constants as these operations are costly and heavily used during chunk mesh generation
     Quaternion ROTATION_DOWN = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);

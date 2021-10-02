@@ -82,7 +82,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private SunControl sunControl;
     private PlayerState playerState;
     private int pagesAttached = 0;
-    private long startTime = System.currentTimeMillis();
+    private final long startTime = System.currentTimeMillis();
 
     public static void main(String[] args) {
         LogAdapter.initialize();
@@ -179,7 +179,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
         typeRegistry.setAtlasRepository(atlasManager);
         typeRegistry.registerDefaultMaterials();
-        typeRegistry.setGdxTextureAtlas(new GdxTextureAtlas(this, "ialon-theme", "texture.atlas"));
 
         //terrainGenerator = new FlatTerrainGenerator(60, BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS));
         terrainGenerator = new NoiseTerrainGenerator(2);

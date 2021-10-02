@@ -144,10 +144,10 @@ public class Cube implements Shape {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -191,10 +191,10 @@ public class Cube implements Shape {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -238,10 +238,10 @@ public class Cube implements Shape {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -285,10 +285,10 @@ public class Cube implements Shape {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -334,8 +334,8 @@ public class Cube implements Shape {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -381,8 +381,8 @@ public class Cube implements Shape {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f + UV_PADDING));
             }
         }
     }

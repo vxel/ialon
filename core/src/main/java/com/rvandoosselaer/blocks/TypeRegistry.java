@@ -8,13 +8,15 @@ import com.jme3.material.Material;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
+import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.image.ColorSpace;
+import com.jme3.util.BufferUtils;
 
-import org.delaunois.ialon.GdxTextureAtlas;
 import org.delaunois.ialon.TextureAtlasManager;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -55,10 +57,6 @@ public class TypeRegistry {
     private BlocksTheme theme;
     @Getter
     private BlocksTheme defaultTheme = new BlocksTheme("Soartex Fanver", "Blocks/Themes/default/");
-
-    @Getter
-    @Setter
-    GdxTextureAtlas gdxTextureAtlas;
 
     @Getter
     @Setter
@@ -308,7 +306,8 @@ public class TypeRegistry {
             if (log.isTraceEnabled()) {
                 log.trace("Loading material {}", materialPath);
             }
-            return of(assetManager.loadMaterial(materialPath));
+            Material material = assetManager.loadMaterial(materialPath);
+            return of(expandMaterialTexture(material));
         } catch (AssetNotFoundException e) {
             if (log.isTraceEnabled()) {
                 log.trace("Material {} not found in theme {}", materialPath, theme);
@@ -377,7 +376,7 @@ public class TypeRegistry {
             if (log.isTraceEnabled()) {
                 log.trace("Loading {}", texture);
             }
-            return of(assetManager.loadTexture(new TextureKey(texture)));
+            return of(expandTexture(new TextureKey(texture)));
         } catch (AssetNotFoundException e) {
             if (log.isTraceEnabled()) {
                 log.trace("Texture {} not found in theme {}", texture, theme);
@@ -395,9 +394,9 @@ public class TypeRegistry {
             if (log.isTraceEnabled()) {
                 log.trace("Loading {}, {}, {}", topTexturePath, sideTexturePath, bottomTexturePath);
             }
-            Texture topTexture = assetManager.loadTexture(new TextureKey(topTexturePath));
-            Texture sideTexture = assetManager.loadTexture(new TextureKey(sideTexturePath));
-            Texture bottomTexture = assetManager.loadTexture(new TextureKey(bottomTexturePath));
+            Texture topTexture = expandTexture(new TextureKey(topTexturePath));
+            Texture sideTexture = expandTexture(new TextureKey(sideTexturePath));
+            Texture bottomTexture = expandTexture(new TextureKey(bottomTexturePath));
 
             return of(combineTextures(topTexture, sideTexture, bottomTexture));
         } catch (AssetNotFoundException e) {
@@ -480,6 +479,116 @@ public class TypeRegistry {
     private static String getMaterialFilename(String type) {
         String fileExtension = ".j3m";
         return type + fileExtension;
+    }
+
+    private Material expandMaterialTexture(Material material) {
+        MatParamTexture diffuseMapParamTexture = material.getTextureParam("DiffuseMap");
+        MatParamTexture normalMapParamTexture = material.getTextureParam("NormalMap");
+        MatParamTexture parallaxMapParamTexture = material.getTextureParam("ParallaxMap");
+        MatParamTexture overlayMapParamTexture = material.getTextureParam("OverlayMap");
+
+        if (diffuseMapParamTexture != null) {
+            expandTexture(diffuseMapParamTexture.getTextureValue());
+        }
+        if (normalMapParamTexture != null) {
+            expandTexture(normalMapParamTexture.getTextureValue());
+        }
+        if (parallaxMapParamTexture != null) {
+            expandTexture(parallaxMapParamTexture.getTextureValue());
+        }
+        if (overlayMapParamTexture != null) {
+            expandTexture(overlayMapParamTexture.getTextureValue());
+        }
+        return material;
+    }
+
+    private Texture expandTexture(Texture texture) {
+        if (texture != null) {
+            texture.setImage(expandImage(texture.getImage()));
+        }
+        return texture;
+    }
+
+    private Texture expandTexture(TextureKey key) {
+        Texture texture = assetManager.loadTexture(key);
+        if (texture != null) {
+            texture.setImage(expandImage(texture.getImage()));
+        }
+        return texture;
+    }
+
+    private Image expandImage(Image source) {
+        if (source.getFormat() != Image.Format.ABGR8) {
+            log.warn("Image format must be ABGR8, not " + source.getFormat());
+            return source;
+        }
+
+        ByteBuffer sourceData = source.getData(0);
+        int height = source.getHeight();
+        int width = source.getWidth();
+        int dstHeight = height * 2;
+        int dstWidth = width * 2;
+        byte[] image = new byte[dstHeight * dstWidth * 4];
+
+        if (height == 3 * width) {
+            //multiple texture
+            expand(sourceData, image, width, 0, height / 3);
+            expand(sourceData, image, width, height / 3, height * 2 / 3);
+            expand(sourceData, image, width, height * 2 / 3, height);
+
+        } else if (width == height) {
+            expand(sourceData, image, width, 0, height);
+
+        } else {
+            log.warn("Image must be squared." + source.toString());
+            return source;
+        }
+
+        return new Image(Image.Format.ABGR8, dstWidth, dstHeight, BufferUtils.createByteBuffer(image), null, source.getColorSpace());
+    }
+
+    private void expand(ByteBuffer src, byte[] dst, int srcWidth, int startHeight, int endHeight) {
+        int dstWidth = srcWidth * 2;
+        int height = endHeight - startHeight;
+        int dstHeight = height * 2;
+
+        for (int y = startHeight; y < endHeight; y++) {
+            int dstY = startHeight + y + height / 2;
+            for (int x = 0; x < srcWidth; x++) {
+                int j = (x + y * srcWidth) * 4;
+
+                // Center Tile
+                int dstX = x + srcWidth / 2;
+                int i = (dstX + dstY * dstWidth) * 4;
+                dst[i] = src.get(j);
+                dst[i + 1] = src.get(j + 1);
+                dst[i + 2] = src.get(j + 2);
+                dst[i + 3] = src.get(j + 3);
+
+                // West/East Tile
+                int tdstX = (dstX + srcWidth) % dstWidth;
+                i = (tdstX + dstY * dstWidth) * 4;
+                dst[i] = src.get(j);
+                dst[i + 1] = src.get(j + 1);
+                dst[i + 2] = src.get(j + 2);
+                dst[i + 3] = src.get(j + 3);
+
+                // North/South Tile
+                int tdstY = startHeight * 2 + (dstY + height) % dstHeight;
+                i = (dstX + tdstY * dstWidth) * 4;
+                dst[i] = src.get(j);
+                dst[i + 1] = src.get(j + 1);
+                dst[i + 2] = src.get(j + 2);
+                dst[i + 3] = src.get(j + 3);
+
+                // Corner Tile
+                i = (tdstX + tdstY * dstWidth) * 4;
+                dst[i] = src.get(j);
+                dst[i + 1] = src.get(j + 1);
+                dst[i + 2] = src.get(j + 2);
+                dst[i + 3] = src.get(j + 3);
+            }
+        }
     }
 
     /**

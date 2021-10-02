@@ -27,6 +27,10 @@ attribute vec3 inPosition;
 attribute vec2 inTexCoord;
 attribute vec3 inNormal;
 
+const float tileSize = 64;
+const float atlasSize = 2048;
+const float rw = tileSize / atlasSize;
+
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
     flat varying int SunIntensity;
@@ -56,6 +60,8 @@ void main() {
 
    gl_Position = TransformWorldViewProjection(modelSpacePos);
    texCoord = inTexCoord;
+   //texCoord.x = (inTexCoord.x + 0.5f * rw);
+   //texCoord.y = (inTexCoord.y + 0.5f * rw);
 
    vec3 wvPosition = TransformWorldView(modelSpacePos).xyz;
    vec3 wvNormal  = normalize(TransformNormal(modelSpaceNorm));

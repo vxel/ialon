@@ -21,7 +21,7 @@ public class TextureAtlasManager {
     private Texture overlayMap;
 
     public TextureAtlasManager() {
-        atlas = new TextureAtlas(1024, 1024);
+        atlas = new TextureAtlas(2048, 2048);
     }
 
     public Texture getDiffuseMap() {
