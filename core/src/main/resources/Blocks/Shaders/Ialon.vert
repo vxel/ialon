@@ -30,17 +30,12 @@ attribute vec3 inNormal;
 uniform float g_Time;
 uniform float m_TextureScrollSpeedX;
 uniform float m_TextureScrollSpeedY;
-out vec2 tileOffset;
-out vec2 tileCoord;
 varying vec2 texCoord;
 
 const float ATLAS_SIZE = 2048.0;
 const float TEX_SIZE = 128.0;
 const float NUM_TEXTURES = ATLAS_SIZE / TEX_SIZE;
 const float NORM_TEX_SIZE = 1.0 / NUM_TEXTURES;
-
-const float UV_PADDING = 0.25;
-const float UV_PADDING_FACTOR = 1.0 / (1.0 - 2.0 * UV_PADDING);
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
@@ -70,20 +65,15 @@ void main() {
 
     gl_Position = TransformWorldViewProjection(modelSpacePos);
 
-    //if (abs(m_TextureScrollSpeedX) > 0 || abs(m_TextureScrollSpeedY) > 0) {
-        tileOffset = floor(inTexCoord / NORM_TEX_SIZE);
-        tileCoord.x = mod(inTexCoord.x, NORM_TEX_SIZE) - mod(g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE / 4.0);
-        tileCoord.y = mod(inTexCoord.y, NORM_TEX_SIZE) - mod(g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE / 4.0);
-        //tileCoord.x = mod(inTexCoord.x + g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE);
-        //tileCoord.y = mod(inTexCoord.y + g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE);
-        //texCoord.x = tileOffset.x * NORM_TEX_SIZE + tileCoord.x;
-        //texCoord.y = tileOffset.y * NORM_TEX_SIZE + tileCoord.y;
-    //} else {
-    //    texCoord = inTexCoord;
-    //}
-
-    //deltaUvX = mod(texCoord.x + g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE) / 2;
-    //deltaUvY = mod(texCoord.y + g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE) / 2;
+    if (abs(m_TextureScrollSpeedX) > 0 || abs(m_TextureScrollSpeedY) > 0) {
+        vec2 tileCoord;
+        vec2 tileOffset = floor(inTexCoord / NORM_TEX_SIZE);
+        tileCoord.x = inTexCoord.x - NORM_TEX_SIZE * tileOffset.x - mod(g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE / 4.0);
+        tileCoord.y = inTexCoord.y - NORM_TEX_SIZE * tileOffset.y - mod(g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE / 4.0);
+        texCoord = tileOffset * NORM_TEX_SIZE + tileCoord;
+    } else {
+        texCoord = inTexCoord;
+    }
 
     vec3 wvPosition = TransformWorldView(modelSpacePos).xyz;
     vec3 wvNormal  = normalize(TransformNormal(modelSpaceNorm));
