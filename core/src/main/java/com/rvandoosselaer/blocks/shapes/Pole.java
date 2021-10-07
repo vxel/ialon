@@ -105,15 +105,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1.0f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
             }
         }
     }
@@ -143,15 +143,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1.0f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
             }
         }
     }
@@ -181,15 +181,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1.0f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
             }
         }
     }
@@ -219,15 +219,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1.0f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
             }
         }
     }
@@ -257,15 +257,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.5f - thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.5f - thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.5f + thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.5f + thicknessExtend));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 6f - thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 6f - thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 1f / 6f + thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 1f / 6f + thicknessExtend / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
             }
         }
     }
@@ -295,15 +295,15 @@ public class Pole implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.5f + thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.5f + thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 0.5f - thicknessExtend));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 0.5f - thicknessExtend));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 5f / 6f + thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 5f / 6f + thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend, 5f / 6f - thicknessExtend / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend, 5f / 6f - thicknessExtend / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 5f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 5f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 5f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 5f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
             }
         }
     }

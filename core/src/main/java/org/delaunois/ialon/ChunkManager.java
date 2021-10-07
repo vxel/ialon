@@ -190,33 +190,37 @@ public class ChunkManager {
         Set<Vec3i> chunks = new HashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = cache.unsafeFastGet(chunkLocation);
-        if (chunk != null) {
-            Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
-            if (!Objects.equals(previousBlock, block)) {
-                chunks.add(chunk.getLocation());
-                Vec3i size = BlocksConfig.getInstance().getChunkSize();
+        if (chunk == null) {
+            return chunks;
+        }
 
-                // Request chunk updates of neighbour blocks only if block is at the border of the chunk
-                if (blockLocationInsideChunk.x == size.x - 1) {
-                    chunks.add(chunk.getLocation().add(1, 0, 0));
-                }
-                if (blockLocationInsideChunk.x == 0) {
-                    chunks.add(chunk.getLocation().add(-1, 0, 0));
-                }
-                if (blockLocationInsideChunk.y == size.y - 1) {
-                    chunks.add(chunk.getLocation().add(0, 1, 0));
-                }
-                if (blockLocationInsideChunk.y == 0) {
-                    chunks.add(chunk.getLocation().add(0, -1, 0));
-                }
-                if (blockLocationInsideChunk.z == size.z - 1) {
-                    chunks.add(chunk.getLocation().add(0, 0, 1));
-                }
-                if (blockLocationInsideChunk.z == 0) {
-                    chunks.add(chunk.getLocation().add(0, 0, -1));
-                }
-            }
+        Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
+        Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
+        if (Objects.equals(previousBlock, block)) {
+            return chunks;
+        }
+
+        chunks.add(chunk.getLocation());
+        Vec3i size = BlocksConfig.getInstance().getChunkSize();
+
+        // Request chunk updates of neighbour blocks only if block is at the border of the chunk
+        if (blockLocationInsideChunk.x == size.x - 1) {
+            chunks.add(chunk.getLocation().add(1, 0, 0));
+        }
+        if (blockLocationInsideChunk.x == 0) {
+            chunks.add(chunk.getLocation().add(-1, 0, 0));
+        }
+        if (blockLocationInsideChunk.y == size.y - 1) {
+            chunks.add(chunk.getLocation().add(0, 1, 0));
+        }
+        if (blockLocationInsideChunk.y == 0) {
+            chunks.add(chunk.getLocation().add(0, -1, 0));
+        }
+        if (blockLocationInsideChunk.z == size.z - 1) {
+            chunks.add(chunk.getLocation().add(0, 0, 1));
+        }
+        if (blockLocationInsideChunk.z == 0) {
+            chunks.add(chunk.getLocation().add(0, 0, -1));
         }
 
         if (chunkLightGenerator != null) {
@@ -233,34 +237,41 @@ public class ChunkManager {
         Set<Vec3i> chunks = new HashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = cache.unsafeFastGet(chunkLocation);
-        if (chunk != null) {
-            Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            Block previousBlock = chunk.removeBlock(blockLocationInsideChunk);
-            if (previousBlock != null) {
-                chunks.add(chunk.getLocation());
-                Vec3i size = BlocksConfig.getInstance().getChunkSize();
-
-                // Request chunk updates of neighbour blocks only if block is at the border of the chunk
-                if (blockLocationInsideChunk.x == size.x - 1) {
-                    chunks.add(chunk.getLocation().add(1, 0, 0));
-                }
-                if (blockLocationInsideChunk.x == 0) {
-                    chunks.add(chunk.getLocation().add(-1, 0, 0));
-                }
-                if (blockLocationInsideChunk.y == size.y - 1) {
-                    chunks.add(chunk.getLocation().add(0, 1, 0));
-                }
-                if (blockLocationInsideChunk.y == 0) {
-                    chunks.add(chunk.getLocation().add(0, -1, 0));
-                }
-                if (blockLocationInsideChunk.z == size.z - 1) {
-                    chunks.add(chunk.getLocation().add(0, 0, 1));
-                }
-                if (blockLocationInsideChunk.z == 0) {
-                    chunks.add(chunk.getLocation().add(0, 0, -1));
-                }
-            }
+        if (chunk == null) {
+            return chunks;
         }
+
+        Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
+        Block previousBlock = chunk.removeBlock(blockLocationInsideChunk);
+        if (previousBlock == null) {
+            return chunks;
+        }
+
+        Vec3i size = BlocksConfig.getInstance().getChunkSize();
+
+        // Request chunk updates of neighbour blocks only if block is at the border of the chunk
+        if (blockLocationInsideChunk.x == size.x - 1) {
+            chunks.add(chunk.getLocation().add(1, 0, 0));
+        }
+        if (blockLocationInsideChunk.x == 0) {
+            chunks.add(chunk.getLocation().add(-1, 0, 0));
+        }
+        if (blockLocationInsideChunk.y == size.y - 1) {
+            chunks.add(chunk.getLocation().add(0, 1, 0));
+        }
+        if (blockLocationInsideChunk.y == 0) {
+            chunks.add(chunk.getLocation().add(0, -1, 0));
+        }
+        if (blockLocationInsideChunk.z == size.z - 1) {
+            chunks.add(chunk.getLocation().add(0, 0, 1));
+        }
+        if (blockLocationInsideChunk.z == 0) {
+            chunks.add(chunk.getLocation().add(0, 0, -1));
+        }
+
+        // When removing a block, redraw chunk of removed block last to avoid
+        // seeing holes in adjacent chunks
+        chunks.add(chunk.getLocation());
 
         if (chunkLightGenerator != null) {
             chunks.addAll(chunkLightGenerator.removeTorchlight(location));

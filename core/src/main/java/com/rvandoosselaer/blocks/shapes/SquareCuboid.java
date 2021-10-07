@@ -144,15 +144,15 @@ public class SquareCuboid extends Slab {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, endY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, endY + 0.5f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -188,15 +188,15 @@ public class SquareCuboid extends Slab {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, endY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, endY + 0.5f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -232,15 +232,15 @@ public class SquareCuboid extends Slab {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, endY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, endY + 0.5f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -276,15 +276,15 @@ public class SquareCuboid extends Slab {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, endY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, startY + 0.5f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, endY + 0.5f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f))));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -334,8 +334,8 @@ public class SquareCuboid extends Slab {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1f / 3f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -372,8 +372,8 @@ public class SquareCuboid extends Slab {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 2f / 3f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 2f / 3f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }

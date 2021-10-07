@@ -22,7 +22,9 @@ import static com.rvandoosselaer.blocks.Direction.WEST;
  */
 public interface Shape {
 
+    // Texture padding (prevents color bleeding). Must be >= 0 (no padding) and < 0.5
     float UV_PADDING = 0.25f;
+    float UV_PADDING_FACTOR = 1 / (1 - 2 * UV_PADDING);
 
     // Static constants as these operations are costly and heavily used during chunk mesh generation
     Quaternion ROTATION_DOWN = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);

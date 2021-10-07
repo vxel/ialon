@@ -106,15 +106,15 @@ public class Wedge implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
             }
         }
     }
@@ -144,15 +144,15 @@ public class Wedge implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 1.0f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.666f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.666f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
             }
         }
     }
@@ -178,13 +178,13 @@ public class Wedge implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.666f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.333f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -211,13 +211,13 @@ public class Wedge implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.666f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.333f));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -247,15 +247,15 @@ public class Wedge implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.0f));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 0.666f));
-                chunkMesh.getUvs().add(new Vector2f(1.0f, 1.0f));
-                chunkMesh.getUvs().add(new Vector2f(0.0f, 0.666f));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f + UV_PADDING));
             }
         }
     }

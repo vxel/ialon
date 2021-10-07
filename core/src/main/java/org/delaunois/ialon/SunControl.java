@@ -30,11 +30,13 @@ import static org.delaunois.ialon.Config.SUN_DAY_COLOR;
 import static org.delaunois.ialon.Config.SUN_EVENING_COLOR;
 import static org.delaunois.ialon.Config.SUN_HEIGHT;
 import static org.delaunois.ialon.Config.SUN_INTENSITY;
-import static org.delaunois.ialon.Config.SUN_NIGHT_COLOR;
 import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
 public class SunControl extends AbstractControl {
+
+    private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
+    private static final ColorRGBA TRANSPARENT = new ColorRGBA(0, 0, 0, 0);
 
     @Getter
     @Setter
@@ -71,7 +73,7 @@ public class SunControl extends AbstractControl {
         }
 
         long now = System.currentTimeMillis();
-        if (now - lastUpdate > (1 / (TIME_FACTOR*2))) {
+        if (now - lastUpdate > UPDATE_THRESHOLD) {
             lastUpdate = now;
             float x = FastMath.cos(time) * 10f;
             float z = FastMath.sin(time) * 10f;
@@ -126,8 +128,7 @@ public class SunControl extends AbstractControl {
                 dayPeriod = DayPeriod.NIGHT;
 
                 float height = adjustedY < -1 ? 1 : -adjustedY;
-                lightColor.interpolateLocal(SUN_EVENING_COLOR, SUN_NIGHT_COLOR, height);
-                sunColor.interpolateLocal(SUN_COLOR, ColorRGBA.Red, height);
+                sunColor.interpolateLocal(ColorRGBA.Red, TRANSPARENT, height);
                 setSunColor(sunColor, sunColor);
 
                 ambientLight.getColor().set(lightColor.mult(NIGHT_INTENSITY));
@@ -155,8 +156,8 @@ public class SunControl extends AbstractControl {
 
         time += tpf * timeFactor;
         time = time % FastMath.TWO_PI;
-        if (log.isDebugEnabled()) {
-            log.debug("Time is now {} ({})", getLocalTime(), FastMath.sin(time));
+        if (log.isTraceEnabled()) {
+            log.trace("Time is now {} ({})", getLocalTime(), FastMath.sin(time));
         }
     }
 

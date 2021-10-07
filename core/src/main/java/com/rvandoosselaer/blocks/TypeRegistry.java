@@ -109,21 +109,27 @@ public class TypeRegistry {
         }
     }
 
-    public boolean applyMaterial(@NonNull Geometry geom, @NonNull String name) {
+    public void applyMaterial(@NonNull Geometry geom, @NonNull String name) {
         Mesh inMesh = geom.getMesh();
         Mesh outMesh = geom.getMesh();
         geom.computeWorldMatrix();
         Material mat = get(name);
 
-        Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
-        texture.setImage(atlasRepository.getDiffuseMap().getImage());
-        // ok: NearestLinearMipMap, NearestNearestMipMap
-        // ko : NearestNoMipMaps, BilinearNoMipMaps, BilinearNearestMipMap, Trilinear
-        //mat.getTextureParam("DiffuseMap").getTextureValue().setMinFilter(Texture.MinFilter.NearestLinearMipMap);
-        if (mat.getTextureParam("OverlayMap") != null) {
-            mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+        MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
+        if (matParamTexture != null) {
+            Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
+            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            // ok: NearestLinearMipMap, NearestNearestMipMap
+            // ko : NearestNoMipMaps, BilinearNoMipMaps, BilinearNearestMipMap, Trilinear
+            //mat.getTextureParam("DiffuseMap").getTextureValue().setMinFilter(Texture.MinFilter.NearestLinearMipMap);
+            if (mat.getTextureParam("OverlayMap") != null) {
+                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+            }
+            geom.setMaterial(mat);
+        } else {
+            geom.setMaterial(mat);
+            return;
         }
-        geom.setMaterial(mat);
 
         VertexBuffer inBuf = inMesh.getBuffer(VertexBuffer.Type.TexCoord);
         VertexBuffer outBuf = outMesh.getBuffer(VertexBuffer.Type.TexCoord);
@@ -138,9 +144,7 @@ public class TypeRegistry {
             FloatBuffer inPos = (FloatBuffer) inBuf.getData();
             FloatBuffer outPos = (FloatBuffer) outBuf.getData();
             tile.transformTextureCoords(inPos, 0, outPos);
-            return true;
         }
-        return false;
     }
 
     public Material register(@NonNull String name, @NonNull Material material) {
@@ -518,7 +522,7 @@ public class TypeRegistry {
     }
 
     private Image expandImage(Image source) {
-        if (source.getFormat() != Image.Format.ABGR8) {
+        if (source.getFormat() != Image.Format.ABGR8 && source.getFormat() != Image.Format.RGBA8) {
             log.warn("Image format must be ABGR8, not " + source.getFormat());
             return source;
         }
@@ -544,7 +548,7 @@ public class TypeRegistry {
             return source;
         }
 
-        return new Image(Image.Format.ABGR8, dstWidth, dstHeight, BufferUtils.createByteBuffer(image), null, source.getColorSpace());
+        return new Image(source.getFormat(), dstWidth, dstHeight, BufferUtils.createByteBuffer(image), null, source.getColorSpace());
     }
 
     private void expand(ByteBuffer src, byte[] dst, int srcWidth, int startHeight, int endHeight) {

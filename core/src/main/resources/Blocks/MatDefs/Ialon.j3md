@@ -131,6 +131,10 @@ MaterialDef Ialon {
         // overlay map and color
         Texture2D OverlayMap
         Color OverlayColor
+
+        // texture scroll speed
+        Float TextureScrollSpeedX
+        Float TextureScrollSpeedY
     }
 
     Technique {
@@ -147,6 +151,7 @@ MaterialDef Ialon {
             CameraPosition
             WorldMatrix
             ViewProjectionMatrix
+            Time
         }
 
         Defines {

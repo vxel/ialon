@@ -26,16 +26,15 @@ public class Config {
     // World
     public static final float WATER_HEIGHT = 50f;
     public static final float AMBIANT_INTENSITY = 0.75f;
-    public static final float NIGHT_INTENSITY = 0.02f;
+    public static final float NIGHT_INTENSITY = 0.08f;
     public static final float SUN_INTENSITY = 0.75f;
     public static final float SUN_AMPLITUDE = 10f;
     public static final float SUN_HEIGHT = 5f;
     public static final ColorRGBA SUN_COLOR = new ColorRGBA(1f, 1f, 0.4f, 1f);
     public static final ColorRGBA SUN_DAY_COLOR = new ColorRGBA(1f, 1f, 1f, 1f);
     public static final ColorRGBA SUN_EVENING_COLOR = new ColorRGBA(1f, 1f, 0.4f, 1f);
-    public static final ColorRGBA SUN_NIGHT_COLOR = new ColorRGBA(1f, 1f, 1f, 1f);
     public static final float DAYBREAK_DURATION = 8f;
-    public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
+    public static final float TIME_FACTOR = 0.1f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.2f;
     public static final float JUMP_SPEED = 5;

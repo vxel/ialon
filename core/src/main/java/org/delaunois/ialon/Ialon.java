@@ -132,7 +132,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     private void initSun() {
-        Geometry sun = new Geometry("Sun", new Quad(1.2f, 1.2f));
+        Geometry sun = new Geometry("Sun", new Quad(1.5f, 1.5f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
         sun.setShadowMode(RenderQueue.ShadowMode.Off);

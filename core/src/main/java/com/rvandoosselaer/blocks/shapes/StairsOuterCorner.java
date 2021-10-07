@@ -170,39 +170,39 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.889f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.778f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.778f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.778f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.889f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.778f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.889f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.889f));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.889f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.778f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.778f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.778f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.889f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.778f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.889f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.889f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -270,31 +270,31 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.555f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.665f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.555f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.555f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.445f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.445f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.445f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.445f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.335f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.665f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.555f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.335f));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.555f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.665f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.555f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.555f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.445f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.445f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.445f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.445f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.335f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.665f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.555f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.335f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -326,15 +326,15 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 1.000f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f - UV_PADDING));
             }
         }
     }
@@ -396,27 +396,27 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -484,31 +484,31 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 1.000f));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.667f));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }
@@ -570,27 +570,27 @@ public class StairsOuterCorner implements Shape {
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, 1.000f, -1.000f)));
             chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, 1.000f, -1.000f)));
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 1.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.000f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 1.000f));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(1.000f, 0.444f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.667f));
-                chunkMesh.getUvs().add(new Vector2f(0.667f, 0.556f));
-                chunkMesh.getUvs().add(new Vector2f(0.000f, 0.333f));
-                chunkMesh.getUvs().add(new Vector2f(0.333f, 0.667f));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.444f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.556f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
             }
         }
     }

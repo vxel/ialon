@@ -50,6 +50,7 @@ public class IalonDebugState extends BaseAppState {
     private Label cacheSizeLabel;
     private Label timeLabel;
 
+
     private ChunkPager chunkPager;
     private PlayerState playerState;
     private Ialon app;
@@ -201,7 +202,7 @@ public class IalonDebugState extends BaseAppState {
         if (loc == null) {
             return "?";
         }
-        return String.format(Locale.ENGLISH,"(%.0f, %.0f, %.0f)", loc.x, loc.y, loc.z);
+        return String.format(Locale.ENGLISH,"(%.2f, %.2f, %.2f)", loc.x, loc.y, loc.z);
     }
 
     private String getChunkLocationString() {

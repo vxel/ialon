@@ -248,7 +248,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (backward) {
             move.addLocal(-camDir.x, 0, -camDir.z);
         }
-        if (up) {
+        if (up && playerLocation.y <= MAXY) {
             move.addLocal(0, 1, 0);
         }
         if (down) {
@@ -260,11 +260,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             walkDirection.addLocal(move);
         }
 
-        if (playerLocation.y <= MAXY) {
-            player.setWalkDirection(walkDirection);
-        } else {
-            playerLocation.y = MAXY;
-        }
+        player.setWalkDirection(walkDirection);
 
         updatePlayerPosition();
         updateUnderWaterEffect();
@@ -407,13 +403,17 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             }
         });
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
-            protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                addBlock();
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                if (event.isReleased()) {
+                    addBlock();
+                }
             }
         });
         buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
-            protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                removeBlock();
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                if (event.isReleased()) {
+                    removeBlock();
+                }
             }
         });
         directionButtons.attachChild(buttonLeft);
@@ -570,7 +570,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void addBlock() {
+        LOG.info("Action : addBlock triggered");
+
         if (removePlaceholder.getParent() == null) {
+            LOG.info("Not removing. No parent for placeholder");
             return;
         }
 
@@ -608,13 +611,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void removeBlock() {
+        LOG.info("Action : removeBlock triggered");
+
         if (removePlaceholder.getParent() == null) {
+            LOG.info("Not removing. No parent for placeholder");
             return;
         }
 
         executorService.submit(() -> {
             Vector3f blockLocation = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-            if (!(blockLocation.y > 1)) {
+            if (blockLocation.y <= 1) {
                 return;
             }
 

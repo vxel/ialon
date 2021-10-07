@@ -394,7 +394,7 @@ public class Chunk {
             return true;
         }
         if (block.isTransparent() && !neighbour.isTransparent()) {
-            return true;
+            return false;
         }
         if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {
             return true;
