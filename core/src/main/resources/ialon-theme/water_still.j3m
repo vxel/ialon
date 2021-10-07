@@ -14,8 +14,8 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
         //WaveSpeed : 1.5
         //WaveHeight : 0.03
         //WaveSize : 10
-        TextureScrollSpeedX : 0.005
-        TextureScrollSpeedY : 0.005
+        TextureScrollSpeedX : 0.00
+        TextureScrollSpeedY : -0.005
 
     }
 

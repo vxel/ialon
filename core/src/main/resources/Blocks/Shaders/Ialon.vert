@@ -30,8 +30,6 @@ attribute vec3 inNormal;
 uniform float g_Time;
 uniform float m_TextureScrollSpeedX;
 uniform float m_TextureScrollSpeedY;
-out float deltaUvX;
-out float deltaUvY;
 out vec2 tileOffset;
 out vec2 tileCoord;
 varying vec2 texCoord;
@@ -72,12 +70,17 @@ void main() {
 
     gl_Position = TransformWorldViewProjection(modelSpacePos);
 
-    tileOffset.x = floor(inTexCoord.x / NORM_TEX_SIZE);
-    tileOffset.y = floor(inTexCoord.y / NORM_TEX_SIZE);
-    tileCoord.x = mod(inTexCoord.x + g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE);
-    tileCoord.y = mod(inTexCoord.y + g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE);
-    texCoord.x = tileOffset.x * NORM_TEX_SIZE + tileCoord.x;
-    texCoord.y = tileOffset.y * NORM_TEX_SIZE + tileCoord.y;
+    //if (abs(m_TextureScrollSpeedX) > 0 || abs(m_TextureScrollSpeedY) > 0) {
+        tileOffset = floor(inTexCoord / NORM_TEX_SIZE);
+        tileCoord.x = mod(inTexCoord.x, NORM_TEX_SIZE) - mod(g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE / 4.0);
+        tileCoord.y = mod(inTexCoord.y, NORM_TEX_SIZE) - mod(g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE / 4.0);
+        //tileCoord.x = mod(inTexCoord.x + g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE);
+        //tileCoord.y = mod(inTexCoord.y + g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE);
+        //texCoord.x = tileOffset.x * NORM_TEX_SIZE + tileCoord.x;
+        //texCoord.y = tileOffset.y * NORM_TEX_SIZE + tileCoord.y;
+    //} else {
+    //    texCoord = inTexCoord;
+    //}
 
     //deltaUvX = mod(texCoord.x + g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE) / 2;
     //deltaUvY = mod(texCoord.y + g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE) / 2;
