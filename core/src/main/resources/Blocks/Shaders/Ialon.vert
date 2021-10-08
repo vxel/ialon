@@ -30,12 +30,17 @@ attribute vec3 inNormal;
 uniform float g_Time;
 uniform float m_TextureScrollSpeedX;
 uniform float m_TextureScrollSpeedY;
-varying vec2 texCoord;
+out vec2 texCoord;
+flat out vec2 wrapCoordMin;
+flat out vec2 wrapCoordMax;
+flat out vec2 delta;
 
 const float ATLAS_SIZE = 2048.0;
 const float TEX_SIZE = 128.0;
 const float NUM_TEXTURES = ATLAS_SIZE / TEX_SIZE;
-const float NORM_TEX_SIZE = 1.0 / NUM_TEXTURES;
+const float UV_TEX_SIZE = 1.0 / NUM_TEXTURES;
+const float UV_PADDING = 0.25 * UV_TEX_SIZE;
+const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
@@ -65,13 +70,29 @@ void main() {
 
     gl_Position = TransformWorldViewProjection(modelSpacePos);
 
-    if (abs(m_TextureScrollSpeedX) > 0 || abs(m_TextureScrollSpeedY) > 0) {
-        vec2 tileCoord;
-        vec2 tileOffset = floor(inTexCoord / NORM_TEX_SIZE);
-        tileCoord.x = inTexCoord.x - NORM_TEX_SIZE * tileOffset.x - mod(g_Time * m_TextureScrollSpeedX, NORM_TEX_SIZE / 4.0);
-        tileCoord.y = inTexCoord.y - NORM_TEX_SIZE * tileOffset.y - mod(g_Time * m_TextureScrollSpeedY, NORM_TEX_SIZE / 4.0);
-        texCoord = tileOffset * NORM_TEX_SIZE + tileCoord;
+    if (abs(m_TextureScrollSpeedX) > 0.0 || abs(m_TextureScrollSpeedY) > 0.0) {
+        // Texture scrolling
+
+        // Index (x, y) of the tile in the texture atlas. Example : (4, 2)
+        vec2 tileAtlasIndex = floor(inTexCoord / UV_TEX_SIZE);
+
+        // UV offset of the tile in the texture atlas. Example : (0.08, 0.04)
+        vec2 tileOffset = tileAtlasIndex * UV_TEX_SIZE;
+
+        // Coordinate of the texture for this vertex, relative to the tile offset, e.g. (0, 0)
+        vec2 tileCoord = inTexCoord - tileOffset;
+        wrapCoordMin = tileOffset + UV_PADDING;
+        wrapCoordMax = wrapCoordMin + PADDED_UV_TEX_SIZE;
+        texCoord = tileOffset + tileCoord;
+
+        // Scroll against time, modulo the (padded) texture size
+        delta = vec2(mod(g_Time * m_TextureScrollSpeedX, PADDED_UV_TEX_SIZE), mod(g_Time * m_TextureScrollSpeedY, PADDED_UV_TEX_SIZE));
+
+        //delta = vec2(PADDED_UV_TEX_SIZE / 4.0, PADDED_UV_TEX_SIZE / 4.0);
+
     } else {
+        wrapCoordMin = vec2(0.0, 0.0);
+        delta = vec2(0.0, 0.0);
         texCoord = inTexCoord;
     }
 

@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @ToString
 public class SquareCuboid extends Slab {
 
-    private static final float DELTA = 0.005f;
+    private static final float DELTA = 0.0f;
 
     private static final int UP = 0;
 
@@ -334,8 +334,8 @@ public class SquareCuboid extends Slab {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1f / 3f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
             }
         }
     }
@@ -372,8 +372,8 @@ public class SquareCuboid extends Slab {
             } else {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 2f / 3f / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 2f / 3f + UV_PADDING));
             }
         }
     }

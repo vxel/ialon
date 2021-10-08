@@ -2,19 +2,20 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
 
     MaterialParameters {
         VertexLighting: false
+        UseVertexColor: true
         UseMaterialColors: true
-        Ambient: 0.223 0.536 0.653 0.75
-        Diffuse: 0.223 0.536 0.653 0.75
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
         Specular: 0.3 0.3 0.3 1.0
         Shininess: 96
-        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/birch_planks.png
+        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water2.png
         NormalMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water-normal.png
 
         // custom
         //WaveSpeed : 1.5
         //WaveHeight : 0.03
         //WaveSize : 10
-        TextureScrollSpeedX : 0.00
+        TextureScrollSpeedX : 0.005
         TextureScrollSpeedY : -0.005
 
     }
