@@ -88,8 +88,6 @@ void main() {
         // Scroll against time, modulo the (padded) texture size
         delta = vec2(mod(g_Time * m_TextureScrollSpeedX, PADDED_UV_TEX_SIZE), mod(g_Time * m_TextureScrollSpeedY, PADDED_UV_TEX_SIZE));
 
-        //delta = vec2(PADDED_UV_TEX_SIZE / 4.0, PADDED_UV_TEX_SIZE / 4.0);
-
     } else {
         wrapCoordMin = vec2(0.0, 0.0);
         delta = vec2(0.0, 0.0);

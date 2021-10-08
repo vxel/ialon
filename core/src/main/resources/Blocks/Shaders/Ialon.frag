@@ -1,5 +1,6 @@
 #import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "Blocks/Shaders/BlendFunctions.glsllib"
+#extension GL_EXT_gpu_shader4 : enable
 
 varying vec2 texCoord;
 varying vec3 AmbientSum;
@@ -29,10 +30,11 @@ uniform float m_AlphaDiscardThreshold;
 
 void main() {
 
+    vec4 diffuseColor;
     vec2 uv = texCoord - delta;
 
     if (wrapCoordMin.y > 0.0) {
-        if (uv.y >= wrapCoordMax.y) {
+       if (uv.y >= wrapCoordMax.y) {
             uv.y = uv.y - PADDED_UV_TEX_SIZE;
         } else if (uv.y <= wrapCoordMin.y) {
             uv.y = uv.y + PADDED_UV_TEX_SIZE;
@@ -43,13 +45,15 @@ void main() {
         } else if (uv.x <= wrapCoordMin.x) {
             uv.x = uv.x + PADDED_UV_TEX_SIZE;
         }
-    }
+        diffuseColor = textureGrad(m_DiffuseMap, uv, dFdx(texCoord), dFdy(texCoord));
 
-    #ifdef DIFFUSEMAP
-      vec4 diffuseColor = texture2D(m_DiffuseMap, uv);
-    #else
-      vec4 diffuseColor = vec4(1.0);
-    #endif
+    } else {
+        #ifdef DIFFUSEMAP
+        diffuseColor = texture2D(m_DiffuseMap, uv);
+        #else
+        diffuseColor = vec4(1.0);
+        #endif
+    }
 
     float alpha = DiffuseSum.a * diffuseColor.a;
 
