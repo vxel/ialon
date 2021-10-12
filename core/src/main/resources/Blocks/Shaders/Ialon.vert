@@ -1,8 +1,6 @@
 #import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "Common/ShaderLib/Instancing.glsllib"
-#import "Common/ShaderLib/Skinning.glsllib"
 #import "Common/ShaderLib/Lighting.glsllib"
-#import "Common/ShaderLib/MorphAnim.glsllib"
 
 #ifdef VERTEX_LIGHTING
     #import "Common/ShaderLib/BlinnPhongLighting.glsllib"
@@ -30,10 +28,6 @@ attribute vec3 inNormal;
 uniform float g_Time;
 uniform float m_TextureScrollSpeedX;
 uniform float m_TextureScrollSpeedY;
-out vec2 texCoord;
-flat out vec2 wrapCoordMin;
-flat out vec2 wrapCoordMax;
-flat out vec2 delta;
 
 const float ATLAS_SIZE = 2048.0;
 const float TEX_SIZE = 128.0;
@@ -41,6 +35,10 @@ const float NUM_TEXTURES = ATLAS_SIZE / TEX_SIZE;
 const float UV_TEX_SIZE = 1.0 / NUM_TEXTURES;
 const float UV_PADDING = 0.25 * UV_TEX_SIZE;
 const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
+
+flat out vec2 wrapCoordMin;
+flat out vec2 wrapCoordMax;
+out vec2 texCoord;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
@@ -80,17 +78,17 @@ void main() {
         vec2 tileOffset = tileAtlasIndex * UV_TEX_SIZE;
 
         // Coordinate of the texture for this vertex, relative to the tile offset, e.g. (0, 0)
-        vec2 tileCoord = inTexCoord - tileOffset;
+        vec2 tileUV = inTexCoord - tileOffset;
         wrapCoordMin = tileOffset + UV_PADDING;
         wrapCoordMax = wrapCoordMin + PADDED_UV_TEX_SIZE;
-        texCoord = tileOffset + tileCoord;
 
         // Scroll against time, modulo the (padded) texture size
-        delta = vec2(mod(g_Time * m_TextureScrollSpeedX, PADDED_UV_TEX_SIZE), mod(g_Time * m_TextureScrollSpeedY, PADDED_UV_TEX_SIZE));
+        vec2 delta = vec2(mod(g_Time * m_TextureScrollSpeedX, PADDED_UV_TEX_SIZE), mod(g_Time * m_TextureScrollSpeedY, PADDED_UV_TEX_SIZE));
+
+        texCoord = tileOffset + fract(tileUV) - delta;
 
     } else {
         wrapCoordMin = vec2(0.0, 0.0);
-        delta = vec2(0.0, 0.0);
         texCoord = inTexCoord;
     }
 

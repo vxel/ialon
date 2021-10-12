@@ -1,7 +1,7 @@
 Material water-still : Blocks/MatDefs/Ialon.j3md {
 
     MaterialParameters {
-        VertexLighting: false
+        VertexLighting: true
         UseVertexColor: true
         UseMaterialColors: true
         Ambient: 1.0 1.0 1.0 1.0
@@ -9,15 +9,10 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
         Specular: 0.3 0.3 0.3 1.0
         Shininess: 96
         DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water2.png
-        NormalMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water-normal.png
 
         // custom
-        //WaveSpeed : 1.5
-        //WaveHeight : 0.03
-        //WaveSize : 10
-        TextureScrollSpeedX : 0.005
-        TextureScrollSpeedY : -0.005
-
+        TextureScrollSpeedX : 0.0
+        TextureScrollSpeedY : -0.01
     }
 
     AdditionalRenderState {

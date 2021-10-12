@@ -163,7 +163,7 @@ MaterialDef Ialon {
             SPECULARMAP : SpecularMap
 
             // overlay color specified
-            OVERLAYCOLOR : OverlayColor
+            //OVERLAYCOLOR : OverlayColor
         }
     }
 

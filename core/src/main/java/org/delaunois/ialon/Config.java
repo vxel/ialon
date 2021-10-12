@@ -34,7 +34,7 @@ public class Config {
     public static final ColorRGBA SUN_DAY_COLOR = new ColorRGBA(1f, 1f, 1f, 1f);
     public static final ColorRGBA SUN_EVENING_COLOR = new ColorRGBA(1f, 1f, 0.4f, 1f);
     public static final float DAYBREAK_DURATION = 8f;
-    public static final float TIME_FACTOR = 0.1f; // Should be 0.01f
+    public static final float TIME_FACTOR = 0.001f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.2f;
     public static final float JUMP_SPEED = 5;

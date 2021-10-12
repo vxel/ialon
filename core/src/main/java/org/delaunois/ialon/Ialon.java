@@ -32,7 +32,6 @@ import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
-import org.delaunois.ialon.state.WireframeState;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -98,7 +97,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 //new IalonDebugState(),
                 new BlockSelectionState(),
                 //new DebugKeysAppState(),
-                new WireframeState(),
+                //new WireframeState(),
                 new LightingState()
                 //new ExplorerDebugState(),
                 //new ShadowProcessingState()
