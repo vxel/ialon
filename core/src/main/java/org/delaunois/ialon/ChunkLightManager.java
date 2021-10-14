@@ -23,14 +23,14 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class ChunkLightGenerator {
+public class ChunkLightManager {
 
     @Setter
     private ChunkManager chunkManager;
 
     private final Set<String> cubeShapes = new HashSet<>();
 
-    public ChunkLightGenerator(ChunkManager chunkManager) {
+    public ChunkLightManager(ChunkManager chunkManager) {
         this.chunkManager = chunkManager;
         cubeShapes.add(ShapeIds.CUBE);
         cubeShapes.add(ShapeIds.SQUARE_CUBOID_NINE_TENTHS);

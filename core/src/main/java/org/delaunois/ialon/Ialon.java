@@ -116,6 +116,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
         cam.setFrustumNear(0.1f);
+        cam.setFrustumFar(200f);
         cam.setFov(50);
 
         initSky();

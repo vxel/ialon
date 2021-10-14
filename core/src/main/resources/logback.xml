@@ -12,7 +12,7 @@
     <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
     <logger name="org.delaunois.ialon.ChunkPager" level="debug"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="debug"/>
-    <logger name="org.delaunois.ialon.ChunkLightGenerator" level="info"/>
+    <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
     <logger name="org.delaunois.ialon.state.PlayerState" level="debug"/>
     <logger name="org.delaunois.ialon.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>

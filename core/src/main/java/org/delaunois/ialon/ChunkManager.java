@@ -45,14 +45,14 @@ public class ChunkManager {
 
     @Getter
     @Setter
-    private ChunkLightGenerator chunkLightGenerator;
+    private ChunkLightManager chunkLightManager;
 
     @Builder
     private ChunkManager(ChunkRepository repository, int repositoryPoolSize, ChunkGenerator generator, int poolSize) {
         this.repository = repository;
         this.generator = generator;
         this.poolSize = poolSize;
-        this.chunkLightGenerator = new ChunkLightGenerator(this);
+        this.chunkLightManager = new ChunkLightManager(this);
     }
 
     public void initialize() {
@@ -106,8 +106,10 @@ public class ChunkManager {
         // This is required because the mesh of a chunk depends on the blocks of the mesh AND the
         // blocks of its neighbours
         waitForTasks(results);
-        results = requestMeshChunks(locationsToMesh);
-        waitForTasks(results);
+        if (!locationsToMesh.isEmpty()) {
+            results = requestMeshChunks(locationsToMesh);
+            waitForTasks(results);
+        }
     }
 
     public Set<Future<Chunk>> requestGenerateChunks(Collection<Vec3i> locations) {
@@ -226,9 +228,9 @@ public class ChunkManager {
             chunks.add(chunk.getLocation().add(0, 0, -1));
         }
 
-        if (chunkLightGenerator != null) {
-            chunks.addAll(chunkLightGenerator.removeSunlight(location));
-            chunks.addAll(chunkLightGenerator.removeTorchlight(location));
+        if (chunkLightManager != null) {
+            chunks.addAll(chunkLightManager.removeSunlight(location));
+            chunks.addAll(chunkLightManager.removeTorchlight(location));
         }
 
         return chunks;
@@ -277,16 +279,16 @@ public class ChunkManager {
         // seeing holes in adjacent chunks
         chunks.add(chunk.getLocation());
 
-        if (chunkLightGenerator != null) {
-            chunks.addAll(chunkLightGenerator.removeTorchlight(location));
-            chunks.addAll(chunkLightGenerator.restoreSunlight(location));
+        if (chunkLightManager != null) {
+            chunks.addAll(chunkLightManager.removeTorchlight(location));
+            chunks.addAll(chunkLightManager.restoreSunlight(location));
         }
 
         return chunks;
     }
 
     public Set<Vec3i> addTorchlight(Vector3f location, int intensity) {
-        return chunkLightGenerator.addTorchlight(location, intensity);
+        return chunkLightManager.addTorchlight(location, intensity);
     }
 
     public int getSunlightLevel(Vector3f location) {

@@ -2,7 +2,7 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
 
     MaterialParameters {
         VertexLighting: true
-        UseVertexColor: false
+        UseVertexColor: true
         UseMaterialColors: true
         Ambient: 1.0 1.0 1.0 1.0
         Diffuse: 1.0 1.0 1.0 1.0

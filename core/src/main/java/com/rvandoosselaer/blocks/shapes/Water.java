@@ -49,6 +49,7 @@ public class Water implements Shape {
 
     @Override
     public void add(BlockNeighborhood neighborhood, ChunkMesh chunkMesh) {
+        Chunk chunk = neighborhood.getChunk();
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
 
@@ -77,27 +78,27 @@ public class Water implements Shape {
 
         if (isWaterFaceVisible(neighborhood, UP)) {
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
-            //enlightFace(location, Direction.UP, chunk, chunkMesh);
+            enlightFace(location, Direction.UP, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, DOWN)) {
             createDown(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
-            //enlightFace(location, Direction.DOWN, chunk, chunkMesh);
+            enlightFace(location, Direction.DOWN, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, WEST)) {
             createWest(location, chunkMesh, blockScale, v[4], v[6], v[0], v[2]);
-            //enlightFace(location, WEST, chunk, chunkMesh);
+            enlightFace(location, WEST, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, EAST)) {
             createEast(location, chunkMesh, blockScale, v[1], v[3], v[5], v[7]);
-            //enlightFace(location, EAST, chunk, chunkMesh);
+            enlightFace(location, EAST, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, SOUTH)) {
             createSouth(location, chunkMesh, blockScale, v[5], v[7], v[4], v[6]);
-            //enlightFace(location, Direction.SOUTH, chunk, chunkMesh);
+            enlightFace(location, Direction.SOUTH, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, NORTH)) {
             createNorth(location, chunkMesh, blockScale, v[0], v[2], v[1], v[3]);
-            //enlightFace(location, NORTH, chunk, chunkMesh);
+            enlightFace(location, NORTH, chunk, chunkMesh);
         }
     }
 
@@ -107,7 +108,7 @@ public class Water implements Shape {
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevels(location, face);
+        Vector4f color = new Vector4f(15, 0, 0, 1);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);
