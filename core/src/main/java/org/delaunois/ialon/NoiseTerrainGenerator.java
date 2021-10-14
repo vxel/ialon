@@ -81,7 +81,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
                         } else {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER_STILL);
+                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER);
                             chunk.setSunlight(x, y, z, 15);
                         }
 
@@ -89,8 +89,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         // Under ground / under water
                         if (worldY > groundh) {
                             // Above ground but below horizon => in water
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER_STILL);
-                            chunk.setSunlight(x, y, z, 15);
+                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER);
+                            chunk.setSunlight(x, y, z, Math.max(0, 13 - ((int)horizon - worldY) * 2));
 
                         } else {
                             chunk.setSunlight(x, y, z, 0);

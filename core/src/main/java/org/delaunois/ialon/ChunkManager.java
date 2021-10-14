@@ -143,8 +143,10 @@ public class ChunkManager {
         assertInitialized();
 
         Set<Future<Chunk>> results = new HashSet<>();
-        if (locations.size() == 0)
+        if (locations.size() == 0) {
+            log.warn("No location given for requestMeshChunks");
             return results;
+        }
 
         log.info("Generating meshes for {} locations", locations.size());
         locations.forEach(location -> {
@@ -197,6 +199,7 @@ public class ChunkManager {
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
         Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
         if (Objects.equals(previousBlock, block)) {
+            log.info("Previous block at location {} was already {}", location, previousBlock);
             return chunks;
         }
 
@@ -244,6 +247,7 @@ public class ChunkManager {
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
         Block previousBlock = chunk.removeBlock(blockLocationInsideChunk);
         if (previousBlock == null) {
+            log.warn("No block found at location {}", location);
             return chunks;
         }
 

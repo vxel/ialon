@@ -142,9 +142,8 @@ public class BlockRegistry {
     }
 
     private void registerWaterBlocks() {
-        Block water = new Block(BlockIds.WATER, ShapeIds.SQUARE_CUBOID_NINE_TENTHS, TypeIds.WATER, false, true, false, false);
-        Block waterStill = new Block(BlockIds.WATER_STILL, ShapeIds.SQUARE_CUBOID_NINE_TENTHS, TypeIds.WATER_STILL, false, true, false, false);
-        register(water, waterStill);
+        Block water1 = new Block(BlockIds.WATER, ShapeIds.WATER, TypeIds.WATER, false, true, false, false);
+        register(water1);
     }
 
     private void registerStoneBrickBlocks() {

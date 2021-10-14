@@ -8,7 +8,7 @@
 
     <logger name="com.rvandoosselaer" level="info"/>
     <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>
-    <logger name="org.delaunois.ialon" level="info"/>
+    <logger name="org.delaunois.ialon" level="debug"/>
     <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
     <logger name="org.delaunois.ialon.ChunkPager" level="debug"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="debug"/>

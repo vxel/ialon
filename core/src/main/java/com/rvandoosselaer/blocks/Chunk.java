@@ -394,13 +394,13 @@ public class Chunk {
             return true;
         }
         if (block.isTransparent() && !neighbour.isTransparent()) {
-            return false;
+            return true;
         }
         if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {
             return true;
         }
         return !(ShapeIds.CUBE.equals(neighbour.getShape())
-                || ShapeIds.SQUARE_CUBOID_NINE_TENTHS.equals(neighbour.getShape()));
+                || ShapeIds.WATER.equals(neighbour.getShape()));
     }
 
     public boolean isNeighbourFaceVisible(@NonNull Vec3i location, @NonNull Direction neighbourBlockDirection, @NonNull Direction neighbourFaceDirection) {

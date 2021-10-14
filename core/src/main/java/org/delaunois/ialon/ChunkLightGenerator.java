@@ -284,11 +284,19 @@ public class ChunkLightGenerator {
         }
 
         Block block = chunk.getBlock(x, y, z);
-        if (block != null && !block.isTransparent() && cubeShapes.contains(block.getShape())) {
-            if (log.isDebugEnabled()) {
-                log.debug("PAS2 - Light blocked at ({}, {}, {})", x, y, z);
+        if (block != null) {
+            if (block.isTransparent()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("PAS2.0 - Dimming light through transparent block at ({}, {}, {})", x, y, z);
+                }
+                dimLight = true;
+
+            } else if (cubeShapes.contains(block.getShape())) {
+                if (log.isDebugEnabled()) {
+                    log.debug("PAS2.1 - Light blocked at ({}, {}, {})", x, y, z);
+                }
+                return;
             }
-            return;
         }
 
         if (!dimLight && lightLevel == 15) {

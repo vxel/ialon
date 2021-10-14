@@ -212,7 +212,6 @@ public class TypeRegistry {
         register(TypeIds.STONE_BRICKS);
         register(TypeIds.MOSSY_STONE_BRICKS);
         register(TypeIds.WATER);
-        register(TypeIds.WATER_STILL);
         register(TypeIds.BIRCH_LEAVES);
         register(TypeIds.PALM_TREE_LEAVES);
         register(TypeIds.OAK_LEAVES);

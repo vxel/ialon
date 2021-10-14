@@ -29,7 +29,6 @@ public interface TypeIds {
     String STONE_BRICKS = "stone_bricks";
     String MOSSY_STONE_BRICKS = "mossy_stone_bricks";
     String WATER = "water";
-    String WATER_STILL = "water_still";
     String BIRCH_LEAVES = "birch_leaves";
     String PALM_TREE_LEAVES = "palm_tree_leaves";
     String OAK_LEAVES = "oak_leaves";

@@ -48,8 +48,6 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.Ialon;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -75,8 +73,6 @@ import static org.delaunois.ialon.Config.WATER_GRAVITY;
 
 @Slf4j
 public class PlayerState extends BaseAppState implements ActionListener, AnalogListener {
-
-    private static final Logger LOG = LoggerFactory.getLogger(Ialon.class.getName());
 
     private static final String ACTION_LEFT = "left";
     private static final String ACTION_RIGHT = "right";
@@ -205,7 +201,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Override
     protected void onEnable() {
-        LOG.info("Enabling player");
+        log.info("Enabling player");
         app.getGuiNode().attachChild(crossHair);
         player.setGravity(fly ? 0 : GROUND_GRAVITY);
         addKeyMappings();
@@ -214,7 +210,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Override
     protected void onDisable() {
-        LOG.info("Disabling player");
+        log.info("Disabling player");
         crossHair.removeFromParent();
         player.setGravity(0);
         deleteKeyMappings();
@@ -492,10 +488,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         } else if (ACTION_FLY.equals(name) && isPressed) {
             fly = !fly;
             if (fly) {
-                LOG.info("Flying");
+                log.info("Flying");
                 player.setGravity(0);
             } else {
-                LOG.info("Not Flying");
+                log.info("Not Flying");
                 player.setGravity(underWater == null ? GROUND_GRAVITY : WATER_GRAVITY);
             }
         }
@@ -570,10 +566,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void addBlock() {
-        LOG.info("Action : addBlock triggered");
+        log.info("Action : addBlock triggered");
 
         if (removePlaceholder.getParent() == null) {
-            LOG.info("Not removing. No parent for placeholder");
+            log.info("Not removing. No parent for placeholder");
             return;
         }
 
@@ -588,55 +584,67 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
 
         executorService.submit(() -> {
+            try {
+                // Get the selected block from menu
+                Block block = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
+                block = orientateBlock(block, worldBlockLocation);
 
-            // Get the selected block from menu
-            Block block = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
-            block = orientateBlock(block, worldBlockLocation);
+                // Add the block, which removes the light at this location
+                log.info("Adding block {}", block.getName());
+                Set<Vec3i> updatedChunks = chunkManager.addBlock(worldBlockLocation, block);
 
-            // Add the block, which removes the light at this location
-            log.info("Adding block {}", block.getName());
-            Set<Vec3i> updatedChunks = chunkManager.addBlock(worldBlockLocation, block);
+                // Computes the light if the block is a torch
+                if (block.isTorchlight()) {
+                    updatedChunks.addAll(chunkManager.addTorchlight(worldBlockLocation, 15));
+                }
 
-            // Computes the light if the block is a torch
-            if (block.isTorchlight()) {
-                updatedChunks.addAll(chunkManager.addTorchlight(worldBlockLocation, 15));
+                if (!updatedChunks.isEmpty()) {
+                    chunkManager.requestMeshChunks(updatedChunks);
+
+                    for (Vec3i location : updatedChunks) {
+                        asyncSave(location);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to add block", e);
             }
 
-            chunkManager.requestMeshChunks(updatedChunks);
-
-            for (Vec3i location : updatedChunks) {
-                asyncSave(location);
-            }
         });
     }
 
     private void removeBlock() {
-        LOG.info("Action : removeBlock triggered");
+        log.info("Action : removeBlock triggered");
 
         if (removePlaceholder.getParent() == null) {
-            LOG.info("Not removing. No parent for placeholder");
+            log.info("Not removing. No parent for placeholder");
             return;
         }
 
         executorService.submit(() -> {
-            Vector3f blockLocation = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-            if (blockLocation.y <= 1) {
-                return;
-            }
+            try {
+                Vector3f blockLocation = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
+                if (blockLocation.y <= 1) {
+                    return;
+                }
 
-            LOG.info("Removing block at {}", blockLocation);
-            Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
+                log.info("Removing block at {}", blockLocation);
+                Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
 
-            Block upBlock = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
-            if (upBlock != null && upBlock.getName().contains("water")) {
-                LOG.info("Flowing water in {}", blockLocation);
-                updatedChunks.addAll(chunkManager.addBlock(blockLocation, upBlock));
-            }
+                Block upBlock = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
+                if (upBlock != null && upBlock.getName().contains("water")) {
+                    log.info("Flowing water in {}", blockLocation);
+                    updatedChunks.addAll(chunkManager.addBlock(blockLocation, upBlock));
+                }
 
-            chunkManager.requestMeshChunks(updatedChunks);
+                if (!updatedChunks.isEmpty()) {
+                    chunkManager.requestMeshChunks(updatedChunks);
 
-            for (Vec3i location : updatedChunks) {
-                asyncSave(location);
+                    for (Vec3i location : updatedChunks) {
+                        asyncSave(location);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to remove block", e);
             }
         });
     }
@@ -676,8 +684,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private void asyncSave(Vec3i location) {
         chunkManager.getChunk(location).ifPresent(chunk -> executorService.submit(() -> {
-            app.getFileRepository().save(chunk);
-            log.info("Chunk {} saved", location);
+            try {
+                app.getFileRepository().save(chunk);
+                log.info("Chunk {} saved", location);
+            } catch (Exception e) {
+                log.error("Failed to save chunk", e);
+            }
         }));
     }
 
@@ -718,7 +730,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (block != null) {
             if (block.getName().contains("water")) {
                 if (underWater == null) {
-                    LOG.info("Water - IN");
+                    log.info("Water - IN");
                     chunkManager.getChunk(ChunkManager.getChunkLocation(camLocation)).ifPresent(chunk -> {
                         underWater = (Geometry) chunk.getNode().getChild(block.getName());
                         underWater.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
@@ -735,7 +747,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 }
             }
         } else if (underWater != null) {
-            LOG.info("Water - OUT");
+            log.info("Water - OUT");
             underWater.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
             underWater = null;
             if (!fly) {

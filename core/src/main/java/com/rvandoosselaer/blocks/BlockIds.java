@@ -59,7 +59,6 @@ public interface BlockIds {
     String MOSSY_STONE_BRICKS = TypeIds.MOSSY_STONE_BRICKS;
 
     String WATER = TypeIds.WATER;
-    String WATER_STILL = TypeIds.WATER_STILL;
 
     String WHITE_CUBE_LIGHT = TypeIds.WHITE_CUBE_LIGHT;
 
