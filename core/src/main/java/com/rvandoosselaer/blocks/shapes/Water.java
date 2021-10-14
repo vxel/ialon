@@ -49,7 +49,6 @@ public class Water implements Shape {
 
     @Override
     public void add(BlockNeighborhood neighborhood, ChunkMesh chunkMesh) {
-        Chunk chunk = neighborhood.getChunk();
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
 
@@ -58,7 +57,7 @@ public class Water implements Shape {
             return;
 
         Vec3i location = neighborhood.getLocation();
-        float[][] vertices = new float[][] {
+        float[][] v = new float[][] {
                 { -0.5f, -0.5f, -0.5f },
                 {  0.5f, -0.5f, -0.5f },
                 { -0.5f,  height - 0.5f, -0.5f },
@@ -70,35 +69,35 @@ public class Water implements Shape {
         };
 
         if (isWaterFaceVisible(neighborhood, UP)) {
-            vertices[2][1] -= 1.0f/10;
-            vertices[3][1] -= 1.0f/10;
-            vertices[6][1] -= 1.0f/10;
-            vertices[7][1] -= 1.0f/10;
+            v[2][1] -= 1.0f/10;
+            v[3][1] -= 1.0f/10;
+            v[6][1] -= 1.0f/10;
+            v[7][1] -= 1.0f/10;
         }
 
         if (isWaterFaceVisible(neighborhood, UP)) {
-            createUp(location,  chunkMesh, blockScale, vertices);
-            enlightFace(location, Direction.UP, chunk, chunkMesh);
+            createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
+            //enlightFace(location, Direction.UP, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, DOWN)) {
-            createDown(location, chunkMesh, blockScale, vertices);
-            enlightFace(location, Direction.DOWN, chunk, chunkMesh);
+            createDown(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
+            //enlightFace(location, Direction.DOWN, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, WEST)) {
-            createWest(location, chunkMesh, blockScale, vertices);
-            enlightFace(location, WEST, chunk, chunkMesh);
+            createWest(location, chunkMesh, blockScale, v[4], v[6], v[0], v[2]);
+            //enlightFace(location, WEST, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, EAST)) {
-            createEast(location, chunkMesh, blockScale, vertices);
-            enlightFace(location, EAST, chunk, chunkMesh);
+            createEast(location, chunkMesh, blockScale, v[1], v[3], v[5], v[7]);
+            //enlightFace(location, EAST, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, SOUTH)) {
-            createSouth(location, chunkMesh, blockScale, vertices);
-            enlightFace(location, Direction.SOUTH, chunk, chunkMesh);
+            createSouth(location, chunkMesh, blockScale, v[5], v[7], v[4], v[6]);
+            //enlightFace(location, Direction.SOUTH, chunk, chunkMesh);
         }
         if (isWaterFaceVisible(neighborhood, NORTH)) {
-            createNorth(location, chunkMesh, blockScale, vertices);
-            enlightFace(location, NORTH, chunk, chunkMesh);
+            createNorth(location, chunkMesh, blockScale, v[0], v[2], v[1], v[3]);
+            //enlightFace(location, NORTH, chunk, chunkMesh);
         }
     }
 
@@ -116,8 +115,8 @@ public class Water implements Shape {
         colors.add(color);
     }
 
-    protected void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[0], v[2], v[1], v[3]);
+    protected void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
@@ -133,8 +132,8 @@ public class Water implements Shape {
         }
     }
 
-    protected void createSouth(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[5], v[7], v[4], v[6]);
+    protected void createSouth(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
@@ -150,8 +149,8 @@ public class Water implements Shape {
         }
     }
 
-    protected void createEast(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[1], v[3], v[5], v[7]);
+    protected void createEast(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
@@ -167,8 +166,8 @@ public class Water implements Shape {
         }
     }
 
-    protected void createWest(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[4], v[6], v[0], v[2]);
+    protected void createWest(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
@@ -184,8 +183,8 @@ public class Water implements Shape {
         }
     }
 
-    protected void createDown(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
+    protected void createDown(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
@@ -201,8 +200,8 @@ public class Water implements Shape {
         }
     }
 
-    protected void createUp(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[][] v) {
-        addQuad(location, chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
+    protected void createUp(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
+        addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents

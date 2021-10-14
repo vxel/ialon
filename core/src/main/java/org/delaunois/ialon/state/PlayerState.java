@@ -22,7 +22,6 @@ import com.jme3.input.controls.TouchTrigger;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.input.event.TouchEvent;
 import com.jme3.material.Material;
-import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Matrix3f;
 import com.jme3.math.Quaternion;
@@ -733,22 +732,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     log.info("Water - IN");
                     chunkManager.getChunk(ChunkManager.getChunkLocation(camLocation)).ifPresent(chunk -> {
                         underWater = (Geometry) chunk.getNode().getChild(block.getName());
-                        underWater.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
                     });
 
                     if (!fly) {
                         player.setGravity(WATER_GRAVITY);
                         player.setFallSpeed(WATER_GRAVITY);
                     }
-                    chunkManager.getChunk(ChunkManager.getChunkLocation(camLocation)).ifPresent(chunk -> {
-                        Geometry geometry = (Geometry) chunk.getNode().getChild(block.getName());
-                        geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
-                    });
                 }
             }
         } else if (underWater != null) {
             log.info("Water - OUT");
-            underWater.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
             underWater = null;
             if (!fly) {
                 player.setGravity(GROUND_GRAVITY);

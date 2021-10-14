@@ -11,6 +11,7 @@ import com.jme3.util.mikktspace.MikktspaceTangentGenerator;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
+import org.delaunois.ialon.LayerComparator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -169,8 +170,32 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         // create a geometry for each type of block
         meshMap.forEach((type, chunkMesh) -> {
+
             Geometry geometry = createGeometry(type, chunkMesh);
-            node.attachChild(geometry);
+            if (TypeIds.WATER.equals(type)) {
+                /*
+                 * Special case for water.
+                 * Water must be visible from inside and outside.
+                 * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
+                 *
+                 * The only real solution is to split the geometry into 2 objects that share the
+                 * same mesh. Have one with back face culling on and one with front face culling on.
+                 * Then use a custom GeometryComparator that makes sure the inside one is always
+                 * drawn first : the Lemur LayerComparator, that lets Geometries use a UserData to
+                 * indicate relative layers. setUserData(“layer”, 0) in
+                 * the inside one and setUserData(“layer”, 1) on the outside one. (presuming they both
+                 * have the same parent node).
+                 */
+                LayerComparator.setLayer(geometry, 2);
+                Geometry inside = geometry.clone();
+                LayerComparator.setLayer(inside, 1);
+                inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+                node.attachChild(geometry);
+                node.attachChild(inside);
+
+            } else {
+                node.attachChild(geometry);
+            }
         });
 
         // position the node

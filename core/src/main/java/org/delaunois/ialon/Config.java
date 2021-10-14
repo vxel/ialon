@@ -9,7 +9,7 @@ public class Config {
     public static final int SCREEN_WIDTH = 1520;
     public static final int SCREEN_HEIGHT = 720;
     public static final int FPS_LIMIT = 120;
-    public static final int MAX_UPDATE_PER_FRAME = 1;
+    public static final int MAX_UPDATE_PER_FRAME = 3;
 
     // Grid
     public static final int GRID_DIAMETER = 5;

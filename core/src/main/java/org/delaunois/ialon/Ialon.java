@@ -109,9 +109,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Override
     public void simpleInitApp() {
         GuiGlobals.initialize(this);
+        RenderQueue rq = viewPort.getQueue();
 
         atlasManager = new TextureAtlasManager();
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
+        rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
+                new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
         cam.setFrustumNear(0.1f);
         cam.setFov(50);
 

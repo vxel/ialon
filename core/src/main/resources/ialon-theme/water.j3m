@@ -17,7 +17,6 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
 
     AdditionalRenderState {
         Blend Alpha
-        //FaceCull Off
     }
 
 }
