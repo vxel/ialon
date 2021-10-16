@@ -8,6 +8,7 @@ import org.delaunois.ialon.ChunkLiquidManager;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.Ialon;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +41,11 @@ public class ChunkLiquidManagerState extends BaseAppState {
     @Override
     public void update(float tpf) {
         elapsed += tpf;
-        if (elapsed > 1f) {
-            Set<Vec3i> updatedChunks = chunkLiquidManager.step();
+        if (elapsed > 0.1f) {
+            Set<Vec3i> updatedChunks = new HashSet<>();
+            for (int i = 0; i < 10; i ++) {
+                updatedChunks.addAll(chunkLiquidManager.step());
+            }
             if (!updatedChunks.isEmpty()) {
                 chunkManager.requestMeshChunks(updatedChunks);
                 // TODO save blocks

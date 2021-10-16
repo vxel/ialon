@@ -36,8 +36,8 @@ public class ChunkLiquidManager {
             log.debug("Adding liquid at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
         }
 
-        addLiquid(chunk, blockLocationInsideChunk, LEVEL_MAX);
-        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX));
+        addLiquid(chunk, blockLocationInsideChunk, LEVEL_MAX - 1);
+        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
     }
 
     public Set<Vec3i> step() {
@@ -51,12 +51,14 @@ public class ChunkLiquidManager {
         if (log.isDebugEnabled()) {
             log.debug("Processing liquid node({}, {}, {})", node.x, node.y, node.z);
         }
-        boolean flows = propagateLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context);
-        if (!flows) {
-            propagateLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context);
-            propagateLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context);
-            propagateLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context);
-            propagateLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
+        if (!propagateLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context)) {
+            if (!propagateLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context)) {
+                if (!propagateLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context)) {
+                    if (!propagateLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context)) {
+                        propagateLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
+                    }
+                }
+            }
         }
 
         return context.chunkMeshUpdateRequests;
@@ -119,7 +121,7 @@ public class ChunkLiquidManager {
                 log.debug("PAS5 - Stop flowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
             }
         }
-        return true;
+        return false;
     }
 
     /**

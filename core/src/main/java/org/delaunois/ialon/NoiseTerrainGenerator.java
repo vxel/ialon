@@ -84,7 +84,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
                         } else {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
+                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID5));
                             chunk.setSunlight(x, y, z, 15);
                         }
 
