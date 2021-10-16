@@ -11,7 +11,7 @@ import com.rvandoosselaer.blocks.shapes.SquareCuboid;
 import com.rvandoosselaer.blocks.shapes.Stairs;
 import com.rvandoosselaer.blocks.shapes.StairsInnerCorner;
 import com.rvandoosselaer.blocks.shapes.StairsOuterCorner;
-import com.rvandoosselaer.blocks.shapes.Water;
+import com.rvandoosselaer.blocks.shapes.Liquid;
 import com.rvandoosselaer.blocks.shapes.Wedge;
 
 import java.util.Collection;
@@ -220,11 +220,12 @@ public class ShapeRegistry {
     }
 
     private void registerWater() {
-        register(ShapeIds.WATER, new Water(1.0f));
-        register(ShapeIds.WATER4, new Water(8.0f));
-        register(ShapeIds.WATER3, new Water(6.0f));
-        register(ShapeIds.WATER2, new Water(4.0f));
-        register(ShapeIds.WATER1, new Water(2.0f));
+        register(ShapeIds.LIQUID1, new Liquid(1));
+        register(ShapeIds.LIQUID2, new Liquid(2));
+        register(ShapeIds.LIQUID3, new Liquid(3));
+        register(ShapeIds.LIQUID4, new Liquid(4));
+        register(ShapeIds.LIQUID5, new Liquid(5));
+        register(ShapeIds.LIQUID, new Liquid(6));
     }
 
     private void registerFloatingCubes() {

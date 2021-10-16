@@ -1,13 +1,13 @@
 package com.rvandoosselaer.blocks.serialize;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * A POJO describing the parameters for creating a collection of blocks.

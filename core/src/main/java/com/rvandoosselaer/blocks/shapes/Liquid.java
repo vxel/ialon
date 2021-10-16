@@ -13,9 +13,11 @@ import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
+import org.delaunois.ialon.ChunkLiquidManager;
 
 import java.util.List;
 
+import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,29 +29,32 @@ import static com.rvandoosselaer.blocks.Direction.UP;
 import static com.rvandoosselaer.blocks.Direction.WEST;
 
 /**
- * A shape implementation for a water cube cuboid.
- * A water cube has the following properties :
- * - it is like a cube if all its neighbours are water blocks
- * - it is like a slab ending at 9/10 height if there is no water blocks above
- * - if the neighbour of a face is a block but not a water block, then the face will be visible
+ * A shape implementation for a liquid cube cuboid.
+ * A liquid cube has the following properties :
+ * - it is like a cube if all its neighbours are liquid blocks
+ * - it is like a slab ending at 9/10 height if there is no liquid blocks above
+ * - if the neighbour of a face is a block but not a liquid block, then the face will be visible
  *   and its position will be shifted (by a small delta) towards the center of the block to
  *   prevent Z-fighting
- * A water block does not support multiple images nor rotation.
+ * A liquid block does not support multiple images nor rotation.
  * @author Cedric de Launois
  */
 @Slf4j
 @ToString
-public class Water implements Shape {
+public class Liquid implements Shape {
 
-    protected final float height;
+    private static final float[] HEIGHTS = { 0.0f, 0.05f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f };
+    public static final int LEVEL_MAX = HEIGHTS.length - 1;
 
-    public Water(float height) {
-        this.height = height;
+    @Getter
+    protected final int level;
+
+    public Liquid(int level) {
+        this.level = Math.min(LEVEL_MAX, level);
     }
 
     @Override
     public void add(BlockNeighborhood neighborhood, ChunkMesh chunkMesh) {
-        Chunk chunk = neighborhood.getChunk();
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
 
@@ -61,45 +66,66 @@ public class Water implements Shape {
         float[][] v = new float[][] {
                 { -0.5f, -0.5f, -0.5f },
                 {  0.5f, -0.5f, -0.5f },
-                { -0.5f,  height - 0.5f, -0.5f },
-                {  0.5f,  height - 0.5f, -0.5f },
+                { -0.5f,  0.5f, -0.5f },
+                {  0.5f,  0.5f, -0.5f },
                 { -0.5f, -0.5f,  0.5f },
                 {  0.5f, -0.5f,  0.5f },
-                { -0.5f,  height - 0.5f,  0.5f },
-                {  0.5f,  height - 0.5f,  0.5f }
+                { -0.5f,  0.5f,  0.5f },
+                {  0.5f,  0.5f,  0.5f }
         };
 
-        if (isWaterFaceVisible(neighborhood, UP)) {
-            v[2][1] -= 1.0f/10;
-            v[3][1] -= 1.0f/10;
-            v[6][1] -= 1.0f/10;
-            v[7][1] -= 1.0f/10;
+        v[2][1] = HEIGHTS[level] - 0.5f;
+        v[3][1] = HEIGHTS[level] - 0.5f;
+        v[6][1] = HEIGHTS[level] - 0.5f;
+        v[7][1] = HEIGHTS[level] - 0.5f;
+
+        if (level < LEVEL_MAX) {
+            Block[] b = neighborhood.getNeighbours();
+            v[3][1] = computeHeight(b[0], b[1], b[7]);
+            v[2][1] = computeHeight(b[1], b[2], b[3]);
+            v[6][1] = computeHeight(b[3], b[4], b[5]);
+            v[7][1] = computeHeight(b[5], b[6], b[7]);
         }
 
-        if (isWaterFaceVisible(neighborhood, UP)) {
+        if (isLiquidFaceVisible(neighborhood, UP)) {
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
-            enlightFace(location, Direction.UP, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
-        if (isWaterFaceVisible(neighborhood, DOWN)) {
+        if (isLiquidFaceVisible(neighborhood, DOWN)) {
             createDown(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
-            enlightFace(location, Direction.DOWN, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
-        if (isWaterFaceVisible(neighborhood, WEST)) {
+        if (isLiquidFaceVisible(neighborhood, WEST)) {
             createWest(location, chunkMesh, blockScale, v[4], v[6], v[0], v[2]);
-            enlightFace(location, WEST, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
-        if (isWaterFaceVisible(neighborhood, EAST)) {
+        if (isLiquidFaceVisible(neighborhood, EAST)) {
             createEast(location, chunkMesh, blockScale, v[1], v[3], v[5], v[7]);
-            enlightFace(location, EAST, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
-        if (isWaterFaceVisible(neighborhood, SOUTH)) {
+        if (isLiquidFaceVisible(neighborhood, SOUTH)) {
             createSouth(location, chunkMesh, blockScale, v[5], v[7], v[4], v[6]);
-            enlightFace(location, Direction.SOUTH, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
-        if (isWaterFaceVisible(neighborhood, NORTH)) {
+        if (isLiquidFaceVisible(neighborhood, NORTH)) {
             createNorth(location, chunkMesh, blockScale, v[0], v[2], v[1], v[3]);
-            enlightFace(location, NORTH, chunk, chunkMesh);
+            enlightFace(chunkMesh);
         }
+    }
+
+    private float computeHeight(Block... blocks) {
+        int maxLevel = level;
+
+        for (Block b : blocks) {
+            if (b != null && TypeIds.WATER.equals(b.getType())) {
+                int lvl = ChunkLiquidManager.getLiquidLevel(b);
+                if (maxLevel < lvl) {
+                    maxLevel = lvl;
+                }
+            }
+        }
+
+        return HEIGHTS[maxLevel] - 0.5f;
     }
 
     @Override
@@ -107,7 +133,7 @@ public class Water implements Shape {
         add(new BlockNeighborhood(location, chunk), chunkMesh);
     }
 
-    private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
+    private void enlightFace(ChunkMesh chunkMesh) {
         Vector4f color = new Vector4f(15, 0, 0, 1);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
@@ -127,9 +153,9 @@ public class Water implements Shape {
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
             chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
         }
     }
 
@@ -144,9 +170,9 @@ public class Water implements Shape {
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
             chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
         }
     }
 
@@ -161,9 +187,9 @@ public class Water implements Shape {
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
             chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
         }
     }
 
@@ -178,9 +204,9 @@ public class Water implements Shape {
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
             chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, height / UV_PADDING_FACTOR + UV_PADDING));
+            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, HEIGHTS[level] / UV_PADDING_FACTOR + UV_PADDING));
         }
     }
 
@@ -242,8 +268,8 @@ public class Water implements Shape {
     }
 
 
-    private boolean isWaterFaceVisible(BlockNeighborhood neighborhood, Direction direction) {
-        // A water face is always visible excepted if the neighbour is also water
+    private boolean isLiquidFaceVisible(BlockNeighborhood neighborhood, Direction direction) {
+        // A liquid face is always visible excepted if the neighbour is also liquid
         Block neighbour = neighborhood.getNeighbour(direction);
         if (neighbour == null) {
             return true;

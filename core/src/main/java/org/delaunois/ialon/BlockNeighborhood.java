@@ -49,6 +49,19 @@ public class BlockNeighborhood {
         return n[CENTER_IDX];
     }
 
+    public Block[] getNeighbours() {
+        return new Block[]{
+                get(11, 1, 0, -1),
+                get(10, 0, 0, -1),
+                get(9, -1, 0, -1),
+                get(12, -1, 0, 0),
+                get(15, -1, 0, 1),
+                get(16, 0, 0, 1),
+                get(17, 1, 0, 1),
+                get(14, 1, 0, 0),
+        };
+    }
+
     public Block[] getNeighbours(Direction direction) {
         switch (direction) {
             case UP:

@@ -123,10 +123,12 @@ public interface ShapeIds {
      */
     String SQUARE_CUBOID_NINE_TENTHS = "square_cuboid_nine_tenths_up";
 
-    String WATER = "water_up";
-    String WATER1 = "water1_up";
-    String WATER2 = "water2_up";
-    String WATER3 = "water3_up";
-    String WATER4 = "water4_up";
+    String LIQUID1 = "liquid_1";
+    String LIQUID2 = "liquid_2";
+    String LIQUID3 = "liquid_3";
+    String LIQUID4 = "liquid_4";
+    String LIQUID5 = "liquid_5";
+    String LIQUID = "liquid";
+    String[] ALL_LIQUID = {LIQUID, LIQUID1, LIQUID2, LIQUID3, LIQUID4, LIQUID5};
 
 }

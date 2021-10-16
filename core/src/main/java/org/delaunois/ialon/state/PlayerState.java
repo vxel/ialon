@@ -111,7 +111,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false;
     private boolean fly = PLAYER_START_FLY;
-    private Geometry underWater = null;
+    private boolean underWater = false;
 
     private Ialon app;
     private Label crossHair;
@@ -491,7 +491,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 player.setGravity(0);
             } else {
                 log.info("Not Flying");
-                player.setGravity(underWater == null ? GROUND_GRAVITY : WATER_GRAVITY);
+                player.setGravity(underWater ? WATER_GRAVITY : GROUND_GRAVITY);
             }
         }
     }
@@ -728,11 +728,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         Block block = chunkManager.getBlock(camLocation).orElse(null);
         if (block != null) {
             if (block.getName().contains("water")) {
-                if (underWater == null) {
+                if (!underWater) {
                     log.info("Water - IN");
-                    chunkManager.getChunk(ChunkManager.getChunkLocation(camLocation)).ifPresent(chunk -> {
-                        underWater = (Geometry) chunk.getNode().getChild(block.getName());
-                    });
+                    underWater = true;
 
                     if (!fly) {
                         player.setGravity(WATER_GRAVITY);
@@ -740,9 +738,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     }
                 }
             }
-        } else if (underWater != null) {
+        } else if (underWater) {
             log.info("Water - OUT");
-            underWater = null;
+            underWater = false;
             if (!fly) {
                 player.setGravity(GROUND_GRAVITY);
                 player.setFallSpeed(GROUND_GRAVITY);

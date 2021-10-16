@@ -65,11 +65,11 @@ import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LEAVES;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LOG;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_PLANKS;
 import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
-import static com.rvandoosselaer.blocks.BlockIds.WATER;
 import static com.rvandoosselaer.blocks.BlockIds.WHITE_CUBE_LIGHT;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
 import static com.rvandoosselaer.blocks.BlockIds.getName;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
+import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
@@ -79,6 +79,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_EAST;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
+import static com.rvandoosselaer.blocks.TypeIds.WATER;
 
 
 public class BlockSelectionState extends BaseAppState implements ActionListener, AnalogListener {
@@ -93,7 +94,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             GRASS_SNOW,
             getName(GRASS_SNOW, DOUBLE_SLAB),
             getName(GRASS_SNOW, SLAB),
-            WATER,
+            getName(WATER, LIQUID),
             WHITE_CUBE_LIGHT,
             SPACER,
 

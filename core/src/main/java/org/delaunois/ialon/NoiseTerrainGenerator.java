@@ -10,9 +10,12 @@ import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.Random;
+
+import static com.rvandoosselaer.blocks.TypeIds.WATER;
 
 public class NoiseTerrainGenerator implements TerrainGenerator {
 
@@ -81,7 +84,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
                         } else {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER);
+                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
                             chunk.setSunlight(x, y, z, 15);
                         }
 
@@ -89,7 +92,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         // Under ground / under water
                         if (worldY > groundh) {
                             // Above ground but below horizon => in water
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER);
+                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
                             chunk.setSunlight(x, y, z, Math.max(0, 13 - ((int)horizon - worldY) * 2));
 
                         } else {

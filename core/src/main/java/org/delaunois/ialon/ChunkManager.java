@@ -11,6 +11,7 @@ import com.rvandoosselaer.blocks.ChunkGenerator;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
 import com.rvandoosselaer.blocks.ChunkRepository;
+import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.Collection;
@@ -47,12 +48,17 @@ public class ChunkManager {
     @Setter
     private ChunkLightManager chunkLightManager;
 
+    @Getter
+    @Setter
+    private ChunkLiquidManager chunkLiquidManager;
+
     @Builder
     private ChunkManager(ChunkRepository repository, int repositoryPoolSize, ChunkGenerator generator, int poolSize) {
         this.repository = repository;
         this.generator = generator;
         this.poolSize = poolSize;
         this.chunkLightManager = new ChunkLightManager(this);
+        this.chunkLiquidManager = new ChunkLiquidManager();
     }
 
     public void initialize() {
@@ -199,10 +205,15 @@ public class ChunkManager {
         }
 
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-        Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
-        if (Objects.equals(previousBlock, block)) {
-            log.info("Previous block at location {} was already {}", location, previousBlock);
-            return chunks;
+
+        if (TypeIds.WATER.equals(block.getType())) {
+            chunkLiquidManager.addLiquid(chunk, blockLocationInsideChunk);
+        } else {
+            Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
+            if (Objects.equals(previousBlock, block)) {
+                log.info("Previous block at location {} was already {}", location, previousBlock);
+                return chunks;
+            }
         }
 
         chunks.add(chunk.getLocation());

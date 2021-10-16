@@ -400,7 +400,7 @@ public class Chunk {
             return true;
         }
         return !(ShapeIds.CUBE.equals(neighbour.getShape())
-                || ShapeIds.WATER.equals(neighbour.getShape()));
+                || ShapeIds.LIQUID.equals(neighbour.getShape()));
     }
 
     public boolean isNeighbourFaceVisible(@NonNull Vec3i location, @NonNull Direction neighbourBlockDirection, @NonNull Direction neighbourFaceDirection) {

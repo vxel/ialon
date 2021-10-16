@@ -26,6 +26,7 @@ import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
 import org.delaunois.ialon.state.BlockSelectionState;
+import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.IalonDebugState;
@@ -217,6 +218,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         chunkManagerState = new ChunkManagerState(chunkManager);
         chunkPagerState = new ChunkPagerState(chunkPager);
         physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
+        ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
 
         playerState = new PlayerState();
         playerState.setEnabled(false);
@@ -225,6 +227,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 chunkManagerState,
                 chunkPagerState,
                 physicsChunkPagerState,
+                chunkLiquidManagerState,
                 playerState
         );
     }
@@ -276,6 +279,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             chunkPager.setMaxUpdatePerFrame(MAX_UPDATE_PER_FRAME);
             physicsChunkPager.setMaxUpdatePerFrame(10);
             playerState.setEnabled(true);
+            getStateManager().getState(ChunkLiquidManagerState.class).setEnabled(true);
         }
     }
 

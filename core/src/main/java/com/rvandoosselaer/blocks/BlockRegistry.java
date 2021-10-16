@@ -142,8 +142,9 @@ public class BlockRegistry {
     }
 
     private void registerWaterBlocks() {
-        Block water1 = new Block(BlockIds.WATER, ShapeIds.WATER, TypeIds.WATER, false, true, false, false);
-        register(water1);
+        BlockDefinition waterDef = new BlockDefinition(TypeIds.WATER, false, true, false)
+                .addShapes(ShapeIds.ALL_LIQUID);
+        register(BlockFactory.create(waterDef));
     }
 
     private void registerStoneBrickBlocks() {

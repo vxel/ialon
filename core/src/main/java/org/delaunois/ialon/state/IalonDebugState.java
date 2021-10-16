@@ -229,7 +229,10 @@ public class IalonDebugState extends BaseAppState {
 
     private String getBlockLabelString() {
         Block block = chunkPager.getChunkManager().getBlock(playerState.getRemovePlaceholderPosition()).orElse(null);
-        return String.format(Locale.ENGLISH,"%s", block == null ? "-" : block.getName());
+        Block block2 = chunkPager.getChunkManager().getBlock(playerState.getAddPlaceholderPosition()).orElse(null);
+        return String.format(Locale.ENGLISH,"%s (%s)",
+                block == null ? "-" : block.getName(),
+                block2 == null ? "-" : block2.getName());
     }
 
     private String getSunlightLevelString() {
