@@ -61,7 +61,8 @@ public class PhysicsChunkPager {
     private final Map<Vec3i, PhysicsRigidBody> attachedPages = new ConcurrentHashMap<>();
 
     private final ChunkManagerListener listener = new PhysicsChunkPagerListener();
-    private final Queue<Vec3i> pagesToAttach = new ConcurrentLinkedQueue<>();
+    private final Queue<Vec3i> pagesToCreate = new ConcurrentLinkedQueue<>();
+    private final Queue<CreatedPage> pagesToAttach = new ConcurrentLinkedQueue<>();
     private final Queue<Vec3i> pagesToDetach = new LinkedList<>();
     private ExecutorService requestExecutor;
 
@@ -80,7 +81,7 @@ public class PhysicsChunkPager {
     }
 
     public boolean isIdle() {
-        return pagesToAttach.size() == 0 && pagesToDetach.size() == 0;
+        return pagesToCreate.size() == 0 && pagesToDetach.size() == 0;
     }
 
     public void update() {
@@ -91,6 +92,8 @@ public class PhysicsChunkPager {
         updateCenterPage();
 
         detachNextPages();
+
+        createNextPages();
 
         attachNextPages();
     }
@@ -122,11 +125,11 @@ public class PhysicsChunkPager {
             log.debug("PhysicsGrid is set to ({}:{}, {}:{}, {}:{})", min.x, max.x, min.y, max.y, min.z, max.z);
         }
 
-        pagesToAttach.clear();
+        pagesToCreate.clear();
         for (int x = min.x; x <= max.x; x++) {
             for (int y = min.y; y <= max.y; y++) {
                 for (int z = min.z; z <= max.z; z++) {
-                    pagesToAttach.offer(new Vec3i(x, y, z));
+                    pagesToCreate.offer(new Vec3i(x, y, z));
                 }
             }
         }
@@ -134,7 +137,7 @@ public class PhysicsChunkPager {
         // detach pages outside of the grid
         pagesToDetach.clear();
         for (Vec3i page : attachedPages.keySet()) {
-            if (!pagesToAttach.contains(page)) {
+            if (!pagesToCreate.contains(page)) {
                 pagesToDetach.offer(page);
             }
         }
@@ -167,29 +170,53 @@ public class PhysicsChunkPager {
         }
     }
 
-    protected void attachNextPages() {
-        Vec3i page = pagesToAttach.poll();
+    protected void createNextPages() {
+        Vec3i page = pagesToCreate.poll();
         int attached = 0;
 
         while (page != null) {
             Chunk chunk = chunkManager.getChunk(page).orElse(null);
             if (chunk == null || chunk.getNode() == null) {
                 // Chunk is not ready, try again later
-                pagesToAttach.offer(page);
+                pagesToCreate.offer(page);
                 return;
             }
 
+            // Create the new page
+            requestExecutor.submit(() -> createPage(chunk));
+
+            attached += 1;
+
+            if (attached < maxUpdatePerFrame) {
+                page = pagesToCreate.poll();
+            } else {
+                // Timeout for this frame. Stop work now.
+                page = null;
+            }
+        }
+
+        if (attached > 0) {
+            log.info("{} physic pages sent to create", attached);
+        }
+    }
+
+    protected void attachNextPages() {
+        CreatedPage page = pagesToAttach.poll();
+        int attached = 0;
+
+        while (page != null) {
+
             // detach the old page if any
-            PhysicsRigidBody oldPage = attachedPages.remove(chunk.getLocation());
+            PhysicsRigidBody oldPage = attachedPages.remove(page.location);
             if (oldPage != null) {
                 detachPage(oldPage);
             }
 
             // Create the new page
-            PhysicsRigidBody node = createPage(chunk);
+            PhysicsRigidBody node = page.physicsRigidBody;
             if (node != null) {
                 attachPage(node);
-                attachedPages.put(chunk.getLocation(), node);
+                attachedPages.put(page.location, node);
                 attached += 1;
             }
 
@@ -206,15 +233,14 @@ public class PhysicsChunkPager {
         }
     }
 
-    protected PhysicsRigidBody createPage(Chunk chunk) {
+    protected void createPage(Chunk chunk) {
         if (chunk == null || chunk.getCollisionMesh() == null || chunk.getCollisionMesh().getTriangleCount() < 1 || physicsSpace == null) {
-            return null;
+            return;
         }
 
         PhysicsRigidBody physicsRigidBody = new PhysicsRigidBody(new MeshCollisionShape(chunk.getCollisionMesh()), 0);
         physicsRigidBody.setPhysicsLocation(chunk.getWorldLocation());
-
-        return physicsRigidBody;
+        pagesToAttach.offer(new CreatedPage(chunk.getLocation(), physicsRigidBody));
     }
 
     protected void detachPage(PhysicsRigidBody page) {
@@ -246,7 +272,7 @@ public class PhysicsChunkPager {
         requestExecutor.shutdown();
         attachedPages.forEach((loc, page) -> detachPage(page));
         attachedPages.clear();
-        pagesToAttach.clear();
+        pagesToCreate.clear();
         pagesToDetach.clear();
     }
 
@@ -259,12 +285,22 @@ public class PhysicsChunkPager {
         @Override
         public void onChunkAvailable(Chunk chunk) {
             if (attachedPages.containsKey(chunk.getLocation())) {
-                pagesToAttach.offer(chunk.getLocation());
+                pagesToCreate.offer(chunk.getLocation());
             }
         }
 
         @Override
         public void onChunkFetched(Chunk chunk) {
+        }
+    }
+
+    private static final class CreatedPage {
+        Vec3i location;
+        PhysicsRigidBody physicsRigidBody;
+
+        public CreatedPage(Vec3i location, PhysicsRigidBody physicsRigidBody) {
+            this.location = location;
+            this.physicsRigidBody = physicsRigidBody;
         }
     }
 
