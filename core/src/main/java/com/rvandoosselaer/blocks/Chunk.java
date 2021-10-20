@@ -34,10 +34,11 @@ public class Chunk {
 
     // For CPU optimization
     private static final Vec3i CHUNK_SIZE = BlocksConfig.getInstance().getChunkSize();
+    private static final BlockRegistry REGISTRY = BlocksConfig.getInstance().getBlockRegistry();
 
     // a one dimensional array is quicker to lookup blocks then a 3n array
     @Setter
-    private Block[] blocks;
+    private short[] blocks;
     @Setter(AccessLevel.PRIVATE)
     @ToString.Include
     private Vec3i location;
@@ -81,7 +82,7 @@ public class Chunk {
 
     public Chunk(@NonNull Vec3i location) {
         setLocation(location);
-        setBlocks(new Block[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+        setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
         setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
         update();
     }
@@ -113,8 +114,8 @@ public class Chunk {
     public Block addBlock(int x, int y, int z, Block block) {
         if (isInsideChunk(x, y, z)) {
             int index = calculateIndex(x, y, z);
-            Block previous = blocks[index];
-            blocks[index] = block;
+            Block previous = REGISTRY.get(blocks[index]);
+            blocks[index] = block.getId();
             if (log.isTraceEnabled()) {
                 log.trace("Added {} at ({}, {}, {}) to {}", block, x, y, z, this);
             }
@@ -145,7 +146,7 @@ public class Chunk {
      */
     public Block getBlock(int x, int y, int z) {
         if (isInsideChunk(x, y, z)) {
-            return this.blocks == null ? null : this.blocks[calculateIndex(x, y, z)];
+            return this.blocks == null ? null : REGISTRY.get(this.blocks[calculateIndex(x, y, z)]);
         }
 
         log.warn("Block location ({}, {}, {}) is outside of the chunk boundaries!", x, y, z);
@@ -173,8 +174,8 @@ public class Chunk {
     public Block removeBlock(int x, int y, int z) {
         if (isInsideChunk(x, y, z)) {
             int index = calculateIndex(x, y, z);
-            Block block = blocks[index];
-            blocks[index] = null;
+            Block block = REGISTRY.get(blocks[index]);
+            blocks[index] = 0;
             if (log.isTraceEnabled()) {
                 log.trace("Removed {} at ({}, {}, {}) from {}", block, x, y, z, this);
             }
@@ -217,11 +218,11 @@ public class Chunk {
         boolean empty = true;
         boolean full = true;
 
-        for (Block block : blocks) {
-            if (block == null && full) {
+        for (short block : blocks) {
+            if (block == 0 && full) {
                 full = false;
             }
-            if (block != null && empty) {
+            if (block != 0 && empty) {
                 empty = false;
             }
 

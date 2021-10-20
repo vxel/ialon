@@ -30,6 +30,10 @@ public class BlockRegistry {
     private final ConcurrentMap<String, Block> registry = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
+    private static final int MAX_BLOCKS = 2000;
+    private final Block[] aregistry = new Block[MAX_BLOCKS];
+    private short size = 1; // Block id 0 is an empty block
+
     /**
      * Will register default blocks
      */
@@ -53,6 +57,11 @@ public class BlockRegistry {
         }
 
         registry.put(name, block);
+
+        block.setId(size);
+        aregistry[size] = block;
+        size += 1;
+
         if (log.isTraceEnabled()) {
             log.trace("Registered block {} -> {}", name, block);
         }
@@ -80,6 +89,10 @@ public class BlockRegistry {
             return true;
         }
         return false;
+    }
+
+    public Block get(short id) {
+        return aregistry[id];
     }
 
     public Block get(@NonNull String name) {

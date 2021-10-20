@@ -31,6 +31,8 @@ public class Block {
     private String name;
     private String shape;
     private String type;
+    private short id;
+
     /**
      * Flag indicating if the shape of the block should use multiple images in the texture.
      * When set to true, the {@link Shape} implementation should take care for the correct UV mapping.
@@ -54,6 +56,16 @@ public class Block {
      * Flag indicating if the block is a torch light.
      */
     private boolean torchlight;
+
+    public Block(String name, String shape, String type, boolean usingMultipleImages, boolean transparent, boolean solid, boolean torchlight) {
+        this.name = name;
+        this.shape = shape;
+        this.type = type;
+        this.usingMultipleImages = usingMultipleImages;
+        this.transparent = transparent;
+        this.solid = solid;
+        this.torchlight = torchlight;
+    }
 
     /**
      * Creates a cube shape, non transparent, solid block using a single image.
