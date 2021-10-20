@@ -3,13 +3,6 @@ package com.rvandoosselaer.blocks;
 import com.google.protobuf.ByteString;
 import com.rvandoosselaer.blocks.protobuf.BlocksProtos;
 import com.simsilica.mathd.Vec3i;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,10 +10,17 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A File repository implementation for loading and storing chunks using the Protocol Buffers method.
@@ -195,9 +195,12 @@ public class FileRepository implements ChunkRepository {
         }
 
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
-        Block[] blocks = chunkProto.getBlocksList().stream()
-                .map(blockRegistry::get)
-                .toArray(Block[]::new);
+        short[] blocks = new short[chunkProto.getBlocksList().size()];
+        int i = 0;
+        for (String blockName : chunkProto.getBlocksList()) {
+            blocks[i] = blockRegistry.get(blockName).getId();
+            i += 1;
+        }
 
         byte[] lightMap = chunkProto.getLightmap().toByteArray();
 
@@ -211,6 +214,13 @@ public class FileRepository implements ChunkRepository {
 
     private static BlocksProtos.ChunkProto chunkToChunkProto(@NonNull Chunk chunk) {
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
+        short[] blocks = chunk.getBlocks();
+        List<String> blockList = new ArrayList<>(blocks.length);
+        for (int i = 0; i < blocks.length; i++) {
+            blockList.set(i, blockRegistry.get(blocks[i]).getName());
+        }
+
 
         return BlocksProtos.ChunkProto.newBuilder()
                 // location
@@ -221,9 +231,7 @@ public class FileRepository implements ChunkRepository {
                 .addSize(size.x)
                 .addSize(size.y)
                 .addSize(size.z)
-                .addAllBlocks(Arrays.stream(chunk.getBlocks())
-                        .map(block -> block != null ? block.getName() : BlockIds.NONE)
-                        .collect(Collectors.toList()))
+                .addAllBlocks(blockList)
                 .setLightmap(ByteString.copyFrom(chunk.getLightMap()))
                 .build();
     }

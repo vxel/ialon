@@ -37,6 +37,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     public Node createNode(Chunk chunk) {
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
 
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
@@ -48,7 +49,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
 
-        for (Block block : chunk.getBlocks()) {
+        for (short blockId : chunk.getBlocks()) {
+            Block block = blockRegistry.get(blockId);
+
             // check if there is a block
             if (block != null) {
                 // create a mesh for each different block type
@@ -86,6 +89,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     public Mesh createCollisionMesh(Chunk chunk) {
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
 
         // create the collision mesh
         ChunkMesh collisionMesh = new ChunkMesh(true);
@@ -93,7 +97,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
 
-        for (Block block : chunk.getBlocks()) {
+        for (short blockId : chunk.getBlocks()) {
+            Block block = blockRegistry.get(blockId);
             if (block != null && block.isSolid()) {
                 // add the block to the collision mesh
                 Shape shape = shapeRegistry.get(block.getShape());
@@ -121,12 +126,13 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     public void createAndSetNodeAndCollisionMesh(Chunk chunk) {
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
 
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
         Node node = new Node("Chunk - " + chunkLocation);
 
-        Block[] blocks = chunk.getBlocks();
+        short[] blocks = chunk.getBlocks();
         if (blocks == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Cancelling chunk {} collision mesh creation", chunk);
@@ -142,7 +148,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Vec3i blockLocation = new Vec3i(0, 0, 0);
         BlockNeighborhood neighborhood = new BlockNeighborhood(blockLocation, chunk);
 
-        for (Block block : blocks) {
+        for (short blockId : blocks) {
+            Block block = blockRegistry.get(blockId);
+
             // check if there is a block
             if (block != null) {
                 // create a mesh for each different block type
