@@ -134,7 +134,7 @@ public class Liquid implements Shape {
     }
 
     private void enlightFace(ChunkMesh chunkMesh) {
-        Vector4f color = new Vector4f(15, 0, 0, 1);
+        Vector4f color = new Vector4f(240, 0, 0, 1);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);
