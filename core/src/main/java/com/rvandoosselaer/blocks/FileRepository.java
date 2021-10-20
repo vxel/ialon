@@ -198,7 +198,8 @@ public class FileRepository implements ChunkRepository {
         short[] blocks = new short[chunkProto.getBlocksList().size()];
         int i = 0;
         for (String blockName : chunkProto.getBlocksList()) {
-            blocks[i] = blockRegistry.get(blockName).getId();
+            Block block = blockRegistry.get(blockName);
+            blocks[i] = block != null ? block.getId() : 0;
             i += 1;
         }
 
@@ -217,10 +218,9 @@ public class FileRepository implements ChunkRepository {
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         short[] blocks = chunk.getBlocks();
         List<String> blockList = new ArrayList<>(blocks.length);
-        for (int i = 0; i < blocks.length; i++) {
-            blockList.set(i, blockRegistry.get(blocks[i]).getName());
+        for (short block : blocks) {
+            blockList.add(block == 0 ? BlockIds.NONE : blockRegistry.get(block).getName());
         }
-
 
         return BlocksProtos.ChunkProto.newBuilder()
                 // location

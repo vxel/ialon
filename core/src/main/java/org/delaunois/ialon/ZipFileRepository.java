@@ -2,6 +2,7 @@ package org.delaunois.ialon;
 
 import com.google.protobuf.ByteString;
 import com.rvandoosselaer.blocks.Block;
+import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
@@ -233,11 +234,7 @@ public class ZipFileRepository implements ChunkRepository {
         int i = 0;
         for (String blockName : chunkProto.getBlocksList()) {
             Block block = blockRegistry.get(blockName);
-            if (block != null) {
-                blocks[i] = block.getId();
-            } else {
-                blocks[i] = 0;
-            }
+            blocks[i] = block != null ? block.getId() : 0;
             i += 1;
         }
 
@@ -256,8 +253,8 @@ public class ZipFileRepository implements ChunkRepository {
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         short[] blocks = chunk.getBlocks();
         List<String> blockList = new ArrayList<>(blocks.length);
-        for (int i = 0; i < blocks.length; i++) {
-            blockList.set(i, blockRegistry.get(blocks[i]).getName());
+        for (short block : blocks) {
+            blockList.add(block == 0 ? BlockIds.NONE : blockRegistry.get(block).getName());
         }
 
         return BlocksProtos.ChunkProto.newBuilder()
