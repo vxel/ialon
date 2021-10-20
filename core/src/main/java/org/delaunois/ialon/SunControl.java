@@ -75,9 +75,9 @@ public class SunControl extends AbstractControl {
         long now = System.currentTimeMillis();
         if (now - lastUpdate > UPDATE_THRESHOLD) {
             lastUpdate = now;
-            float x = FastMath.cos(time) * 10f;
-            float z = FastMath.sin(time) * 10f;
-            float y = FastMath.sin(time) * SUN_AMPLITUDE + SUN_HEIGHT;
+            float x = FastMath.cos(time) * 100f;
+            float z = FastMath.sin(time) * 100f;
+            float y = (FastMath.sin(time) * SUN_AMPLITUDE + SUN_HEIGHT) * 10f;
             position.set(x, y, z);
             spatial.setLocalTranslation((cam.getLocation().add(position)));
             spatial.lookAt(cam.getLocation(), Vector3f.UNIT_Y);
