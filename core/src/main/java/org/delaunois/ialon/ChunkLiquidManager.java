@@ -51,14 +51,13 @@ public class ChunkLiquidManager {
         if (log.isDebugEnabled()) {
             log.debug("Processing liquid node({}, {}, {})", node.x, node.y, node.z);
         }
+
         if (!propagateLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context)) {
-            if (!propagateLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context)) {
-                if (!propagateLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context)) {
-                    if (!propagateLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context)) {
-                        propagateLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
-                    }
-                }
-            }
+            // If the liquid can't propagate downwards, try horizontally
+            propagateLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context);
+            propagateLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context);
+            propagateLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context);
+            propagateLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
         }
 
         return context.chunkMeshUpdateRequests;

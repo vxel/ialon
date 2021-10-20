@@ -97,6 +97,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(WATER, LIQUID),
             WHITE_CUBE_LIGHT,
             SPACER,
+            SPACER,
 
             DIRT,
             getName(DIRT, DOUBLE_SLAB),
