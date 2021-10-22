@@ -12,3 +12,4 @@ local.properties
 /app/build/
 /desktop/build/
 /save/
+/backup/

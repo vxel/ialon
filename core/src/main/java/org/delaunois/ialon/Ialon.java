@@ -1,5 +1,6 @@
 package org.delaunois.ialon;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.SimpleApplication;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
@@ -9,7 +10,6 @@ import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -25,6 +25,8 @@ import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
+import org.delaunois.ialon.serialize.PlayerStateDTO;
+import org.delaunois.ialon.serialize.PlayerStateRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
 import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
@@ -39,6 +41,8 @@ import org.delaunois.ialon.state.WireframeState;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.time.LocalTime;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +56,6 @@ import static org.delaunois.ialon.Config.GRID_SIZE;
 import static org.delaunois.ialon.Config.GRID_UPPER_BOUND;
 import static org.delaunois.ialon.Config.MAX_UPDATE_PER_FRAME;
 import static org.delaunois.ialon.Config.PHYSICS_GRID_SIZE;
-import static org.delaunois.ialon.Config.PLAYER_START_HEIGHT;
 
 /**
  * @author Cedric de Launois
@@ -76,6 +79,9 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private ZipFileRepository fileRepository;
 
     @Getter
+    private PlayerStateRepository playerStateRepository;
+
+    @Getter
     private TextureAtlasManager atlasManager;
 
     @Getter
@@ -85,6 +91,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private PlayerState playerState;
     private int pagesAttached = 0;
     private final long startTime = System.currentTimeMillis();
+    private ExecutorService executorService;
 
     public static void main(String[] args) {
         LogAdapter.initialize();
@@ -111,20 +118,23 @@ public class Ialon extends SimpleApplication implements ActionListener {
     public void simpleInitApp() {
         GuiGlobals.initialize(this);
         RenderQueue rq = viewPort.getQueue();
+        executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
 
         atlasManager = new TextureAtlasManager();
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
-        cam.setFrustumNear(0.1f);
-        cam.setFrustumFar(200f);
-        cam.setFov(50);
 
         initSky();
         initFileRepository();
+        initPlayerStateRepository();
         initBlockFramework();
         initSun();
         initInputManager();
+
+        cam.setFrustumNear(0.1f);
+        cam.setFrustumFar(200f);
+        cam.setFov(50);
     }
 
     private void initSky() {
@@ -169,6 +179,11 @@ public class Ialon extends SimpleApplication implements ActionListener {
         fileRepository.setPath(FILEPATH);
     }
 
+    private void initPlayerStateRepository() {
+        playerStateRepository = new PlayerStateRepository();
+        playerStateRepository.setPath(FILEPATH);
+    }
+
     private void initBlockFramework() {
         ChunkManagerState chunkManagerState;
         ChunkPagerState chunkPagerState;
@@ -194,13 +209,22 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 .repository(fileRepository)
                 .build();
 
-        Vector3f location = new Vector3f(CHUNK_SIZE / 2f, terrainGenerator.getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f);
+        playerState = new PlayerState();
+        PlayerStateDTO playerStateDTO = playerStateRepository.load();
+        if (playerStateDTO != null) {
+            if (playerStateDTO.getLocation() != null) {
+                playerState.setPlayerLocation(playerStateDTO.getLocation());
+            }
+            if (playerStateDTO.getRotation() != null) {
+                cam.setRotation(playerStateDTO.getRotation());
+            }
+        }
 
         chunkNode = new Node("chunk-node");
         rootNode.attachChild(chunkNode);
 
         ChunkPager chunkPager = new ChunkPager(chunkNode, chunkManager);
-        chunkPager.setLocation(location);
+        chunkPager.setLocation(playerState.getPlayerLocation());
         chunkPager.setGridLowerBounds(GRID_LOWER_BOUND);
         chunkPager.setGridUpperBounds(GRID_UPPER_BOUND);
         chunkPager.setMaxUpdatePerFrame(100);
@@ -211,7 +235,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         PhysicsSpace physicsSpace = bulletAppState.getPhysicsSpace();
         PhysicsChunkPager physicsChunkPager = new PhysicsChunkPager(physicsSpace, chunkManager);
-        physicsChunkPager.setLocation(location);
+        physicsChunkPager.setLocation(playerState.getPlayerLocation());
         physicsChunkPager.setGridLowerBounds(GRID_LOWER_BOUND);
         physicsChunkPager.setGridUpperBounds(GRID_UPPER_BOUND);
 
@@ -220,7 +244,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
 
-        playerState = new PlayerState();
         playerState.setEnabled(false);
 
         stateManager.attachAll(
@@ -298,4 +321,25 @@ public class Ialon extends SimpleApplication implements ActionListener {
         }
     }
 
+    /**
+     * Saves (in another thread) the chunk at the given location
+     * @param location the location of the chunk
+     */
+    public void asyncSave(Vec3i location) {
+        chunkManager.getChunk(location).ifPresent(chunk -> executorService.submit(() -> {
+            try {
+                this.getFileRepository().save(chunk);
+                log.info("Chunk {} saved", location);
+            } catch (Exception e) {
+                log.error("Failed to save chunk", e);
+            }
+        }));
+    }
+
+    @Override
+    public void stop() {
+        super.stop();
+        executorService.shutdown();
+        this.playerStateRepository.save(new PlayerStateDTO(playerState.getPlayerLocation(), cam.getRotation()));
+    }
 }

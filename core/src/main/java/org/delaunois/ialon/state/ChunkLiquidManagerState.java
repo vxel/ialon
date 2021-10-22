@@ -13,17 +13,24 @@ import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * An application state to handle the liquid simulation.
+ *
+ * @author Cedric de Launois
+ */
 @Slf4j
 public class ChunkLiquidManagerState extends BaseAppState {
 
     private ChunkManager chunkManager;
     private ChunkLiquidManager chunkLiquidManager;
     private float elapsed = 0;
+    private Ialon app;
 
     @Override
     protected void initialize(Application app) {
         this.chunkManager = ((Ialon) app).getChunkManager();
         this.chunkLiquidManager = chunkManager.getChunkLiquidManager();
+        this.app = (Ialon) app;
     }
 
     @Override
@@ -48,7 +55,9 @@ public class ChunkLiquidManagerState extends BaseAppState {
             }
             if (!updatedChunks.isEmpty()) {
                 chunkManager.requestMeshChunks(updatedChunks);
-                // TODO save blocks
+                for (Vec3i location : updatedChunks) {
+                    app.asyncSave(location);
+                }
             }
             elapsed = 0;
         }

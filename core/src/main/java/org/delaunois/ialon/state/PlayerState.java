@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.CHUNK_SIZE;
@@ -109,22 +110,26 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             ACTION_REMOVE_BLOCK,
     };
 
+    private static final Vector3f UP = new Vector3f(0, 1, 0);
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false;
     private boolean fly = PLAYER_START_FLY;
     private boolean underWater = false;
-
     private Ialon app;
     private Label crossHair;
-
     private Geometry addPlaceholder;
     private Geometry removePlaceholder;
-
-    @Getter
-    private Camera camera;
     private CharacterControl player;
     private InputManager inputManager;
     private ChunkManager chunkManager;
     private TouchListener touchListener;
+    private ExecutorService executorService;
+
+    @Getter
+    @Setter
+    private Vector3f playerLocation;
+
+    @Getter
+    private Camera camera;
 
     @Getter
     private int buttonSize = 100;
@@ -136,7 +141,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private static final int SPACING = 10;
 
     @Getter
-    Node directionButtons;
+    private Node directionButtons;
 
     @Getter
     private Container buttonLeft;
@@ -159,9 +164,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     @Getter
     private Container buttonRemoveBlock;
 
-    private ExecutorService executorService;
-
-
     //Temporary vectors used on each frame.
     //They here to avoid instanciating new vectors on each frame
     private final Vector3f walkDirection = new Vector3f();
@@ -169,9 +171,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f camUp = new Vector3f();
     private final Vector3f camLocation = new Vector3f();
-    private final Vector3f playerLocation = new Vector3f();
     private final Vector3f move = new Vector3f();
-    private Vector3f initialUpVec;
     private long lastCollisionTest = System.currentTimeMillis();
 
     @Override
@@ -180,7 +180,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         camera = app.getCamera();
         buttonSize = camera.getHeight() / 6;
 
-        initialUpVec = camera.getUp().clone();
         inputManager = app.getInputManager();
         chunkManager = app.getChunkManager();
         touchListener = new MyTouchListener(this);
@@ -302,7 +301,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     /**
      * Create the player, configure it, add it to the physic engine and position it on the scene
-     *
      * @return the created player
      */
     private CharacterControl createPlayer() {
@@ -316,7 +314,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         player.setJumpSpeed(JUMP_SPEED);
         player.setFallSpeed(GROUND_GRAVITY);
         player.setGravity(0);
-        player.setPhysicsLocation(new Vector3f(CHUNK_SIZE / 2f, app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f));
+
+        if (playerLocation == null) {
+            playerLocation = new Vector3f(CHUNK_SIZE / 2f, app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f);
+        }
+        player.setPhysicsLocation(playerLocation);
+
         app.getStateManager().getState(BulletAppState.class).getPhysicsSpace().add(player);
 
         playerLocation.set(player.getPhysicsLocation());
@@ -457,6 +460,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
+        if (log.isDebugEnabled()) {
+            log.debug("Action {} isPressed {}", name, isPressed);
+        }
         if (ACTION_ADD_BLOCK.equals(name) && isPressed && buttonAddBlock.getParent() == null) {
             addBlock();
 
@@ -521,48 +527,20 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     public void onAnalog(String name, float value, float tpf) {
         if (app.isMouselocked()) {
             if (ACTION_LOOK_LEFT.equals(name)) {
-                rotateCamera(value, initialUpVec);
+                rotateCamera(camera, value, UP);
 
             } else if (ACTION_LOOK_RIGHT.equals(name)) {
-                rotateCamera(-value, initialUpVec);
+                rotateCamera(camera, -value, UP);
 
             } else if (ACTION_LOOK_UP.equals(name)) {
-                rotateCamera(-value, camera.getLeft());
+                rotateCamera(camera, -value, camera.getLeft());
 
             } else if (ACTION_LOOK_DOWN.equals(name)) {
-                rotateCamera(value, camera.getLeft());
+                rotateCamera(camera, value, camera.getLeft());
             }
         }
     }
 
-    /**
-     * Rotate the camera by the specified amount around the specified axis.
-     *
-     * @param value rotation amount
-     * @param axis  direction of rotation (a unit vector)
-     */
-    protected void rotateCamera(float value, Vector3f axis) {
-        Matrix3f mat = new Matrix3f();
-        mat.fromAngleNormalAxis(ROTATION_SPEED * value, axis);
-
-        Vector3f up = camera.getUp();
-        Vector3f left = camera.getLeft();
-        Vector3f dir = camera.getDirection();
-
-        mat.mult(up, up);
-        mat.mult(left, left);
-        mat.mult(dir, dir);
-
-        if (up.getY() < 0) {
-            return;
-        }
-
-        Quaternion q = new Quaternion();
-        q.fromAxes(left, up, dir);
-        q.normalizeLocal();
-
-        camera.setAxes(q);
-    }
 
     private void addBlock() {
         log.info("Action : addBlock triggered");
@@ -601,7 +579,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     chunkManager.requestMeshChunks(updatedChunks);
 
                     for (Vec3i location : updatedChunks) {
-                        asyncSave(location);
+                        app.asyncSave(location);
                     }
                 }
             } catch (Exception e) {
@@ -639,7 +617,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     chunkManager.requestMeshChunks(updatedChunks);
 
                     for (Vec3i location : updatedChunks) {
-                        asyncSave(location);
+                        app.asyncSave(location);
                     }
                 }
             } catch (Exception e) {
@@ -679,17 +657,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             block = orientedBlock;
         }
         return block;
-    }
-
-    private void asyncSave(Vec3i location) {
-        chunkManager.getChunk(location).ifPresent(chunk -> executorService.submit(() -> {
-            try {
-                app.getFileRepository().save(chunk);
-                log.info("Chunk {} saved", location);
-            } catch (Exception e) {
-                log.error("Failed to save chunk", e);
-            }
-        }));
     }
 
     private CollisionResult getCollisionResult() {
@@ -751,11 +718,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private static class MyTouchListener implements TouchListener {
 
         PlayerState playerState;
-        Vector3f initialUpVec;
 
         public MyTouchListener(PlayerState playerState) {
             this.playerState = playerState;
-            initialUpVec = playerState.getCamera().getUp().clone();
         }
 
         @Override
@@ -765,36 +730,37 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                         && !playerState.getButtonAddBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                         && !playerState.getButtonRemoveBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                 ) {
-                    rotateCamera(-event.getDeltaX() / 400, initialUpVec);
-                    rotateCamera(-event.getDeltaY() / 400, playerState.getCamera().getLeft());
+                    rotateCamera(playerState.getCamera(), -event.getDeltaX() / 400, UP);
+                    rotateCamera(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());
                 }
                 event.setConsumed();
             }
-
-        }
-
-        protected void rotateCamera(float value, Vector3f axis) {
-            Matrix3f mat = new Matrix3f();
-            mat.fromAngleNormalAxis(ROTATION_SPEED * value, axis);
-
-            Vector3f up = playerState.getCamera().getUp();
-            Vector3f left = playerState.getCamera().getLeft();
-            Vector3f dir = playerState.getCamera().getDirection();
-
-            mat.mult(up, up);
-            mat.mult(left, left);
-            mat.mult(dir, dir);
-
-            if (up.getY() < 0) {
-                return;
-            }
-
-            Quaternion q = new Quaternion();
-            q.fromAxes(left, up, dir);
-            q.normalizeLocal();
-
-            playerState.getCamera().setAxes(q);
         }
 
     }
+
+    private static void rotateCamera(Camera cam, float value, Vector3f axis) {
+        Matrix3f mat = new Matrix3f();
+        mat.fromAngleNormalAxis(ROTATION_SPEED * value, axis);
+
+        Vector3f up = cam.getUp();
+        Vector3f left = cam.getLeft();
+        Vector3f dir = cam.getDirection();
+
+        mat.mult(up, up);
+        mat.mult(left, left);
+        mat.mult(dir, dir);
+
+        if (up.getY() < 0) {
+            return;
+        }
+
+        Quaternion q = new Quaternion();
+        q.fromAxes(left, up, dir);
+        q.normalizeLocal();
+
+        cam.setAxes(q);
+    }
+
+
 }
