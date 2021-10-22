@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
  * Manages the torch and sun lights computation for the blocks.
  * Based on the Fast Flood Fill Lighting article :
  * https://www.seedofandromeda.com/blogs/29-fast-flood-fill-lighting-in-a-blocky-voxel-game-pt-1
+ *
  * @author Cedric de Launois
  */
 @Slf4j

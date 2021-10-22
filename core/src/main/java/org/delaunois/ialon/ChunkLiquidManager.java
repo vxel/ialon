@@ -20,13 +20,15 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
 
+/**
+ * Basic simulation of fluid
+ *
+ * @author Cedric de Launois
+ */
 @Slf4j
 public class ChunkLiquidManager {
 
     final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
-
-    public ChunkLiquidManager() {
-    }
 
     /**
      * @param blockLocationInsideChunk the (world) start location (e.g. the location of the updated block)
@@ -63,8 +65,14 @@ public class ChunkLiquidManager {
         return context.chunkMeshUpdateRequests;
     }
 
+    /**
+     * Gets the liquid level for the given block
+     * @param block the block
+     * @return 0 for null or non water block, 1 - 5 for water blocks
+     */
     public static int getLiquidLevel(Block block) {
         if (block == null || !TypeIds.WATER.equals(block.getType())) {
+            // Level is 0 if no block or if non water block
             return 0;
         }
         Liquid shape = (Liquid) BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
