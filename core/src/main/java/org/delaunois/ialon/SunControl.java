@@ -79,8 +79,6 @@ public class SunControl extends AbstractControl {
             float z = FastMath.sin(time) * 100f;
             float y = (FastMath.sin(time) * SUN_AMPLITUDE + SUN_HEIGHT) * 10f;
             position.set(x, y, z);
-            spatial.setLocalTranslation((cam.getLocation().add(position)));
-            spatial.lookAt(cam.getLocation(), Vector3f.UNIT_Y);
 
             if (directionalLight != null) {
                 directionalLight.setDirection(position.negate());
@@ -153,6 +151,9 @@ public class SunControl extends AbstractControl {
                 }
             }
         }
+
+        spatial.setLocalTranslation((cam.getLocation().add(position)));
+        spatial.lookAt(cam.getLocation(), Vector3f.UNIT_Y);
 
         time += tpf * timeFactor;
         time = time % FastMath.TWO_PI;
