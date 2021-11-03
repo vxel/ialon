@@ -58,7 +58,7 @@ public class ChunkManager {
         this.generator = generator;
         this.poolSize = poolSize;
         this.chunkLightManager = new ChunkLightManager(this);
-        this.chunkLiquidManager = new ChunkLiquidManager();
+        this.chunkLiquidManager = new ChunkLiquidManager(this);
     }
 
     public void initialize() {
@@ -293,6 +293,10 @@ public class ChunkManager {
         if (chunkLightManager != null) {
             chunks.addAll(chunkLightManager.removeTorchlight(location));
             chunks.addAll(chunkLightManager.restoreSunlight(location));
+        }
+
+        if (chunkLiquidManager != null) {
+            chunkLiquidManager.flowLiquid(location);
         }
 
         return chunks;

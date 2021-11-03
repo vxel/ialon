@@ -1,5 +1,6 @@
 package org.delaunois.ialon;
 
+import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -16,6 +17,7 @@ import java.util.Queue;
 import java.util.Set;
 
 import lombok.AllArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
@@ -26,12 +28,17 @@ import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
  * @author Cedric de Launois
  */
 @Slf4j
+@AllArgsConstructor
 public class ChunkLiquidManager {
 
-    final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
+    @Setter
+    private ChunkManager chunkManager;
+
+    private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
 
     /**
-     * @param blockLocationInsideChunk the (world) start location (e.g. the location of the updated block)
+     * Add liquid at the given location
+     * @param blockLocationInsideChunk the start location (e.g. the location of the updated block)
      */
     public void addLiquid(Chunk chunk, Vec3i blockLocationInsideChunk) {
         if (log.isDebugEnabled()) {
@@ -40,6 +47,30 @@ public class ChunkLiquidManager {
 
         addLiquid(chunk, blockLocationInsideChunk, LEVEL_MAX - 1);
         liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
+    }
+
+    public void flowLiquid(Vector3f location) {
+        if (log.isDebugEnabled()) {
+            log.debug("Flowing liquid starting at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
+        }
+
+        Set<Vector3f> neighborBlockLocations = new HashSet<>();
+        for (float x = location.x - 1; x <= location.x + 1; x++) {
+            for (float y = location.y - 1; y <= location.y + 1; y++) {
+                for (float z = location.z - 1; z <= location.z + 1; z++) {
+                    neighborBlockLocations.add(new Vector3f(x, y, z));
+                }
+            }
+        }
+
+        neighborBlockLocations.forEach(loc ->
+                chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk -> {
+                    Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));
+                    Block block = chunk.getBlock(blockLocationInsideChunk);
+                    if (block != null && TypeIds.WATER.equals(block.getType())) {
+                        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, getLiquidLevel(block)));
+                    }
+                }));
     }
 
     public Set<Vec3i> step() {
@@ -246,6 +277,14 @@ public class ChunkLiquidManager {
             toReturn.z = 0;
         }
         return toReturn;
+    }
+
+    private static Vec3i toVec3i(Vector3f location) {
+        return new Vec3i((int) Math.floor(location.x), (int) Math.floor(location.y), (int) Math.floor(location.z));
+    }
+
+    private static Vector3f getScaledBlockLocation(Vector3f location) {
+        return location.mult(1f / BlocksConfig.getInstance().getBlockScale());
     }
 
     @AllArgsConstructor
