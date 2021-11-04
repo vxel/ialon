@@ -89,27 +89,27 @@ public class Liquid implements Shape {
 
         if (isLiquidFaceVisible(neighborhood, UP)) {
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
-            enlightFace(chunkMesh);
+            enlightFace(location, UP, neighborhood.getChunk(), chunkMesh);
         }
         if (isLiquidFaceVisible(neighborhood, DOWN)) {
             createDown(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
-            enlightFace(chunkMesh);
+            enlightFace(location, DOWN, neighborhood.getChunk(), chunkMesh);
         }
         if (isLiquidFaceVisible(neighborhood, WEST)) {
             createWest(location, chunkMesh, blockScale, v[4], v[6], v[0], v[2]);
-            enlightFace(chunkMesh);
+            enlightFace(location, WEST, neighborhood.getChunk(), chunkMesh);
         }
         if (isLiquidFaceVisible(neighborhood, EAST)) {
             createEast(location, chunkMesh, blockScale, v[1], v[3], v[5], v[7]);
-            enlightFace(chunkMesh);
+            enlightFace(location, EAST, neighborhood.getChunk(), chunkMesh);
         }
         if (isLiquidFaceVisible(neighborhood, SOUTH)) {
             createSouth(location, chunkMesh, blockScale, v[5], v[7], v[4], v[6]);
-            enlightFace(chunkMesh);
+            enlightFace(location, SOUTH, neighborhood.getChunk(), chunkMesh);
         }
         if (isLiquidFaceVisible(neighborhood, NORTH)) {
             createNorth(location, chunkMesh, blockScale, v[0], v[2], v[1], v[3]);
-            enlightFace(chunkMesh);
+            enlightFace(location, NORTH, neighborhood.getChunk(), chunkMesh);
         }
     }
 
@@ -133,8 +133,9 @@ public class Liquid implements Shape {
         add(new BlockNeighborhood(location, chunk), chunkMesh);
     }
 
-    private void enlightFace(ChunkMesh chunkMesh) {
+    private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = new Vector4f(240, 0, 0, 1);
+        //Vector4f color = chunk.getLightLevels(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);

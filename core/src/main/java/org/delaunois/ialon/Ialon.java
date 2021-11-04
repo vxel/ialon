@@ -10,14 +10,19 @@ import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.VertexBuffer;
+import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Quad;
 import com.jme3.shader.VarType;
 import com.jme3.texture.Texture;
-import com.jme3.util.SkyFactory;
+import com.jme3.util.BufferUtils;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.BlocksTheme;
 import com.rvandoosselaer.blocks.TypeRegistry;
@@ -38,6 +43,7 @@ import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.WireframeState;
 
+import java.nio.FloatBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.time.LocalTime;
@@ -56,6 +62,9 @@ import static org.delaunois.ialon.Config.GRID_SIZE;
 import static org.delaunois.ialon.Config.GRID_UPPER_BOUND;
 import static org.delaunois.ialon.Config.MAX_UPDATE_PER_FRAME;
 import static org.delaunois.ialon.Config.PHYSICS_GRID_SIZE;
+import static org.delaunois.ialon.Config.SKY_COLOR;
+import static org.delaunois.ialon.Config.SKY_HORIZON_COLOR;
+import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
 
 /**
  * @author Cedric de Launois
@@ -125,29 +134,96 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
 
-        initSky();
         initFileRepository();
         initPlayerStateRepository();
         initBlockFramework();
-        initSun();
+        SunControl sunControl = initSun();
+        initSky(sunControl);
         initInputManager();
 
         cam.setFrustumNear(0.1f);
-        cam.setFrustumFar(200f);
+        cam.setFrustumFar(400f);
         cam.setFov(50);
     }
 
-    private void initSky() {
-        Texture up = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_py.jpg");
-        Texture down = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_ny.jpg");
-        Texture north = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_nz.jpg");
-        Texture south = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_pz.jpg");
-        Texture east = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_nx.jpg");
-        Texture west = getAssetManager().loadTexture("Textures/Sky/800px/TropicalSunnyDay_px.jpg");
-        rootNode.attachChild(SkyFactory.createSky(getAssetManager(), west, east, north, south, up, down));
+    private void initSky(SunControl sun) {
+        Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
+        FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
+        fpb.put(new float[] {
+                // Sides Top Vertices
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+
+                // Side Bottom Vertices
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+
+                // Top Cap Vertices
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+
+                // Bottom Cap Vertices
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+
+                // Top Center Vextex
+                SKY_ZENITH_COLOR.r, SKY_ZENITH_COLOR.g, SKY_ZENITH_COLOR.b, SKY_ZENITH_COLOR.a,
+
+                // Bottom center Vertex
+                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a
+        });
+        skyCylinder.setBuffer(VertexBuffer.Type.Color, 4, fpb);
+        Geometry sky = new Geometry("sky", skyCylinder);
+
+        Quaternion pitch90 = new Quaternion();
+        pitch90.fromAngleAxis(FastMath.HALF_PI, new Vector3f(1, 0, 0));
+        sky.setLocalRotation(pitch90);
+
+        sky.setQueueBucket(RenderQueue.Bucket.Sky);
+        sky.setCullHint(Spatial.CullHint.Never);
+        sky.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Material skyMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        skyMat.setParam("VertexColor", VarType.Boolean, true );
+        sky.setMaterial(skyMat);
+
+        SkyControl skyControl = new SkyControl();
+        skyControl.setCam(cam);
+        skyControl.setSun(sun);
+        sky.addControl(skyControl);
+
+        rootNode.attachChildAt(sky, 0);
     }
 
-    private void initSun() {
+    private SunControl initSun() {
         Geometry sun = new Geometry("Sun", new Quad(15f, 15f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
@@ -172,6 +248,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
         sun.addControl(sunControl);
 
         rootNode.attachChild(sun);
+
+        return sunControl;
     }
 
     private void initFileRepository() {

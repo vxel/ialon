@@ -12,7 +12,7 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
 
         // custom
         TextureScrollSpeedX : 0.0
-        TextureScrollSpeedY : -0.01
+        TextureScrollSpeedY : 0.0
     }
 
     AdditionalRenderState {

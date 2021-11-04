@@ -22,13 +22,10 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.AMBIANT_INTENSITY;
-import static org.delaunois.ialon.Config.DAYBREAK_DURATION;
-import static org.delaunois.ialon.Config.NIGHT_INTENSITY;
+import static org.delaunois.ialon.Config.DAY_COLOR;
+import static org.delaunois.ialon.Config.EVENING_COLOR;
+import static org.delaunois.ialon.Config.NIGHT_COLOR;
 import static org.delaunois.ialon.Config.SUN_AMPLITUDE;
-import static org.delaunois.ialon.Config.SUN_COLOR;
-import static org.delaunois.ialon.Config.SUN_DAY_COLOR;
-import static org.delaunois.ialon.Config.SUN_EVENING_COLOR;
-import static org.delaunois.ialon.Config.SUN_HEIGHT;
 import static org.delaunois.ialon.Config.SUN_INTENSITY;
 import static org.delaunois.ialon.Config.TIME_FACTOR;
 
@@ -36,7 +33,6 @@ import static org.delaunois.ialon.Config.TIME_FACTOR;
 public class SunControl extends AbstractControl {
 
     private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
-    private static final ColorRGBA TRANSPARENT = new ColorRGBA(0, 0, 0, 0);
 
     @Getter
     @Setter
@@ -59,12 +55,15 @@ public class SunControl extends AbstractControl {
     @Setter
     private Camera cam;
 
-    private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 0.4f, 1f);
-    private final ColorRGBA lightColor = SUN_DAY_COLOR.clone();
+    private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
 
     private boolean run = true;
     private long lastUpdate = System.currentTimeMillis();
-    private DayPeriod dayPeriod = null;
+    private float sunHeight;
+
+    public float getSunHeight() {
+        return sunHeight;
+    }
 
     @Override
     protected void controlUpdate(float tpf) {
@@ -75,81 +74,29 @@ public class SunControl extends AbstractControl {
         long now = System.currentTimeMillis();
         if (now - lastUpdate > UPDATE_THRESHOLD) {
             lastUpdate = now;
+            sunHeight = FastMath.sin(time);
             float x = FastMath.cos(time) * 100f;
             float z = FastMath.sin(time) * 100f;
-            float y = (FastMath.sin(time) * SUN_AMPLITUDE + SUN_HEIGHT) * 10f;
+            float y = sunHeight * SUN_AMPLITUDE * 10f;
             position.set(x, y, z);
 
             if (directionalLight != null) {
                 directionalLight.setDirection(position.negate());
             }
 
-            // Y is adjusted so that there is still light when the sun is just below the horizon
-            float adjustedY = y + 4f;
+            float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
 
-            if (dayPeriod == null) {
-                dayPeriod = DayPeriod.DAY;
-                setSunColor(sunColor, sunColor);
-            }
-
-            if (adjustedY < DAYBREAK_DURATION && adjustedY > 0) {
-                if (dayPeriod == DayPeriod.DAY || dayPeriod == DayPeriod.EVENING) {
-                    dayPeriod = DayPeriod.EVENING;
-
-                    float height = adjustedY / DAYBREAK_DURATION;
-                    lightColor.interpolateLocal(SUN_EVENING_COLOR, SUN_DAY_COLOR, height);
-                    sunColor.interpolateLocal(ColorRGBA.Red, SUN_COLOR, height);
-                    setSunColor(sunColor, sunColor);
-
-                    directionalLight.getColor().set(lightColor.mult(height * SUN_INTENSITY));
-                    ambientLight.getColor().set(lightColor.mult(Math.max(height * AMBIANT_INTENSITY, NIGHT_INTENSITY)));
-                    if (log.isDebugEnabled()) {
-                        log.debug("Evening. Height {}, Light color {}", height, lightColor);
-                    }
-
-                } else {
-                    dayPeriod = DayPeriod.DAWN;
-
-                    float height = adjustedY / DAYBREAK_DURATION;
-                    lightColor.interpolateLocal(SUN_EVENING_COLOR, SUN_DAY_COLOR, height);
-                    sunColor.interpolateLocal(ColorRGBA.Red, SUN_COLOR, height);
-                    setSunColor(sunColor, sunColor);
-
-                    directionalLight.getColor().set(lightColor.mult(height * SUN_INTENSITY));
-                    ambientLight.getColor().set(lightColor.mult(Math.max(height * AMBIANT_INTENSITY, NIGHT_INTENSITY)));
-                    if (log.isDebugEnabled()) {
-                        log.debug("Dawn. Height {}, Light color {}", height, lightColor);
-                    }
-                }
-
-            } else if (adjustedY < 0) {
-                dayPeriod = DayPeriod.NIGHT;
-
-                float height = adjustedY < -1 ? 1 : -adjustedY;
-                sunColor.interpolateLocal(ColorRGBA.Red, TRANSPARENT, height);
-                setSunColor(sunColor, sunColor);
-
-                ambientLight.getColor().set(lightColor.mult(NIGHT_INTENSITY));
-                directionalLight.getColor().set(lightColor.mult(NIGHT_INTENSITY));
-                if (log.isDebugEnabled()) {
-                    log.debug("Night. Height {}, Light color {}", height, lightColor);
-                }
-
+            if (sunHeight > 0) {
+                sunColor.interpolateLocal(EVENING_COLOR, DAY_COLOR, shift);
+                directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
+                ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
             } else {
-                if (dayPeriod != DayPeriod.DAY) {
-                    dayPeriod = DayPeriod.DAY;
-
-                    lightColor.set(SUN_DAY_COLOR);
-                    sunColor.set(SUN_COLOR);
-                    setSunColor(sunColor, sunColor);
-                    directionalLight.getColor().set(lightColor.mult(SUN_INTENSITY));
-                    ambientLight.getColor().set(lightColor.mult(AMBIANT_INTENSITY));
-
-                    if (log.isDebugEnabled()) {
-                        log.debug("Day. Light color {}", lightColor);
-                    }
-                }
+                sunColor.interpolateLocal(EVENING_COLOR, NIGHT_COLOR, shift);
+                directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
+                ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
             }
+
+            setSunColor(sunColor, sunColor);
         }
 
         spatial.setLocalTranslation((cam.getLocation().add(position)));
@@ -191,10 +138,4 @@ public class SunControl extends AbstractControl {
         return LocalTime.ofSecondOfDay((long)((time / FastMath.TWO_PI) * 86400)).plusHours(6);
     }
 
-    private enum DayPeriod {
-        DAY,
-        EVENING,
-        NIGHT,
-        DAWN
-    }
 }
