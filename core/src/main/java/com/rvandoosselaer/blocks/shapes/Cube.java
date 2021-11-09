@@ -85,7 +85,7 @@ public class Cube implements Shape {
     }
 
     private boolean enlightFace(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevels(location, face);
+        Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
         Block[] nb = n.getNeighbours(face);
 

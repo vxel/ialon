@@ -59,7 +59,7 @@ public class Pyramid implements Shape {
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh, int numVertices) {
-        Vector4f color = chunk.getLightLevels(location, face);
+        Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
         for (int i = 0; i < numVertices; i++) {
             colors.add(color);

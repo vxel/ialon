@@ -137,8 +137,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         initFileRepository();
         initPlayerStateRepository();
         initBlockFramework();
-        SunControl sunControl = initSun();
-        initSky(sunControl);
+        initSky(initSun());
         initInputManager();
 
         cam.setFrustumNear(0.1f);

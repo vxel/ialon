@@ -444,7 +444,11 @@ public class Chunk {
         return ColorRGBA.Black;
     }
 
-    public Vector4f getLightLevels(Vec3i blockLocation, Direction direction) {
+    public Vector4f getLightLevel(Vec3i blockLocation) {
+        return getLightLevel(blockLocation, null);
+    }
+
+    public Vector4f getLightLevel(Vec3i blockLocation, Direction direction) {
         // Beware of CPU optimization : method heavily used
         int x = blockLocation.x;
         int y = blockLocation.y;
@@ -457,14 +461,14 @@ public class Chunk {
         }
 
         if (isInsideChunk(x, y, z)) {
-            return getLightLevels(x, y, z);
+            return getLightLevel(x, y, z);
         }
 
         if (hasChunkResolver()) {
             int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, x, y, z);
             Chunk chunk = chunkResolver.unsafeFastGet(new Vec3i(loc[0], loc[1], loc[2]));
             if (chunk != null) {
-                return chunk.getLightLevels(loc[3], loc[4], loc[5]);
+                return chunk.getLightLevel(loc[3], loc[4], loc[5]);
             } else {
                 return Vector4f.ZERO;
             }
@@ -513,7 +517,7 @@ public class Chunk {
         return ColorRGBA.White.mult(intensity*intensity/225f);
     }
 
-    public Vector4f getLightLevels(int x, int y, int z) {
+    public Vector4f getLightLevel(int x, int y, int z) {
         int light = this.lightMap[calculateIndex(x, y, z)];
         return new Vector4f(light, light, light, 1);
     }

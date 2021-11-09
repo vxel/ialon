@@ -25,7 +25,7 @@ public class Config {
 
     // World
     public static final float WATER_HEIGHT = 50f;
-    public static final float AMBIANT_INTENSITY = 0.75f;
+    public static final float AMBIANT_INTENSITY = 0.85f;
     public static final float SUN_INTENSITY = 0.85f;
     public static final float SUN_AMPLITUDE = 10f;
 

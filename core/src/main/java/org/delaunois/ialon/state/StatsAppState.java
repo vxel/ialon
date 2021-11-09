@@ -59,7 +59,7 @@ public class StatsAppState extends AbstractAppState {
     protected boolean showSettings = true;
     private boolean showFps = true;
     private boolean showStats = true;
-    private boolean darkenBehind = true;
+    private boolean darkenBehind = false;
 
     protected Node guiNode;
     protected float secondCounter = 0.0f;

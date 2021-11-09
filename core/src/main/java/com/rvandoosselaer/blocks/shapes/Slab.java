@@ -84,7 +84,7 @@ public class Slab implements Shape {
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevels(location, face);
+        Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);
