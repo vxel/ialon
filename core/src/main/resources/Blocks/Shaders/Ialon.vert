@@ -122,8 +122,8 @@ void main() {
          vec3 specularAccum = vec3(0.0);
          vec4 diffuseColor;
          vec3 specularColor;
-         vec4 lightColor = g_LightData[1];
-         vec4 lightData1 = g_LightData[2];
+         vec4 lightColor = g_LightData[0];
+         vec4 lightData1 = g_LightData[1];
          #ifdef MATERIAL_COLORS
              diffuseColor  = m_Diffuse * vec4(lightColor.rgb, 1.0);
              specularColor = m_Specular.rgb * lightColor.rgb;
@@ -141,7 +141,7 @@ void main() {
          // allow use of control flow
          if (lightColor.w > 1.0) {
          #endif
-              vec4 lightDirection = g_LightData[3];
+              vec4 lightDirection = g_LightData[2];
               spotFallOff = computeSpotFalloff(lightDirection, lightVec);
          #if __VERSION__ >= 110
          }

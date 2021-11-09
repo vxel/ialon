@@ -25,8 +25,8 @@ public class Config {
 
     // World
     public static final float WATER_HEIGHT = 50f;
-    public static final float AMBIANT_INTENSITY = 0.85f;
-    public static final float SUN_INTENSITY = 0.85f;
+    public static final float AMBIANT_INTENSITY = 0.4f;
+    public static final float SUN_INTENSITY = 1f;
     public static final float SUN_AMPLITUDE = 10f;
 
     public static final ColorRGBA SKY_COLOR = ColorRGBA.fromRGBA255(100, 172, 255, 255);
