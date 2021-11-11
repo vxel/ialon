@@ -495,9 +495,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             if (fly) {
                 log.info("Flying");
                 player.setGravity(0);
+                player.setFallSpeed(0);
             } else {
                 log.info("Not Flying");
-                player.setGravity(underWater ? WATER_GRAVITY : GROUND_GRAVITY);
+                if (underWater) {
+                    player.setGravity(WATER_GRAVITY);
+                    player.setFallSpeed(WATER_GRAVITY);
+                } else {
+                    player.setGravity(GROUND_GRAVITY);
+                    player.setFallSpeed(GROUND_GRAVITY);
+                }
             }
         }
     }

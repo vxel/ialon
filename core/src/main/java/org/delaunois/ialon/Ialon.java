@@ -99,6 +99,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private SunControl sunControl;
     private PlayerState playerState;
     private int pagesAttached = 0;
+    private int physicPagesAttached = 0;
     private final long startTime = System.currentTimeMillis();
     private ExecutorService executorService;
 
@@ -267,13 +268,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
         PhysicsChunkPagerState physicsChunkPagerState;
 
         BlocksConfig.initialize(assetManager, false);
-        BlocksConfig.getInstance().setGrid(new Vec3i(GRID_SIZE, GRID_HEIGHT * 2 + 1, GRID_SIZE));
-        BlocksConfig.getInstance().setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
-        BlocksConfig.getInstance().setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
-        BlocksConfig.getInstance().getShapeRegistry().registerDefaultShapes();
-        BlocksConfig.getInstance().getBlockRegistry().registerDefaultBlocks();
+        BlocksConfig config = BlocksConfig.getInstance();
+        config.setGrid(new Vec3i(GRID_SIZE, GRID_HEIGHT * 2 + 1, GRID_SIZE));
+        config.setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
+        config.setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
+        config.getShapeRegistry().registerDefaultShapes();
+        config.getBlockRegistry().registerDefaultBlocks();
+        config.setChunkMeshGenerator(new FacesMeshGenerator());
 
-        TypeRegistry typeRegistry = BlocksConfig.getInstance().getTypeRegistry();
+        TypeRegistry typeRegistry = config.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
         typeRegistry.setAtlasRepository(atlasManager);
         typeRegistry.registerDefaultMaterials();
@@ -366,12 +369,14 @@ public class Ialon extends SimpleApplication implements ActionListener {
     public void startPlayer() {
         ChunkPager chunkPager = getStateManager().getState(ChunkPagerState.class).getChunkPager();
         PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
-        int size = chunkPager.getAttachedPages().size();
-        if (size > pagesAttached) {
-            log.info("{} pages attached", size);
-            pagesAttached = size;
+        int numPagesAttached = chunkPager.getAttachedPages().size();
+        int numPhysicPagesAttached = physicsChunkPager.getAttachedPages().size();
+        if (numPagesAttached > pagesAttached || numPhysicPagesAttached > physicPagesAttached) {
+            log.info("{} pages - {} physic pages attached", numPagesAttached, numPhysicPagesAttached);
+            pagesAttached = numPagesAttached;
+            physicPagesAttached = numPhysicPagesAttached;
         }
-        if (size >= GRID_SIZE * GRID_SIZE * GRID_HEIGHT && physicsChunkPager.isIdle()) {
+        if (numPagesAttached >= GRID_SIZE * GRID_SIZE * GRID_HEIGHT && physicsChunkPager.isIdle()) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);

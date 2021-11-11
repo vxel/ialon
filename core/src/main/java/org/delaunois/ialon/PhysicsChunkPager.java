@@ -10,10 +10,12 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -125,11 +127,11 @@ public class PhysicsChunkPager {
             log.debug("PhysicsGrid is set to ({}:{}, {}:{}, {}:{})", min.x, max.x, min.y, max.y, min.z, max.z);
         }
 
-        pagesToCreate.clear();
+        Set<Vec3i> pages = new HashSet<>();
         for (int x = min.x; x <= max.x; x++) {
             for (int y = min.y; y <= max.y; y++) {
                 for (int z = min.z; z <= max.z; z++) {
-                    pagesToCreate.offer(new Vec3i(x, y, z));
+                    pages.add(new Vec3i(x, y, z));
                 }
             }
         }
@@ -137,10 +139,18 @@ public class PhysicsChunkPager {
         // detach pages outside of the grid
         pagesToDetach.clear();
         for (Vec3i page : attachedPages.keySet()) {
-            if (!pagesToCreate.contains(page)) {
+            if (!pages.contains(page)) {
                 pagesToDetach.offer(page);
             }
         }
+
+        for (Vec3i page : pages) {
+            if (!attachedPages.containsKey(page)) {
+                pagesToCreate.offer(page);
+            }
+        }
+
+        pages.clear();
     }
 
     private void detachNextPages() {

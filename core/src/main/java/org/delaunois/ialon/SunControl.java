@@ -36,7 +36,7 @@ public class SunControl extends AbstractControl {
 
     @Getter
     @Setter
-    private float time;
+    private float time = FastMath.HALF_PI;
 
     @Getter
     @Setter

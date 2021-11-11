@@ -335,11 +335,11 @@ public class Chunk {
     }
 
     public Vector4f applyAO(Vector4f color, int ao) {
-        int shift = 3 - ao;
+        int shift = Math.max(1, 3 - ao);
         int torchlight = ((int)color.x) & 0xF;
         int sunlight = (((int)color.x) >> 4) & 0xF;
-        torchlight = Math.max(0, torchlight - shift*3);
-        sunlight = Math.max(0, sunlight - shift*3);
+        torchlight = torchlight / shift;
+        sunlight = sunlight / shift;
         int light = (sunlight << 4 | torchlight);
         return new Vector4f(light, light, light, color.w);
     }
@@ -388,7 +388,6 @@ public class Chunk {
 
     public boolean isFaceVisible(Block block, Block neighbour) {
         if (neighbour == null) {
-            // Optimization on android : avoid convert boolean to Boolean
             return true;
         }
         if (neighbour.isTransparent() && !block.isTransparent()) {

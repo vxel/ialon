@@ -42,22 +42,23 @@ out vec2 texCoord;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
+    const float gamma = 2f;
     const float levels[16] = float[16](
         0.0,
-        1.0 / 255.0,
-        2.0 * 2.0 / 255.0,
-        3.0 * 3.0 / 255.0,
-        4.0 * 4.0 / 255.0,
-        5.0 * 5.0 / 255.0,
-        6.0 * 6.0 / 255.0,
-        7.0 * 7.0 / 255.0,
-        8.0 * 8.0 / 255.0,
-        9.0 * 9.0 / 255.0,
-        10.0 * 10.0 / 255.0,
-        11.0 * 11.0 / 255.0,
-        12.0 * 12.0 / 255.0,
-        13.0 * 13.0 / 255.0,
-        14.0 * 14.0 / 255.0,
+        pow(1.0 / 15.0, gamma),
+        pow(2.0 / 15.0, gamma),
+        pow(3.0 / 15.0, gamma),
+        pow(4.0 / 15.0, gamma),
+        pow(5.0 / 15.0, gamma),
+        pow(6.0 / 15.0, gamma),
+        pow(7.0 / 15.0, gamma),
+        pow(8.0 / 15.0, gamma),
+        pow(9.0 / 15.0, gamma),
+        pow(10.0 / 15.0, gamma),
+        pow(11.0 / 15.0, gamma),
+        pow(12.0 / 15.0, gamma),
+        pow(13.0 / 15.0, gamma),
+        pow(14.0 / 15.0, gamma),
         1.0
     );
 #endif

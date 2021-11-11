@@ -119,9 +119,6 @@ public class TypeRegistry {
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
             texture.setImage(atlasRepository.getDiffuseMap().getImage());
-            // ok: NearestLinearMipMap, NearestNearestMipMap
-            // ko : NearestNoMipMaps, BilinearNoMipMaps, BilinearNearestMipMap, Trilinear
-            //mat.getTextureParam("DiffuseMap").getTextureValue().setMinFilter(Texture.MinFilter.NearestLinearMipMap);
             if (mat.getTextureParam("OverlayMap") != null) {
                 mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
             }

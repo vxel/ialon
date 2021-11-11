@@ -87,6 +87,10 @@ public class Cube implements Shape {
     private boolean enlightFace(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
+
+        // 2 3 4    a01  a11
+        // 1   5
+        // 0 7 6    a00  a10
         Block[] nb = n.getNeighbours(face);
 
         // Vertices sorted clockwise for flip test
@@ -94,15 +98,15 @@ public class Cube implements Shape {
         int a01 = chunk.vertexAO(nb[1], nb[3], nb[2]);
         int a11 = chunk.vertexAO(nb[3], nb[5], nb[4]);
         int a10 = chunk.vertexAO(nb[5], nb[7], nb[6]);
+        int grad1 = Math.abs(a00 - a11);
+        int grad2 = Math.abs(a01 - a10);
 
-        // Vertices sorted in the order of their position in the buffer
         colors.add(chunk.applyAO(color, a00));
         colors.add(chunk.applyAO(color, a01));
         colors.add(chunk.applyAO(color, a10));
         colors.add(chunk.applyAO(color, a11));
 
-        return (a00 + a11 > a01 + a10);
-
+        return grad1 < grad2;
     }
 
     private static void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {

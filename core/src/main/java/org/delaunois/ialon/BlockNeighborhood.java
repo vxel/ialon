@@ -93,6 +93,10 @@ public class BlockNeighborhood {
         };
     }
 
+    //  Bottom     Middle      Top            Y ---> X
+    // 00 01 02   09 10 11   18 19 20         |
+    // 03 04 05   12 13 14   21 22 23         v
+    // 06 07 08   15 16 17   24 25 26         Z
     public Block[] getNeighboursDown() {
         return new Block[]{
                 get(0, -1, -1, -1),
