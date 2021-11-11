@@ -238,8 +238,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
             if (TypeIds.WATER.equals(type)) {
                 geometry.getMaterial().getAdditionalRenderState().setPolyOffset(-1.0f, -1.0f);
-            } else {
-                geometry.getMaterial().getAdditionalRenderState().setPolyOffset(-2f, -2f);
+            } else if (TypeIds.ITEM_GRASS.equals(type)){
+                geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
             }
         } else {
             geometry.getMaterial().getTextureParam("DiffuseMap").getTextureValue()

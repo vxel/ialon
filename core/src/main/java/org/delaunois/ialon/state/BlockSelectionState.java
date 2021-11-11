@@ -50,6 +50,7 @@ import static com.rvandoosselaer.blocks.BlockIds.DIRT;
 import static com.rvandoosselaer.blocks.BlockIds.GRASS;
 import static com.rvandoosselaer.blocks.BlockIds.GRASS_SNOW;
 import static com.rvandoosselaer.blocks.BlockIds.GRAVEL;
+import static com.rvandoosselaer.blocks.BlockIds.ITEM_GRASS;
 import static com.rvandoosselaer.blocks.BlockIds.MOSSY_COBBLESTONE;
 import static com.rvandoosselaer.blocks.BlockIds.MOSSY_STONE_BRICKS;
 import static com.rvandoosselaer.blocks.BlockIds.OAK_LEAVES;
@@ -304,7 +305,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             WINDOW,
             getName(WINDOW, PLATE),
             getName(WINDOW, SQUARE),
-            SPACER,
+            ITEM_GRASS,
             SPACER,
 
     };

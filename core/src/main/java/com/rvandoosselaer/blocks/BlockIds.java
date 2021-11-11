@@ -64,6 +64,8 @@ public interface BlockIds {
 
     String WINDOW = TypeIds.WINDOW;
 
+    String ITEM_GRASS = TypeIds.ITEM_GRASS;
+
     static String getName(String type, String shape) {
         return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape;
     }

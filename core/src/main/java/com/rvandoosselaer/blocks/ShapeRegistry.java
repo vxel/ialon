@@ -1,5 +1,6 @@
 package com.rvandoosselaer.blocks;
 
+import com.rvandoosselaer.blocks.shapes.CrossPlane;
 import com.rvandoosselaer.blocks.shapes.Cube;
 import com.rvandoosselaer.blocks.shapes.FloatingCube;
 import com.rvandoosselaer.blocks.shapes.Pole;
@@ -109,6 +110,8 @@ public class ShapeRegistry {
         registerCuboids();
 
         registerWater();
+
+        registerCrossPlane();
     }
 
     private void registerCuboids() {
@@ -226,6 +229,10 @@ public class ShapeRegistry {
         register(ShapeIds.LIQUID4, new Liquid(4));
         register(ShapeIds.LIQUID5, new Liquid(5));
         register(ShapeIds.LIQUID, new Liquid(6));
+    }
+
+    private void registerCrossPlane() {
+        register(ShapeIds.CROSS_PLANE, new CrossPlane());
     }
 
     private void registerFloatingCubes() {

@@ -131,4 +131,6 @@ public interface ShapeIds {
     String LIQUID = "liquid";
     String[] ALL_LIQUID = {LIQUID, LIQUID1, LIQUID2, LIQUID3, LIQUID4, LIQUID5};
 
+    String CROSS_PLANE = "cross_plane";
+
 }

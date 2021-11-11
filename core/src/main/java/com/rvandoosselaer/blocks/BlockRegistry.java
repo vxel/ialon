@@ -132,6 +132,7 @@ public class BlockRegistry {
         registerStoneBrickBlocks();
         registerWaterBlocks();
         registerWindowBlocks();
+        registerItemBlocks();
     }
 
     public void load(InputStream inputStream) {
@@ -231,6 +232,11 @@ public class BlockRegistry {
     private void registerLightBlocks() {
         Block floatingCubeLight = new Block(BlockIds.WHITE_CUBE_LIGHT, ShapeIds.FLOATING_CUBE, TypeIds.SNOW, false, false, true, true);
         register(floatingCubeLight);
+    }
+
+    private void registerItemBlocks() {
+        Block itemGrass = new Block(BlockIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, TypeIds.ITEM_GRASS, false, false, false, false);
+        register(itemGrass);
     }
 
     private void registerSandBlocks() {

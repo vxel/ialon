@@ -53,6 +53,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     @Override
     public Chunk generate(Vec3i location) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ITEM_GRASS);
 
         Chunk chunk = Chunk.createAt(location);
         int maxX = chunkSize.x;
@@ -81,6 +82,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
                         if (worldY > waterHeight) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
+                            if ((groundh * 10000) % 1 == 0) {
+                                chunk.addBlock(x, y + 1, z, itemGrass);
+                            }
                         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
                         } else {
