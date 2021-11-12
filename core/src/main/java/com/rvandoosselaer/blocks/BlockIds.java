@@ -66,6 +66,8 @@ public interface BlockIds {
 
     String ITEM_GRASS = TypeIds.ITEM_GRASS;
 
+    String SCALE = TypeIds.SCALE;
+
     static String getName(String type, String shape) {
         return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape;
     }

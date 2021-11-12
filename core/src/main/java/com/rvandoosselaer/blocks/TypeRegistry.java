@@ -216,6 +216,7 @@ public class TypeRegistry {
         register(TypeIds.WHITE_CUBE_LIGHT);
         register(TypeIds.WINDOW);
         register(TypeIds.ITEM_GRASS);
+        register(TypeIds.SCALE);
     }
 
     public void setTheme(BlocksTheme theme) {

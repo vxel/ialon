@@ -6,7 +6,6 @@ import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -23,6 +22,7 @@ import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
+import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
@@ -61,6 +61,7 @@ import static com.rvandoosselaer.blocks.BlockIds.PALM_TREE_LOG;
 import static com.rvandoosselaer.blocks.BlockIds.PALM_TREE_PLANKS;
 import static com.rvandoosselaer.blocks.BlockIds.ROCK;
 import static com.rvandoosselaer.blocks.BlockIds.SAND;
+import static com.rvandoosselaer.blocks.BlockIds.SCALE;
 import static com.rvandoosselaer.blocks.BlockIds.SNOW;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LEAVES;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LOG;
@@ -76,6 +77,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
 import static com.rvandoosselaer.blocks.ShapeIds.SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.SQUARE;
+import static com.rvandoosselaer.blocks.ShapeIds.SQUARE_NORTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_EAST;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
@@ -97,7 +99,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRASS_SNOW, SLAB),
             getName(WATER, LIQUID),
             WHITE_CUBE_LIGHT,
-            SPACER,
+            getName(SCALE, SQUARE_NORTH),
             SPACER,
 
             DIRT,
@@ -493,8 +495,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 return new Vector3f(boxSize, boxSize, boxSize);
             }
         });
-        buttonNode.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
-        buttonNode.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
+        buttonNode.addLight(new DirectionalLight(new Vector3f(1f, -1f, 1f).normalizeLocal()));
         buttonContainer.addChild(buttonNode);
         if (listener != null) {
             buttonContainer.addMouseListener(listener);
@@ -503,6 +504,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     private Node createBlockNode(Block block, float size) {
+        if (block == null) {
+            return null;
+        }
+
         Chunk chunk = Chunk.createAt(new Vec3i(0, 0, 0));
         chunk.addBlock(new Vec3i(0, 0, 0), block);
         chunk.update();
@@ -515,32 +520,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             node = chunk.getNode();
             Geometry geometry = (Geometry) node.getChild(0).clone();
 
-/* Version GDX
-            GdxTextureAtlas gdxTextureAtlas = BlocksConfig.getInstance().getTypeRegistry().getGdxTextureAtlas();
-            gdxTextureAtlas.applyCoords(geometry, 0, geometry.getMesh());
-            Texture tex = gdxTextureAtlas.getTexture();
-            tex.setMagFilter(Texture.MagFilter.Nearest);
-            tex.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
-            tex.setWrap(Texture.WrapMode.EdgeClamp);
-            geometry.getMaterial().setTexture("DiffuseMap", tex);
-*/
-/*
-            // Works
-            TextureAtlas atlas = BlocksConfig.getInstance().getTypeRegistry().getTextureAtlas();
-            atlas.applyCoords(geometry, 0, geometry.getMesh());
-            Texture tex = atlas.getAtlasTexture("DiffuseMap");
-            tex.getImage().setColorSpace(ColorSpace.sRGB);
-            tex.setMagFilter(Texture.MagFilter.Nearest);
-            tex.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
-            Material atlasMat = geometry.getMaterial().clone();
-            atlasMat.setTexture("DiffuseMap", tex);
-            geometry.getMaterial().setTexture("DiffuseMap", tex);
-*/
             geometry.setLocalScale(size / 2f);
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
             geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
-            geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
-            geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
+
+            if (!TypeIds.SCALE.equals(block.getType())) {
+                geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
+                geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
+            }
 
             int vc = geometry.getMesh().getVertexCount();
             FloatBuffer buf = BufferUtils.createFloatBuffer(vc * 4);

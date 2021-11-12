@@ -37,6 +37,7 @@ import com.jme3.scene.shape.Box;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Direction;
+import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
@@ -70,6 +71,7 @@ import static org.delaunois.ialon.Config.PLAYER_START_FLY;
 import static org.delaunois.ialon.Config.PLAYER_START_HEIGHT;
 import static org.delaunois.ialon.Config.ROTATION_SPEED;
 import static org.delaunois.ialon.Config.WATER_GRAVITY;
+import static org.delaunois.ialon.Config.WATER_JUMP_SPEED;
 
 @Slf4j
 public class PlayerState extends BaseAppState implements ActionListener, AnalogListener {
@@ -114,6 +116,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false;
     private boolean fly = PLAYER_START_FLY;
     private boolean underWater = false;
+    private boolean onScale = false;
     private Ialon app;
     private Label crossHair;
     private Geometry addPlaceholder;
@@ -231,16 +234,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
 
         if (left) {
-            move.addLocal(camLeft.x, 0, camLeft.z);
+            move.addLocal(camLeft.x, fly ? 0 : camLeft.y, camLeft.z);
         }
         if (right) {
-            move.addLocal(-camLeft.x, 0, -camLeft.z);
+            move.addLocal(-camLeft.x, fly ? 0 : -camLeft.y, -camLeft.z);
         }
         if (forward) {
-            move.addLocal(camDir.x, 0, camDir.z);
+            move.addLocal(camDir.x, fly ? 0 : camDir.y, camDir.z);
         }
         if (backward) {
-            move.addLocal(-camDir.x, 0, -camDir.z);
+            move.addLocal(-camDir.x, fly ? 0 : -camDir.y, -camDir.z);
         }
         if (up && playerLocation.y <= MAXY) {
             move.addLocal(0, 1, 0);
@@ -257,7 +260,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         player.setWalkDirection(walkDirection);
 
         updatePlayerPosition();
-        updateUnderWaterEffect();
+        updateGravity();
     }
 
     public Vector3f getRemovePlaceholderPosition() {
@@ -620,6 +623,20 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     updatedChunks.addAll(chunkManager.addBlock(blockLocation, upBlock));
                 }
 
+                Vector3f[] aroundLocations = new Vector3f[] {
+                        blockLocation.add(-1, 0, 0),
+                        blockLocation.add(1, 0, 0),
+                        blockLocation.add(0, 0, 1),
+                        blockLocation.add(0, 0, -1),
+                };
+                for (Vector3f location : aroundLocations) {
+                    chunkManager.getBlock(location).ifPresent(block -> {
+                        if (TypeIds.SCALE.equals(block.getType())) {
+                            updatedChunks.addAll(chunkManager.removeBlock(location));
+                        }
+                    });
+                }
+
                 if (!updatedChunks.isEmpty()) {
                     chunkManager.requestMeshChunks(updatedChunks);
 
@@ -697,9 +714,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
     }
 
-    private void updateUnderWaterEffect() {
+    private void updateGravity() {
         camLocation.set(camera.getLocation());
-        Block block = chunkManager.getBlock(camLocation).orElse(null);
+        Block block = chunkManager.getBlock(camLocation.subtract(0, 1, 0)).orElse(null);
         if (block != null) {
             if (block.getName().contains("water")) {
                 if (!underWater) {
@@ -709,12 +726,31 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     if (!fly) {
                         player.setGravity(WATER_GRAVITY);
                         player.setFallSpeed(WATER_GRAVITY);
+                        player.setJumpSpeed(WATER_JUMP_SPEED);
                     }
+                }
+            } else if (TypeIds.SCALE.equals(block.getType())) {
+                if (!onScale) {
+                    log.info("Scale - IN");
+                    onScale = true;
+                }
+
+                if (!fly) {
+                    player.setGravity(0);
+                    player.setFallSpeed(0);
                 }
             }
         } else if (underWater) {
             log.info("Water - OUT");
             underWater = false;
+            if (!fly) {
+                player.setGravity(GROUND_GRAVITY);
+                player.setFallSpeed(GROUND_GRAVITY);
+                player.setJumpSpeed(JUMP_SPEED);
+            }
+        } else if (onScale) {
+            log.info("Scale - OUT");
+            onScale = false;
             if (!fly) {
                 player.setGravity(GROUND_GRAVITY);
                 player.setFallSpeed(GROUND_GRAVITY);

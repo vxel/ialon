@@ -40,11 +40,11 @@ public class Square implements Shape {
         Quaternion rotation = Shape.getRotationFromDirection(direction);
 
         createFace(location, rotation, chunkMesh, blockScale);
-        enlightFace(location, null, chunk, chunkMesh);
+        enlightFace(location, chunk, chunkMesh);
     }
 
-    private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLight(location, face).toVector4f();
+    private void enlightFace(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
+        Vector4f color = chunk.getLightLevel(location);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);
@@ -52,14 +52,14 @@ public class Square implements Shape {
         colors.add(color);
     }
 
-    private static void createFace(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale) {
+    private void createFace(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale) {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, 0, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, 0, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, 0, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, 0, 0.5f)), location, blockScale));
+        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, -0.5f)), location, blockScale));
+        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, -0.5f)), location, blockScale));
+        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, 0.5f)), location, blockScale));
+        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, 0.5f)), location, blockScale));
         // indices
         chunkMesh.getIndices().add(offset);
         chunkMesh.getIndices().add(offset + 1);
@@ -75,11 +75,17 @@ public class Square implements Shape {
                 Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
                 chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f)));
             }
-            // uvs
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+            if (direction == Direction.NORTH || direction == Direction.SOUTH) {
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+            } else {
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+            }
         }
     }
 

@@ -232,15 +232,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         typeRegistry.applyMaterial(geometry, type);
 
         if (geometry.getMaterial().getAdditionalRenderState().getBlendMode() == RenderState.BlendMode.Alpha) {
-            if (log.isTraceEnabled()) {
-                log.trace("Setting queue bucket to {} for geometry {}", RenderQueue.Bucket.Transparent, geometry);
-            }
             geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
-            if (TypeIds.WATER.equals(type)) {
-                geometry.getMaterial().getAdditionalRenderState().setPolyOffset(-1.0f, -1.0f);
-            } else if (TypeIds.ITEM_GRASS.equals(type)){
-                geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
-            }
         } else {
             geometry.getMaterial().getTextureParam("DiffuseMap").getTextureValue()
                     .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);

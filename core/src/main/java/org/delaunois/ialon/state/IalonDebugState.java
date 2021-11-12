@@ -68,7 +68,7 @@ public class IalonDebugState extends BaseAppState {
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
-        container.setBackground(background);
+        //container.setBackground(background);
 
         heapLabel = addField(container, "Mem Heap: ");
         directLabel = addField(container, "Mem Direct: ");
@@ -82,7 +82,7 @@ public class IalonDebugState extends BaseAppState {
         timeLabel = addField(container, "Time: ");
 
         container.setLocalScale(getApplication().getCamera().getHeight() / (container.getPreferredSize().getY() * 5));
-        container.setLocalTranslation(30, getApplication().getCamera().getHeight() / 2f + container.getPreferredSize().getY(), 1);
+        container.setLocalTranslation(0, getApplication().getCamera().getHeight() / 2f + container.getPreferredSize().getY(), 1);
 
         grid = new Container(new SpringGridLayout(Axis.X, Axis.Y));
         grid.setLocalTranslation((getApplication().getCamera().getWidth() - container.getPreferredSize().getX()) / 2f, getApplication().getCamera().getHeight() - 30, 1);

@@ -36,4 +36,5 @@ public interface TypeIds {
     String ITEM_GRASS = "item_grass";
     String WHITE_CUBE_LIGHT = "white_cube_light";
     String WINDOW = "window";
+    String SCALE = "scale";
 }

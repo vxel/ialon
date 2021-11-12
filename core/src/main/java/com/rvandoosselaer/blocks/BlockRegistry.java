@@ -133,6 +133,7 @@ public class BlockRegistry {
         registerWaterBlocks();
         registerWindowBlocks();
         registerItemBlocks();
+        registerScaleBlocks();
     }
 
     public void load(InputStream inputStream) {
@@ -237,6 +238,15 @@ public class BlockRegistry {
     private void registerItemBlocks() {
         Block itemGrass = new Block(BlockIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, TypeIds.ITEM_GRASS, false, false, false, false);
         register(itemGrass);
+    }
+
+    private void registerScaleBlocks() {
+        BlockDefinition scaleDef = new BlockDefinition(TypeIds.SCALE, false, false, false)
+                .addShapes(ShapeIds.SQUARE_NORTH)
+                .addShapes(ShapeIds.SQUARE_SOUTH)
+                .addShapes(ShapeIds.SQUARE_WEST)
+                .addShapes(ShapeIds.SQUARE_EAST);
+        register(BlockFactory.create(scaleDef));
     }
 
     private void registerSandBlocks() {
