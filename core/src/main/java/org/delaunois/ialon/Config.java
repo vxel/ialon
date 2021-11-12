@@ -34,11 +34,14 @@ public class Config {
     public static final ColorRGBA SKY_HORIZON_COLOR = ColorRGBA.White;
     public static final ColorRGBA SKY_DAY_COLOR = ColorRGBA.White;
     public static final ColorRGBA SKY_EVENING_COLOR = new ColorRGBA(1f, 0.7f, 0.5f, 1);
-    public static final ColorRGBA SKY_NIGHT_COLOR = ColorRGBA.fromRGBA255(9, 12, 19, 1);
+    public static final ColorRGBA SKY_NIGHT_COLOR = ColorRGBA.fromRGBA255(9, 12, 19, 255);
+    public static final ColorRGBA GROUND_DAY_COLOR = ColorRGBA.fromRGBA255(141, 199, 255, 255);
+    public static final ColorRGBA GROUND_EVENING_COLOR = ColorRGBA.fromRGBA255(150, 136, 126, 255);
+    public static final ColorRGBA GROUND_NIGHT_COLOR = ColorRGBA.fromRGBA255(6, 6, 12, 255);
     public static final ColorRGBA DAY_COLOR = ColorRGBA.White;
     public static final ColorRGBA EVENING_COLOR = ColorRGBA.fromRGBA255(255, 173, 66, 255);
     public static final ColorRGBA NIGHT_COLOR = new ColorRGBA(0.4f, 0.4f, 0.4f, 1);
-    public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
+    public static final float TIME_FACTOR = 0.3f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.4f;
     public static final float JUMP_SPEED = 5;

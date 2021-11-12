@@ -18,6 +18,7 @@ import java.nio.FloatBuffer;
 import java.time.LocalTime;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +31,7 @@ import static org.delaunois.ialon.Config.SUN_INTENSITY;
 import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
+@RequiredArgsConstructor
 public class SunControl extends AbstractControl {
 
     private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
@@ -46,14 +48,15 @@ public class SunControl extends AbstractControl {
     @Setter
     private float timeFactor = TIME_FACTOR;
 
+    @Getter
     @Setter
     private DirectionalLight directionalLight;
 
+    @Getter
     @Setter
     private AmbientLight ambientLight;
 
-    @Setter
-    private Camera cam;
+    private final Camera cam;
 
     @Getter
     private boolean run = true;

@@ -32,6 +32,7 @@ import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
+import org.delaunois.ialon.control.FollowCamControl;
 import org.delaunois.ialon.control.MoonControl;
 import org.delaunois.ialon.control.SkyControl;
 import org.delaunois.ialon.control.SunControl;
@@ -166,7 +167,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         cam.setFov(50);
     }
 
-    private void initSky(org.delaunois.ialon.control.SunControl sun) {
+    private void initSky(SunControl sun) {
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
         FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
         fpb.put(new float[] {
@@ -235,11 +236,24 @@ public class Ialon extends SimpleApplication implements ActionListener {
         skyMat.setParam("VertexColor", VarType.Boolean, true );
         sky.setMaterial(skyMat);
 
-        org.delaunois.ialon.control.SkyControl skyControl = new SkyControl();
-        skyControl.setCam(cam);
-        skyControl.setSun(sun);
+        SkyControl skyControl = new SkyControl(sun);
+        FollowCamControl followCamControl = new FollowCamControl(cam);
         sky.addControl(skyControl);
+        sky.addControl(followCamControl);
 
+        Ground groundPlate = new Ground(500, 500);
+        Geometry ground = new Geometry("ground", groundPlate);
+        ground.setQueueBucket(RenderQueue.Bucket.Sky);
+        ground.setCullHint(Spatial.CullHint.Never);
+        ground.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Material groundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        groundMat.setColor("Color", skyControl.getGroundColor());
+        ground.setMaterial(groundMat);
+
+        ground.addControl(new FollowCamControl(cam));
+
+        rootNode.attachChild(ground);
         rootNode.attachChildAt(sky, 0);
     }
 
@@ -259,8 +273,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         atlasManager.getAtlas().applyCoords(sun, 0.1f);
         sunMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
 
-        sunControl = new org.delaunois.ialon.control.SunControl();
-        sunControl.setCam(cam);
+        sunControl = new SunControl(cam);
         sunControl.setDirectionalLight(stateManager.getState(LightingState.class).getDirectionalLight());
         sunControl.setAmbientLight(stateManager.getState(LightingState.class).getAmbientLight());
         sunControl.setTime(time);
