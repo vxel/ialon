@@ -556,25 +556,32 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         log.info("Action : addBlock triggered");
 
         if (removePlaceholder.getParent() == null) {
-            log.info("Not removing. No parent for placeholder");
+            log.info("Not adding. No parent for placeholder");
             return;
         }
 
         Vector3f worldBlockLocation = addPlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
         Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerLocation);
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
+        final Block selectedBlock = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
 
-        if (blockLocation.x == playerBlockLocation.x
+        // Prevents adding a solid block where the player stands
+        if (selectedBlock.isSolid()
+                && blockLocation.x == playerBlockLocation.x
                 && blockLocation.z == playerBlockLocation.z
                 && (blockLocation.y == playerBlockLocation.y || blockLocation.y == playerBlockLocation.y + 1)) {
+            log.info("Can't add a solid block where the player stands");
             return;
         }
 
         executorService.submit(() -> {
             try {
                 // Get the selected block from menu
-                Block block = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
-                block = orientateBlock(block, worldBlockLocation);
+                Block block = orientateBlock(selectedBlock, worldBlockLocation);
+                if (block == null) {
+                    // Can't place the block like this
+                    return;
+                }
 
                 // Add the block, which removes the light at this location
                 log.info("Adding block {}", block.getName());
@@ -655,13 +662,30 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         String[] shapeProperties = block.getShape().split("_");
         String shape = shapeProperties[0];
 
-        if (Objects.equals("cube", shape)) {
-            return block;
+        switch (shape) {
+            case "cube":
+            case "slab":
+            case "double":
+            case "plate":
+                return block;
         }
 
         // Turn the block according to where the user clicked
-        String subShape = shapeProperties.length <= 2 ? "" : String.join("_", Arrays.copyOfRange(shapeProperties, 1, shapeProperties.length - 1));
         Direction direction = Direction.fromVector(addPlaceholder.getWorldTranslation().subtract(removePlaceholder.getWorldTranslation()));
+        if (TypeIds.SCALE.equals(block.getType())) {
+            // A scale can only be added if a block exists behind it
+            if (Direction.UP.equals(direction) || Direction.DOWN.equals(direction)) {
+                log.info("Can't add an horizontal scale");
+                return null;
+            }
+            Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
+            if (behind == null) {
+                log.info("No block behind scale");
+                return null;
+            }
+        }
+
+        String subShape = shapeProperties.length <= 2 ? "" : String.join("_", Arrays.copyOfRange(shapeProperties, 1, shapeProperties.length - 1));
         Block above = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
         Block below = chunkManager.getBlock(blockLocation.add(0, -1, 0)).orElse(null);
         if (above != null && below == null
@@ -672,7 +696,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (subShape.length() > 0) {
             shape = String.join("_", shape, subShape);
         }
-
         String orientedBlockName = String.format("%s-%s", type, String.join("_", shape, direction.name().toLowerCase()));
         Block orientedBlock = BlocksConfig.getInstance().getBlockRegistry().get(orientedBlockName);
 

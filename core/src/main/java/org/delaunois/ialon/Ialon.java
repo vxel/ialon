@@ -137,8 +137,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         initFileRepository();
         initPlayerStateRepository();
+
+        PlayerStateDTO playerStateDTO = initPlayer();
+
+        // Block world setup depends on the player position
         initBlockFramework();
-        initSky(initSun());
+        initSky(initSun(playerStateDTO.getTime()));
         initInputManager();
 
         cam.setFrustumNear(0.1f);
@@ -223,7 +227,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rootNode.attachChildAt(sky, 0);
     }
 
-    private SunControl initSun() {
+    private SunControl initSun(float time) {
         Geometry sun = new Geometry("Sun", new Quad(15f, 15f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
@@ -245,6 +249,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         sunControl.setCam(cam);
         sunControl.setDirectionalLight(stateManager.getState(LightingState.class).getDirectionalLight());
         sunControl.setAmbientLight(stateManager.getState(LightingState.class).getAmbientLight());
+        sunControl.setTime(time);
         sun.addControl(sunControl);
 
         rootNode.attachChild(sun);
@@ -260,6 +265,23 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private void initPlayerStateRepository() {
         playerStateRepository = new PlayerStateRepository();
         playerStateRepository.setPath(FILEPATH);
+    }
+
+    private PlayerStateDTO initPlayer() {
+        playerState = new PlayerState();
+        PlayerStateDTO playerStateDTO = playerStateRepository.load();
+        if (playerStateDTO != null) {
+            if (playerStateDTO.getLocation() != null) {
+                playerState.setPlayerLocation(playerStateDTO.getLocation());
+            }
+            if (playerStateDTO.getRotation() != null) {
+                cam.setRotation(playerStateDTO.getRotation());
+            }
+        }
+
+        playerState.setEnabled(false);
+        stateManager.attach(playerState);
+        return playerStateDTO;
     }
 
     private void initBlockFramework() {
@@ -289,17 +311,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 .repository(fileRepository)
                 .build();
 
-        playerState = new PlayerState();
-        PlayerStateDTO playerStateDTO = playerStateRepository.load();
-        if (playerStateDTO != null) {
-            if (playerStateDTO.getLocation() != null) {
-                playerState.setPlayerLocation(playerStateDTO.getLocation());
-            }
-            if (playerStateDTO.getRotation() != null) {
-                cam.setRotation(playerStateDTO.getRotation());
-            }
-        }
-
         chunkNode = new Node("chunk-node");
         rootNode.attachChild(chunkNode);
 
@@ -324,14 +335,11 @@ public class Ialon extends SimpleApplication implements ActionListener {
         physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
 
-        playerState.setEnabled(false);
-
         stateManager.attachAll(
                 chunkManagerState,
                 chunkPagerState,
                 physicsChunkPagerState,
-                chunkLiquidManagerState,
-                playerState
+                chunkLiquidManagerState
         );
     }
 
@@ -422,6 +430,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
     public void stop() {
         super.stop();
         executorService.shutdown();
-        this.playerStateRepository.save(new PlayerStateDTO(playerState.getPlayerLocation(), cam.getRotation()));
+        this.playerStateRepository.save(
+                new PlayerStateDTO(
+                        playerState.getPlayerLocation(),
+                        cam.getRotation(),
+                        sunControl.getTime()));
     }
 }

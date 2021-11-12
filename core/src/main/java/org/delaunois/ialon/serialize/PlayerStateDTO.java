@@ -1,6 +1,7 @@
 package org.delaunois.ialon.serialize;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 
@@ -29,7 +30,9 @@ public class PlayerStateDTO {
     private float rotz;
     private float rotw;
 
-    public PlayerStateDTO(Vector3f location, Quaternion rotation) {
+    private float time = FastMath.HALF_PI;
+
+    public PlayerStateDTO(Vector3f location, Quaternion rotation, float time) {
         this.posx = location.x;
         this.posy = location.y;
         this.posz = location.z;
@@ -39,6 +42,7 @@ public class PlayerStateDTO {
             this.rotz = rotation.getZ();
             this.rotw = rotation.getW();
         }
+        this.time = time;
     }
 
     @JsonIgnore
