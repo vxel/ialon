@@ -60,6 +60,9 @@ public class PhysicsChunkPager {
     private PhysicsSpace physicsSpace;
 
     @Getter
+    private boolean ready = false;
+
+    @Getter
     private final Map<Vec3i, PhysicsRigidBody> attachedPages = new ConcurrentHashMap<>();
 
     private final ChunkManagerListener listener = new PhysicsChunkPagerListener();
@@ -82,10 +85,6 @@ public class PhysicsChunkPager {
         requestExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("physicschunk-pager-%d").build());
     }
 
-    public boolean isIdle() {
-        return pagesToCreate.size() == 0 && pagesToDetach.size() == 0;
-    }
-
     public void update() {
         if (location == null) {
             return;
@@ -103,6 +102,7 @@ public class PhysicsChunkPager {
     protected void updateCenterPage() {
         Vec3i newCenterPage = ChunkManager.getChunkLocation(location);
         if (!Objects.equals(newCenterPage, centerPage)) {
+            ready = false;
             this.centerPage = newCenterPage;
             if (log.isDebugEnabled()) {
                 log.debug("New center page {}", newCenterPage);
@@ -244,7 +244,13 @@ public class PhysicsChunkPager {
     }
 
     protected void createPage(Chunk chunk) {
-        if (chunk == null || chunk.getCollisionMesh() == null || chunk.getCollisionMesh().getTriangleCount() < 1 || physicsSpace == null) {
+        Vec3i location = chunk.getLocation();
+        if (!ready && location.x == centerPage.x && location.y <= centerPage.y && location.z == centerPage.z) {
+            log.info("Physic page {} is ready", chunk.getLocation());
+            ready = true;
+        }
+
+        if (chunk.getCollisionMesh() == null || chunk.getCollisionMesh().getTriangleCount() < 1 || physicsSpace == null) {
             return;
         }
 

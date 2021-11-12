@@ -60,10 +60,10 @@ public class Ground extends Mesh {
         this.width = width;
         this.height = height;
         setBuffer(Type.Position, 3, new float[]{
-                -width / 2f, -1, height / 2f,
-                 width / 2f, -1, height / 2f,
-                 width / 2f, -1, -height / 2f,
-                -width / 2f, -1, -height / 2f
+                -width / 2f, -.1f, height / 2f,
+                 width / 2f, -.1f, height / 2f,
+                 width / 2f, -.1f, -height / 2f,
+                -width / 2f, -.1f, -height / 2f
         });
 
 

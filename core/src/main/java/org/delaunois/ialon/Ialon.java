@@ -436,7 +436,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
         }
-        if (numPagesAttached >= GRID_SIZE * GRID_SIZE * GRID_HEIGHT && physicsChunkPager.isIdle()) {
+        if (numPagesAttached >= GRID_SIZE * GRID_SIZE * GRID_HEIGHT && physicsChunkPager.isReady()) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);
