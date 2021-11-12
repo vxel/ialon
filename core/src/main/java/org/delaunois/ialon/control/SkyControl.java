@@ -1,4 +1,4 @@
-package org.delaunois.ialon;
+package org.delaunois.ialon.control;
 
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;

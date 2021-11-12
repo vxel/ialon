@@ -3,7 +3,6 @@ package org.delaunois.ialon;
 import com.jme3.texture.Texture;
 import com.jme3.texture.image.ColorSpace;
 
-import jme3tools.optimize.TextureAtlas;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 

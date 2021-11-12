@@ -38,7 +38,7 @@ public class Config {
     public static final ColorRGBA DAY_COLOR = ColorRGBA.White;
     public static final ColorRGBA EVENING_COLOR = ColorRGBA.fromRGBA255(255, 173, 66, 255);
     public static final ColorRGBA NIGHT_COLOR = new ColorRGBA(0.4f, 0.4f, 0.4f, 1);
-    public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
+    public static final float TIME_FACTOR = 0.03f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.4f;
     public static final float JUMP_SPEED = 5;

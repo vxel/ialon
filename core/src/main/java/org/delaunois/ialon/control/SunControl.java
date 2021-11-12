@@ -1,4 +1,4 @@
-package org.delaunois.ialon;
+package org.delaunois.ialon.control;
 
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
@@ -55,9 +55,11 @@ public class SunControl extends AbstractControl {
     @Setter
     private Camera cam;
 
+    @Getter
+    private boolean run = true;
+
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
 
-    private boolean run = true;
     private long lastUpdate = System.currentTimeMillis();
     private float sunHeight;
 

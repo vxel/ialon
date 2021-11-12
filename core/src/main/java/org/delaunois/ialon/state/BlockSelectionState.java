@@ -6,6 +6,7 @@ import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -402,7 +403,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             selectedBlockNode.removeFromParent();
         }
         selectedBlockNode = (Node)blocks[index].clone();
-        if (parent != null && selectedBlockNode != null) {
+        if (parent != null) {
             parent.attachChild(selectedBlockNode);
         }
     }
@@ -495,7 +496,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 return new Vector3f(boxSize, boxSize, boxSize);
             }
         });
-        buttonNode.addLight(new DirectionalLight(new Vector3f(1f, -1f, 1f).normalizeLocal()));
+        buttonNode.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
+        buttonNode.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
         buttonContainer.addChild(buttonNode);
         if (listener != null) {
             buttonContainer.addMouseListener(listener);
@@ -532,8 +534,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             int vc = geometry.getMesh().getVertexCount();
             FloatBuffer buf = BufferUtils.createFloatBuffer(vc * 4);
             for (int i = 0; i < buf.capacity(); i++) {
-                // Max sun + torch intensity
-                buf.put(255);
+                // Max sun
+                buf.put(240);
             }
             geometry.getMesh().setBuffer(VertexBuffer.Type.Color, 4, buf);
 

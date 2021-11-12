@@ -21,6 +21,8 @@ import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Quad;
 import com.jme3.shader.VarType;
+import com.jme3.system.JmeSystem;
+import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -30,6 +32,9 @@ import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
+import org.delaunois.ialon.control.MoonControl;
+import org.delaunois.ialon.control.SkyControl;
+import org.delaunois.ialon.control.SunControl;
 import org.delaunois.ialon.serialize.PlayerStateDTO;
 import org.delaunois.ialon.serialize.PlayerStateRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
@@ -43,6 +48,10 @@ import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.WireframeState;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -96,7 +105,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Getter
     private boolean mouselocked = false;
 
-    private SunControl sunControl;
+    private org.delaunois.ialon.control.SunControl sunControl;
     private PlayerState playerState;
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
@@ -131,6 +140,9 @@ public class Ialon extends SimpleApplication implements ActionListener {
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
 
         atlasManager = new TextureAtlasManager();
+        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
+        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
+
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
@@ -142,15 +154,19 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         // Block world setup depends on the player position
         initBlockFramework();
-        initSky(initSun(playerStateDTO.getTime()));
+        org.delaunois.ialon.control.SunControl sunControl = initSun(playerStateDTO.getTime());
+        initMoon(sunControl);
+        initSky(sunControl);
         initInputManager();
+
+        //dumpAtlas();
 
         cam.setFrustumNear(0.1f);
         cam.setFrustumFar(400f);
         cam.setFov(50);
     }
 
-    private void initSky(SunControl sun) {
+    private void initSky(org.delaunois.ialon.control.SunControl sun) {
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
         FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
         fpb.put(new float[] {
@@ -219,7 +235,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         skyMat.setParam("VertexColor", VarType.Boolean, true );
         sky.setMaterial(skyMat);
 
-        SkyControl skyControl = new SkyControl();
+        org.delaunois.ialon.control.SkyControl skyControl = new SkyControl();
         skyControl.setCam(cam);
         skyControl.setSun(sun);
         sky.addControl(skyControl);
@@ -227,25 +243,23 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rootNode.attachChildAt(sky, 0);
     }
 
-    private SunControl initSun(float time) {
+    private org.delaunois.ialon.control.SunControl initSun(float time) {
         Geometry sun = new Geometry("Sun", new Quad(15f, 15f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
         sun.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        Texture texture = assetManager.loadTexture("Textures/sun.png");
-        atlasManager.getAtlas().addTexture(texture, TextureAtlasManager.DIFFUSE);
-
+        Texture sunTexture = assetManager.loadTexture("Textures/sun.png");
         Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-        sunMat.setTexture("ColorMap", texture);
+        sunMat.setTexture("ColorMap", sunTexture);
         sunMat.setParam("VertexColor", VarType.Boolean, true );
         sun.setMaterial(sunMat);
+
         atlasManager.getAtlas().applyCoords(sun);
         sunMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
-        sunMat.getTextureParam("ColorMap").getTextureValue().setMinFilter(Texture.MinFilter.NearestLinearMipMap);
 
-        sunControl = new SunControl();
+        sunControl = new org.delaunois.ialon.control.SunControl();
         sunControl.setCam(cam);
         sunControl.setDirectionalLight(stateManager.getState(LightingState.class).getDirectionalLight());
         sunControl.setAmbientLight(stateManager.getState(LightingState.class).getAmbientLight());
@@ -255,6 +269,29 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rootNode.attachChild(sun);
 
         return sunControl;
+    }
+
+    private void initMoon(SunControl sun) {
+        Geometry moon = new Geometry("moon", new Quad(10f, 10f));
+        moon.setQueueBucket(RenderQueue.Bucket.Sky);
+        moon.setCullHint(Spatial.CullHint.Never);
+        moon.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Texture moonTexture = assetManager.loadTexture("Textures/moon.png");
+        Material moonMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        moonMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        moonMat.setTexture("ColorMap", moonTexture);
+        moon.setMaterial(moonMat);
+
+        atlasManager.getAtlas().applyCoords(moon);
+        moonMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
+
+        org.delaunois.ialon.control.MoonControl moonControl = new MoonControl();
+        moonControl.setCam(cam);
+        moonControl.setSun(sun);
+        moon.addControl(moonControl);
+
+        rootNode.attachChild(moon);
     }
 
     private void initFileRepository() {
@@ -436,4 +473,29 @@ public class Ialon extends SimpleApplication implements ActionListener {
                         cam.getRotation(),
                         sunControl.getTime()));
     }
+
+    private void dumpAtlas() {
+        Image img = atlasManager.getDiffuseMap().getImage().clone();
+        ByteBuffer sourceData = img.getData(0);
+        ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream("atlas.png");
+            for (int i = 0; i < sourceData.limit(); i++) {
+                outData.put(i, sourceData.get(i));
+            }
+            JmeSystem.writeImageFile(out, "png", outData, img.getWidth(), img.getHeight());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
 }

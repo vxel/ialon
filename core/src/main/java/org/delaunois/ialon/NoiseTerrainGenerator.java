@@ -82,7 +82,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
                         if (worldY > waterHeight) {
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
-                            if ((groundh * 10000) % 1 == 0) {
+                            if (y < 15 && (groundh * 10000) % 1 == 0) {
                                 chunk.addBlock(x, y + 1, z, itemGrass);
                             }
                         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {

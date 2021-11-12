@@ -15,6 +15,7 @@ import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.TextureAtlasManager;
+import org.delaunois.ialon.TextureAtlas;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -25,7 +26,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jme3tools.optimize.TextureAtlas;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
