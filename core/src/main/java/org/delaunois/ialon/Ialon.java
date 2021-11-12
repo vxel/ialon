@@ -154,7 +154,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         // Block world setup depends on the player position
         initBlockFramework();
-        org.delaunois.ialon.control.SunControl sunControl = initSun(playerStateDTO.getTime());
+        SunControl sunControl = initSun(playerStateDTO.getTime());
         initMoon(sunControl);
         initSky(sunControl);
         initInputManager();
@@ -314,6 +314,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
             if (playerStateDTO.getRotation() != null) {
                 cam.setRotation(playerStateDTO.getRotation());
             }
+        } else {
+            playerStateDTO = new PlayerStateDTO();
         }
 
         playerState.setEnabled(false);
