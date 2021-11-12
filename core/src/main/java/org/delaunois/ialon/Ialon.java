@@ -256,7 +256,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         sunMat.setParam("VertexColor", VarType.Boolean, true );
         sun.setMaterial(sunMat);
 
-        atlasManager.getAtlas().applyCoords(sun);
+        atlasManager.getAtlas().applyCoords(sun, 0.1f);
         sunMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
 
         sunControl = new org.delaunois.ialon.control.SunControl();
@@ -283,7 +283,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         moonMat.setTexture("ColorMap", moonTexture);
         moon.setMaterial(moonMat);
 
-        atlasManager.getAtlas().applyCoords(moon);
+        atlasManager.getAtlas().applyCoords(moon, 0.1f);
         moonMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
 
         org.delaunois.ialon.control.MoonControl moonControl = new MoonControl();

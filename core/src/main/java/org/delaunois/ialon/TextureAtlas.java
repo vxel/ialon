@@ -428,6 +428,11 @@ public class TextureAtlas {
         return applyCoords(geom, 0, geom.getMesh());
     }
 
+    public boolean applyCoords(Geometry geom, float padding) {
+        return applyCoords(geom, 0, geom.getMesh(), padding);
+    }
+
+
     /**
      * Applies the texture coordinates to the given output mesh
      * if the DiffuseMap or ColorMap of the input geometry exist in the atlas.
@@ -437,6 +442,21 @@ public class TextureAtlas {
      * @return true if texture has been found and coords have been changed, false otherwise.
      */
     public boolean applyCoords(Geometry geom, int offset, Mesh outMesh) {
+        return applyCoords(geom, offset, outMesh, 0);
+    }
+
+    /**
+     * Applies the texture coordinates to the given output mesh
+     * if the DiffuseMap or ColorMap of the input geometry exist in the atlas.
+     * @param geom The geometry to change the texture coordinate buffer on.
+     * @param offset Target buffer offset.
+     * @param outMesh The mesh to set the coords in (can be same as input).
+     * @param padding the percentage of padding added to the new texture coordinate. Used
+     *                to prevent color bleeding artifact due to the use of the atlas.
+     *                Value range between 0 (no padding) and 0.5f (entirely padded).
+     * @return true if texture has been found and coords have been changed, false otherwise.
+     */
+    public boolean applyCoords(Geometry geom, int offset, Mesh outMesh, float padding) {
         Mesh inMesh = geom.getMesh();
         geom.computeWorldMatrix();
 
@@ -457,7 +477,7 @@ public class TextureAtlas {
             if (tile != null) {
                 FloatBuffer inPos = (FloatBuffer) inBuf.getData();
                 FloatBuffer outPos = (FloatBuffer) outBuf.getData();
-                tile.transformTextureCoords(inPos, offset, outPos);
+                tile.transformTextureCoords(inPos, offset, outPos, padding);
                 return true;
             } else {
                 return false;
@@ -640,16 +660,20 @@ public class TextureAtlas {
         /**
          * Get the transformed texture coordinate for a given input location.
          * @param previousLocation The old texture coordinate.
+         * @param padding the percentage of padding added to the new texture coordinate. Used
+         *                to prevent color bleeding artifact due to the use of the atlas.
+         *                Value range between 0 (no padding) and 0.5f (entirely padded).
          * @return The new texture coordinate inside the atlas.
          */
-        public Vector2f getLocation(Vector2f previousLocation) {
+        public Vector2f getLocation(Vector2f previousLocation, float padding) {
             float x = getX() / (float) atlasWidth;
             float y = getY() / (float) atlasHeight;
             float w = getWidth() / (float) atlasWidth;
             float h = getHeight() / (float) atlasHeight;
+            float paddingScale = 1 - 2 * padding;
             Vector2f location = new Vector2f(x, y);
-            float prevX = previousLocation.x;
-            float prevY = previousLocation.y;
+            float prevX = previousLocation.x * paddingScale + padding;
+            float prevY = previousLocation.y * paddingScale + padding;
             location.addLocal(prevX * w, prevY * h);
             return location;
         }
@@ -661,6 +685,19 @@ public class TextureAtlas {
          * @param outBuf The output buffer.
          */
         public void transformTextureCoords(FloatBuffer inBuf, int offset, FloatBuffer outBuf) {
+            transformTextureCoords(inBuf, offset, outBuf, 0);
+        }
+
+        /**
+         * Transforms a whole texture coordinates buffer.
+         * @param inBuf The input texture buffer.
+         * @param offset The offset in the output buffer
+         * @param outBuf The output buffer.
+         * @param padding the percentage of padding added to the new texture coordinate. Used
+         *                to prevent color bleeding artifact due to the use of the atlas.
+         *                Value range between 0 (no padding) and 0.5f (entirely padded).
+         */
+        public void transformTextureCoords(FloatBuffer inBuf, int offset, FloatBuffer outBuf, float padding) {
             Vector2f tex = new Vector2f();
 
             // offset is given in element units
@@ -670,7 +707,7 @@ public class TextureAtlas {
             for (int i = 0; i < inBuf.limit() / 2; i++) {
                 tex.x = inBuf.get(i * 2 + 0);
                 tex.y = inBuf.get(i * 2 + 1);
-                Vector2f location = getLocation(tex);
+                Vector2f location = getLocation(tex, padding);
                 //TODO: add proper texture wrapping for atlases..
                 outBuf.put(offset + i * 2 + 0, location.x);
                 outBuf.put(offset + i * 2 + 1, location.y);
