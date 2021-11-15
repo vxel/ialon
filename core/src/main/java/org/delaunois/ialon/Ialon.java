@@ -21,8 +21,6 @@ import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Quad;
 import com.jme3.shader.VarType;
-import com.jme3.system.JmeSystem;
-import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -49,10 +47,6 @@ import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.WireframeState;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -141,6 +135,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
 
         atlasManager = new TextureAtlasManager();
+        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
         atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
         atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
 
@@ -160,7 +155,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         initSky(sunControl);
         initInputManager();
 
-        //dumpAtlas();
+        atlasManager.dump();
 
         cam.setFrustumNear(0.1f);
         cam.setFrustumFar(400f);
@@ -241,15 +236,21 @@ public class Ialon extends SimpleApplication implements ActionListener {
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
 
-        Ground groundPlate = new Ground(500, 500);
+        Ground groundPlate = new Ground(20, 20);
         Geometry ground = new Geometry("ground", groundPlate);
         ground.setQueueBucket(RenderQueue.Bucket.Sky);
         ground.setCullHint(Spatial.CullHint.Never);
         ground.setShadowMode(RenderQueue.ShadowMode.Off);
 
+        Texture groundTexture = assetManager.loadTexture("Textures/ground.png");
         Material groundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        groundMat.setTexture("ColorMap", groundTexture);
         groundMat.setColor("Color", skyControl.getGroundColor());
         ground.setMaterial(groundMat);
+        atlasManager.getAtlas().applyCoords(ground, 0.1f);
+        groundMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
+
 
         ground.addControl(new FollowCamControl(cam));
 
@@ -257,7 +258,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         rootNode.attachChildAt(sky, 0);
     }
 
-    private org.delaunois.ialon.control.SunControl initSun(float time) {
+    private SunControl initSun(float time) {
         Geometry sun = new Geometry("Sun", new Quad(15f, 15f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
@@ -299,7 +300,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         atlasManager.getAtlas().applyCoords(moon, 0.1f);
         moonMat.setTexture("ColorMap", atlasManager.getDiffuseMap());
 
-        org.delaunois.ialon.control.MoonControl moonControl = new MoonControl();
+        MoonControl moonControl = new MoonControl();
         moonControl.setCam(cam);
         moonControl.setSun(sun);
         moon.addControl(moonControl);
@@ -487,30 +488,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
                         playerState.getPlayerLocation(),
                         cam.getRotation(),
                         sunControl.getTime()));
-    }
-
-    private void dumpAtlas() {
-        Image img = atlasManager.getDiffuseMap().getImage().clone();
-        ByteBuffer sourceData = img.getData(0);
-        ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
-        OutputStream out = null;
-        try {
-            out = new FileOutputStream("atlas.png");
-            for (int i = 0; i < sourceData.limit(); i++) {
-                outData.put(i, sourceData.get(i));
-            }
-            JmeSystem.writeImageFile(out, "png", outData, img.getWidth(), img.getHeight());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
 }
