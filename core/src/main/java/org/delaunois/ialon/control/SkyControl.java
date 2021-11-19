@@ -8,7 +8,6 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.control.AbstractControl;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.GROUND_DAY_COLOR;
@@ -17,17 +16,12 @@ import static org.delaunois.ialon.Config.GROUND_NIGHT_COLOR;
 import static org.delaunois.ialon.Config.SKY_DAY_COLOR;
 import static org.delaunois.ialon.Config.SKY_EVENING_COLOR;
 import static org.delaunois.ialon.Config.SKY_NIGHT_COLOR;
-import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
-@RequiredArgsConstructor
 public class SkyControl extends AbstractControl {
 
-    private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
-
     private final SunControl sun;
-
-    private long lastUpdate = System.currentTimeMillis();
+    private final float updateThreshold;
 
     @Getter
     private final ColorRGBA color = new ColorRGBA();
@@ -35,10 +29,21 @@ public class SkyControl extends AbstractControl {
     @Getter
     private final ColorRGBA groundColor = new ColorRGBA();
 
+    private long lastUpdate = 0;
+
+    public SkyControl(SunControl sun) {
+        this.sun = sun;
+        if (sun.getTimeFactor() > 0) {
+            updateThreshold = 1 / (sun.getTimeFactor() * 2);
+        } else {
+            updateThreshold = Float.MAX_VALUE;
+        }
+    }
+
     @Override
     protected void controlUpdate(float tpf) {
         long now = System.currentTimeMillis();
-        if (now - lastUpdate > UPDATE_THRESHOLD) {
+        if (lastUpdate == 0 || now - lastUpdate > updateThreshold) {
             lastUpdate = now;
 
             float sunHeight = sun.getSunHeight();

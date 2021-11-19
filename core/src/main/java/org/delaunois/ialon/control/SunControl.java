@@ -18,7 +18,6 @@ import java.nio.FloatBuffer;
 import java.time.LocalTime;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,22 +30,16 @@ import static org.delaunois.ialon.Config.SUN_INTENSITY;
 import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
-@RequiredArgsConstructor
 public class SunControl extends AbstractControl {
 
-    private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
-
     @Getter
-    @Setter
     private float time = FastMath.HALF_PI;
 
     @Getter
-    @Setter
-    private Vector3f position = new Vector3f();
+    private final Vector3f position = new Vector3f();
 
     @Getter
-    @Setter
-    private float timeFactor = TIME_FACTOR;
+    private float timeFactor;
 
     @Getter
     @Setter
@@ -56,18 +49,34 @@ public class SunControl extends AbstractControl {
     @Setter
     private AmbientLight ambientLight;
 
-    private final Camera cam;
-
     @Getter
     private boolean run = true;
 
-    private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
-
-    private long lastUpdate = System.currentTimeMillis();
+    @Getter
     private float sunHeight;
 
-    public float getSunHeight() {
-        return sunHeight;
+    private final Camera cam;
+    private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
+    private long lastUpdate = 0;
+    private float updateThreshold = 0;
+
+    public SunControl(Camera cam) {
+        this.cam = cam;
+        setTimeFactor(TIME_FACTOR);
+    }
+
+    public void setTimeFactor(float timeFactor) {
+        this.timeFactor = timeFactor;
+        if (timeFactor > 0) {
+            updateThreshold = 1 / (timeFactor * 2);
+        } else {
+            updateThreshold = Float.MAX_VALUE;
+        }
+    }
+
+    public void setTime(float time) {
+        this.time = time;
+        this.lastUpdate = 0;
     }
 
     @Override
@@ -77,31 +86,9 @@ public class SunControl extends AbstractControl {
         }
 
         long now = System.currentTimeMillis();
-        if (now - lastUpdate > UPDATE_THRESHOLD) {
+        if (lastUpdate == 0 || now - lastUpdate > updateThreshold) {
+            updateSun();
             lastUpdate = now;
-            sunHeight = FastMath.sin(time);
-            float x = FastMath.cos(time) * 100f;
-            float z = FastMath.sin(time) * 100f;
-            float y = sunHeight * SUN_AMPLITUDE * 10f;
-            position.set(x, y, z);
-
-            if (directionalLight != null) {
-                directionalLight.setDirection(position.negate());
-            }
-
-            float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
-
-            if (sunHeight > 0) {
-                sunColor.interpolateLocal(EVENING_COLOR, DAY_COLOR, shift);
-                directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
-                ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
-            } else {
-                sunColor.interpolateLocal(EVENING_COLOR, NIGHT_COLOR, shift);
-                directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
-                ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
-            }
-
-            setSunColor(sunColor, sunColor);
         }
 
         spatial.setLocalTranslation((cam.getLocation().add(position)));
@@ -112,6 +99,30 @@ public class SunControl extends AbstractControl {
         if (log.isTraceEnabled()) {
             log.trace("Time is now {} ({})", getLocalTime(), FastMath.sin(time));
         }
+    }
+
+    private void updateSun() {
+        sunHeight = FastMath.sin(time);
+        float x = FastMath.cos(time) * 100f;
+        float z = FastMath.sin(time) * 100f;
+        float y = sunHeight * SUN_AMPLITUDE * 10f;
+        position.set(x, y, z);
+
+        if (directionalLight != null) {
+            directionalLight.setDirection(position.negate());
+        }
+
+        float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
+
+        if (sunHeight > 0) {
+            sunColor.interpolateLocal(EVENING_COLOR, DAY_COLOR, shift);
+        } else {
+            sunColor.interpolateLocal(EVENING_COLOR, NIGHT_COLOR, shift);
+        }
+        directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
+        ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
+
+        setSunColor(sunColor, sunColor);
     }
 
     private void setSunColor(ColorRGBA down, ColorRGBA up) {
@@ -132,7 +143,6 @@ public class SunControl extends AbstractControl {
 
     @Override
     protected void controlRender(RenderManager rm, ViewPort vp) {
-
     }
 
     public void toggleTimeRun() {
