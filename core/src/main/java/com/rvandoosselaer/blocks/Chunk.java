@@ -35,6 +35,8 @@ public class Chunk {
     // For CPU optimization
     private static final Vec3i CHUNK_SIZE = BlocksConfig.getInstance().getChunkSize();
     private static final BlockRegistry REGISTRY = BlocksConfig.getInstance().getBlockRegistry();
+    private static final ColorRGBA WATER_COLOR_FILTER = ColorRGBA.fromRGBA255(52, 160, 255, 1);
+    private static final String WATER_BLOCK = "water-liquid";
 
     // a one dimensional array is quicker to lookup blocks then a 3n array
     @Setter
@@ -77,10 +79,13 @@ public class Chunk {
     @Setter
     private byte[] lightMap;
 
+    private final short water_liquid_id;
+
     // To avoid many instanciation of Vec3i (costly)
     private final Vec3i v = new Vec3i();
 
     public Chunk(@NonNull Vec3i location) {
+        water_liquid_id = REGISTRY.get("water-liquid").getId();
         setLocation(location);
         setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
         setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
@@ -336,12 +341,12 @@ public class Chunk {
 
     public Vector4f applyAO(Vector4f color, int ao) {
         int shift = Math.max(1, 3 - ao);
-        int torchlight = ((int)color.x) & 0xF;
-        int sunlight = (((int)color.x) >> 4) & 0xF;
+        int torchlight = ((int)color.w) & 0xF;
+        int sunlight = (((int)color.w) >> 4) & 0xF;
         torchlight = torchlight / shift;
         sunlight = sunlight / shift;
-        int light = (sunlight << 4 | torchlight);
-        return new Vector4f(light, light, light, color.w);
+        int lightLevel = (sunlight << 4 | torchlight);
+        return new Vector4f(color.x, color.y, color.z, lightLevel);
     }
 
     public int vertexAO(Block sideBlock1, Block sideBlock2, Block cornerBlock) {
@@ -414,39 +419,23 @@ public class Chunk {
         return chunkResolver != null;
     }
 
-    public ColorRGBA getLight(Vec3i blockLocation, Direction direction) {
-        // Beware of CPU optimization : method heavily used
+    /**
+     * Gets the light at the given block location
+     * @param blockLocation the block location within the chunk
+     * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
+     */
+    public Vector4f getLightLevel(Vec3i blockLocation) {
         int x = blockLocation.x;
         int y = blockLocation.y;
         int z = blockLocation.z;
-
-        if (direction != null) {
-            x += direction.getVector().x;
-            y += direction.getVector().y;
-            z += direction.getVector().z;
-        }
-
-        if (isInsideChunk(x, y, z)) {
-            return getLight(x, y, z);
-        }
-
-        if (hasChunkResolver()) {
-            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, x, y, z);
-            Chunk chunk = chunkResolver.unsafeFastGet(v.set(loc[0], loc[1], loc[2]));
-            if (chunk != null) {
-                return chunk.getLight(loc[3], loc[4], loc[5]);
-            } else {
-                return ColorRGBA.Black;
-            }
-        }
-
-        return ColorRGBA.Black;
+        return getLightLevel(x, y, z, null, WATER_COLOR_FILTER);
     }
 
-    public Vector4f getLightLevel(Vec3i blockLocation) {
-        return getLightLevel(blockLocation, null);
-    }
-
+    /**
+     * Gets the light for the face towards the given direction, at the given block location
+     * @param blockLocation the block location within the chunk
+     * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
+     */
     public Vector4f getLightLevel(Vec3i blockLocation, Direction direction) {
         // Beware of CPU optimization : method heavily used
         int x = blockLocation.x;
@@ -460,20 +449,24 @@ public class Chunk {
         }
 
         if (isInsideChunk(x, y, z)) {
-            return getLightLevel(x, y, z);
+            return getLightLevel(x, y, z, direction, WATER_COLOR_FILTER);
         }
 
         if (hasChunkResolver()) {
             int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, x, y, z);
             Chunk chunk = chunkResolver.unsafeFastGet(new Vec3i(loc[0], loc[1], loc[2]));
             if (chunk != null) {
-                return chunk.getLightLevel(loc[3], loc[4], loc[5]);
+                return chunk.getLightLevel(loc[3], loc[4], loc[5], direction, WATER_COLOR_FILTER);
             } else {
                 return Vector4f.ZERO;
             }
         }
 
         return Vector4f.ZERO;
+    }
+
+    public Vector4f applyColorFilter(Vector4f color) {
+        return color;
     }
 
     int[] computeNeighbourCoordinates(int clx, int cly, int clz, int blx, int bly, int blz) {
@@ -506,19 +499,30 @@ public class Chunk {
         return new int[]{ cx, cy, cz, x, y, z };
     }
 
-    public ColorRGBA getLight(Vec3i location) {
-        return getLight(location, null);
-    }
-
-    public ColorRGBA getLight(int x, int y, int z) {
-        int i = calculateIndex(x, y, z);
-        int intensity = Math.max(getSunlight(i), getTorchlight(i));
-        return ColorRGBA.White.mult(intensity*intensity/225f);
-    }
-
-    public Vector4f getLightLevel(int x, int y, int z) {
-        int light = this.lightMap[calculateIndex(x, y, z)];
-        return new Vector4f(light, light, light, 1);
+    /**
+     * Gets the light at the given block location and optionally apply the color
+     * filter if the block has the given name.
+     * @param x the x coordinate of the block location within the chunk
+     * @param y the y coordinate of the block location within the chunk
+     * @param z the z coordinate of the block location within the chunk
+     * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
+     */
+    private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color) {
+        int index = calculateIndex(x, y, z);
+        int level = this.lightMap[calculateIndex(x, y, z)];
+        ColorRGBA lightColor = ColorRGBA.White;
+        if (color != null) {
+            short bId = this.blocks[index];
+            if (bId > 0) {
+                String shape = REGISTRY.get(bId).getShape();
+                if (shape.startsWith(ShapeIds.LIQUID)) {
+                    if (ShapeIds.LIQUID.equals(shape) || face == Direction.UP) {
+                        lightColor = color;
+                    }
+                }
+            }
+        }
+        return new Vector4f(lightColor.r, lightColor.g, lightColor.b, level);
     }
 
     public int getSunlight(int x, int y, int z) {
@@ -572,7 +576,7 @@ public class Chunk {
      */
     private static int calculateIndex(int x, int y, int z) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
-        return z + (y * chunkSize.z) + (x * chunkSize.y * chunkSize.z);
+        return z + (y + x * chunkSize.y) * chunkSize.z;
     }
 
 }

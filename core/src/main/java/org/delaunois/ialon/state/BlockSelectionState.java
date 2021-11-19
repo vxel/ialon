@@ -533,7 +533,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
             int vc = geometry.getMesh().getVertexCount();
             FloatBuffer buf = BufferUtils.createFloatBuffer(vc * 4);
-            for (int i = 0; i < buf.capacity(); i++) {
+            for (int i = 0; i < vc; i++) {
+                // White light color
+                buf.put(1);
+                buf.put(1);
+                buf.put(1);
                 // Max sun
                 buf.put(240);
             }

@@ -5,7 +5,9 @@ import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
+import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.control.CharacterControl;
+import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.input.InputManager;
@@ -34,6 +36,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.debug.WireBox;
 import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Sphere;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Direction;
@@ -81,6 +84,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private static final String ACTION_FORWARD = "forward";
     private static final String ACTION_BACKWARD = "backward";
     private static final String ACTION_JUMP = "jump";
+    private static final String ACTION_FIRE = "fire";
     private static final String ACTION_FLY = "fly";
     private static final String ACTION_FLY_UP = "fly_up";
     private static final String ACTION_FLY_DOWN = "fly_down";
@@ -101,6 +105,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             ACTION_FORWARD,
             ACTION_BACKWARD,
             ACTION_JUMP,
+            ACTION_FIRE,
             ACTION_FLY,
             ACTION_FLY_UP,
             ACTION_FLY_DOWN,
@@ -176,6 +181,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f camLocation = new Vector3f();
     private final Vector3f move = new Vector3f();
     private long lastCollisionTest = System.currentTimeMillis();
+    private Material ballMaterial;
 
     @Override
     protected void initialize(Application simpleApp) {
@@ -223,7 +229,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         camDir.set(camera.getDirection());
         camLeft.set(camera.getLeft());
         camUp.set(camera.getUp());
-        walkDirection.set(0, 0, 0);
+        walkDirection.multLocal(0.9f);
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
 
@@ -254,7 +260,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         if (move.length() > 0) {
             move.normalizeLocal().multLocal(fly ? PLAYER_FLY_SPEED : PLAYER_MOVE_SPEED);
-            walkDirection.addLocal(move);
+            walkDirection.set(move);
         }
 
         player.setWalkDirection(walkDirection);
@@ -287,6 +293,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         inputManager.addMapping(ACTION_FORWARD, new KeyTrigger(KeyInput.KEY_Z));
         inputManager.addMapping(ACTION_BACKWARD, new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping(ACTION_JUMP, new KeyTrigger(KeyInput.KEY_SPACE));
+        inputManager.addMapping(ACTION_FIRE, new KeyTrigger(KeyInput.KEY_RETURN));
 
         inputManager.addMapping(ACTION_FLY, new KeyTrigger(KeyInput.KEY_F));
         inputManager.addMapping(ACTION_FLY_UP, new KeyTrigger(KeyInput.KEY_UP));
@@ -490,8 +497,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         } else if (fly && ACTION_FLY_DOWN.equals(name)) {
             down = isPressed;
 
-        } else if (!fly && ACTION_JUMP.equals(name)) {
+        } else if (!fly && ACTION_JUMP.equals(name) && isPressed) {
             playerJump();
+
+        } else if (ACTION_FIRE.equals(name) && isPressed) {
+            fireBall();
 
         } else if (ACTION_FLY.equals(name) && isPressed) {
             fly = !fly;
@@ -510,6 +520,20 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 }
             }
         }
+    }
+
+    private void fireBall() {
+        Geometry ball = new Geometry("ball", new Sphere(32, 32, 0.4f));
+        ball.setMaterial(getBallMaterial());
+        ball.setLocalTranslation(app.getCamera().getLocation());
+        ball.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+
+        RigidBodyControl bulletControl = new RigidBodyControl(new SphereCollisionShape(0.4f), 20);
+        bulletControl.setLinearVelocity(app.getCamera().getDirection().mult(25));
+        ball.addControl(bulletControl);
+
+        app.getRootNode().attachChild(ball);
+        app.getStateManager().getState(BulletAppState.class).getPhysicsSpace().add(bulletControl);
     }
 
     private void playerJump() {
@@ -828,5 +852,15 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         cam.setAxes(q);
     }
 
+    private Material getBallMaterial() {
+        if (ballMaterial == null) {
+            ballMaterial = new Material(app.getAssetManager(), "Common/MatDefs/Light/Lighting.j3md");
+            ColorRGBA color = ColorRGBA.randomColor();
+            ballMaterial.setColor("Diffuse", color);
+            ballMaterial.setColor("Ambient", color);
+            ballMaterial.setBoolean("UseMaterialColors", true);
+        }
+        return ballMaterial;
+    }
 
 }

@@ -77,7 +77,7 @@ public class FloatingCube implements Shape {
     }
 
     private void enlightFace(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevel(location, null);
+        Vector4f color = chunk.getLightLevel(location);
         List<Vector4f> colors = chunkMesh.getColors();
         colors.add(color);
         colors.add(color);

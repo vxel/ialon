@@ -277,7 +277,11 @@ public class Liquid implements Shape {
         if (neighbour.getType().equals(TypeIds.WATER)) {
             return false;
         }
+        return neighbour.isTransparent();
+
+        /*
         return true;
+        */
     }
 
 }
