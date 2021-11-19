@@ -16,10 +16,6 @@ uniform float m_Shininess;
 #endif
 uniform vec4 g_AmbientLightColor;
 
-varying vec3 AmbientSum;
-varying vec4 DiffuseSum;
-varying vec3 SpecularSum;
-
 attribute vec3 inPosition;
 attribute vec2 inTexCoord;
 attribute vec3 inNormal;
@@ -38,27 +34,32 @@ const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 
 flat out vec2 wrapCoordMin;
 flat out vec2 wrapCoordMax;
+
+out vec3 AmbientSum;
+out vec4 DiffuseSum;
+out vec3 SpecularSum;
+
 out vec2 texCoord;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
-    const float gamma = 2.0;
+    const float lightDecay = 2.0;
     const float levels[16] = float[16](
         0.0,
-        pow(1.0 / 15.0, gamma),
-        pow(2.0 / 15.0, gamma),
-        pow(3.0 / 15.0, gamma),
-        pow(4.0 / 15.0, gamma),
-        pow(5.0 / 15.0, gamma),
-        pow(6.0 / 15.0, gamma),
-        pow(7.0 / 15.0, gamma),
-        pow(8.0 / 15.0, gamma),
-        pow(9.0 / 15.0, gamma),
-        pow(10.0 / 15.0, gamma),
-        pow(11.0 / 15.0, gamma),
-        pow(12.0 / 15.0, gamma),
-        pow(13.0 / 15.0, gamma),
-        pow(14.0 / 15.0, gamma),
+        pow(1.0 / 15.0, lightDecay),
+        pow(2.0 / 15.0, lightDecay),
+        pow(3.0 / 15.0, lightDecay),
+        pow(4.0 / 15.0, lightDecay),
+        pow(5.0 / 15.0, lightDecay),
+        pow(6.0 / 15.0, lightDecay),
+        pow(7.0 / 15.0, lightDecay),
+        pow(8.0 / 15.0, lightDecay),
+        pow(9.0 / 15.0, lightDecay),
+        pow(10.0 / 15.0, lightDecay),
+        pow(11.0 / 15.0, lightDecay),
+        pow(12.0 / 15.0, lightDecay),
+        pow(13.0 / 15.0, lightDecay),
+        pow(14.0 / 15.0, lightDecay),
         1.0
     );
 #endif
@@ -109,12 +110,13 @@ void main() {
     #endif
 
     #ifdef VERTEX_COLOR
-         int SunIntensity = (int(inColor.r) >> 4) & 0xF;
-         int TorchIntensity = (int(inColor.r)) & 0xF;
-         float lightLevel = min(levels[SunIntensity], AmbientSum.r);
+         int SunIntensity = (int(inColor.a) >> 4) & 0xF;
+         int TorchIntensity = (int(inColor.a)) & 0xF;
+         float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;
+         float lightLevel = min(levels[SunIntensity], lum);
          lightLevel = max(lightLevel, levels[TorchIntensity]);
-         AmbientSum = vec3(lightLevel, lightLevel, lightLevel);
-         DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, inColor.a);
+         AmbientSum = vec3(lightLevel, lightLevel, lightLevel) * inColor.rgb;
+         DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, 1);
     #endif
 
     #ifdef VERTEX_LIGHTING

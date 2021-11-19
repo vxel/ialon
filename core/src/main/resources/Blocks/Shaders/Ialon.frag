@@ -1,10 +1,6 @@
 #import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "Blocks/Shaders/BlendFunctions.glsllib"
 
-varying vec2 texCoord;
-varying vec3 AmbientSum;
-varying vec4 DiffuseSum;
-
 const float ATLAS_SIZE = 2048.0;
 const float TEX_SIZE = 128.0;
 const float NUM_TEXTURES = ATLAS_SIZE / TEX_SIZE;
@@ -12,18 +8,20 @@ const float UV_TEX_SIZE = 1.0 / NUM_TEXTURES;
 const float UV_PADDING = 0.25 * UV_TEX_SIZE;
 const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 
-flat in vec2 wrapCoordMin;
-flat in vec2 wrapCoordMax;
-
 #ifdef DIFFUSEMAP
   uniform sampler2D m_DiffuseMap;
 #endif
 
 uniform float m_AlphaDiscardThreshold;
-
-// overlay map and color
 uniform sampler2D m_OverlayMap;
 uniform vec4 m_OverlayColor;
+
+flat in vec2 wrapCoordMin;
+flat in vec2 wrapCoordMax;
+
+in vec2 texCoord;
+in vec3 AmbientSum;
+in vec4 DiffuseSum;
 
 void main() {
 
