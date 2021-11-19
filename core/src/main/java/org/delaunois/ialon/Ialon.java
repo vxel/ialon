@@ -405,7 +405,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private void registerIalonBlocks() {
         for (IalonBlock block : IalonBlock.values() ) {
             BlocksConfig.getInstance().getTypeRegistry().register(block.getName());
-            BlockDefinition def = new BlockDefinition(block.getName(), true, false, false)
+            BlockDefinition def = new BlockDefinition(block.getName(), block.isSolid(), block.isTransparent(), false)
                     .addShapes(ShapeIds.CUBE)
                     .addShapes(ShapeIds.ALL_PYRAMIDS)
                     .addShapes(ShapeIds.ALL_WEDGES)

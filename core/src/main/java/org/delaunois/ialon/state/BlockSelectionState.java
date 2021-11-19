@@ -91,6 +91,8 @@ import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
 import static org.delaunois.ialon.IalonBlock.METAL4;
 import static org.delaunois.ialon.IalonBlock.METAL5;
+import static org.delaunois.ialon.IalonBlock.SLATE;
+import static org.delaunois.ialon.IalonBlock.TILE_RED;
 
 
 public class BlockSelectionState extends BaseAppState implements ActionListener, AnalogListener {
@@ -186,6 +188,28 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRAVEL, STAIRS_EAST),
             getName(GRAVEL, STAIRS_INNER_CORNER_SOUTH),
             getName(GRAVEL, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(SLATE, CUBE),
+            getName(SLATE, DOUBLE_SLAB),
+            getName(SLATE, SLAB),
+            getName(SLATE, PLATE),
+            getName(SLATE, WEDGE_SOUTH),
+            getName(SLATE, PYRAMID),
+            getName(SLATE, POLE),
+            getName(SLATE, STAIRS_EAST),
+            getName(SLATE, STAIRS_INNER_CORNER_SOUTH),
+            getName(SLATE, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(TILE_RED, CUBE),
+            getName(TILE_RED, DOUBLE_SLAB),
+            getName(TILE_RED, SLAB),
+            getName(TILE_RED, PLATE),
+            getName(TILE_RED, WEDGE_SOUTH),
+            getName(TILE_RED, PYRAMID),
+            getName(TILE_RED, POLE),
+            getName(TILE_RED, STAIRS_EAST),
+            getName(TILE_RED, STAIRS_INNER_CORNER_SOUTH),
+            getName(TILE_RED, STAIRS_OUTER_CORNER_SOUTH),
 
             getName(PALM_TREE_LOG, CUBE),
             getName(PALM_TREE_LOG, DOUBLE_SLAB),

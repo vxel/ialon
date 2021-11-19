@@ -1,0 +1,20 @@
+Material window : Blocks/MatDefs/Ialon.j3md {
+
+    MaterialParameters {
+        Shininess: 0
+        UseVertexColor: true
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
+        VertexLighting: true
+        DiffuseMap: MagNearest MinNearestNoMipMaps ialon-theme/metal2.png
+        AlphaDiscardThreshold : 0.1
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+        FaceCull Off
+        PolyOffset -0.3 -0.3
+    }
+
+}
