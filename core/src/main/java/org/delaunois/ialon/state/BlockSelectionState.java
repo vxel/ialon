@@ -19,6 +19,7 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.util.BufferUtils;
 import com.rvandoosselaer.blocks.Block;
+import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
@@ -36,6 +37,7 @@ import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +72,7 @@ import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_PLANKS;
 import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
 import static com.rvandoosselaer.blocks.BlockIds.WHITE_CUBE_LIGHT;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
-import static com.rvandoosselaer.blocks.BlockIds.getName;
+import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
@@ -84,6 +86,11 @@ import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
 import static com.rvandoosselaer.blocks.TypeIds.WATER;
+import static org.delaunois.ialon.IalonBlock.METAL1;
+import static org.delaunois.ialon.IalonBlock.METAL2;
+import static org.delaunois.ialon.IalonBlock.METAL3;
+import static org.delaunois.ialon.IalonBlock.METAL4;
+import static org.delaunois.ialon.IalonBlock.METAL5;
 
 
 public class BlockSelectionState extends BaseAppState implements ActionListener, AnalogListener {
@@ -92,10 +99,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     public static String SPACER = null;
     public static String[] BLOCK_IDS = {
-            GRASS,
+            getName(GRASS, CUBE),
             getName(GRASS, DOUBLE_SLAB),
             getName(GRASS, SLAB),
-            GRASS_SNOW,
+            getName(GRASS_SNOW, CUBE),
             getName(GRASS_SNOW, DOUBLE_SLAB),
             getName(GRASS_SNOW, SLAB),
             getName(WATER, LIQUID),
@@ -103,7 +110,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(SCALE, SQUARE_NORTH),
             SPACER,
 
-            DIRT,
+            getName(DIRT, CUBE),
             getName(DIRT, DOUBLE_SLAB),
             getName(DIRT, SLAB),
             getName(DIRT, PLATE),
@@ -114,7 +121,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(DIRT, STAIRS_INNER_CORNER_SOUTH),
             getName(DIRT, STAIRS_OUTER_CORNER_SOUTH),
 
-            BIRCH_LOG,
+            getName(BIRCH_LOG, CUBE),
             getName(BIRCH_LOG, DOUBLE_SLAB),
             getName(BIRCH_LOG, SLAB),
             getName(BIRCH_LOG, PLATE),
@@ -125,7 +132,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             SPACER,
             SPACER,
 
-            BIRCH_PLANKS,
+            getName(BIRCH_PLANKS, CUBE),
             getName(BIRCH_PLANKS, DOUBLE_SLAB),
             getName(BIRCH_PLANKS, SLAB),
             getName(BIRCH_PLANKS, PLATE),
@@ -136,7 +143,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(BIRCH_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(BIRCH_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            BRICKS,
+            getName(BRICKS, CUBE),
             getName(BRICKS, DOUBLE_SLAB),
             getName(BRICKS, SLAB),
             getName(BRICKS, PLATE),
@@ -147,7 +154,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(BRICKS, STAIRS_INNER_CORNER_SOUTH),
             getName(BRICKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            COBBLESTONE,
+            getName(COBBLESTONE, CUBE),
             getName(COBBLESTONE, DOUBLE_SLAB),
             getName(COBBLESTONE, SLAB),
             getName(COBBLESTONE, PLATE),
@@ -158,7 +165,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(COBBLESTONE, STAIRS_INNER_CORNER_SOUTH),
             getName(COBBLESTONE, STAIRS_OUTER_CORNER_SOUTH),
 
-            MOSSY_COBBLESTONE,
+            getName(MOSSY_COBBLESTONE, CUBE),
             getName(MOSSY_COBBLESTONE, DOUBLE_SLAB),
             getName(MOSSY_COBBLESTONE, SLAB),
             getName(MOSSY_COBBLESTONE, PLATE),
@@ -169,7 +176,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(MOSSY_COBBLESTONE, STAIRS_INNER_CORNER_SOUTH),
             getName(MOSSY_COBBLESTONE, STAIRS_OUTER_CORNER_SOUTH),
 
-            GRAVEL,
+            getName(GRAVEL, CUBE),
             getName(GRAVEL, DOUBLE_SLAB),
             getName(GRAVEL, SLAB),
             getName(GRAVEL, PLATE),
@@ -180,7 +187,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRAVEL, STAIRS_INNER_CORNER_SOUTH),
             getName(GRAVEL, STAIRS_OUTER_CORNER_SOUTH),
 
-            PALM_TREE_LOG,
+            getName(PALM_TREE_LOG, CUBE),
             getName(PALM_TREE_LOG, DOUBLE_SLAB),
             getName(PALM_TREE_LOG, SLAB),
             getName(PALM_TREE_LOG, PLATE),
@@ -191,7 +198,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             SPACER,
             SPACER,
 
-            PALM_TREE_PLANKS,
+            getName(PALM_TREE_PLANKS, CUBE),
             getName(PALM_TREE_PLANKS, DOUBLE_SLAB),
             getName(PALM_TREE_PLANKS, SLAB),
             getName(PALM_TREE_PLANKS, PLATE),
@@ -202,7 +209,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(PALM_TREE_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(PALM_TREE_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            ROCK,
+            getName(ROCK, CUBE),
             getName(ROCK, DOUBLE_SLAB),
             getName(ROCK, SLAB),
             getName(ROCK, PLATE),
@@ -213,7 +220,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(ROCK, STAIRS_INNER_CORNER_SOUTH),
             getName(ROCK, STAIRS_OUTER_CORNER_SOUTH),
 
-            OAK_LOG,
+            getName(OAK_LOG, CUBE),
             getName(OAK_LOG, DOUBLE_SLAB),
             getName(OAK_LOG, SLAB),
             getName(OAK_LOG, PLATE),
@@ -224,7 +231,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             SPACER,
             SPACER,
 
-            OAK_PLANKS,
+            getName(OAK_PLANKS, CUBE),
             getName(OAK_PLANKS, DOUBLE_SLAB),
             getName(OAK_PLANKS, SLAB),
             getName(OAK_PLANKS, PLATE),
@@ -235,7 +242,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(OAK_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(OAK_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            SAND,
+            getName(SAND, CUBE),
             getName(SAND, DOUBLE_SLAB),
             getName(SAND, SLAB),
             getName(SAND, PLATE),
@@ -246,7 +253,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(SAND, STAIRS_INNER_CORNER_SOUTH),
             getName(SAND, STAIRS_OUTER_CORNER_SOUTH),
 
-            SNOW,
+            getName(SNOW, CUBE),
             getName(SNOW, DOUBLE_SLAB),
             getName(SNOW, SLAB),
             getName(SNOW, PLATE),
@@ -257,7 +264,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(SNOW, STAIRS_INNER_CORNER_SOUTH),
             getName(SNOW, STAIRS_OUTER_CORNER_SOUTH),
 
-            SPRUCE_LOG,
+            getName(SPRUCE_LOG, CUBE),
             getName(SPRUCE_LOG, DOUBLE_SLAB),
             getName(SPRUCE_LOG, SLAB),
             getName(SPRUCE_LOG, PLATE),
@@ -268,7 +275,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             SPACER,
             SPACER,
 
-            SPRUCE_PLANKS,
+            getName(SPRUCE_PLANKS, CUBE),
             getName(SPRUCE_PLANKS, DOUBLE_SLAB),
             getName(SPRUCE_PLANKS, SLAB),
             getName(SPRUCE_PLANKS, PLATE),
@@ -279,7 +286,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(SPRUCE_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(SPRUCE_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            STONE_BRICKS,
+            getName(STONE_BRICKS, CUBE),
             getName(STONE_BRICKS, DOUBLE_SLAB),
             getName(STONE_BRICKS, SLAB),
             getName(STONE_BRICKS, PLATE),
@@ -290,7 +297,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(STONE_BRICKS, STAIRS_INNER_CORNER_SOUTH),
             getName(STONE_BRICKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            MOSSY_STONE_BRICKS,
+            getName(MOSSY_STONE_BRICKS, CUBE),
             getName(MOSSY_STONE_BRICKS, DOUBLE_SLAB),
             getName(MOSSY_STONE_BRICKS, SLAB),
             getName(MOSSY_STONE_BRICKS, PLATE),
@@ -301,11 +308,66 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(MOSSY_STONE_BRICKS, STAIRS_INNER_CORNER_SOUTH),
             getName(MOSSY_STONE_BRICKS, STAIRS_OUTER_CORNER_SOUTH),
 
-            BIRCH_LEAVES,
-            PALM_TREE_LEAVES,
-            OAK_LEAVES,
-            SPRUCE_LEAVES,
-            WINDOW,
+            getName(METAL1, CUBE),
+            getName(METAL1, DOUBLE_SLAB),
+            getName(METAL1, SLAB),
+            getName(METAL1, PLATE),
+            getName(METAL1, WEDGE_SOUTH),
+            getName(METAL1, PYRAMID),
+            getName(METAL1, POLE),
+            getName(METAL1, STAIRS_EAST),
+            getName(METAL1, STAIRS_INNER_CORNER_SOUTH),
+            getName(METAL1, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(METAL2, CUBE),
+            getName(METAL2, DOUBLE_SLAB),
+            getName(METAL2, SLAB),
+            getName(METAL2, PLATE),
+            getName(METAL2, WEDGE_SOUTH),
+            getName(METAL2, PYRAMID),
+            getName(METAL2, POLE),
+            getName(METAL2, STAIRS_EAST),
+            getName(METAL2, STAIRS_INNER_CORNER_SOUTH),
+            getName(METAL2, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(METAL3, CUBE),
+            getName(METAL3, DOUBLE_SLAB),
+            getName(METAL3, SLAB),
+            getName(METAL3, PLATE),
+            getName(METAL3, WEDGE_SOUTH),
+            getName(METAL3, PYRAMID),
+            getName(METAL3, POLE),
+            getName(METAL3, STAIRS_EAST),
+            getName(METAL3, STAIRS_INNER_CORNER_SOUTH),
+            getName(METAL3, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(METAL4, CUBE),
+            getName(METAL4, DOUBLE_SLAB),
+            getName(METAL4, SLAB),
+            getName(METAL4, PLATE),
+            getName(METAL4, WEDGE_SOUTH),
+            getName(METAL4, PYRAMID),
+            getName(METAL4, POLE),
+            getName(METAL4, STAIRS_EAST),
+            getName(METAL4, STAIRS_INNER_CORNER_SOUTH),
+            getName(METAL4, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(METAL5, CUBE),
+            getName(METAL5, DOUBLE_SLAB),
+            getName(METAL5, SLAB),
+            getName(METAL5, PLATE),
+            getName(METAL5, WEDGE_SOUTH),
+            getName(METAL5, PYRAMID),
+            getName(METAL5, POLE),
+            getName(METAL5, STAIRS_EAST),
+            getName(METAL5, STAIRS_INNER_CORNER_SOUTH),
+            getName(METAL5, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(BIRCH_LEAVES, CUBE),
+            getName(PALM_TREE_LEAVES, CUBE),
+            getName(OAK_LEAVES, CUBE),
+            getName(SPRUCE_LEAVES, CUBE),
+            getName(WINDOW, CUBE),
             getName(WINDOW, PLATE),
             getName(WINDOW, SQUARE),
             ITEM_GRASS,
@@ -573,6 +635,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
 
         return buttonContainer;
+    }
+
+    private static String getName(String block, String shape) {
+        return BlockIds.getName(block, shape);
+    }
+
+    private static String getName(IalonBlock block, String shape) {
+        return BlockIds.getName(block.getName(), shape);
     }
 
     @Override

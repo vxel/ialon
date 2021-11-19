@@ -25,7 +25,10 @@ import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.BlocksTheme;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
+import com.rvandoosselaer.blocks.serialize.BlockDefinition;
+import com.rvandoosselaer.blocks.serialize.BlockFactory;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
@@ -119,7 +122,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         super(
                 new StatsAppState(),
                 new IalonDebugState(),
-                new BlockSelectionState(),
                 //new DebugKeysAppState(),
                 new WireframeState(),
                 new LightingState()
@@ -356,6 +358,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
         typeRegistry.setAtlasRepository(atlasManager);
         typeRegistry.registerDefaultMaterials();
 
+        registerIalonBlocks();
+
         //terrainGenerator = new FlatTerrainGenerator(60, BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS));
         terrainGenerator = new NoiseTerrainGenerator(2);
         chunkManager = ChunkManager.builder()
@@ -387,13 +391,31 @@ public class Ialon extends SimpleApplication implements ActionListener {
         chunkPagerState = new ChunkPagerState(chunkPager);
         physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
+        BlockSelectionState blockSelectionState = new BlockSelectionState();
 
         stateManager.attachAll(
                 chunkManagerState,
                 chunkPagerState,
                 physicsChunkPagerState,
-                chunkLiquidManagerState
+                chunkLiquidManagerState,
+                blockSelectionState
         );
+    }
+
+    private void registerIalonBlocks() {
+        for (IalonBlock block : IalonBlock.values() ) {
+            BlocksConfig.getInstance().getTypeRegistry().register(block.getName());
+            BlockDefinition def = new BlockDefinition(block.getName(), true, false, false)
+                    .addShapes(ShapeIds.CUBE)
+                    .addShapes(ShapeIds.ALL_PYRAMIDS)
+                    .addShapes(ShapeIds.ALL_WEDGES)
+                    .addShapes(ShapeIds.ALL_POLES)
+                    .addShapes(ShapeIds.ALL_SLABS)
+                    .addShapes(ShapeIds.ALL_DOUBLE_SLABS)
+                    .addShapes(ShapeIds.ALL_PLATES)
+                    .addShapes(ShapeIds.ALL_STAIRS);
+            BlocksConfig.getInstance().getBlockRegistry().register(BlockFactory.create(def));
+        }
     }
 
     private void initInputManager() {
