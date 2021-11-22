@@ -199,7 +199,7 @@ public class BitmapFontLoader {
         // Update the charset scale parameter to match the new texture
         atlasFont.getCharSet().setWidth(textureAtlas.getAtlasWidth());
         atlasFont.getCharSet().setHeight(textureAtlas.getAtlasHeight());
-
+        
         return atlasFont;
     }
 }

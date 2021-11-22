@@ -198,7 +198,9 @@ public class Ialon extends SimpleApplication implements ActionListener {
         Texture tex = atlasManager.getDiffuseMap();
         tex.setMagFilter(Texture.MagFilter.Bilinear);
         tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
-        atlasFont.getPage(0).getTextureParam("ColorMap").setTextureValue(tex);
+        Material fontMaterial = atlasFont.getPage(0);
+        fontMaterial.getTextureParam("ColorMap").setTextureValue(tex);
+        fontMaterial.setColor("Color", ColorRGBA.White);
 
         // Set the remapped font int the default style
         Styles styles = GuiGlobals.getInstance().getStyles();

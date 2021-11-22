@@ -13,8 +13,6 @@ const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 #endif
 
 uniform float m_AlphaDiscardThreshold;
-uniform sampler2D m_OverlayMap;
-uniform vec4 m_OverlayColor;
 
 flat in vec2 wrapCoordMin;
 flat in vec2 wrapCoordMax;
@@ -54,15 +52,6 @@ void main() {
 
     if (alpha < m_AlphaDiscardThreshold){
         discard;
-    }
-
-    // overlay map and color
-    // use the m_OverlayMap texture to determine what pixels should use the overlay color.
-    // all pixels that have an alpha value > 0 will blend with the overlay color
-    if (m_OverlayColor.a > 0.0) {
-        float overlayFactor = texture2D(m_OverlayMap, uv).a;
-        vec3 blendedColor = blend_overlay(diffuseColor, m_OverlayColor).rgb;
-        diffuseColor.rgb = (1.0 - overlayFactor) * diffuseColor.rgb + overlayFactor * blendedColor;
     }
 
     gl_FragColor.rgb = AmbientSum.rgb * diffuseColor.rgb

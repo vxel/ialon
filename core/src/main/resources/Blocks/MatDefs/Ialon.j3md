@@ -161,9 +161,6 @@ MaterialDef Ialon {
             DIFFUSEMAP : DiffuseMap
             NORMALMAP : NormalMap
             SPECULARMAP : SpecularMap
-
-            // overlay color specified
-            //OVERLAYCOLOR : OverlayColor
         }
     }
 
