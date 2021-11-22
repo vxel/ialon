@@ -1,9 +1,13 @@
 package org.delaunois.ialon;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.AssetInfo;
+import com.jme3.asset.AssetKey;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
+import com.jme3.font.BitmapFont;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
@@ -30,6 +34,7 @@ import com.rvandoosselaer.blocks.TypeRegistry;
 import com.rvandoosselaer.blocks.serialize.BlockDefinition;
 import com.rvandoosselaer.blocks.serialize.BlockFactory;
 import com.simsilica.lemur.GuiGlobals;
+import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
@@ -50,6 +55,7 @@ import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.WireframeState;
 
+import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -63,6 +69,7 @@ import lombok.extern.slf4j.Slf4j;
 import static org.delaunois.ialon.Config.CHUNK_HEIGHT;
 import static org.delaunois.ialon.Config.CHUNK_SIZE;
 import static org.delaunois.ialon.Config.DEBUG_COLLISIONS;
+import static org.delaunois.ialon.Config.DEV_MODE;
 import static org.delaunois.ialon.Config.GRID_HEIGHT;
 import static org.delaunois.ialon.Config.GRID_LOWER_BOUND;
 import static org.delaunois.ialon.Config.GRID_SIZE;
@@ -119,31 +126,26 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public Ialon() {
-        super(
-                new StatsAppState(),
-                new IalonDebugState(),
-                //new DebugKeysAppState(),
-                new WireframeState(),
-                new LightingState()
-                //new ExplorerDebugState(),
-                //new ShadowProcessingState()
-        );
+        super(new LightingState());
     }
 
     @Override
     public void simpleInitApp() {
-        GuiGlobals.initialize(this);
-        RenderQueue rq = viewPort.getQueue();
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
+
+        viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
+        RenderQueue rq = viewPort.getQueue();
+        rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
+                new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
+
+        BitmapFont font = assetManager.loadFont("Textures/font-default.fnt");
+        Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
 
         atlasManager = new TextureAtlasManager();
         atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
         atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
         atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
-
-        viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
-        rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
-                new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
+        atlasManager.getAtlas().addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
 
         initFileRepository();
         initPlayerStateRepository();
@@ -156,12 +158,52 @@ public class Ialon extends SimpleApplication implements ActionListener {
         initMoon(sunControl);
         initSky(sunControl);
         initInputManager();
-
-        atlasManager.dump();
+        font = initGui(font);
 
         cam.setFrustumNear(0.1f);
         cam.setFrustumFar(400f);
         cam.setFov(50);
+
+        StatsAppState statsAppState = new StatsAppState();
+        if (DEV_MODE) {
+            atlasManager.dump();
+            statsAppState.setDisplayStatView(true);
+            statsAppState.setFont(font);
+            stateManager.attachAll(
+                    statsAppState,
+                    new IalonDebugState(),
+                    new DebugKeysAppState(),
+                    new WireframeState()
+            );
+        } else {
+            statsAppState.setDisplayStatView(false);
+            stateManager.attach(statsAppState);
+        }
+    }
+
+    private BitmapFont initGui(BitmapFont font) {
+        GuiGlobals.initialize(this);
+
+        // Reload the font using the offset of the atlas tile
+        AssetInfo assetInfo = assetManager.locateAsset(new AssetKey<BitmapFont>("Textures/font-default.fnt"));
+        BitmapFont atlasFont;
+        try {
+            atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, atlasManager.getAtlas());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        // Use the atlas texture
+        Texture tex = atlasManager.getDiffuseMap();
+        tex.setMagFilter(Texture.MagFilter.Bilinear);
+        tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
+        atlasFont.getPage(0).getTextureParam("ColorMap").setTextureValue(tex);
+
+        // Set the remapped font int the default style
+        Styles styles = GuiGlobals.getInstance().getStyles();
+        styles.setDefault(atlasFont);
+        return atlasFont;
     }
 
     private void initSky(SunControl sun) {
@@ -270,7 +312,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
         Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         sunMat.setTexture("ColorMap", sunTexture);
-        sunMat.setParam("VertexColor", VarType.Boolean, true );
+        //sunMat.setParam("VertexColor", VarType.Boolean, true );
+        sunMat.setColor("Color", ColorRGBA.White);
         sun.setMaterial(sunMat);
 
         atlasManager.getAtlas().applyCoords(sun, 0.1f);
@@ -297,6 +340,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         Material moonMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         moonMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         moonMat.setTexture("ColorMap", moonTexture);
+        moonMat.setColor("Color", ColorRGBA.White);
         moon.setMaterial(moonMat);
 
         atlasManager.getAtlas().applyCoords(moon, 0.1f);

@@ -60,6 +60,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import jme3tools.optimize.GeometryBatchFactory;
+import lombok.Getter;
 
 /**
  * <b><code>TextureAtlas</code></b> allows combining multiple textures to one texture atlas.
@@ -124,7 +125,10 @@ public class TextureAtlas {
 
     private static final Logger logger = Logger.getLogger(TextureAtlas.class.getName());
     private Map<String, byte[]> images;
+
+    @Getter
     final private int atlasWidth, atlasHeight;
+
     final private Format format = Format.ABGR8;
     final private Node root;
     final private Map<String, TextureAtlasTile> locationMap;

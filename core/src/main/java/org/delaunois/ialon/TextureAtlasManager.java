@@ -52,7 +52,6 @@ public class TextureAtlasManager {
 
     public void dump() {
         dump(getDiffuseMap().getImage(), "atlas-diffuse.png");
-        dump(getOverlayMap().getImage(), "atlas-overlay.png");
     }
 
     public void dump(Image img, String filename) {

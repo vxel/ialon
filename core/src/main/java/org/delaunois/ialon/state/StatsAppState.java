@@ -190,7 +190,7 @@ public class StatsAppState extends AbstractAppState {
     public void loadStatsView() {
         statsView = new StatsView("Statistics View",
                                   app.getAssetManager(),
-                                  app.getRenderer().getStatistics());
+                                  app.getRenderer().getStatistics(), guiFont);
         // move it up so it appears above fps text
         statsView.setLocalTranslation(0, fpsText.getLineHeight(), 0);
         statsView.setEnabled(showStats);

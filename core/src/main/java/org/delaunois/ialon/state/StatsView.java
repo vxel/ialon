@@ -73,7 +73,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
 
     private final StringBuilder stringBuilder = new StringBuilder();
 
-    public StatsView(String name, AssetManager manager, Statistics stats){
+    public StatsView(String name, AssetManager manager, Statistics stats, BitmapFont guiFont){
         super(name);
 
         setQueueBucket(Bucket.Gui);
@@ -85,7 +85,10 @@ public class StatsView extends Node implements Control, JmeCloneable {
         statLabels = statistics.getLabels();
         statData = new int[statLabels.length];
 
-        BitmapFont font = manager.loadFont("Interface/Fonts/Default.fnt");
+        BitmapFont font = guiFont;
+        if (font == null) {
+            font = manager.loadFont("Interface/Fonts/Default.fnt");
+        }
         statText = new BitmapText(font);
         statText.setLocalTranslation(0, statText.getLineHeight() * statLabels.length * scale, 0);
         statText.scale(scale);
