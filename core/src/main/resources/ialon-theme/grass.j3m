@@ -9,8 +9,8 @@ Material grass-block : Blocks/MatDefs/Ialon.j3md {
         Specular: 0 0 0 1.0
         VertexLighting: true
         DiffuseMap: Flip MagBilinear BilinearNearestMipMap ialon-theme/grass.png
-        OverlayColor: 0.298 0.529 0.114 1.0
-        OverlayMap: Flip ialon-theme/grass-overlay.png
+        //OverlayColor: 0.298 0.529 0.114 1.0
+        //OverlayMap: Flip ialon-theme/grass-overlay.png
         AlphaDiscardThreshold : 0
     }
 

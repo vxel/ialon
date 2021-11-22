@@ -433,8 +433,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         menuBlock = menuBlockPages[0];
         setSelectedBlockIndex(selectedBlockIndex);
         buttonBlockSelection = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
-            protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                toggleBlockMenu();
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                if (event.isReleased()) {
+                    toggleBlockMenu();
+                }
             }
         });
         buttonBlockSelection.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
@@ -536,9 +538,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     int finalIndex = index;
                     blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE,
                             new DefaultMouseListener() {
-                                protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                                    setSelectedBlockIndex(finalIndex);
-                                    hideBlockMenu();
+                                public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                                    if (event.isReleased()) {
+                                        setSelectedBlockIndex(finalIndex);
+                                        hideBlockMenu();
+                                    }
                                 }
                             });
                 }

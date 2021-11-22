@@ -229,7 +229,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         camDir.set(camera.getDirection());
         camLeft.set(camera.getLeft());
         camUp.set(camera.getUp());
-        walkDirection.multLocal(0.9f);
+        walkDirection.set(0, 0, 0);
+        //walkDirection.multLocal(0.9f);
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
 
@@ -406,8 +407,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                event.setConsumed();
-                playerJump();
+                if (event.isPressed()) {
+                    playerJump();
+                }
             }
         });
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
@@ -440,6 +442,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         //buttonContainer.setBackground(TbtQuadBackgroundComponent.create("/com/simsilica/lemur/icons/border.png", 1, 2, 2, 3, 3, 0, false));
         Label label = buttonContainer.addChild(new Label(text));
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        label.getFont().getPage(0).clearParam("VertexColor");
 
         // Center the text in the box.
         label.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));

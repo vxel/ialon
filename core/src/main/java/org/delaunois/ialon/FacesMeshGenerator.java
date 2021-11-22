@@ -1,7 +1,6 @@
 package org.delaunois.ialon;
 
 import com.jme3.material.RenderState;
-import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
@@ -232,7 +231,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         typeRegistry.applyMaterial(geometry, type);
 
         if (geometry.getMaterial().getAdditionalRenderState().getBlendMode() == RenderState.BlendMode.Alpha) {
-            geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
+            //geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
         } else {
             geometry.getMaterial().getTextureParam("DiffuseMap").getTextureValue()
                     .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);

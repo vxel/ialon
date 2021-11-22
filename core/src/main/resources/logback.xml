@@ -6,7 +6,7 @@
         </encoder>
     </appender>
 
-    <logger name="com.rvandoosselaer" level="info"/>
+    <!--logger name="com.rvandoosselaer" level="info"/>
     <logger name="com.rvandoosselaer.blocks.shapes.Liquid" level="debug" />
     <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>
     <logger name="org.delaunois.ialon" level="debug"/>
@@ -17,9 +17,9 @@
     <logger name="org.delaunois.ialon.state.PlayerState" level="debug"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>
-    <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>
+    <logger name="com.simsilica.lemur.input.InputMapper" level="info"/-->
 
-    <root level="info">
+    <root level="error">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

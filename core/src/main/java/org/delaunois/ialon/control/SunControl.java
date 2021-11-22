@@ -9,12 +9,8 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Geometry;
-import com.jme3.scene.Spatial;
-import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.control.AbstractControl;
-import com.jme3.util.BufferUtils;
 
-import java.nio.FloatBuffer;
 import java.time.LocalTime;
 
 import lombok.Getter;
@@ -122,23 +118,7 @@ public class SunControl extends AbstractControl {
         directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
         ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
 
-        setSunColor(sunColor, sunColor);
-    }
-
-    private void setSunColor(ColorRGBA down, ColorRGBA up) {
-        // Use vertex coloring to
-        // - avoid needing a specific shader for the sun
-        // - allow gradient when the sun is low on the horizon at almost no cost
-        FloatBuffer buf = BufferUtils.createFloatBuffer(4 * 4);
-        buf.put(down.r).put(down.g).put(down.b).put(down.a);
-        buf.put(down.r).put(down.g).put(down.b).put(down.a);
-        buf.put(up.r).put(up.g).put(up.b).put(up.a);
-        buf.put(up.r).put(up.g).put(up.b).put(up.a);
-
-        Spatial spatial = getSpatial();
-        if (spatial instanceof Geometry) {
-            ((Geometry) spatial).getMesh().setBuffer(VertexBuffer.Type.Color, 4, buf);
-        }
+        ((Geometry)spatial).getMaterial().setColor("Color", sunColor);
     }
 
     @Override
