@@ -3,6 +3,8 @@ package org.delaunois.ialon;
 import android.os.Bundle;
 import android.view.View;
 
+import com.jme3.system.AppSettings;
+
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 
@@ -28,6 +30,14 @@ public class MainActivity extends AndroidHarness {
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
         decorView.setSystemUiVisibility(uiOptions);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        AppSettings settings = new AppSettings(true);
+        settings.setAudioRenderer(null);
+        app.setSettings(settings);
     }
 
     @Override
