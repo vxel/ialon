@@ -215,7 +215,7 @@ public class ChunkPager {
                 log.warn("Trying to unfetch page at location {} that isn't attached.", pageLocation);
             } else {
                 fetchedPages.remove(pageLocation);
-                chunkManager.removeChunk(pageLocation);
+                chunkManager.fastRemoveChunk(pageLocation);
                 unfetched += 1;
             }
 

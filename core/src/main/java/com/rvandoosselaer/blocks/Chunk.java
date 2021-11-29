@@ -395,10 +395,7 @@ public class Chunk {
         if (neighbour == null) {
             return true;
         }
-        if (neighbour.isTransparent() && !block.isTransparent()) {
-            return true;
-        }
-        if (block.isTransparent() && !neighbour.isTransparent()) {
+        if (neighbour.isTransparent() ^ block.isTransparent()) {
             return true;
         }
         if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {

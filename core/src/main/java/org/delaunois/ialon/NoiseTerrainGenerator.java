@@ -1,8 +1,5 @@
 package org.delaunois.ialon;
 
-import com.jayfella.fastnoise.FastNoise;
-import com.jayfella.fastnoise.LayeredNoise;
-import com.jayfella.fastnoise.NoiseLayer;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
@@ -13,6 +10,10 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.fastnoise.FastNoise;
+import org.delaunois.ialon.fastnoise.LayeredNoise;
+import org.delaunois.ialon.fastnoise.NoiseLayer;
+
 import java.util.Random;
 
 import static com.rvandoosselaer.blocks.TypeIds.WATER;
@@ -22,7 +23,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int CANOPY_RADIUS = 3;
     private static final int TRUNK_HEIGHT = 3;
     private static final int TREE_HEIGHT = TRUNK_HEIGHT + 2 * CANOPY_RADIUS + 1;
-    
+
     private long seed;
     private float waterHeight = Config.WATER_HEIGHT;
     private LayeredNoise layeredNoise;
@@ -59,10 +60,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         int maxX = chunkSize.x;
         int maxY = chunkSize.y;
         int maxZ = chunkSize.z;
+        int sizez = maxZ + 2 * CANOPY_RADIUS + 1;
+        float[] heights = getHeights(chunk, -CANOPY_RADIUS, maxX + CANOPY_RADIUS, -CANOPY_RADIUS, maxZ + CANOPY_RADIUS);
 
         for (int x = 0; x < maxX; x++) {
+            int rowx = (x + CANOPY_RADIUS) * sizez;
+
             for (int z = 0; z < maxZ; z++) {
-                float groundh = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
+                int index = (z + CANOPY_RADIUS) + rowx;
+                float groundh = heights[index];
                 float horizon = Math.max(groundh, waterHeight);
 
                 for (int y = maxY - 1; y >= 0; y--) {
@@ -97,7 +103,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                         if (worldY > groundh) {
                             // Above ground but below horizon => in water
                             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
-                            chunk.setSunlight(x, y, z, Math.max(0, 13 - ((int)horizon - worldY) * 2));
+                            chunk.setSunlight(x, y, z, Math.max(0, 13 - ((int) horizon - worldY) * 2));
 
                         } else {
                             chunk.setSunlight(x, y, z, 0);
@@ -118,22 +124,38 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             }
         }
 
-        generateTrees(chunk);
+        generateTrees(chunk, heights);
 
         chunk.setDirty(true);
         return chunk;
     }
 
-    private void generateTrees(Chunk chunk) {
+    private float[] getHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
+        int sizex = maxx - minx + 1;
+        int sizez = maxz - minz + 1;
+        float[] heights = new float[sizex * sizez];
+        for (int x = minx; x <= maxx; x++) {
+            int rowx = (x - minx) * sizez;
+            for (int z = minz; z <= maxz; z++) {
+                int index = (z - minz) + rowx;
+                heights[index] = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
+            }
+        }
+        return heights;
+    }
+
+    private void generateTrees(Chunk chunk, float[] heights) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
         int maxX = chunkSize.x;
         int maxZ = chunkSize.z;
+        int sizez = maxZ + 2 * CANOPY_RADIUS + 1;
 
         for (int x = -CANOPY_RADIUS; x <= maxX + CANOPY_RADIUS; x++) {
+            int rowx = (x + CANOPY_RADIUS) * sizez;
             for (int z = -CANOPY_RADIUS; z <= maxZ + CANOPY_RADIUS; z++) {
-
-                float groundh = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
-                int y = (int)groundh - (chunk.getLocation().y * chunkSize.y);
+                int index = (z + CANOPY_RADIUS) + rowx;
+                float groundh = heights[index];
+                int y = (int) groundh - (chunk.getLocation().y * chunkSize.y);
                 if (y > -TREE_HEIGHT && y < chunkSize.z && groundh > (waterHeight + 1) && ((groundh * 100) % 1 == 0)) {
                     createTree(chunk, new Vec3i(x, y, z));
                 }

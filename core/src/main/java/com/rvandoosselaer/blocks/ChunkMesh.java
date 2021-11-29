@@ -6,9 +6,6 @@ import com.jme3.math.Vector4f;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.util.BufferUtils;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 import java.nio.Buffer;
 import java.nio.FloatBuffer;
@@ -16,6 +13,10 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A class to help create a mesh for a specific block type of a chunk.
@@ -58,6 +59,7 @@ public class ChunkMesh {
             }
         }
         mesh.updateBound();
+        mesh.setStatic();
         long stop = System.nanoTime();
         if (log.isTraceEnabled()) {
             log.trace("Mesh generation took {}ms", TimeUnit.NANOSECONDS.toMillis(stop - start));

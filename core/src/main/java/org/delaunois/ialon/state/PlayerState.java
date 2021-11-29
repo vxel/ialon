@@ -414,14 +414,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                if (event.isReleased()) {
+                if (event.isPressed()) {
                     addBlock();
                 }
             }
         });
         buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                if (event.isReleased()) {
+                if (event.isPressed()) {
                     removeBlock();
                 }
             }

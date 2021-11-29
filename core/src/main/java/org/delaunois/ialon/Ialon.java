@@ -67,6 +67,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.CHUNK_HEIGHT;
+import static org.delaunois.ialon.Config.CHUNK_POOLSIZE;
 import static org.delaunois.ialon.Config.CHUNK_SIZE;
 import static org.delaunois.ialon.Config.DEBUG_COLLISIONS;
 import static org.delaunois.ialon.Config.DEV_MODE;
@@ -305,7 +306,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     private SunControl initSun(float time) {
-        Geometry sun = new Geometry("Sun", new Quad(15f, 15f));
+        Geometry sun = new Geometry("Sun", new Quad(20f, 20f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
         sun.setShadowMode(RenderQueue.ShadowMode.Off);
@@ -409,7 +410,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         //terrainGenerator = new FlatTerrainGenerator(60, BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS));
         terrainGenerator = new NoiseTerrainGenerator(2);
         chunkManager = ChunkManager.builder()
-                .poolSize(8)
+                .poolSize(CHUNK_POOLSIZE)
                 .generator(terrainGenerator)
                 .repository(fileRepository)
                 .build();

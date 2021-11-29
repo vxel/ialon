@@ -181,6 +181,10 @@ public class ChunkManager {
         getChunk(location).ifPresent(this::removeChunk);
     }
 
+    public void fastRemoveChunk(Vec3i location) {
+        cache.evict(location);
+    }
+
     /**
      * Inform the ChunkManager that you no longer need access to the chunk and it can perform cleanup operations on it.
      *

@@ -434,7 +434,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         setSelectedBlockIndex(selectedBlockIndex);
         buttonBlockSelection = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                if (event.isReleased()) {
+                if (event.isPressed()) {
                     toggleBlockMenu();
                 }
             }
@@ -539,7 +539,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE,
                             new DefaultMouseListener() {
                                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                                    if (event.isReleased()) {
+                                    if (event.isPressed()) {
                                         setSelectedBlockIndex(finalIndex);
                                         hideBlockMenu();
                                     }

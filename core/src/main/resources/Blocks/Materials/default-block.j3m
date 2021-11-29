@@ -6,7 +6,7 @@ Material normal-block : Blocks/MatDefs/Ialon.j3md {
         Ambient: 1.0 1.0 1.0 1.0
         Diffuse: 1.0 1.0 1.0 1.0
         VertexLighting: true
-        DiffuseMap: Flip MagBilinear MinNearestLinearMipMap ialon-theme/dummy.png
+        DiffuseMap: Flip MagBilinear BilinearNearestMipMap ialon-theme/dummy.png
         UseVertexColor: true
         AlphaDiscardThreshold : 0
     }
