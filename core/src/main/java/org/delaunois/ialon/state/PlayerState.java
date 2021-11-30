@@ -25,6 +25,7 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.input.event.TouchEvent;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Matrix3f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
@@ -325,6 +326,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         player.setJumpSpeed(JUMP_SPEED);
         player.setFallSpeed(GROUND_GRAVITY);
         player.setGravity(0);
+        player.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
 
         if (playerLocation == null) {
             playerLocation = new Vector3f(CHUNK_SIZE / 2f, app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f);
