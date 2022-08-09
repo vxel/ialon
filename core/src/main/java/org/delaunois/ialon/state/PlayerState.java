@@ -373,6 +373,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private void updatePlayerPosition() {
         if (playerLocation.y < 1) {
             playerLocation.setY(MAXY);
+            player.setPhysicsLocation(playerLocation);
         }
         // The player location is at the center of the capsule shape. So we need to level the camera
         // up to set it at the top of the shape.
