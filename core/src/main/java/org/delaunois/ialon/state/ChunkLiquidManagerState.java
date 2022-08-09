@@ -13,6 +13,8 @@ import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 
+import static org.delaunois.ialon.Config.WATER_SIMULATION_SPEED;
+
 /**
  * An application state to handle the liquid simulation.
  *
@@ -48,9 +50,10 @@ public class ChunkLiquidManagerState extends BaseAppState {
     @Override
     public void update(float tpf) {
         elapsed += tpf;
-        if (elapsed > 0.1f) {
+        int queueSize = chunkLiquidManager.queueSize();
+        if (elapsed > WATER_SIMULATION_SPEED && queueSize > 0) {
             Set<Vec3i> updatedChunks = new HashSet<>();
-            for (int i = 0; i < 10; i ++) {
+            for (int i = 0; i < queueSize; i ++) {
                 updatedChunks.addAll(chunkLiquidManager.step());
             }
             if (!updatedChunks.isEmpty()) {

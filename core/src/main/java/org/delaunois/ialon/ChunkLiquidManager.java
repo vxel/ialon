@@ -36,6 +36,10 @@ public class ChunkLiquidManager {
 
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
 
+    public int queueSize() {
+        return liquidBfsQueue.size();
+    }
+
     /**
      * Add liquid at the given location
      * @param blockLocationInsideChunk the start location (e.g. the location of the updated block)
