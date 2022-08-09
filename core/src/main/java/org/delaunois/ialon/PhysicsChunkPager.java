@@ -164,6 +164,7 @@ public class PhysicsChunkPager {
             } else {
                 detachPage(page);
                 attachedPages.remove(pageLocation);
+                log.info("{} physic page detached", pageLocation);
                 removed += 1;
             }
 
@@ -219,6 +220,7 @@ public class PhysicsChunkPager {
             // detach the old page if any
             PhysicsRigidBody oldPage = attachedPages.remove(page.location);
             if (oldPage != null) {
+                log.info("{} physic page detached", page.location);
                 detachPage(oldPage);
             }
 
@@ -227,6 +229,7 @@ public class PhysicsChunkPager {
             if (node != null) {
                 attachPage(node);
                 attachedPages.put(page.location, node);
+                log.info("{} physic page attached", page.location);
                 attached += 1;
             }
 
@@ -251,6 +254,11 @@ public class PhysicsChunkPager {
         }
 
         if (chunk.getCollisionMesh() == null || chunk.getCollisionMesh().getTriangleCount() < 1 || physicsSpace == null) {
+            if (attachedPages.containsKey(chunk.getLocation())) {
+                // Remove the page
+                log.info("Collision mesh is empty for physic page {}. Requesting detach.", chunk.getLocation());
+                pagesToDetach.offer(chunk.getLocation());
+            }
             return;
         }
 
@@ -300,9 +308,8 @@ public class PhysicsChunkPager {
 
         @Override
         public void onChunkAvailable(Chunk chunk) {
-            if (attachedPages.containsKey(chunk.getLocation())) {
-                pagesToCreate.offer(chunk.getLocation());
-            }
+            log.info("Chunk Physic page update available at {}", chunk.getLocation());
+            pagesToCreate.offer(chunk.getLocation());
         }
 
         @Override
