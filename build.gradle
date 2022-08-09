@@ -28,7 +28,7 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-def jme3 = [v: '3.4.0-stable', g: 'org.jmonkeyengine']
+def jme3 = [v: '3.5.2-stable', g: 'org.jmonkeyengine']
 
 project(":core") {
     apply plugin: "java"
@@ -61,17 +61,3 @@ project(":app") {
 // Store the parameters you want to pass the texturePacker here...
 project.ext.texturePacker = [ "core/src/main/resources/ialon-theme/", "core/src/main/resources/ialon-theme/", "texture" ]
 
-// Import the texture packer
-import com.badlogic.gdx.tools.texturepacker.TexturePacker
-import com.badlogic.gdx.utils.Json;
-
-// Add a new task that packs the textures for you
-task texturePacker {
-    doLast {
-        if (project.ext.has('texturePacker')) {
-            logger.info "Calling TexturePacker: " + texturePacker
-            TexturePacker.process(new Json().fromJson(com.badlogic.gdx.tools.texturepacker.TexturePacker.Settings.class, new FileReader("settings.texturepacker")),
-                    texturePacker[0], texturePacker[1], texturePacker[2])
-        }
-    }
-}

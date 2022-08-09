@@ -1,5 +1,5 @@
 apply plugin: "java"
-sourceSets.main.java.srcDirs = ["src/"]
+sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     jmeFastNoise = "1.0.2"
