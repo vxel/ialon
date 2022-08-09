@@ -8,7 +8,7 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
         Diffuse: 1.0 1.0 1.0 1.0
         Specular: 0.3 0.3 0.3 1.0
         Shininess: 96
-        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water6.png
+        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T ialon-theme/water3.png
 
         // custom
         TextureScrollSpeedX : 0.0

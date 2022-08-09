@@ -13,19 +13,20 @@ public class Config {
     public static final int CHUNK_POOLSIZE = 4;
 
     // Grid
-    public static final int GRID_DIAMETER = 4;
-    public static final int PHYSICS_GRID_DIAMETER = 1;
+    public static final int GRID_RADIUS = 4;
+    public static final int PHYSICS_GRID_RADIUS = 1;
     public static final int CHUNK_SIZE = 16;
     public static final int CHUNK_HEIGHT = 16;
-    public static final int GRID_SIZE = GRID_DIAMETER * 2 + 1;
+    public static final int GRID_SIZE = GRID_RADIUS * 2 + 1;
     public static final int GRID_HEIGHT = 7;
-    public static final int PHYSICS_GRID_SIZE = PHYSICS_GRID_DIAMETER * 2 + 1;
+    public static final int PHYSICS_GRID_SIZE = PHYSICS_GRID_RADIUS * 2 + 1;
     public static final Vec3i GRID_LOWER_BOUND = new Vec3i(Integer.MIN_VALUE, 0, Integer.MIN_VALUE);
     public static final Vec3i GRID_UPPER_BOUND = new Vec3i(Integer.MAX_VALUE, GRID_HEIGHT - 1, Integer.MAX_VALUE);
     public static final int MAXY = GRID_HEIGHT * CHUNK_HEIGHT;
 
     // World
     public static final float WATER_HEIGHT = 50f;
+    public static final float WATER_SIMULATION_SPEED = 1f;
     public static final float AMBIANT_INTENSITY = 0.4f;
     public static final float SUN_INTENSITY = 1.1f;
     public static final float SUN_AMPLITUDE = 10f;
@@ -43,7 +44,7 @@ public class Config {
     public static final ColorRGBA DAY_COLOR = ColorRGBA.White;
     public static final ColorRGBA EVENING_COLOR = ColorRGBA.fromRGBA255(255, 173, 66, 255);
     public static final ColorRGBA NIGHT_COLOR = new ColorRGBA(0.4f, 0.4f, 0.4f, 1);
-    public static final float TIME_FACTOR = 0.0f; // Should be 0.01f
+    public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
     public static final float GROUND_GRAVITY = 10;
     public static final float WATER_GRAVITY = 0.4f;
     public static final float JUMP_SPEED = 5.5f;
@@ -59,7 +60,7 @@ public class Config {
     public static final boolean PLAYER_START_FLY = false;
 
     // Debug
-    public static final boolean DEV_MODE = false;
+    public static final boolean DEV_MODE = true;
     public static final boolean DEBUG_COLLISIONS = false;
 
 }

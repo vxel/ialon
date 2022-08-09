@@ -34,6 +34,7 @@ import com.rvandoosselaer.blocks.TypeRegistry;
 import com.rvandoosselaer.blocks.serialize.BlockDefinition;
 import com.rvandoosselaer.blocks.serialize.BlockFactory;
 import com.simsilica.lemur.GuiGlobals;
+import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
@@ -83,6 +84,14 @@ import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
 
 /**
  * @author Cedric de Launois
+ *
+ * TODO :
+ * - coller les block de lumière
+ * - éliminer l'eau si suppression de la source
+ * - bug saut + création où on se retrouve dans le block
+ * - rails
+ * - bouton flying
+ * - plante sous eau
  */
 @Slf4j
 public class Ialon extends SimpleApplication implements ActionListener {
@@ -184,6 +193,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     private BitmapFont initGui(BitmapFont font) {
         GuiGlobals.initialize(this);
+        stateManager.getState(BasePickState.class).removeCollisionRoot(rootNode);
 
         // Reload the font using the offset of the atlas tile
         AssetInfo assetInfo = assetManager.locateAsset(new AssetKey<BitmapFont>("Textures/font-default.fnt"));
