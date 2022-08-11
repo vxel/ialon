@@ -494,23 +494,33 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (log.isDebugEnabled()) {
             log.debug("Action {} isPressed {}", name, isPressed);
         }
-        if (ACTION_ADD_BLOCK.equals(name) && isPressed && buttonAddBlock.getParent() == null) {
-            addBlock();
+        if (ACTION_ADD_BLOCK.equals(name) && buttonAddBlock.getParent() == null) {
+            if (isPressed) {
+                addBlock();
+            }
+            highlight(isPressed, buttonAddBlock);
 
-        } else if (ACTION_REMOVE_BLOCK.equals(name) && isPressed && buttonRemoveBlock.getParent() == null) {
-            removeBlock();
+        } else if (ACTION_REMOVE_BLOCK.equals(name) && buttonRemoveBlock.getParent() == null) {
+            if (isPressed) {
+                removeBlock();
+            }
+            highlight(isPressed, buttonRemoveBlock);
 
         } else if (ACTION_LEFT.equals(name)) {
             left = isPressed;
+            highlight(isPressed, buttonLeft);
 
         } else if (ACTION_RIGHT.equals(name)) {
             right = isPressed;
+            highlight(isPressed, buttonRight);
 
         } else if (ACTION_FORWARD.equals(name)) {
             forward = isPressed;
+            highlight(isPressed, buttonForward);
 
         } else if (ACTION_BACKWARD.equals(name)) {
             backward = isPressed;
+            highlight(isPressed, buttonBackward);
 
         } else if (fly && ACTION_FLY_UP.equals(name)) {
             up = isPressed;
@@ -518,8 +528,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         } else if (fly && ACTION_FLY_DOWN.equals(name)) {
             down = isPressed;
 
-        } else if (!fly && ACTION_JUMP.equals(name) && isPressed) {
-            playerJump();
+        } else if (!fly && ACTION_JUMP.equals(name)) {
+            if (isPressed) {
+                playerJump();
+            }
+            highlight(isPressed, buttonJump);
 
         } else if (ACTION_FIRE.equals(name) && isPressed) {
             fireBall();
