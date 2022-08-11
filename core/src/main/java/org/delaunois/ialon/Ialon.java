@@ -466,6 +466,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
                     .addShapes(ShapeIds.ALL_PYRAMIDS)
                     .addShapes(ShapeIds.ALL_WEDGES)
                     .addShapes(ShapeIds.ALL_POLES)
+                    .addShapes(ShapeIds.ALL_FENCES)
                     .addShapes(ShapeIds.ALL_SLABS)
                     .addShapes(ShapeIds.ALL_DOUBLE_SLABS)
                     .addShapes(ShapeIds.ALL_PLATES)

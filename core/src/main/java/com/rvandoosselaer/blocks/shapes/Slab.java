@@ -57,11 +57,11 @@ public class Slab implements Shape {
         // get the rotation of the shape based on the direction
         Quaternion rotation = Shape.getRotationFromDirection(direction);
 
-        if (endY < 1 || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.UP, direction))) {
+        if (endY < 0.5f || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.UP, direction))) {
             createUp(location, rotation, chunkMesh, blockScale, multipleImages);
             enlightFace(location, Shape.getFaceDirection(Direction.UP, direction), chunk, chunkMesh);
         }
-        if (startY > 0 || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.DOWN, direction))) {
+        if (startY > -0.5f || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.DOWN, direction))) {
             createDown(location, rotation, chunkMesh, blockScale, multipleImages);
             enlightFace(location, Shape.getFaceDirection(Direction.DOWN, direction), chunk, chunkMesh);
         }

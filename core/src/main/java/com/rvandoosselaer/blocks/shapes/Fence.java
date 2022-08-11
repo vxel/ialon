@@ -6,11 +6,13 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
+import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.List;
@@ -72,23 +74,23 @@ public class Fence implements Shape {
         createNorth(location, rotation, chunkMesh, blockScale, multipleImages, widthExtend);
         enlightFace(location, null, chunk, chunkMesh);
 
-        float x1 = 0;
-        float z1 = 0;
-        float x2 = 0;
-        float z2 = 0;
-        if (chunk.getNeighbour(location, Shape.getFaceDirection(Direction.NORTH, direction)) != null) {
+        float x1 = widthExtend;
+        float z1 = widthExtend;
+        float x2 = -widthExtend;
+        float z2 = -widthExtend;
+        if (needFence(location, Shape.getFaceDirection(Direction.NORTH, direction), chunk)) {
             z1 = -0.5f;
         }
-        if (chunk.getNeighbour(location, Shape.getFaceDirection(Direction.SOUTH, direction)) != null) {
+        if (needFence(location, Shape.getFaceDirection(Direction.SOUTH, direction), chunk)) {
             z2 = 0.5f;
         }
-        if (chunk.getNeighbour(location, Shape.getFaceDirection(Direction.WEST, direction)) != null) {
+        if (needFence(location, Shape.getFaceDirection(Direction.WEST, direction), chunk)) {
             x1 = -0.5f;
         }
-        if (chunk.getNeighbour(location, Shape.getFaceDirection(Direction.EAST, direction)) != null) {
+        if (needFence(location, Shape.getFaceDirection(Direction.EAST, direction), chunk)) {
             x2 = 0.5f;
         }
-        if (x1 != 0 || x2 != 0) {
+        if (x1 < x2) {
             createFenceEWUp(location, rotation, chunkMesh, blockScale, multipleImages, 0.08f, x1, x2);
             enlightFace(location, null, chunk, chunkMesh);
             createFenceEWNorth(location, rotation, chunkMesh, blockScale, multipleImages, 0.08f, x1, x2);
@@ -98,7 +100,7 @@ public class Fence implements Shape {
             createFenceEWDown(location, rotation, chunkMesh, blockScale, multipleImages, 0.08f, x1, x2);
             enlightFace(location, null, chunk, chunkMesh);
         }
-        if (z1 != 0 || z2 != 0) {
+        if (z1 < z2) {
             createFenceNSUp(location, rotation, chunkMesh, blockScale, multipleImages, 0.08f, z1, z2);
             enlightFace(location, null, chunk, chunkMesh);
             createFenceNSEast(location, rotation, chunkMesh, blockScale, multipleImages, 0.08f, z1, z2);
@@ -117,6 +119,11 @@ public class Fence implements Shape {
         colors.add(color);
         colors.add(color);
         colors.add(color);
+    }
+
+    private boolean needFence(Vec3i location, Direction face, Chunk chunk) {
+        Block block = chunk.getNeighbour(location, Shape.getFaceDirection(face, direction));
+        return block != null && (ShapeIds.CUBE.equals(block.getShape()) || block.getShape().startsWith(ShapeIds.FENCE));
     }
 
     private static void createNorth(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float thicknessExtend) {
@@ -144,10 +151,10 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
@@ -163,6 +170,8 @@ public class Fence implements Shape {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
+        //  2  4     ^
+        //  1  3     y x >
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x1, 0.2f, thicknessExtend * -1f)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x1, 0.4f, thicknessExtend * -1f)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x2, 0.2f, thicknessExtend * -1f)), location, blockScale));
@@ -184,15 +193,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR /3f));
             }
         }
     }
@@ -222,10 +231,10 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
@@ -241,6 +250,8 @@ public class Fence implements Shape {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
+        //  4  2     ^
+        //  3  1     y x >
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x2, 0.2f, thicknessExtend)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x2, 0.4f, thicknessExtend)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x1, 0.2f, thicknessExtend)), location, blockScale));
@@ -262,15 +273,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
             }
         }
     }
@@ -300,10 +311,10 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
@@ -340,15 +351,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
             }
         }
     }
@@ -378,10 +389,10 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING, 1.0f - UV_PADDING));
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
@@ -418,10 +429,10 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
                 chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
@@ -475,6 +486,8 @@ public class Fence implements Shape {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
+        //  1  2     z x >
+        //  3  4     v
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend * -1f, 0.2f, z1)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend, 0.2f, z1)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend * -1f, 0.2f, z2)), location, blockScale));
@@ -496,15 +509,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f) / UV_PADDING_FACTOR / 3f));
             }
         }
     }
@@ -536,15 +549,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f - thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 0.5f + thicknessExtend / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f - thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend / UV_PADDING_FACTOR, 1f / 6f + thicknessExtend / 3f / UV_PADDING_FACTOR));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f - thicknessExtend) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f - thicknessExtend) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f + thicknessExtend) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f + thicknessExtend) / UV_PADDING_FACTOR / 3f));
             }
         }
     }
@@ -593,6 +606,8 @@ public class Fence implements Shape {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
+        //  2  1     z x >
+        //  4  3     v
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend, 0.4f, z1)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend * -1f, 0.4f, z1)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(thicknessExtend, 0.4f, z2)), location, blockScale));
@@ -614,15 +629,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.2f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, (0.4f + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.2f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + z2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.4f + 0.5f + UV_PADDING) / UV_PADDING_FACTOR / 3f));
             }
         }
     }
@@ -633,6 +648,8 @@ public class Fence implements Shape {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
+        //  3  4     z x >
+        //  1  2     v
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x1, 0.4f, thicknessExtend)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x2, 0.4f, thicknessExtend)), location, blockScale));
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(x1, 0.4f, thicknessExtend * -1f)), location, blockScale));
@@ -654,15 +671,15 @@ public class Fence implements Shape {
             }
             // uvs
             if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.5f - thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, (0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, (0.5f + thicknessExtend) / UV_PADDING_FACTOR + UV_PADDING));
             } else {
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f + thicknessExtend - UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.5f - thicknessExtend + UV_PADDING, 2f / 3f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f - thicknessExtend + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f - thicknessExtend + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x1) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f + thicknessExtend + UV_PADDING) / UV_PADDING_FACTOR / 3f));
+                chunkMesh.getUvs().add(new Vector2f((0.5f + x2) / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + (0.5f + thicknessExtend + UV_PADDING) / UV_PADDING_FACTOR / 3f));
             }
         }
     }

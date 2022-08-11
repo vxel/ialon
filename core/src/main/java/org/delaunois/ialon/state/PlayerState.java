@@ -382,34 +382,47 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         app.getStateManager().getState(PhysicsChunkPagerState.class).setLocation(playerLocation);
     }
 
+    private void highlight(boolean isPressed, Container button) {
+        if (isPressed) {
+            ((QuadBackgroundComponent)button.getBackground()).getColor().set(0.5f, 0.5f, 0.5f, 0.5f);
+        } else {
+            ((QuadBackgroundComponent)button.getBackground()).getColor().set(0, 0, 0, 0.5f);
+        }
+    }
+
     private void createButttons() {
         directionButtons = new Node();
         buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 left = event.isPressed();
+                highlight(left, buttonLeft);
             }
         });
         buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 backward = event.isPressed();
+                highlight(backward, buttonBackward);
             }
         });
         buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 forward = event.isPressed();
+                highlight(forward, buttonForward);
             }
         });
         buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 right = event.isPressed();
+                highlight(right, buttonRight);
             }
         });
         buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                highlight(event.isPressed(), buttonJump);
                 if (event.isPressed()) {
                     playerJump();
                 }
@@ -417,6 +430,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                highlight(event.isPressed(), buttonAddBlock);
                 if (event.isPressed()) {
                     addBlock();
                 }
@@ -424,6 +438,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                highlight(event.isPressed(), buttonRemoveBlock);
                 if (event.isPressed()) {
                     removeBlock();
                 }

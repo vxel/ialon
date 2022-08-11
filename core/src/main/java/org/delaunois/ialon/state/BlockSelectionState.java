@@ -73,7 +73,7 @@ import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
-import static com.rvandoosselaer.blocks.ShapeIds.FENCE_NORTH;
+import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
 import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
@@ -253,7 +253,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(OAK_LOG, WEDGE_SOUTH),
             getName(OAK_LOG, PYRAMID),
             getName(OAK_LOG, POLE),
-            getName(OAK_LOG, FENCE_NORTH),
+            SPACER,
             SPACER,
             SPACER,
 
@@ -398,6 +398,17 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(WINDOW, SQUARE),
             ITEM_GRASS,
             SPACER,
+            SPACER,
+
+            getName(OAK_LOG, FENCE),
+            getName(STONE_BRICKS, FENCE),
+            getName(BIRCH_LOG, FENCE),
+            getName(BIRCH_PLANKS, FENCE),
+            getName(METAL1, FENCE),
+            getName(METAL2, FENCE),
+            getName(METAL3, FENCE),
+            getName(METAL4, FENCE),
+            getName(METAL5, FENCE)
 
     };
 
