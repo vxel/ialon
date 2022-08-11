@@ -86,9 +86,7 @@ import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
  * @author Cedric de Launois
  *
  * TODO :
- * - coller les block de lumière
  * - éliminer l'eau si suppression de la source
- * - bug saut + création où on se retrouve dans le block
  * - rails
  * - bouton flying
  * - plante sous eau
@@ -181,6 +179,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             statsAppState.setFont(font);
             stateManager.attachAll(
                     statsAppState,
+                    //new DetailedProfilerState(),
                     new IalonDebugState(),
                     new DebugKeysAppState(),
                     new WireframeState()

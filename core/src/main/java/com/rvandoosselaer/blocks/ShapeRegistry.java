@@ -2,6 +2,7 @@ package com.rvandoosselaer.blocks;
 
 import com.rvandoosselaer.blocks.shapes.CrossPlane;
 import com.rvandoosselaer.blocks.shapes.Cube;
+import com.rvandoosselaer.blocks.shapes.Fence;
 import com.rvandoosselaer.blocks.shapes.FloatingCube;
 import com.rvandoosselaer.blocks.shapes.Liquid;
 import com.rvandoosselaer.blocks.shapes.Pole;
@@ -115,6 +116,8 @@ public class ShapeRegistry {
         registerWater();
 
         registerCrossPlane();
+
+        registerFences();
     }
 
     private void registerCuboids() {
@@ -249,6 +252,14 @@ public class ShapeRegistry {
         register(ShapeIds.SHORT_POLE_EAST, new ShortPole(Direction.EAST, 0.15f, 0.15f));
         register(ShapeIds.SHORT_POLE_SOUTH, new ShortPole(Direction.SOUTH, 0.15f, 0.15f));
         register(ShapeIds.SHORT_POLE_WEST, new ShortPole(Direction.WEST, 0.15f, 0.15f));
+    }
+
+    private void registerFences() {
+        register(ShapeIds.FENCE, new Fence(Direction.UP, 0.15f));
+        register(ShapeIds.FENCE_NORTH, new Fence(Direction.NORTH, 0.15f));
+        register(ShapeIds.FENCE_EAST, new Fence(Direction.EAST, 0.15f));
+        register(ShapeIds.FENCE_SOUTH, new Fence(Direction.SOUTH, 0.15f));
+        register(ShapeIds.FENCE_WEST, new Fence(Direction.WEST, 0.15f));
     }
 
 }

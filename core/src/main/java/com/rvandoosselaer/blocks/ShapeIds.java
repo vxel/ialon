@@ -48,6 +48,13 @@ public interface ShapeIds {
     String SHORT_POLE_WEST = "shortpole_west";
     String[] ALL_SHORT_POLES = {SHORT_POLE, SHORT_POLE_DOWN, SHORT_POLE_NORTH, SHORT_POLE_EAST, SHORT_POLE_SOUTH, SHORT_POLE_WEST};
 
+    String FENCE = "fence_up";
+    String FENCE_NORTH = "fence_north";
+    String FENCE_EAST = "fence_east";
+    String FENCE_SOUTH = "fence_south";
+    String FENCE_WEST = "fence_west";
+    String[] ALL_FENCES = {FENCE, FENCE_NORTH, FENCE_EAST, FENCE_SOUTH, FENCE_WEST};
+
     String ROUNDED_CUBE = "rounded_cube_up";
     String ROUNDED_CUBE_DOWN = "rounded_cube_down";
     String ROUNDED_CUBE_NORTH = "rounded_cube_north";

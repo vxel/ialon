@@ -63,7 +63,7 @@ public class ShortPole implements Shape {
         }
 
         if (chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.DOWN, direction))) {
-            createDown(location, rotation, chunkMesh, blockScale, multipleImages, widthExtend, height);
+            createDown(location, rotation, chunkMesh, blockScale, multipleImages, widthExtend);
             enlightFace(location, Shape.getFaceDirection(Direction.DOWN, direction), chunk, chunkMesh);
         }
 
@@ -241,7 +241,7 @@ public class ShortPole implements Shape {
         }
     }
 
-    private static void createDown(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float thicknessExtend, float height) {
+    private static void createDown(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float thicknessExtend) {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices

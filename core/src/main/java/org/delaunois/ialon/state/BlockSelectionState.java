@@ -73,6 +73,7 @@ import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
+import static com.rvandoosselaer.blocks.ShapeIds.FENCE_NORTH;
 import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
@@ -252,7 +253,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(OAK_LOG, WEDGE_SOUTH),
             getName(OAK_LOG, PYRAMID),
             getName(OAK_LOG, POLE),
-            SPACER,
+            getName(OAK_LOG, FENCE_NORTH),
             SPACER,
             SPACER,
 
