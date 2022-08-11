@@ -60,7 +60,7 @@ public interface BlockIds {
 
     String WATER = TypeIds.WATER;
 
-    String WHITE_CUBE_LIGHT = TypeIds.WHITE_CUBE_LIGHT;
+    String WHITE_LIGHT = TypeIds.WHITE_LIGHT;
 
     String WINDOW = TypeIds.WINDOW;
 

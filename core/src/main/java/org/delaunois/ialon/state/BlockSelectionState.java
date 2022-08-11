@@ -70,7 +70,6 @@ import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LEAVES;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LOG;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_PLANKS;
 import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
-import static com.rvandoosselaer.blocks.BlockIds.WHITE_CUBE_LIGHT;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
@@ -78,6 +77,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
+import static com.rvandoosselaer.blocks.ShapeIds.SHORT_POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.SQUARE;
 import static com.rvandoosselaer.blocks.ShapeIds.SQUARE_NORTH;
@@ -86,6 +86,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
 import static com.rvandoosselaer.blocks.TypeIds.WATER;
+import static com.rvandoosselaer.blocks.TypeIds.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
@@ -108,7 +109,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRASS_SNOW, DOUBLE_SLAB),
             getName(GRASS_SNOW, SLAB),
             getName(WATER, LIQUID),
-            WHITE_CUBE_LIGHT,
+            getName(WHITE_LIGHT, SHORT_POLE),
             getName(SCALE, SQUARE_NORTH),
             SPACER,
 

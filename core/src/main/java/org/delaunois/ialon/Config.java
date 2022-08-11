@@ -13,7 +13,7 @@ public class Config {
     public static final int CHUNK_POOLSIZE = 4;
 
     // Grid
-    public static final int GRID_RADIUS = 4;
+    public static final int GRID_RADIUS = 5;
     public static final int PHYSICS_GRID_RADIUS = 1;
     public static final int CHUNK_SIZE = 16;
     public static final int CHUNK_HEIGHT = 16;
@@ -60,7 +60,7 @@ public class Config {
     public static final boolean PLAYER_START_FLY = false;
 
     // Debug
-    public static final boolean DEV_MODE = true;
+    public static final boolean DEV_MODE = false;
     public static final boolean DEBUG_COLLISIONS = false;
 
 }

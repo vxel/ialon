@@ -3,16 +3,17 @@ package com.rvandoosselaer.blocks;
 import com.rvandoosselaer.blocks.shapes.CrossPlane;
 import com.rvandoosselaer.blocks.shapes.Cube;
 import com.rvandoosselaer.blocks.shapes.FloatingCube;
+import com.rvandoosselaer.blocks.shapes.Liquid;
 import com.rvandoosselaer.blocks.shapes.Pole;
 import com.rvandoosselaer.blocks.shapes.Pyramid;
 import com.rvandoosselaer.blocks.shapes.RoundedCube;
+import com.rvandoosselaer.blocks.shapes.ShortPole;
 import com.rvandoosselaer.blocks.shapes.Slab;
 import com.rvandoosselaer.blocks.shapes.Square;
 import com.rvandoosselaer.blocks.shapes.SquareCuboid;
 import com.rvandoosselaer.blocks.shapes.Stairs;
 import com.rvandoosselaer.blocks.shapes.StairsInnerCorner;
 import com.rvandoosselaer.blocks.shapes.StairsOuterCorner;
-import com.rvandoosselaer.blocks.shapes.Liquid;
 import com.rvandoosselaer.blocks.shapes.Wedge;
 
 import java.util.Collection;
@@ -96,6 +97,8 @@ public class ShapeRegistry {
         registerWedges();
 
         registerPoles();
+
+        registerShortPoles();
 
         registerRoundedCubes();
 
@@ -237,6 +240,15 @@ public class ShapeRegistry {
 
     private void registerFloatingCubes() {
         register(ShapeIds.FLOATING_CUBE, new FloatingCube());
+    }
+
+    private void registerShortPoles() {
+        register(ShapeIds.SHORT_POLE, new ShortPole(Direction.UP, 0.15f, 0.15f));
+        register(ShapeIds.SHORT_POLE_DOWN, new ShortPole(Direction.DOWN, 0.15f, 0.15f));
+        register(ShapeIds.SHORT_POLE_NORTH, new ShortPole(Direction.NORTH, 0.15f, 0.15f));
+        register(ShapeIds.SHORT_POLE_EAST, new ShortPole(Direction.EAST, 0.15f, 0.15f));
+        register(ShapeIds.SHORT_POLE_SOUTH, new ShortPole(Direction.SOUTH, 0.15f, 0.15f));
+        register(ShapeIds.SHORT_POLE_WEST, new ShortPole(Direction.WEST, 0.15f, 0.15f));
     }
 
 }

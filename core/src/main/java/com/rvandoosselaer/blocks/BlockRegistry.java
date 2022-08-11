@@ -231,7 +231,17 @@ public class BlockRegistry {
     }
 
     private void registerLightBlocks() {
-        Block floatingCubeLight = new Block(BlockIds.WHITE_CUBE_LIGHT, ShapeIds.FLOATING_CUBE, TypeIds.SNOW, false, false, true, true);
+        Block floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE), ShapeIds.SHORT_POLE, TypeIds.WHITE_LIGHT, false, false, true, true);
+        register(floatingCubeLight);
+        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_DOWN), ShapeIds.SHORT_POLE_DOWN, TypeIds.WHITE_LIGHT, false, false, true, true);
+        register(floatingCubeLight);
+        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_EAST), ShapeIds.SHORT_POLE_EAST, TypeIds.WHITE_LIGHT, false, false, true, true);
+        register(floatingCubeLight);
+        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_WEST), ShapeIds.SHORT_POLE_WEST, TypeIds.WHITE_LIGHT, false, false, true, true);
+        register(floatingCubeLight);
+        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_SOUTH), ShapeIds.SHORT_POLE_SOUTH, TypeIds.WHITE_LIGHT, false, false, true, true);
+        register(floatingCubeLight);
+        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_NORTH), ShapeIds.SHORT_POLE_NORTH, TypeIds.WHITE_LIGHT, false, false, true, true);
         register(floatingCubeLight);
     }
 

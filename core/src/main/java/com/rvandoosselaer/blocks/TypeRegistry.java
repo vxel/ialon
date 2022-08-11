@@ -213,7 +213,7 @@ public class TypeRegistry {
         register(TypeIds.PALM_TREE_LEAVES);
         register(TypeIds.OAK_LEAVES);
         register(TypeIds.SPRUCE_LEAVES);
-        register(TypeIds.WHITE_CUBE_LIGHT);
+        register(TypeIds.WHITE_LIGHT);
         register(TypeIds.WINDOW);
         register(TypeIds.ITEM_GRASS);
         register(TypeIds.SCALE);
