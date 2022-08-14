@@ -71,5 +71,8 @@ public interface BlockIds {
     static String getName(String type, String shape) {
         return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape;
     }
+    static String getName(String type, String shape, int waterLevel) {
+        return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape + (waterLevel >= 0 ? "-" + waterLevel : "");
+    }
 
 }

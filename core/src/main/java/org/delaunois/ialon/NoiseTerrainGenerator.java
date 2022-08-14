@@ -8,6 +8,7 @@ import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
+import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.fastnoise.FastNoise;
@@ -54,7 +55,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     @Override
     public Chunk generate(Vec3i location) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
-        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ITEM_GRASS);
+        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
 
         Chunk chunk = Chunk.createAt(location);
         int maxX = chunkSize.x;

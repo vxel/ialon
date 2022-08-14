@@ -56,6 +56,11 @@ public class Block {
      * Flag indicating if the block is a torch light.
      */
     private boolean torchlight;
+    /**
+     * The water level (<0 does not allow water, 0 none, 6 = full)
+     */
+    @Builder.Default
+    private int liquidLevel = -1;
 
     public Block(String name, String shape, String type, boolean usingMultipleImages, boolean transparent, boolean solid, boolean torchlight) {
         this.name = name;

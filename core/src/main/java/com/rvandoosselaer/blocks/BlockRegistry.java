@@ -157,9 +157,12 @@ public class BlockRegistry {
     }
 
     private void registerWaterBlocks() {
-        BlockDefinition waterDef = new BlockDefinition(TypeIds.WATER, false, true, false)
-                .addShapes(ShapeIds.ALL_LIQUID);
-        register(BlockFactory.create(waterDef));
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1)).shape(ShapeIds.LIQUID1).type(TypeIds.WATER).transparent(true).liquidLevel(1).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2)).shape(ShapeIds.LIQUID2).type(TypeIds.WATER).transparent(true).liquidLevel(2).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3)).shape(ShapeIds.LIQUID3).type(TypeIds.WATER).transparent(true).liquidLevel(3).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4)).shape(ShapeIds.LIQUID4).type(TypeIds.WATER).transparent(true).liquidLevel(4).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5)).shape(ShapeIds.LIQUID5).type(TypeIds.WATER).transparent(true).liquidLevel(5).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID)).shape(ShapeIds.LIQUID).type(TypeIds.WATER).transparent(true).liquidLevel(6).build());
     }
 
     private void registerStoneBrickBlocks() {
@@ -233,23 +236,22 @@ public class BlockRegistry {
     }
 
     private void registerLightBlocks() {
-        Block floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE), ShapeIds.SHORT_POLE, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
-        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_DOWN), ShapeIds.SHORT_POLE_DOWN, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
-        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_EAST), ShapeIds.SHORT_POLE_EAST, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
-        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_WEST), ShapeIds.SHORT_POLE_WEST, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
-        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_SOUTH), ShapeIds.SHORT_POLE_SOUTH, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
-        floatingCubeLight = new Block(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_NORTH), ShapeIds.SHORT_POLE_NORTH, TypeIds.WHITE_LIGHT, false, false, true, true);
-        register(floatingCubeLight);
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE)).shape(ShapeIds.SHORT_POLE).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_DOWN)).shape(ShapeIds.SHORT_POLE_DOWN).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_EAST)).shape(ShapeIds.SHORT_POLE_EAST).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_WEST)).shape(ShapeIds.SHORT_POLE_WEST).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_SOUTH)).shape(ShapeIds.SHORT_POLE_SOUTH).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_NORTH)).shape(ShapeIds.SHORT_POLE_NORTH).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
     }
 
     private void registerItemBlocks() {
-        Block itemGrass = new Block(BlockIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, TypeIds.ITEM_GRASS, false, false, false, false);
-        register(itemGrass);
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(0).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 1)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(1).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 2)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(2).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 3)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(3).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 4)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(4).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 5)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(5).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 6)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(6).build());
     }
 
     private void registerScaleBlocks() {
@@ -287,6 +289,14 @@ public class BlockRegistry {
                 .addShapes(ShapeIds.ALL_DOUBLE_SLABS)
                 .addShapes(ShapeIds.ALL_PLATES);
         register(BlockFactory.create(oakLogDef));
+
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 0)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(0).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 1)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(1).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 2)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(2).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 3)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(3).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 4)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(4).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 5)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(5).solid(true).usingMultipleImages(true).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 6)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(6).solid(true).usingMultipleImages(true).build());
 
         BlockDefinition oakPlankDef = new BlockDefinition(TypeIds.OAK_PLANKS, true, false, false)
                 .addShapes(ShapeIds.CUBE)

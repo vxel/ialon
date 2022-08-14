@@ -14,7 +14,7 @@ Material window : Blocks/MatDefs/Ialon.j3md {
     AdditionalRenderState {
         Blend Alpha
         FaceCull Off
-        PolyOffset -0.2 -0.2
+        PolyOffset -1.2 -1.2
     }
 
 }

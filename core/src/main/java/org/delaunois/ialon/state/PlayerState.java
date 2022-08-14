@@ -571,14 +571,26 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void playerJump() {
-        Block above = chunkManager.getBlock(camera.getLocation().add(0, 1, 0)).orElse(null);
+        Block above = null;
+        CollisionResults collisionResults = new CollisionResults();
+        Ray ray = new Ray(playerLocation, Vector3f.UNIT_Y);
+
+        app.getChunkNode().collideWith(ray, collisionResults);
+
+        for (CollisionResult collisionResult : collisionResults) {
+            if (collisionResult.getDistance() < 2.5f) {
+                above = chunkManager.getBlock(playerLocation.add(0, collisionResult.getDistance(), 0)).orElse(null);
+                log.info("Block {} above jump", above);
+                break;
+            }
+        }
 
         // Do not jump if there is a block above the player, unless it is water
-        if (above == null || above.getName().contains("water")) {
+        if (above == null || above.getLiquidLevel() >= 0) {
 
             // Do not jump if the player is not on the ground, unless he is in water
             Block block = chunkManager.getBlock(playerLocation).orElse(null);
-            if ((block != null && block.getName().contains("water")) || player.onGround()) {
+            if ((block != null && block.getLiquidLevel() == 6) || player.onGround()) {
                 player.jump();
             }
         }
@@ -725,6 +737,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             case "slab":
             case "double":
             case "plate":
+            case "pole":
                 return block;
         }
 

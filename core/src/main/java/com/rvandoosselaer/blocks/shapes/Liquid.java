@@ -9,11 +9,9 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
-import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
-import org.delaunois.ialon.ChunkLiquidManager;
 
 import java.util.List;
 
@@ -85,12 +83,10 @@ public class Liquid implements Shape {
             v[2][1] = computeHeight(b[1], b[2], b[3]);
             v[6][1] = computeHeight(b[3], b[4], b[5]);
             v[7][1] = computeHeight(b[5], b[6], b[7]);
-        }
-
-        if (isLiquidFaceVisible(neighborhood, UP)) {
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
             enlightFace(location, UP, neighborhood.getChunk(), chunkMesh);
         }
+
         if (isLiquidFaceVisible(neighborhood, DOWN)) {
             createDown(location, chunkMesh, blockScale, v[0], v[1], v[4], v[5]);
             enlightFace(location, DOWN, neighborhood.getChunk(), chunkMesh);
@@ -117,10 +113,9 @@ public class Liquid implements Shape {
         int maxLevel = level;
 
         for (Block b : blocks) {
-            if (b != null && TypeIds.WATER.equals(b.getType())) {
-                int lvl = ChunkLiquidManager.getLiquidLevel(b);
-                if (maxLevel < lvl) {
-                    maxLevel = lvl;
+            if (b != null) {
+                if (maxLevel < b.getLiquidLevel()) {
+                    maxLevel = b.getLiquidLevel();
                 }
             }
         }
@@ -274,14 +269,10 @@ public class Liquid implements Shape {
         if (neighbour == null) {
             return true;
         }
-        if (neighbour.getType().equals(TypeIds.WATER)) {
+        if (neighbour.getLiquidLevel() > 0) {
             return false;
         }
         return neighbour.isTransparent();
-
-        /*
-        return true;
-        */
     }
 
 }

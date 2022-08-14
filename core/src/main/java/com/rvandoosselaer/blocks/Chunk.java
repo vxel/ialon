@@ -79,13 +79,10 @@ public class Chunk {
     @Setter
     private byte[] lightMap;
 
-    private final short water_liquid_id;
-
     // To avoid many instanciation of Vec3i (costly)
     private final Vec3i v = new Vec3i();
 
     public Chunk(@NonNull Vec3i location) {
-        water_liquid_id = REGISTRY.get("water-liquid").getId();
         setLocation(location);
         setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
         setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
@@ -395,7 +392,7 @@ public class Chunk {
         if (neighbour == null) {
             return true;
         }
-        if (neighbour.isTransparent() ^ block.isTransparent()) {
+        if (neighbour.isTransparent() || block.isTransparent()) {
             return true;
         }
         if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {
@@ -506,16 +503,14 @@ public class Chunk {
      */
     private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color) {
         int index = calculateIndex(x, y, z);
-        int level = this.lightMap[calculateIndex(x, y, z)];
+        int level = this.lightMap[index];
         ColorRGBA lightColor = ColorRGBA.White;
         if (color != null) {
             short bId = this.blocks[index];
             if (bId > 0) {
-                String shape = REGISTRY.get(bId).getShape();
-                if (shape.startsWith(ShapeIds.LIQUID)) {
-                    if (ShapeIds.LIQUID.equals(shape) || face == Direction.UP) {
-                        lightColor = color;
-                    }
+                Block block = REGISTRY.get(bId);
+                if (block.getLiquidLevel() > 5 || (block.getLiquidLevel() > 0 && face == Direction.UP)) {
+                    lightColor = color;
                 }
             }
         }

@@ -248,6 +248,10 @@ public class ChunkManager {
             chunks.addAll(chunkLightManager.removeTorchlight(location));
         }
 
+        if (block.getLiquidLevel() >= 0 && chunkLiquidManager != null) {
+            chunkLiquidManager.flowLiquid(location);
+        }
+
         return chunks;
     }
 

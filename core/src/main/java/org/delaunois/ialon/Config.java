@@ -60,7 +60,7 @@ public class Config {
     public static final boolean PLAYER_START_FLY = false;
 
     // Debug
-    public static final boolean DEV_MODE = true;
+    public static final boolean DEV_MODE = false;
     public static final boolean DEBUG_COLLISIONS = false;
 
 }

@@ -71,6 +71,7 @@ import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LOG;
 import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_PLANKS;
 import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
 import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
+import static com.rvandoosselaer.blocks.ShapeIds.CROSS_PLANE;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
@@ -252,7 +253,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(OAK_LOG, PLATE),
             getName(OAK_LOG, WEDGE_SOUTH),
             getName(OAK_LOG, PYRAMID),
-            getName(OAK_LOG, POLE),
+            getName(OAK_LOG, POLE, 0),
             SPACER,
             SPACER,
             SPACER,
@@ -396,7 +397,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(WINDOW, CUBE),
             getName(WINDOW, PLATE),
             getName(WINDOW, SQUARE),
-            ITEM_GRASS,
+            getName(ITEM_GRASS, CROSS_PLANE, 0),
             SPACER,
             SPACER,
 
@@ -680,6 +681,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private static String getName(String block, String shape) {
         return BlockIds.getName(block, shape);
+    }
+
+    private static String getName(String block, String shape, int level) {
+        return BlockIds.getName(block, shape, level);
     }
 
     private static String getName(IalonBlock block, String shape) {

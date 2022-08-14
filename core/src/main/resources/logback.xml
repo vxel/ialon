@@ -7,14 +7,14 @@
     </appender>
 
     <logger name="com.rvandoosselaer" level="info"/>
-    <logger name="com.rvandoosselaer.blocks.shapes.Liquid" level="debug" />
+    <logger name="com.rvandoosselaer.blocks.shapes.Liquid" level="error" />
     <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>
-    <logger name="org.delaunois.ialon" level="debug"/>
-    <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
-    <logger name="org.delaunois.ialon.ChunkPager" level="debug"/>
-    <logger name="org.delaunois.ialon.PhysicsChunkPager" level="debug"/>
+    <logger name="org.delaunois.ialon" level="error"/>
+    <logger name="org.delaunois.ialon.ChunkManager" level="error"/>
+    <logger name="org.delaunois.ialon.ChunkPager" level="error"/>
+    <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
-    <logger name="org.delaunois.ialon.state.PlayerState" level="debug"/>
+    <logger name="org.delaunois.ialon.state.PlayerState" level="error"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>
     <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>

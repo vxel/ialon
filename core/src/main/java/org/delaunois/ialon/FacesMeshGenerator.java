@@ -13,6 +13,7 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
 import com.rvandoosselaer.blocks.Shape;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.ShapeRegistry;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
@@ -20,6 +21,7 @@ import com.simsilica.mathd.Vec3i;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import lombok.ToString;
@@ -170,6 +172,13 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 // add the block to the collision mesh
                 if (block.isSolid()) {
                     shape.add(neighborhood, collisionMesh);
+                }
+
+                // add water if any
+                if (!Objects.equals(block.getType(), TypeIds.WATER) && block.getLiquidLevel() > 0) {
+                    mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
+                    shape = shapeRegistry.get(block.getLiquidLevel() == 6 ? ShapeIds.LIQUID : ShapeIds.LIQUID + "_" + block.getLiquidLevel());
+                    shape.add(neighborhood, mesh);
                 }
             }
 
