@@ -43,16 +43,22 @@ public class ChunkLiquidManager {
      * Add liquid at the given location
      * @param blockLocationInsideChunk the start location (e.g. the location of the updated block)
      */
-    public void addLiquid(Chunk chunk, Vec3i blockLocationInsideChunk) {
+    public void addLiquid(Chunk chunk, Block previousBlock, Vec3i blockLocationInsideChunk) {
         if (log.isDebugEnabled()) {
             log.debug("Adding liquid at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
         }
 
-        addLiquid(null, chunk, blockLocationInsideChunk, LEVEL_MAX - 1);
-        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
+        addLiquid(previousBlock, chunk, blockLocationInsideChunk, LEVEL_MAX - 1);
+        if (Config.SIMULATE_LIQUID_FLOW) {
+            liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
+        }
     }
 
     public void flowLiquid(Vector3f location) {
+        if (!Config.SIMULATE_LIQUID_FLOW) {
+            return;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Flowing liquid starting at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
         }
@@ -204,18 +210,18 @@ public class ChunkLiquidManager {
 
     /**
      * Adds liquid at the given location, at the given level
-     * @param block the existing block at this location or null
+     * @param existingBlock the existing block at this location or null
      * @param chunk the chunk
      * @param relativeBlockLocation the location of the block inside the chunk
      * @param level the liquid level
      */
-    private void addLiquid(Block block, Chunk chunk, Vec3i relativeBlockLocation, int level) {
+    private void addLiquid(Block existingBlock, Chunk chunk, Vec3i relativeBlockLocation, int level) {
         if (level <= 0) {
             // No more liquid
             level = 0;
         }
 
-        if (block == null || TypeIds.WATER.equals(block.getType())) {
+        if (existingBlock == null || TypeIds.WATER.equals(existingBlock.getType())) {
             String shapeId = ShapeIds.LIQUID;
 
             if (level < LEVEL_MAX) {
@@ -227,9 +233,9 @@ public class ChunkLiquidManager {
                     BlocksConfig.getInstance().getBlockRegistry()
                             .get(BlockIds.getName(TypeIds.WATER, shapeId)));
 
-        } else if (block.getLiquidLevel() >= 0) {
+        } else if (existingBlock.getLiquidLevel() >= 0) {
             Block newBlock = BlocksConfig.getInstance().getBlockRegistry()
-                    .get(BlockIds.getName(block.getType(), block.getShape(), level));
+                    .get(BlockIds.getName(existingBlock.getType(), existingBlock.getShape(), level));
             if (newBlock != null) {
                 chunk.addBlock(relativeBlockLocation, newBlock);
             }

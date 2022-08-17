@@ -38,44 +38,18 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonBlock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.FloatBuffer;
 import java.util.Objects;
 
-import static com.rvandoosselaer.blocks.BlockIds.BIRCH_LEAVES;
-import static com.rvandoosselaer.blocks.BlockIds.BIRCH_LOG;
-import static com.rvandoosselaer.blocks.BlockIds.BIRCH_PLANKS;
-import static com.rvandoosselaer.blocks.BlockIds.BRICKS;
-import static com.rvandoosselaer.blocks.BlockIds.COBBLESTONE;
-import static com.rvandoosselaer.blocks.BlockIds.DIRT;
-import static com.rvandoosselaer.blocks.BlockIds.GRASS;
-import static com.rvandoosselaer.blocks.BlockIds.GRASS_SNOW;
-import static com.rvandoosselaer.blocks.BlockIds.GRAVEL;
-import static com.rvandoosselaer.blocks.BlockIds.ITEM_GRASS;
-import static com.rvandoosselaer.blocks.BlockIds.MOSSY_COBBLESTONE;
-import static com.rvandoosselaer.blocks.BlockIds.MOSSY_STONE_BRICKS;
-import static com.rvandoosselaer.blocks.BlockIds.OAK_LEAVES;
-import static com.rvandoosselaer.blocks.BlockIds.OAK_LOG;
-import static com.rvandoosselaer.blocks.BlockIds.OAK_PLANKS;
-import static com.rvandoosselaer.blocks.BlockIds.PALM_TREE_LEAVES;
-import static com.rvandoosselaer.blocks.BlockIds.PALM_TREE_LOG;
-import static com.rvandoosselaer.blocks.BlockIds.PALM_TREE_PLANKS;
-import static com.rvandoosselaer.blocks.BlockIds.ROCK;
-import static com.rvandoosselaer.blocks.BlockIds.SAND;
-import static com.rvandoosselaer.blocks.BlockIds.SCALE;
-import static com.rvandoosselaer.blocks.BlockIds.SNOW;
-import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LEAVES;
-import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_LOG;
-import static com.rvandoosselaer.blocks.BlockIds.SPRUCE_PLANKS;
-import static com.rvandoosselaer.blocks.BlockIds.STONE_BRICKS;
-import static com.rvandoosselaer.blocks.BlockIds.WINDOW;
+import lombok.extern.slf4j.Slf4j;
+
+import static com.rvandoosselaer.blocks.BlockIds.WATER;
 import static com.rvandoosselaer.blocks.ShapeIds.CROSS_PLANE;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
-import static com.rvandoosselaer.blocks.ShapeIds.LIQUID;
+import static com.rvandoosselaer.blocks.ShapeIds.LIQUID5;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
@@ -87,20 +61,44 @@ import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_EAST;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
-import static com.rvandoosselaer.blocks.TypeIds.WATER;
-import static com.rvandoosselaer.blocks.TypeIds.WHITE_LIGHT;
+import static org.delaunois.ialon.IalonBlock.BIRCH_LEAVES;
+import static org.delaunois.ialon.IalonBlock.BIRCH_LOG;
+import static org.delaunois.ialon.IalonBlock.BIRCH_PLANKS;
+import static org.delaunois.ialon.IalonBlock.BRICKS;
+import static org.delaunois.ialon.IalonBlock.COBBLESTONE;
+import static org.delaunois.ialon.IalonBlock.DIRT;
+import static org.delaunois.ialon.IalonBlock.GRASS;
+import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
+import static org.delaunois.ialon.IalonBlock.GRAVEL;
+import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
 import static org.delaunois.ialon.IalonBlock.METAL4;
 import static org.delaunois.ialon.IalonBlock.METAL5;
+import static org.delaunois.ialon.IalonBlock.MOSSY_COBBLESTONE;
+import static org.delaunois.ialon.IalonBlock.MOSSY_STONE_BRICKS;
+import static org.delaunois.ialon.IalonBlock.OAK_LEAVES;
+import static org.delaunois.ialon.IalonBlock.OAK_LOG;
+import static org.delaunois.ialon.IalonBlock.OAK_PLANKS;
+import static org.delaunois.ialon.IalonBlock.PALM_TREE_LEAVES;
+import static org.delaunois.ialon.IalonBlock.PALM_TREE_LOG;
+import static org.delaunois.ialon.IalonBlock.PALM_TREE_PLANKS;
+import static org.delaunois.ialon.IalonBlock.ROCK;
+import static org.delaunois.ialon.IalonBlock.SAND;
+import static org.delaunois.ialon.IalonBlock.SCALE;
 import static org.delaunois.ialon.IalonBlock.SLATE;
+import static org.delaunois.ialon.IalonBlock.SNOW;
+import static org.delaunois.ialon.IalonBlock.SPRUCE_LEAVES;
+import static org.delaunois.ialon.IalonBlock.SPRUCE_LOG;
+import static org.delaunois.ialon.IalonBlock.SPRUCE_PLANKS;
+import static org.delaunois.ialon.IalonBlock.STONE_BRICKS;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
+import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
+import static org.delaunois.ialon.IalonBlock.WINDOW;
 
-
+@Slf4j
 public class BlockSelectionState extends BaseAppState implements ActionListener, AnalogListener {
-
-    private static final Logger LOG = LoggerFactory.getLogger(BlockSelectionState.class.getName());
 
     public static String SPACER = null;
     public static String[] BLOCK_IDS = {
@@ -110,7 +108,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRASS_SNOW, CUBE),
             getName(GRASS_SNOW, DOUBLE_SLAB),
             getName(GRASS_SNOW, SLAB),
-            getName(WATER, LIQUID),
+            getName(WATER, LIQUID5),
             getName(WHITE_LIGHT, SHORT_POLE),
             getName(SCALE, SQUARE_NORTH),
             SPACER,
@@ -253,7 +251,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(OAK_LOG, PLATE),
             getName(OAK_LOG, WEDGE_SOUTH),
             getName(OAK_LOG, PYRAMID),
-            getName(OAK_LOG, POLE, 0),
+            getName(OAK_LOG, POLE),
             SPACER,
             SPACER,
             SPACER,
@@ -397,7 +395,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(WINDOW, CUBE),
             getName(WINDOW, PLATE),
             getName(WINDOW, SQUARE),
-            getName(ITEM_GRASS, CROSS_PLANE, 0),
+            getName(ITEM_GRASS, CROSS_PLANE),
             SPACER,
             SPACER,
 
@@ -497,7 +495,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private void setSelectedBlockIndex(int index) {
         selectedBlockIndex = index;
-        LOG.info("Selecting {}", BLOCK_IDS[index]);
+        log.info("Selecting {}", BLOCK_IDS[index]);
 
         Node parent = null;
         if (selectedBlockNode != null) {
@@ -514,7 +512,16 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         Node[] blocks = new Node[BLOCK_IDS.length];
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         for (int i = 0; i < BLOCK_IDS.length; i++) {
-            blocks[i] = Objects.equals(BLOCK_IDS[i], SPACER) ? null : createBlockNode(blockRegistry.get(BLOCK_IDS[i]), BUTTON_SIZE);
+            if (Objects.equals(BLOCK_IDS[i], SPACER)) {
+                blocks[i] = null;
+            } else {
+                Block block = blockRegistry.get(BLOCK_IDS[i]);
+                if (block == null) {
+                    log.warn("Unknown block {}", BLOCK_IDS[i]);
+                } else {
+                    blocks[i] = createBlockNode(block, BUTTON_SIZE);
+                }
+            }
         }
         return blocks;
     }
@@ -683,12 +690,12 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         return BlockIds.getName(block, shape);
     }
 
-    private static String getName(String block, String shape, int level) {
-        return BlockIds.getName(block, shape, level);
-    }
-
     private static String getName(IalonBlock block, String shape) {
-        return BlockIds.getName(block.getName(), shape);
+        if (CUBE.equals(shape)) {
+            return BlockIds.getName(block.getType(), shape);
+        } else {
+            return BlockIds.getName(block.getType(), shape, 0);
+        }
     }
 
     @Override

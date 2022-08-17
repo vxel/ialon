@@ -57,9 +57,9 @@ public class StairsOuterCorner implements Shape {
         createSouth(location, chunkMesh, rotation, blockScale, multipleImages);
         enlightFace(location, null, chunk, chunkMesh, 12);
 
-        if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(upsideDown ? Direction.EAST : Direction.WEST, direction))) {
+        if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(Direction.WEST, direction))) {
             createWest(location, chunkMesh, rotation, blockScale, multipleImages);
-            enlightFace(location, Shape.getYawFaceDirection(upsideDown ? Direction.EAST : Direction.WEST, direction), chunk, chunkMesh, 10);
+            enlightFace(location, Shape.getYawFaceDirection(Direction.WEST, direction), chunk, chunkMesh, 10);
         }
 
         createEast(location, chunkMesh, rotation, blockScale, multipleImages);

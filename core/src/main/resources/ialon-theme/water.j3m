@@ -17,7 +17,7 @@ Material water-still : Blocks/MatDefs/Ialon.j3md {
 
     AdditionalRenderState {
         Blend Alpha
-        PolyOffset -1.0 -1.0
+        PolyOffset -0.1 -0.1
     }
 
 }

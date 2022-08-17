@@ -11,4 +11,8 @@ Material normal-block : Blocks/MatDefs/Ialon.j3md {
         AlphaDiscardThreshold : 0
     }
 
+    AdditionalRenderState {
+        PolyOffset -0.2 -0.2
+    }
+
 }

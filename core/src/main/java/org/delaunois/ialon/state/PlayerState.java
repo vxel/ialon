@@ -119,7 +119,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     };
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
-    private boolean left = false, right = false, forward = false, backward = false, up = false, down = false;
+    private boolean left = false, right = false, forward = false, backward = false, up = false, down = false, jump = false;
     private boolean fly = PLAYER_START_FLY;
     private boolean underWater = false;
     private boolean onScale = false;
@@ -172,6 +172,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Getter
     private Container buttonRemoveBlock;
+
+    @Getter
+    private Container buttonFly;
 
     //Temporary vectors used on each frame.
     //They here to avoid instanciating new vectors on each frame
@@ -247,10 +250,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (right) {
             move.addLocal(-camLeft.x, fly ? 0 : -camLeft.y, -camLeft.z);
         }
-        if (forward) {
+        if (fly && jump) {
+            up = forward;
+            down = backward;
+        }
+        if (!jump && forward) {
             move.addLocal(camDir.x, fly ? 0 : camDir.y, camDir.z);
         }
-        if (backward) {
+        if (!jump && backward) {
             move.addLocal(-camDir.x, fly ? 0 : -camDir.y, -camDir.z);
         }
         if (up && playerLocation.y <= MAXY) {
@@ -422,8 +429,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                highlight(event.isPressed(), buttonJump);
-                if (event.isPressed()) {
+                event.setConsumed();
+                jump = event.isPressed();
+                up = false;
+                down = false;
+                highlight(jump, buttonJump);
+                if (jump && !fly) {
                     playerJump();
                 }
             }
@@ -441,6 +452,13 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 highlight(event.isPressed(), buttonRemoveBlock);
                 if (event.isPressed()) {
                     removeBlock();
+                }
+            }
+        });
+        buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                if (event.isPressed()) {
+                    toogleFly();
                 }
             }
         });
@@ -477,6 +495,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             app.getGuiNode().attachChild(buttonJump);
             app.getGuiNode().attachChild(buttonAddBlock);
             app.getGuiNode().attachChild(buttonRemoveBlock);
+            app.getGuiNode().attachChild(buttonFly);
         }
     }
 
@@ -486,6 +505,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             buttonJump.removeFromParent();
             buttonAddBlock.removeFromParent();
             buttonRemoveBlock.removeFromParent();
+            buttonFly.removeFromParent();
         }
     }
 
@@ -528,7 +548,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         } else if (fly && ACTION_FLY_DOWN.equals(name)) {
             down = isPressed;
 
-        } else if (!fly && ACTION_JUMP.equals(name)) {
+        } else if (ACTION_JUMP.equals(name)) {
             if (isPressed) {
                 playerJump();
             }
@@ -538,21 +558,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             fireBall();
 
         } else if (ACTION_FLY.equals(name) && isPressed) {
-            fly = !fly;
-            if (fly) {
-                log.info("Flying");
-                player.setGravity(0);
-                player.setFallSpeed(0);
-            } else {
-                log.info("Not Flying");
-                if (underWater) {
-                    player.setGravity(WATER_GRAVITY);
-                    player.setFallSpeed(WATER_GRAVITY);
-                } else {
-                    player.setGravity(GROUND_GRAVITY);
-                    player.setFallSpeed(GROUND_GRAVITY);
-                }
-            }
+            toogleFly();
         }
     }
 
@@ -571,6 +577,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void playerJump() {
+        if (fly) {
+            return;
+        }
+
         Block above = null;
         CollisionResults collisionResults = new CollisionResults();
         Ray ray = new Ray(playerLocation, Vector3f.UNIT_Y);
@@ -621,6 +631,24 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
     }
 
+    private void toogleFly() {
+        fly = !fly;
+        highlight(fly, buttonFly);
+        if (fly) {
+            log.info("Flying");
+            player.setGravity(0);
+            player.setFallSpeed(0);
+        } else {
+            log.info("Not Flying");
+            if (underWater) {
+                player.setGravity(WATER_GRAVITY);
+                player.setFallSpeed(WATER_GRAVITY);
+            } else {
+                player.setGravity(GROUND_GRAVITY);
+                player.setFallSpeed(GROUND_GRAVITY);
+            }
+        }
+    }
 
     private void addBlock() {
         log.info("Action : addBlock triggered");
@@ -650,7 +678,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 Block block = orientateBlock(selectedBlock, worldBlockLocation);
                 if (block == null) {
                     // Can't place the block like this
-                    return;
+                    block = selectedBlock;
                 }
 
                 // Add the block, which removes the light at this location
@@ -694,12 +722,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 log.info("Removing block at {}", blockLocation);
                 Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
 
-                Block upBlock = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
-                if (upBlock != null && upBlock.getName().contains("water")) {
-                    log.info("Flowing water in {}", blockLocation);
-                    updatedChunks.addAll(chunkManager.addBlock(blockLocation, upBlock));
-                }
-
                 Vector3f[] aroundLocations = new Vector3f[] {
                         blockLocation.add(-1, 0, 0),
                         blockLocation.add(1, 0, 0),
@@ -732,15 +754,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         String[] shapeProperties = block.getShape().split("_");
         String shape = shapeProperties[0];
 
-        switch (shape) {
-            case "cube":
-            case "slab":
-            case "double":
-            case "plate":
-            case "pole":
-                return block;
-        }
-
         // Turn the block according to where the user clicked
         Direction direction = Direction.fromVector(addPlaceholder.getWorldTranslation().subtract(removePlaceholder.getWorldTranslation()));
         if (TypeIds.SCALE.equals(block.getType())) {
@@ -767,7 +780,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (subShape.length() > 0) {
             shape = String.join("_", shape, subShape);
         }
-        String orientedBlockName = String.format("%s-%s", type, String.join("_", shape, direction.name().toLowerCase()));
+        String orientedBlockName = String.format("%s-%s-%s", type, String.join("_", shape, direction.name().toLowerCase()), block.getLiquidLevel());
         Block orientedBlock = BlocksConfig.getInstance().getBlockRegistry().get(orientedBlockName);
 
         // Just in case this particulier orientation does not exist...
@@ -866,6 +879,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 if (!playerState.getDirectionButtons().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                         && !playerState.getButtonAddBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                         && !playerState.getButtonRemoveBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
+                        && !playerState.getButtonFly().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                 ) {
                     rotateCamera(playerState.getCamera(), -event.getDeltaX() / 400, UP);
                     rotateCamera(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());

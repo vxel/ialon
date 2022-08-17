@@ -30,7 +30,7 @@ public class BlockRegistry {
     private final ConcurrentMap<String, Block> registry = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
-    private static final int MAX_BLOCKS = 2000;
+    private static final int MAX_BLOCKS = 32000;
     private final Block[] aregistry = new Block[MAX_BLOCKS];
     private short size = 1; // Block id 0 is an empty block
 
@@ -109,6 +109,10 @@ public class BlockRegistry {
 
     public void clear() {
         registry.clear();
+    }
+
+    public int size() {
+        return registry.size();
     }
 
     public Collection<Block> getAll() {
@@ -280,23 +284,19 @@ public class BlockRegistry {
     private void registerOakBlocks() {
         BlockDefinition oakLogDef = new BlockDefinition(TypeIds.OAK_LOG, true, false, true)
                 .addShapes(ShapeIds.ALL_CUBES)
-                .addShapes(ShapeIds.ALL_PYRAMIDS)
                 .addShapes(ShapeIds.ALL_WEDGES)
-                .addShapes(ShapeIds.ALL_POLES)
-                .addShapes(ShapeIds.ALL_FENCES)
-                .addShapes(ShapeIds.ALL_ROUNDED_CUBES)
-                .addShapes(ShapeIds.ALL_SLABS)
-                .addShapes(ShapeIds.ALL_DOUBLE_SLABS)
-                .addShapes(ShapeIds.ALL_PLATES);
+                .addShapes(ShapeIds.ALL_ROUNDED_CUBES);
         register(BlockFactory.create(oakLogDef));
 
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 0)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(0).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 1)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(1).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 2)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(2).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 3)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(3).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 4)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(4).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 5)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(5).solid(true).usingMultipleImages(true).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.OAK_LOG, ShapeIds.POLE, 6)).shape(ShapeIds.POLE).type(TypeIds.OAK_LOG).liquidLevel(6).solid(true).usingMultipleImages(true).build());
+        register(BlockFactory.create(new BlockDefinition(TypeIds.OAK_LOG, true, false, true)
+                .addWaterLevels(0, 1, 2, 3, 4, 5, 6)
+                .addShapes(ShapeIds.ALL_PYRAMIDS)
+                .addShapes(ShapeIds.ALL_POLES)
+                .addShapes(ShapeIds.ALL_FENCES)
+                .addShapes(ShapeIds.ALL_SLABS)
+                .addShapes(ShapeIds.ALL_DOUBLE_SLABS)
+                .addShapes(ShapeIds.ALL_PLATES)
+        ));
 
         BlockDefinition oakPlankDef = new BlockDefinition(TypeIds.OAK_PLANKS, true, false, false)
                 .addShapes(ShapeIds.CUBE)

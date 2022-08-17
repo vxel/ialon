@@ -60,9 +60,9 @@ public class StairsInnerCorner implements Shape {
         createSouth(location, chunkMesh, rotation, blockScale, multipleImages);
         enlightFace(location, null, chunk, chunkMesh, 18);
 
-        if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(upsideDown ? Direction.EAST : Direction.WEST, direction))) {
+        if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(Direction.WEST, direction))) {
             createWest(location, chunkMesh, rotation, blockScale, multipleImages);
-            enlightFace(location, Shape.getYawFaceDirection(upsideDown ? Direction.EAST : Direction.WEST, direction), chunk, chunkMesh, 4);
+            enlightFace(location, Shape.getYawFaceDirection(Direction.WEST, direction), chunk, chunkMesh, 4);
         }
         if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(Direction.NORTH, direction))) {
             createNorth(location, chunkMesh, rotation, blockScale, multipleImages);

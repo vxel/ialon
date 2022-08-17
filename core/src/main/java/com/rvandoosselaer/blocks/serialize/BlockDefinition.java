@@ -22,6 +22,7 @@ public class BlockDefinition {
 
     private String type;
     private final Set<String> shapes = new HashSet<>();
+    private final Set<Integer> waterLevels = new HashSet<>();
     private boolean solid = true;
     private boolean transparent = false;
     private boolean multiTexture = false;
@@ -40,4 +41,17 @@ public class BlockDefinition {
         return this;
     }
 
+    public BlockDefinition addWaterLevel(Integer waterLevel) {
+        if (waterLevel != null) {
+            waterLevels.add(waterLevel);
+        }
+        return this;
+    }
+
+    public BlockDefinition addWaterLevels(Integer... waterLevels) {
+        if (waterLevels != null) {
+            Arrays.stream(waterLevels).forEach(this::addWaterLevel);
+        }
+        return this;
+    }
 }

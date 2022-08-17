@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.collision.CollisionResult;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
+import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkCache;
@@ -11,6 +12,7 @@ import com.rvandoosselaer.blocks.ChunkGenerator;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
 import com.rvandoosselaer.blocks.ChunkRepository;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
@@ -30,6 +32,8 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+
+import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
 
 @Slf4j
 public class ChunkManager {
@@ -210,10 +214,36 @@ public class ChunkManager {
 
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
 
+        Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
         if (TypeIds.WATER.equals(block.getType())) {
-            chunkLiquidManager.addLiquid(chunk, blockLocationInsideChunk);
+            // Adding water on this location
+            chunkLiquidManager.addLiquid(chunk, previousBlock, blockLocationInsideChunk);
+
         } else {
-            Block previousBlock = chunk.addBlock(blockLocationInsideChunk, block);
+            if (previousBlock == null) {
+                // Location is empty, just add the block
+                chunk.addBlock(blockLocationInsideChunk, block);
+            } else {
+                if (!Objects.equals(TypeIds.WATER, previousBlock.getType())
+                        && !previousBlock.getShape().contains("square")) {
+                    // A block already exists on this location : do nothing
+                    return chunks;
+                }
+
+                // Location is not empty, check if the location is filled with water
+                if (previousBlock.getLiquidLevel() > 0) {
+                    // Optimisation : if adding a block in water, apply directly the water level
+                    // of the block location
+                    block = BlocksConfig.getInstance().getBlockRegistry()
+                            .get(BlockIds.getName(block.getType(), block.getShape(), previousBlock.getLiquidLevel()));
+                    if (block != null) {
+                        chunk.addBlock(blockLocationInsideChunk, block);
+                    }
+                } else {
+                    chunk.addBlock(blockLocationInsideChunk, block);
+                }
+            }
+
             if (Objects.equals(previousBlock, block)) {
                 log.info("Previous block at location {} was already {}", location, previousBlock);
                 return chunks;
@@ -248,10 +278,6 @@ public class ChunkManager {
             chunks.addAll(chunkLightManager.removeTorchlight(location));
         }
 
-        if (block.getLiquidLevel() >= 0 && chunkLiquidManager != null) {
-            chunkLiquidManager.flowLiquid(location);
-        }
-
         return chunks;
     }
 
@@ -271,6 +297,25 @@ public class ChunkManager {
             log.warn("No block found at location {}", location);
             return chunks;
         }
+
+        boolean skipLiquidFlow = false;
+        int lvl = previousBlock.getLiquidLevel();
+        if (lvl > 0) {
+            // Optimisation : if removing a block in water, apply directly the water level
+            // of the block location
+            String shapeId = ShapeIds.LIQUID;
+
+            if (lvl < LEVEL_MAX) {
+                // Partial liquid
+                shapeId = shapeId + "_" + lvl;
+            }
+
+            chunk.addBlock(blockLocationInsideChunk,
+                    BlocksConfig.getInstance().getBlockRegistry()
+                            .get(BlockIds.getName(TypeIds.WATER, shapeId)));
+            skipLiquidFlow = true;
+        }
+
 
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
 
@@ -303,7 +348,7 @@ public class ChunkManager {
             chunks.addAll(chunkLightManager.restoreSunlight(location));
         }
 
-        if (chunkLiquidManager != null) {
+        if (chunkLiquidManager != null && !skipLiquidFlow) {
             chunkLiquidManager.flowLiquid(location);
         }
 
@@ -402,12 +447,12 @@ public class ChunkManager {
 
     private static Vector3f getAdjustedContactPoint(Vector3f contactPoint, Vector3f contactNormal) {
         // add a small offset to the contact point, so we point a bit more 'inward' into the block
-        Vector3f adjustedContactPoint = contactPoint.add(contactNormal.negate().multLocal(0.05f));
+        Vector3f adjustedContactPoint = contactPoint.add(contactNormal.negate().multLocal(0.01f));
         return getScaledBlockLocation(adjustedContactPoint);
     }
 
     private static Vector3f getNeighbourBlockLocation(Vector3f location, Vector3f normal) {
-        Vector3f neighbourDirection = normal.mult(0.95f);
+        Vector3f neighbourDirection = normal.mult(0.99f);
         return getScaledBlockLocation(location).add(neighbourDirection);
     }
 

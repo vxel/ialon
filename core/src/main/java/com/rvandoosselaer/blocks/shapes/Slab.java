@@ -59,11 +59,11 @@ public class Slab implements Shape {
 
         if (endY < 0.5f || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.UP, direction))) {
             createUp(location, rotation, chunkMesh, blockScale, multipleImages);
-            enlightFace(location, Shape.getFaceDirection(Direction.UP, direction), chunk, chunkMesh);
+            enlightFace(location, endY < 0.5f ? null : Shape.getFaceDirection(Direction.UP, direction), chunk, chunkMesh);
         }
         if (startY > -0.5f || chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.DOWN, direction))) {
             createDown(location, rotation, chunkMesh, blockScale, multipleImages);
-            enlightFace(location, Shape.getFaceDirection(Direction.DOWN, direction), chunk, chunkMesh);
+            enlightFace(location, startY > -0.5f ? null : Shape.getFaceDirection(Direction.DOWN, direction), chunk, chunkMesh);
         }
         if (chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.WEST, direction))) {
             createWest(location, rotation, chunkMesh, blockScale, multipleImages);

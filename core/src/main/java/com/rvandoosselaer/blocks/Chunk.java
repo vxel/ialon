@@ -393,10 +393,7 @@ public class Chunk {
             return true;
         }
         if (neighbour.isTransparent() || block.isTransparent()) {
-            return true;
-        }
-        if (block.getName().endsWith("leaves") && neighbour.getName().endsWith("leaves")) {
-            return true;
+            return !(block.getType().equals(neighbour.getType()));
         }
         return !(ShapeIds.CUBE.equals(neighbour.getShape())
                 || ShapeIds.LIQUID.equals(neighbour.getShape()));

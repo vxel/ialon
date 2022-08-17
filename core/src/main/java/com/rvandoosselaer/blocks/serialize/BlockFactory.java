@@ -4,14 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A factory class that produces blocks from a BlockDefinition.
@@ -35,6 +36,19 @@ public class BlockFactory {
                     .usingMultipleImages(blockDefinition.isMultiTexture())
                     .build();
             blocks.add(block);
+
+            for (Integer waterLevel : blockDefinition.getWaterLevels()) {
+                block = Block.builder()
+                        .name(BlockIds.getName(blockDefinition.getType(), shape, waterLevel))
+                        .type(blockDefinition.getType())
+                        .shape(shape)
+                        .solid(blockDefinition.isSolid())
+                        .transparent(blockDefinition.isTransparent())
+                        .usingMultipleImages(blockDefinition.isMultiTexture())
+                        .liquidLevel(waterLevel)
+                        .build();
+                blocks.add(block);
+            }
         }
 
         return blocks;
