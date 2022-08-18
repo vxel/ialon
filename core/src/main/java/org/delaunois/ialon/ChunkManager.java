@@ -33,6 +33,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
 
 @Slf4j
@@ -217,7 +218,7 @@ public class ChunkManager {
         Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
         if (TypeIds.WATER.equals(block.getType())) {
             // Adding water on this location
-            chunkLiquidManager.addLiquid(chunk, previousBlock, blockLocationInsideChunk);
+            chunkLiquidManager.addSource(chunk, previousBlock, blockLocationInsideChunk);
 
         } else {
             if (previousBlock == null) {
@@ -231,7 +232,11 @@ public class ChunkManager {
                 }
 
                 // Location is not empty, check if the location is filled with water
-                if (previousBlock.getLiquidLevel() > 0) {
+                if (WATER_SOURCE.equals(previousBlock.getName())) {
+                    chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk);
+                    chunk.addBlock(blockLocationInsideChunk, block);
+
+                } else if (previousBlock.getLiquidLevel() > 0) {
                     // Optimisation : if adding a block in water, apply directly the water level
                     // of the block location
                     block = BlocksConfig.getInstance().getBlockRegistry()
@@ -239,8 +244,10 @@ public class ChunkManager {
                     if (block != null) {
                         chunk.addBlock(blockLocationInsideChunk, block);
                     }
+
                 } else {
                     chunk.addBlock(blockLocationInsideChunk, block);
+                    //chunkLiquidManager.flowLiquid(location);
                 }
             }
 

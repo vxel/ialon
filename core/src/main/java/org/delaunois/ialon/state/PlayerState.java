@@ -41,6 +41,7 @@ import com.jme3.scene.shape.Sphere;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Direction;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
@@ -658,7 +659,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             return;
         }
 
-        Vector3f worldBlockLocation = addPlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
+        final Vector3f worldBlockLocation = addPlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
         Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerLocation);
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
         final Block selectedBlock = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
@@ -674,27 +675,36 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         executorService.submit(() -> {
             try {
+                Vector3f location = worldBlockLocation;
                 // Get the selected block from menu
-                Block block = orientateBlock(selectedBlock, worldBlockLocation);
+                Block block = orientateBlock(selectedBlock, location);
                 if (block == null) {
                     // Can't place the block like this
                     block = selectedBlock;
                 }
 
+                if (TypeIds.WATER.equals(selectedBlock.getType())) {
+                    Vector3f tmp = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
+                    Block previousBlock = chunkManager.getBlock(tmp).orElse(null);
+                    if (previousBlock != null && !ShapeIds.CUBE.equals(previousBlock.getShape())) {
+                        location = tmp;
+                    }
+                }
+
                 // Add the block, which removes the light at this location
                 log.info("Adding block {}", block.getName());
-                Set<Vec3i> updatedChunks = chunkManager.addBlock(worldBlockLocation, block);
+                Set<Vec3i> updatedChunks = chunkManager.addBlock(location, block);
 
                 // Computes the light if the block is a torch
                 if (block.isTorchlight()) {
-                    updatedChunks.addAll(chunkManager.addTorchlight(worldBlockLocation, 15));
+                    updatedChunks.addAll(chunkManager.addTorchlight(location, 15));
                 }
 
                 if (!updatedChunks.isEmpty()) {
                     chunkManager.requestMeshChunks(updatedChunks);
 
-                    for (Vec3i location : updatedChunks) {
-                        app.asyncSave(location);
+                    for (Vec3i loc : updatedChunks) {
+                        app.asyncSave(loc);
                     }
                 }
             } catch (Exception e) {

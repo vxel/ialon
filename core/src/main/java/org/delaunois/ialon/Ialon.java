@@ -33,7 +33,6 @@ import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.BlocksTheme;
 import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.event.BasePickState;
@@ -408,7 +407,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         config.setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
         config.setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
         config.getShapeRegistry().registerDefaultShapes();
-        //config.getBlockRegistry().registerDefaultBlocks();
         config.setChunkMeshGenerator(new FacesMeshGenerator());
 
         TypeRegistry typeRegistry = config.getTypeRegistry();
@@ -416,7 +414,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         typeRegistry.setAtlasRepository(atlasManager);
         typeRegistry.registerDefaultMaterials();
 
-        registerWaterBlocks();
         registerIalonBlocks();
 
         log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
@@ -466,7 +463,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private void registerIalonBlocks() {
         BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
         for (IalonBlock block : IalonBlock.values() ) {
-            BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
+            Material material = BlocksConfig.getInstance().getTypeRegistry().get(block.getType());
+            if (material == null) {
+                BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
+            }
 
             for (String shape : block.getShapes()) {
                 if (ShapeIds.CUBE.equals(shape)) {
@@ -495,16 +495,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 }
             }
         }
-    }
-
-    public void registerWaterBlocks() {
-        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1)).shape(ShapeIds.LIQUID1).type(TypeIds.WATER).transparent(true).liquidLevel(1).build());
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2)).shape(ShapeIds.LIQUID2).type(TypeIds.WATER).transparent(true).liquidLevel(2).build());
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3)).shape(ShapeIds.LIQUID3).type(TypeIds.WATER).transparent(true).liquidLevel(3).build());
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4)).shape(ShapeIds.LIQUID4).type(TypeIds.WATER).transparent(true).liquidLevel(4).build());
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5)).shape(ShapeIds.LIQUID5).type(TypeIds.WATER).transparent(true).liquidLevel(5).build());
-        registry.register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID)).shape(ShapeIds.LIQUID).type(TypeIds.WATER).transparent(true).liquidLevel(6).build());
     }
 
     private void initInputManager() {

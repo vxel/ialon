@@ -1,5 +1,6 @@
 package org.delaunois.ialon;
 
+import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 
@@ -7,14 +8,13 @@ public enum IalonBlock {
 
     WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.SQUARE),
 
-    /*
+    WATER_SOURCE(BlockIds.WATER_SOURCE, TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, 5),
     WATER(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID), TypeIds.WATER, false, true, false, ShapeIds.LIQUID, 6),
     WATER1(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1), TypeIds.WATER, false, true, false, ShapeIds.LIQUID1, 1),
     WATER2(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2), TypeIds.WATER, false, true, false, ShapeIds.LIQUID2, 2),
     WATER3(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3), TypeIds.WATER, false, true, false, ShapeIds.LIQUID3, 3),
     WATER4(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4), TypeIds.WATER, false, true, false, ShapeIds.LIQUID4, 4),
     WATER5(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5), TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, 5),
-    */
 
     STONE_BRICKS(TypeIds.STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
     MOSSY_STONE_BRICKS(TypeIds.MOSSY_STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),

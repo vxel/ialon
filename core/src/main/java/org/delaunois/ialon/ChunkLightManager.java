@@ -29,12 +29,12 @@ public class ChunkLightManager {
     @Setter
     private ChunkManager chunkManager;
 
-    private final Set<String> cubeShapes = new HashSet<>();
+    // Shapes that block the light
+    private final Set<String> blockingShapes = new HashSet<>();
 
     public ChunkLightManager(ChunkManager chunkManager) {
         this.chunkManager = chunkManager;
-        cubeShapes.add(ShapeIds.CUBE);
-        cubeShapes.add(ShapeIds.SQUARE_CUBOID_NINE_TENTHS);
+        blockingShapes.add(ShapeIds.CUBE);
     }
 
     /**
@@ -215,7 +215,7 @@ public class ChunkLightManager {
         }
 
         Block block = chunk.getBlock(x, y, z);
-        if (block != null && !block.isTransparent() && cubeShapes.contains(block.getShape())) {
+        if (block != null && !block.isTransparent() && blockingShapes.contains(block.getShape())) {
             return;
         }
 
@@ -292,7 +292,7 @@ public class ChunkLightManager {
                 }
                 dimLight = true;
 
-            } else if (cubeShapes.contains(block.getShape())) {
+            } else if (blockingShapes.contains(block.getShape())) {
                 if (log.isDebugEnabled()) {
                     log.debug("PAS2.1 - Light blocked at ({}, {}, {})", x, y, z);
                 }

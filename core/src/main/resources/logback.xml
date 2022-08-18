@@ -15,6 +15,7 @@
     <logger name="org.delaunois.ialon.ChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
+    <logger name="org.delaunois.ialon.ChunkLiquidManager" level="debug"/>
     <logger name="org.delaunois.ialon.state.PlayerState" level="info"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>

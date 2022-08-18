@@ -51,7 +51,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
     public void update(float tpf) {
         elapsed += tpf;
         int queueSize = chunkLiquidManager.queueSize();
-        if (elapsed > WATER_SIMULATION_SPEED && queueSize > 0) {
+        if (elapsed > (1 / WATER_SIMULATION_SPEED) && queueSize > 0) {
             Set<Vec3i> updatedChunks = new HashSet<>();
             for (int i = 0; i < queueSize; i ++) {
                 updatedChunks.addAll(chunkLiquidManager.step());

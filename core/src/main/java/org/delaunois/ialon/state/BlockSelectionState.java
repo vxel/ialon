@@ -44,12 +44,11 @@ import java.util.Objects;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static com.rvandoosselaer.blocks.BlockIds.WATER;
+import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 import static com.rvandoosselaer.blocks.ShapeIds.CROSS_PLANE;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
-import static com.rvandoosselaer.blocks.ShapeIds.LIQUID5;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
@@ -108,7 +107,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRASS_SNOW, CUBE),
             getName(GRASS_SNOW, DOUBLE_SLAB),
             getName(GRASS_SNOW, SLAB),
-            getName(WATER, LIQUID5),
+            WATER_SOURCE,
             getName(WHITE_LIGHT, SHORT_POLE),
             getName(SCALE, SQUARE_NORTH),
             SPACER,

@@ -9,6 +9,7 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
@@ -272,7 +273,7 @@ public class Liquid implements Shape {
         if (neighbour.getLiquidLevel() > 0) {
             return false;
         }
-        return neighbour.isTransparent();
+        return neighbour.isTransparent() || !ShapeIds.CUBE.equals(neighbour.getShape());
     }
 
 }
