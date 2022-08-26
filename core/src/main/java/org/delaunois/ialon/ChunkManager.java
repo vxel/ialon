@@ -216,45 +216,52 @@ public class ChunkManager {
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
 
         Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
-        if (TypeIds.WATER.equals(block.getType())) {
-            // Adding water on this location
-            chunkLiquidManager.addSource(chunk, previousBlock, blockLocationInsideChunk);
+        if (Objects.equals(previousBlock, block)) {
+            // 1. Adding the same block : nothing to do
+            log.info("Previous block at location {} was already {}", location, previousBlock);
+            return chunks;
+        }
 
-        } else {
-            if (previousBlock == null) {
-                // Location is empty, just add the block
+        if (previousBlock == null || previousBlock.getShape().contains("square")) {
+            // 2. Adding a block on (mostly) empty non-water location : add the block
+            chunk.addBlock(blockLocationInsideChunk, block);
+            if (WATER_SOURCE.equals(block.getName())) {
+                chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
+            }
+
+        } else if (previousBlock.getLiquidLevel() > 0) {
+            // 3. Adding block in water
+            if (WATER_SOURCE.equals(block.getName())) {
+                // 3.1 Adding a source where there is already non-source water
                 chunk.addBlock(blockLocationInsideChunk, block);
+                chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
+
+            } else if (WATER_SOURCE.equals(previousBlock.getName())) {
+                // 3.2 Adding a block on a water source removes the source
+                chunk.addBlock(blockLocationInsideChunk, block);
+                chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk);
+
             } else {
-                if (!Objects.equals(TypeIds.WATER, previousBlock.getType())
-                        && !previousBlock.getShape().contains("square")) {
-                    // A block already exists on this location : do nothing
-                    return chunks;
-                }
-
-                // Location is not empty, check if the location is filled with water
-                if (WATER_SOURCE.equals(previousBlock.getName())) {
-                    chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk);
+                // 3.3 Adding a non source block where there is already some water
+                // Optimisation : if adding a block in water, apply directly the water level
+                // of the block location
+                String blockName = BlockIds.getName(block.getType(), block.getShape(), previousBlock.getLiquidLevel());
+                block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
+                if (block == null) {
+                    log.warn("Block {} not found", blockName);
+                } else if (ShapeIds.CUBE.equals(block.getShape())) {
                     chunk.addBlock(blockLocationInsideChunk, block);
-
-                } else if (previousBlock.getLiquidLevel() > 0) {
-                    // Optimisation : if adding a block in water, apply directly the water level
-                    // of the block location
-                    block = BlocksConfig.getInstance().getBlockRegistry()
-                            .get(BlockIds.getName(block.getType(), block.getShape(), previousBlock.getLiquidLevel()));
-                    if (block != null) {
-                        chunk.addBlock(blockLocationInsideChunk, block);
-                    }
-
+                    //chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk);
+                    //chunkLiquidManager.flowLiquid(location);
                 } else {
                     chunk.addBlock(blockLocationInsideChunk, block);
-                    //chunkLiquidManager.flowLiquid(location);
                 }
             }
 
-            if (Objects.equals(previousBlock, block)) {
-                log.info("Previous block at location {} was already {}", location, previousBlock);
-                return chunks;
-            }
+        } else {
+            // 4. Adding block on an existing non-water block is not allowed
+            log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
+            return chunks;
         }
 
         chunks.add(chunk.getLocation());
@@ -305,7 +312,6 @@ public class ChunkManager {
             return chunks;
         }
 
-        boolean skipLiquidFlow = false;
         int lvl = previousBlock.getLiquidLevel();
         if (lvl > 0) {
             // Optimisation : if removing a block in water, apply directly the water level
@@ -320,9 +326,18 @@ public class ChunkManager {
             chunk.addBlock(blockLocationInsideChunk,
                     BlocksConfig.getInstance().getBlockRegistry()
                             .get(BlockIds.getName(TypeIds.WATER, shapeId)));
-            skipLiquidFlow = true;
+
+        } else if (chunkLiquidManager != null) {
+            chunkLiquidManager.flowLiquid(location);
         }
 
+        /*
+        if (chunkLiquidManager != null) {
+            Vector3f above = location.add(0, 1, 0);
+            chunkLiquidManager.removeSource(above);
+            chunkLiquidManager.flowLiquid(above);
+        }
+        */
 
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
 
@@ -353,10 +368,6 @@ public class ChunkManager {
         if (chunkLightManager != null) {
             chunks.addAll(chunkLightManager.removeTorchlight(location));
             chunks.addAll(chunkLightManager.restoreSunlight(location));
-        }
-
-        if (chunkLiquidManager != null && !skipLiquidFlow) {
-            chunkLiquidManager.flowLiquid(location);
         }
 
         return chunks;

@@ -17,7 +17,7 @@ public class MainActivity extends AndroidHarness {
         exitDialogMessage = "Are you sure you want to quit?";
         mouseEventsEnabled = true;
         screenShowTitle=false;
-        frameRate = 60;
+        frameRate = Config.FPS_LIMIT;
         LogManager.getLogManager().getLogger("").setLevel(Level.INFO);
     }
 

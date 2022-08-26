@@ -86,6 +86,9 @@ public class Liquid implements Shape {
             v[7][1] = computeHeight(b[5], b[6], b[7]);
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
             enlightFace(location, UP, neighborhood.getChunk(), chunkMesh);
+        } else if (neighborhood.getNeighbour(Direction.UP) == null) {
+            createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
+            enlightFace(location, UP, neighborhood.getChunk(), chunkMesh);
         }
 
         if (isLiquidFaceVisible(neighborhood, DOWN)) {

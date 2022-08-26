@@ -442,6 +442,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
                 highlight(event.isPressed(), buttonAddBlock);
                 if (event.isPressed()) {
                     addBlock();
@@ -450,6 +451,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
                 highlight(event.isPressed(), buttonRemoveBlock);
                 if (event.isPressed()) {
                     removeBlock();
@@ -458,6 +460,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         });
         buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
                 if (event.isPressed()) {
                     toogleFly();
                 }
@@ -877,7 +880,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private static class MyTouchListener implements TouchListener {
 
-        PlayerState playerState;
+        private PlayerState playerState;
 
         public MyTouchListener(PlayerState playerState) {
             this.playerState = playerState;
@@ -887,7 +890,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         public void onTouch(String name, TouchEvent event, float tpf) {
             if (event.getType() == TouchEvent.Type.MOVE) {
                 if (!playerState.getDirectionButtons().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
-                        && !playerState.getButtonAddBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
+                        && !playerState.getButtonAddBlock().getWorldBound().merge(playerState.getButtonJump().getWorldBound()).intersects(new Vector3f(event.getX(), event.getY(), 1))
                         && !playerState.getButtonRemoveBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                         && !playerState.getButtonFly().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
                 ) {

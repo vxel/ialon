@@ -79,6 +79,7 @@ import static org.delaunois.ialon.Config.GRID_SIZE;
 import static org.delaunois.ialon.Config.GRID_UPPER_BOUND;
 import static org.delaunois.ialon.Config.MAX_UPDATE_PER_FRAME;
 import static org.delaunois.ialon.Config.PHYSICS_GRID_SIZE;
+import static org.delaunois.ialon.Config.SIMULATE_LIQUID_FLOW;
 import static org.delaunois.ialon.Config.SKY_COLOR;
 import static org.delaunois.ialon.Config.SKY_HORIZON_COLOR;
 import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
@@ -449,6 +450,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         chunkPagerState = new ChunkPagerState(chunkPager);
         physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
+        chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
         BlockSelectionState blockSelectionState = new BlockSelectionState();
 
         stateManager.attachAll(

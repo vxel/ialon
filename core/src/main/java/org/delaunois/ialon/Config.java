@@ -14,7 +14,7 @@ public class Config {
     public static final int CHUNK_POOLSIZE = 4;
 
     // Grid
-    public static final int GRID_RADIUS = 3;
+    public static final int GRID_RADIUS = 4;
     public static final int PHYSICS_GRID_RADIUS = 1;
     public static final int CHUNK_SIZE = 16;
     public static final int CHUNK_HEIGHT = 16;

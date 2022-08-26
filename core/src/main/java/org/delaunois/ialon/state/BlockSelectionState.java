@@ -445,6 +445,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         setSelectedBlockIndex(selectedBlockIndex);
         buttonBlockSelection = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
                 if (event.isPressed()) {
                     toggleBlockMenu();
                 }
@@ -458,6 +459,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     public void selectBlockMenuPage(int page) {
+        log.info("Selection block page {}", page);
         if (page < 0) {
             selectedBlockPage = menuBlockPages.length + (page % menuBlockPages.length);
         } else {
@@ -559,6 +561,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE,
                             new DefaultMouseListener() {
                                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                                    event.setConsumed();
                                     if (event.isPressed()) {
                                         setSelectedBlockIndex(finalIndex);
                                         hideBlockMenu();
@@ -572,15 +575,22 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
 
         Container next = createButton("Next", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
-            protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                selectBlockMenuPage(selectedBlockPage + 1);
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
+                if (event.isPressed()) {
+                    selectBlockMenuPage(selectedBlockPage + 1);
+                }
             }
         });
         blockList.addChild(next, pageSizeX + 1, 0);
 
         Container previous = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
-            protected void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                selectBlockMenuPage(selectedBlockPage - 1);
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
+                event.setConsumed();
+                if (event.isPressed()) {
+                    selectBlockMenuPage(selectedBlockPage - 1);
+                }
             }
         });
         blockList.addChild(previous, pageSizeX + 1, pageSizeY - 1);
@@ -673,6 +683,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
         Label label = buttonContainer.addChild(new Label(text));
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        label.getFont().getPage(0).clearParam("VertexColor");
 
         // Center the text in the box.
         label.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));

@@ -92,7 +92,6 @@ public class ChunkLightManager {
             log.debug("Restoring sunlight at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
         }
 
-        LightRunningContext context = new LightRunningContext();
         Set<Vector3f> neighborBlockLocations = new HashSet<>();
         for (float x = location.x - 1; x <= location.x + 1; x++) {
             for (float y = location.y - 1; y <= location.y + 1; y++) {
@@ -102,6 +101,7 @@ public class ChunkLightManager {
             }
         }
 
+        LightRunningContext context = new LightRunningContext();
         neighborBlockLocations.forEach(loc ->
                 chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk -> {
                     Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));

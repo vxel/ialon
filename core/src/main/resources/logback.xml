@@ -21,7 +21,7 @@
     <logger name="com.jme3.input.InputManager" level="info"/>
     <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>
 
-    <root level="error">
+    <root level="info">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>
