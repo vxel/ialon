@@ -12,12 +12,9 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.SUN_AMPLITUDE;
-import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
 public class MoonControl extends AbstractControl {
-
-    private static final float UPDATE_THRESHOLD = 1 / (TIME_FACTOR * 2);
 
     @Getter
     @Setter
@@ -29,7 +26,7 @@ public class MoonControl extends AbstractControl {
     @Setter
     private Camera cam;
 
-    private long lastUpdate = System.currentTimeMillis();
+    private long lastUpdate = 0;
 
     @Override
     protected void controlUpdate(float tpf) {
@@ -38,7 +35,7 @@ public class MoonControl extends AbstractControl {
         }
 
         long now = System.currentTimeMillis();
-        if (now - lastUpdate > UPDATE_THRESHOLD) {
+        if (lastUpdate == 0 || now - lastUpdate > sun.getUpdateThreshold()) {
             lastUpdate = now;
             float time = sun.getTime() + FastMath.PI;
             float height = FastMath.sin(time);

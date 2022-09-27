@@ -19,6 +19,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
+import static org.delaunois.ialon.Config.SIMULATE_LIQUID_FLOW_MODEL;
 
 /**
  * Basic simulation of fluid
@@ -36,7 +37,7 @@ public class ChunkLiquidManager {
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
 
     public int queueSize() {
-        return liquidBfsQueue.size() + liquidRemovalBfsQueue.size();
+        return liquidRemovalBfsQueue.size() > 0 ? liquidRemovalBfsQueue.size() : liquidBfsQueue.size();
     }
 
     /**
@@ -66,18 +67,21 @@ public class ChunkLiquidManager {
      * @param chunk the chunk where the source was located
      * @param blockLocationInsideChunk the location of the source
      */
-    public void removeSource(Chunk chunk, Vec3i blockLocationInsideChunk) {
+    public void removeSource(Chunk chunk, Vec3i blockLocationInsideChunk, int liquidLevel) {
         if (log.isDebugEnabled()) {
             log.debug("Removing liquid source at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
         }
 
-        liquidRemovalBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
+        liquidRemovalBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, liquidLevel));
     }
 
     public void removeSource(Vector3f location) {
         chunkManager.getChunk(ChunkManager.getChunkLocation(location)).ifPresent(chunk -> {
             Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            removeSource(chunk, blockLocationInsideChunk);
+            Block block = chunk.getBlock(blockLocationInsideChunk);
+            if (block != null) {
+                removeSource(chunk, blockLocationInsideChunk, LEVEL_MAX);
+            }
         });
     }
 
@@ -112,8 +116,13 @@ public class ChunkLiquidManager {
 
     public Set<Vec3i> step() {
         LiquidRunningContext context = new LiquidRunningContext();
-        if (!stepUnFlow(context))
+        if (SIMULATE_LIQUID_FLOW_MODEL == 1) {
+            if (!stepUnFlow(context))
+                stepFlow(context);
+        } else {
+            stepUnFlow(context);
             stepFlow(context);
+        }
         return context.chunkMeshUpdateRequests;
     }
 

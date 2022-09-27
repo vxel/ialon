@@ -55,6 +55,7 @@ import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
+import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
 
 import java.io.IOException;
@@ -120,8 +121,13 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Getter
     private boolean mouselocked = false;
 
-    private org.delaunois.ialon.control.SunControl sunControl;
+    @Getter
+    private SunControl sunControl;
+
     private PlayerState playerState;
+    private boolean checkResize = false;
+    private int camHeight = 0;
+    private int camWidth = 0;
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
     private final long startTime = System.currentTimeMillis();
@@ -141,6 +147,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     @Override
     public void simpleInitApp() {
+        log.info("Initializing Ialon");
+
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
 
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
@@ -173,6 +181,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
         cam.setFrustumNear(0.1f);
         cam.setFrustumFar(400f);
         cam.setFov(50);
+        camHeight = cam.getHeight();
+        camWidth = cam.getWidth();
 
         StatsAppState statsAppState = new StatsAppState();
         if (DEV_MODE) {
@@ -452,13 +462,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
         chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
         BlockSelectionState blockSelectionState = new BlockSelectionState();
+        TimeFactorState timeFactorState = new TimeFactorState();
 
         stateManager.attachAll(
                 chunkManagerState,
                 chunkPagerState,
                 physicsChunkPagerState,
                 chunkLiquidManagerState,
-                blockSelectionState
+                blockSelectionState,
+                timeFactorState
         );
     }
 
@@ -502,7 +514,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private void initInputManager() {
         inputManager.addMapping("switch-mouselock", new KeyTrigger(KeyInput.KEY_BACK));
         inputManager.addMapping("toggle-time-run", new KeyTrigger(KeyInput.KEY_P));
-        inputManager.addListener(this, "switch-mouselock", "toggle-time-run");
+        inputManager.addMapping("toggle-fullscreen", new KeyTrigger(KeyInput.KEY_F2));
+        inputManager.addListener(this, "switch-mouselock", "toggle-time-run", "toggle-fullscreen");
     }
 
     /**
@@ -517,6 +530,17 @@ public class Ialon extends SimpleApplication implements ActionListener {
         if (!playerState.isEnabled()) {
             startPlayer();
         }
+        if (checkResize) {
+            if (cam.getWidth() != camWidth || cam.getHeight() != camHeight) {
+                stateManager.getState(TimeFactorState.class).resize();
+                stateManager.getState(BlockSelectionState.class).resize();
+                stateManager.getState(PlayerState.class).resize();
+
+                checkResize = false;
+                camWidth = cam.getWidth();
+                camHeight = cam.getHeight();
+            }
+        }
     }
 
     @Override
@@ -527,6 +551,16 @@ public class Ialon extends SimpleApplication implements ActionListener {
         } else if ("toggle-time-run".equals(name) && isPressed) {
             log.info("Toggle time run");
             sunControl.toggleTimeRun();
+        } else if ("toggle-fullscreen".equals(name) && isPressed) {
+            log.info("Toggle fullscreen");
+            if (this.settings.isFullscreen()) {
+                settings.setResolution(Config.SCREEN_WIDTH, Config.SCREEN_HEIGHT);
+                settings.setFullscreen(false);
+            } else {
+                settings.setResolution(-1, -1);
+                settings.setFullscreen(true);
+            }
+            this.restart();
         }
     }
 
@@ -562,8 +596,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
         inputManager.setCursorVisible(!mouselocked);
         if (mouselocked) {
             playerState.hideControlButtons();
+            stateManager.getState(TimeFactorState.class).setEnabled(false);
         } else {
             playerState.showControlButtons();
+            stateManager.getState(TimeFactorState.class).setEnabled(true);
         }
     }
 
@@ -583,14 +619,32 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     @Override
+    public void start() {
+        super.start();
+        log.info("Starting Ialon");
+    }
+
+    @Override
+    public void restart() {
+        super.restart();
+        checkResize = true;
+        log.info("Restarting Ialon");
+    }
+
+    @Override
     public void stop() {
         super.stop();
-        executorService.shutdown();
-        this.playerStateRepository.save(
-                new PlayerStateDTO(
-                        playerState.getPlayerLocation(),
-                        cam.getRotation(),
-                        sunControl.getTime()));
+        log.info("Stopping Ialon");
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+        if (playerStateRepository != null) {
+            this.playerStateRepository.save(
+                    new PlayerStateDTO(
+                            playerState.getPlayerLocation(),
+                            cam.getRotation(),
+                            sunControl.getTime()));
+        }
     }
 
 }

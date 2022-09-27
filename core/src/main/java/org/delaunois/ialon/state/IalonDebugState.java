@@ -250,7 +250,7 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getLocalTimeString() {
-        return app.getLocalTime().toString();
+        return String.format(Locale.ENGLISH, "%02d:%02d:%02d", app.getLocalTime().getHour(), app.getLocalTime().getMinute(), app.getLocalTime().getSecond());
     }
 
     private String getDirectString() {

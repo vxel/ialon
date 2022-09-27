@@ -458,6 +458,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     protected void cleanup(Application app) {
     }
 
+    public void resize() {
+        hideBlockMenu();
+        menuBlockPages = createMenuBlock(MENUBLOCK_PAGESIZE_X, MENUBLOCK_PAGESIZE_Y);
+        menuBlock = menuBlockPages[0];
+        setSelectedBlockIndex(selectedBlockIndex);
+        buttonBlockSelection.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
+    }
+
     public void selectBlockMenuPage(int page) {
         log.info("Selection block page {}", page);
         if (page < 0) {
@@ -694,10 +702,6 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
 
         return buttonContainer;
-    }
-
-    private static String getName(String block, String shape) {
-        return BlockIds.getName(block, shape);
     }
 
     private static String getName(IalonBlock block, String shape) {

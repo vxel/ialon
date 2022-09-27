@@ -28,9 +28,10 @@ public class Config {
     // World
     public static final float WATER_HEIGHT = 50f;
     public static final boolean SIMULATE_LIQUID_FLOW = true;
+    public static final int SIMULATE_LIQUID_FLOW_MODEL = 2;
     public static final float WATER_SIMULATION_SPEED = 2f;
-    public static final float AMBIANT_INTENSITY = 0.3f;
-    public static final float SUN_INTENSITY = 1.1f;
+    public static final float AMBIANT_INTENSITY = 0.5f;
+    public static final float SUN_INTENSITY = 1.2f;
     public static final float SUN_AMPLITUDE = 10f;
 
     public static final ColorRGBA SKY_COLOR = ColorRGBA.fromRGBA255(100, 172, 255, 255);

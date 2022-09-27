@@ -11,6 +11,7 @@
     <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>
     <logger name="com.rvandoosselaer.blocks.BlockRegistry" level="error"/>
     <logger name="org.delaunois.ialon" level="info"/>
+    <logger name="org.delaunois.ialon.AndroidHarness" level="trace"/>
     <logger name="org.delaunois.ialon.ChunkManager" level="info"/>
     <logger name="org.delaunois.ialon.ChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>

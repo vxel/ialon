@@ -51,10 +51,12 @@ public class SunControl extends AbstractControl {
     @Getter
     private float sunHeight;
 
+    @Getter
+    private float updateThreshold = 0;
+
     private final Camera cam;
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
     private long lastUpdate = 0;
-    private float updateThreshold = 0;
 
     public SunControl(Camera cam) {
         this.cam = cam;
