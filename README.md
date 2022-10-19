@@ -6,6 +6,19 @@ It is based on the jMonkeyEgine and the Blocks framework library.
 
 It is released under the BSD 3-Clause “New” or “Revised” license.
 
+# Features
+
+- 250+ different blocks
+- Shapes : cube, slab, wedge, pole, pyramid, stairs, corner stairs, fence, 
+- Night/day cycle with Time acceleration factor
+- Light blocks
+- Slates
+- Water simulation
+- Supports blocks in water
+- Works on desktop or Android devices
+- Fly mode
+- Free, Ad-free, Open Source
+
 # Screenshots
 
 Water simulation and Minecraft-like lightning :
