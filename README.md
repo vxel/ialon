@@ -21,6 +21,16 @@ It is released under the BSD 3-Clause “New” or “Revised” license.
 - Fly mode
 - Free, Ad-free, Open Source
 
+# Running Ialon
+
+## Desktop version
+
+Run the org.delaunois.ialon.DesktopLauncher Gradle Task.
+
+## Android Version
+
+Currently, you need android-studio to import the projet, build the code, upload the apk on a connected Android device and to run it.
+
 # Screenshots
 
 Water simulation and Minecraft-like lightning :
