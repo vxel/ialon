@@ -10,7 +10,7 @@ It is released under the BSD 3-Clause “New” or “Revised” license.
 
 Water simulation and Minecraft-like lightning :
 
-![Screenshot Ialon 1](https://user-images.githubusercontent.com/28866693/196790232-4ffdf583-63a8-42b7-a696-20aefea4a7fe.jpeg)
+![Screenshot Ialon 1](https://user-images.githubusercontent.com/28866693/196793101-70fb77e4-5b72-4677-a85b-19f3540e905c.png)
 
 ![Screenshot Ialon 2](https://user-images.githubusercontent.com/28866693/196790246-a1cf2706-edfb-4e7f-b533-ca147a58a68b.jpeg)
 
