@@ -1,6 +1,8 @@
 # A block (voxel) construction game
 
 Ialon is a block construction game working on desktop and Android devices.
+Ialon means clearing, cleared area and, by extension, village in Gallic.
+
 It is currently in development although already functional.
 It is based on the jMonkeyEgine and the Blocks framework library.
 
