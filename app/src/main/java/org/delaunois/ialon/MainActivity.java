@@ -5,9 +5,6 @@ import android.view.View;
 
 import com.jme3.system.AppSettings;
 
-import java.util.logging.Level;
-import java.util.logging.LogManager;
-
 import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
 
 public class MainActivity extends AndroidHarness {
@@ -18,7 +15,6 @@ public class MainActivity extends AndroidHarness {
         mouseEventsEnabled = true;
         screenShowTitle=false;
         frameRate = Config.FPS_LIMIT;
-        LogManager.getLogManager().getLogger("").setLevel(Level.INFO);
     }
 
     @Override
@@ -43,6 +39,11 @@ public class MainActivity extends AndroidHarness {
     @Override
     protected void onStop() {
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
         app.stop();
     }
 
