@@ -88,11 +88,6 @@ import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
 /**
  * @author Cedric de Launois
  *
- * TODO :
- * - éliminer l'eau si suppression de la source
- * - rails
- * - bouton flying
- * - plante sous eau
  */
 @Slf4j
 public class Ialon extends SimpleApplication implements ActionListener {
