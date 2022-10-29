@@ -27,9 +27,21 @@ It is released under the BSD 3-Clause “New” or “Revised” license.
 
 Run the org.delaunois.ialon.DesktopLauncher Gradle Task.
 
+Use Backspace to switch between desktop and mobile mode.
+In the Desktop mode :
+- Use Q,S,D,Z keys to move left, backward, right and forward
+- Use the mouse to rotate the camera
+- Use mouse left to add the selected block and mouse right to remove it
+- Use Esc key to exit
+- Use Space key to jump or to swim
+- Use F key to switch the Fly mode
+- In Fly mode, use de Up and Down arrow keys to go up or down.
+
 ## Android Version
 
 Currently, you need android-studio to import the projet, build the code, upload the apk on a connected Android device and to run it.
+In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
+
 
 # Screenshots
 
