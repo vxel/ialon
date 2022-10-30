@@ -54,6 +54,7 @@ import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
+import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
@@ -458,6 +459,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
         BlockSelectionState blockSelectionState = new BlockSelectionState();
         TimeFactorState timeFactorState = new TimeFactorState();
+        GridSettingsState gridSettingsState = new GridSettingsState();
 
         stateManager.attachAll(
                 chunkManagerState,
@@ -465,7 +467,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
                 physicsChunkPagerState,
                 chunkLiquidManagerState,
                 blockSelectionState,
-                timeFactorState
+                timeFactorState,
+                gridSettingsState
         );
     }
 
@@ -528,6 +531,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         if (checkResize) {
             if (cam.getWidth() != camWidth || cam.getHeight() != camHeight) {
                 stateManager.getState(TimeFactorState.class).resize();
+                stateManager.getState(GridSettingsState.class).resize();
                 stateManager.getState(BlockSelectionState.class).resize();
                 stateManager.getState(PlayerState.class).resize();
 
@@ -592,9 +596,11 @@ public class Ialon extends SimpleApplication implements ActionListener {
         if (mouselocked) {
             playerState.hideControlButtons();
             stateManager.getState(TimeFactorState.class).setEnabled(false);
+            stateManager.getState(GridSettingsState.class).setEnabled(false);
         } else {
             playerState.showControlButtons();
             stateManager.getState(TimeFactorState.class).setEnabled(true);
+            stateManager.getState(GridSettingsState.class).setEnabled(true);
         }
     }
 

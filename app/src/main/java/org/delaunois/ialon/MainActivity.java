@@ -15,6 +15,8 @@ public class MainActivity extends AndroidHarness {
         mouseEventsEnabled = true;
         screenShowTitle=false;
         frameRate = Config.FPS_LIMIT;
+        Config.GRID_RADIUS_MAX = 6;
+        Config.MAX_UPDATE_PER_FRAME = 2;
     }
 
     @Override

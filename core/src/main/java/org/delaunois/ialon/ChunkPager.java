@@ -97,6 +97,11 @@ public class ChunkPager {
         attachNextPages();
     }
 
+    public void updateGridSize() {
+        this.gridSize.set(BlocksConfig.getInstance().getGrid());
+        requestExecutor.submit(this::updateQueues);
+    }
+
     protected void updateCenterPage() {
         Vec3i newCenterPage = ChunkManager.getChunkLocation(location);
         if (!Objects.equals(newCenterPage, centerPage)) {
@@ -192,12 +197,8 @@ public class ChunkPager {
                 removed += 1;
             }
 
-            if (removed < maxUpdatePerFrame) {
-                pageLocation = pagesToDetach.poll();
-            } else {
-                // Timeout for this frame. Stop work now.
-                pageLocation = null;
-            }
+            // No limit when detaching nodes
+            pageLocation = pagesToDetach.poll();
         }
 
         if (removed > 0) {
@@ -219,12 +220,8 @@ public class ChunkPager {
                 unfetched += 1;
             }
 
-            if (unfetched < maxUpdatePerFrame) {
-                pageLocation = pagesToUnfetch.poll();
-            } else {
-                // Timeout for this frame. Stop work now.
-                pageLocation = null;
-            }
+            // No limit when detaching nodes
+            pageLocation = pagesToUnfetch.poll();
         }
 
         if (unfetched > 0) {
@@ -246,9 +243,9 @@ public class ChunkPager {
 
             // Create the new page
             Node node = createPage(chunk);
+            attachedPages.put(chunk.getLocation(), node);
             if (node != null) {
                 attachPage(node);
-                attachedPages.put(chunk.getLocation(), node);
                 attached += 1;
             }
 

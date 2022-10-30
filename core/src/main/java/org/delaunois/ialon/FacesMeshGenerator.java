@@ -138,6 +138,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
         Node node = new Node("Chunk - " + chunkLocation);
+        if (chunk.isEmpty()) {
+            chunk.setNode(node);
+            return;
+        }
 
         short[] blocks = chunk.getBlocks();
         if (blocks == null) {

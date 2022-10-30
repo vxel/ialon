@@ -6,36 +6,42 @@ import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Spatial;
+import com.rvandoosselaer.blocks.BlocksConfig;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
+import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.Ialon;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import static org.delaunois.ialon.Config.GRID_HEIGHT;
+import static org.delaunois.ialon.Config.GRID_RADIUS;
+import static org.delaunois.ialon.Config.GRID_RADIUS_MAX;
+import static org.delaunois.ialon.Config.GRID_RADIUS_MIN;
+
 @Slf4j
-public class TimeFactorState extends BaseAppState implements ActionListener {
+public class GridSettingsState extends BaseAppState implements ActionListener {
 
     private Ialon app;
     private BitmapFont guiFont;
-    private Container buttonTimeFactor;
+    private Container buttonSettings;
 
     private static final int SCREEN_MARGIN = 30;
     private static final int SPACING = 10;
 
-    private static final float UNIT = FastMath.TWO_PI / 86400;
-    private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
-    private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
-    private int timeFactorIndex = 1;
     private int buttonSize;
-    private Label timeFactorLabel;
+    private Label gridSettingsLabel;
+
+    @Getter
+    private int radius = GRID_RADIUS;
 
     @Override
     public void initialize(Application app) {
@@ -46,30 +52,32 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonTimeFactor = createButton(buttonSize, SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
+        buttonSettings = createButton(buttonSize, SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {
                     if (event.getButtonIndex() == 0) {
-                        setTimeFactorIndex(timeFactorIndex + 1);
+                        radius = radius + 1;
+                        if (radius > GRID_RADIUS_MAX) {
+                            radius = GRID_RADIUS_MIN;
+                        }
                     } else {
-                        setTimeFactorIndex(timeFactorIndex - 1);
+                        radius = radius - 1;
+                        if (radius < GRID_RADIUS_MIN) {
+                            radius = GRID_RADIUS_MAX;
+                        }
                     }
+                    int size = radius * 2 + 1;
+                    gridSettingsLabel.setText(size + "x" + size);
+                    updateGridSize(size);
                 }
             }
         });
-
-        updateTimeFactor();
     }
 
-    public void setTimeFactorIndex(int index) {
-        timeFactorIndex = (index + TIME_FACTORS.length) % TIME_FACTORS.length;
-        updateTimeFactor();
-    }
-
-    private void updateTimeFactor() {
-        app.getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
-        timeFactorLabel.setText(TIME_FACTORS_LABELS[timeFactorIndex]);
+    private void updateGridSize(int size) {
+        BlocksConfig.getInstance().setGrid(new Vec3i(size, GRID_HEIGHT * 2 + 1, size));
+        app.getStateManager().getState(ChunkPagerState.class).getChunkPager().updateGridSize();
     }
 
     private Container createButton(float size, float posx, float posy, MouseListener listener) {
@@ -79,8 +87,9 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
         buttonContainer.setBackground(background);
-        timeFactorLabel = new Label("");
-        Label label = buttonContainer.addChild(timeFactorLabel);
+        int defaultSize = GRID_RADIUS * 2 + 1;
+        gridSettingsLabel = new Label(defaultSize + "x" + defaultSize);
+        Label label = buttonContainer.addChild(gridSettingsLabel);
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
         label.getFont().getPage(0).clearParam("VertexColor");
 
@@ -100,23 +109,23 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onEnable() {
-        if (buttonTimeFactor.getParent() == null) {
-            app.getGuiNode().attachChild(buttonTimeFactor);
+        if (buttonSettings.getParent() == null) {
+            app.getGuiNode().attachChild(buttonSettings);
         }
         addKeyMappings();
     }
 
     @Override
     protected void onDisable() {
-        if (buttonTimeFactor.getParent() != null) {
-            app.getGuiNode().detachChild(buttonTimeFactor);
+        if (buttonSettings.getParent() != null) {
+            app.getGuiNode().detachChild(buttonSettings);
         }
         deleteKeyMappings();
     }
 
     public void resize() {
         log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonTimeFactor.setLocalTranslation(SCREEN_MARGIN + SPACING + buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonSettings.setLocalTranslation(SCREEN_MARGIN + SPACING + buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
     }
 
     @Override

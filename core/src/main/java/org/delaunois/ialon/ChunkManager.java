@@ -19,6 +19,7 @@ import com.simsilica.mathd.Vec3i;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -114,7 +115,7 @@ public class ChunkManager {
         assertInitialized();
 
         Set<Future<Chunk>> results = requestGenerateChunks(locationsToGenerate);
-        // We need to wait for all chunks to be generated before staring meshing them
+        // We need to wait for all chunks to be generated before starting to mesh them
         // This is required because the mesh of a chunk depends on the blocks of the mesh AND the
         // blocks of its neighbours
         waitForTasks(results);
@@ -178,19 +179,34 @@ public class ChunkManager {
         }
 
         log.info("Generating meshes for {} locations", locations.size());
+        Collection<Chunk> lowPriorityChunks = new LinkedList<>();
         locations.forEach(location -> {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk != null) {
-                results.add(
-                        requestExecutor.submit(() -> {
-                            meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
-                            if (triggers) {
-                                triggerListenerChunkAvailable(chunk);
-                            }
-                            return chunk;
-                        }));
+                if (chunk.isEmpty() || chunk.isFull()) {
+                    lowPriorityChunks.add(chunk);
+
+                } else {
+                    results.add(
+                            requestExecutor.submit(() -> {
+                                meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
+                                if (triggers) {
+                                    triggerListenerChunkAvailable(chunk);
+                                }
+                                return chunk;
+                            }));
+                }
             }
         });
+        lowPriorityChunks.forEach(chunk -> results.add(
+                requestExecutor.submit(() -> {
+                    meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
+                    if (triggers) {
+                        triggerListenerChunkAvailable(chunk);
+                    }
+                    return chunk;
+                }))
+        );
         return results;
     }
 
