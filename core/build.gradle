@@ -2,17 +2,17 @@ apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
-    jmeFastNoise = "1.0.2"
+    jmeFastNoise = "[1.0,)"
     minieVersion = "[3.0,)"
     lombokVersion = "1.18.20"
     slf4jsimpleVersion = "1.7.30"
     log4j2Version = "[2.11,)"
     simMathVersion = "[1.4,)"
-    sio2Version = "1.6.0"
+    sio2Version = "[1.6,)"
     blocksVersion = "1.6.4"
     protobufVersion = "[3.10,)"
     jacksonVersion = "2.12.3"
-    lemurprotoVersion = "1.12.0"
+    lemurprotoVersion = "[1.12,)"
     logbackVersion = "1.2.3"
 }
 
@@ -29,7 +29,7 @@ dependencies {
     implementation "com.simsilica:sim-math:${simMathVersion}"
     implementation "com.simsilica:sio2:${sio2Version}"
     implementation "com.simsilica:lemur-proto:${lemurprotoVersion}"
-    implementation ("com.jayfella:jme-fastnoise:${jmeFastNoise}") {
+    implementation ("com.github.myworldllc:jme-fastnoise-jayfella-github:-SNAPSHOT") {
         exclude group: "org.jmonkeyengine", module: "jme3-desktop"
         exclude group: "org.jmonkeyengine", module: "jme3-lwjgl3"
     }
