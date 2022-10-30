@@ -149,7 +149,7 @@ public class IalonDebugState extends BaseAppState {
         Vec3i centerpage = chunkPager.getCenterPage();
         grid.clearChildren();
         Map<Vec3i, Chunk> fetchedPages = chunkPager.getFetchedPages();
-        Map<Vec3i, Node> attachedPages = chunkPager.getAttachedPages();
+        Map<Vec3i, Chunk> attachedPages = chunkPager.getAttachedPages();
 
         List<Vec3i> locations = fetchedPages.keySet().stream().filter(loc -> loc.y == 4).collect(Collectors.toList());
         int minx = 0;
@@ -164,7 +164,7 @@ public class IalonDebugState extends BaseAppState {
         locations.forEach(location -> {
             ColorRGBA color = ColorRGBA.White;
             Chunk chunk = fetchedPages.get(location);
-            Node attachedPage = attachedPages.get(location);
+            Chunk attachedPage = attachedPages.get(location);
             Chunk cachedChunk = chunkPager.getChunkManager().getChunk(location).orElse(null);
 
             if (chunk.getNode() != null && cachedChunk != null && cachedChunk.getNode() != null) {

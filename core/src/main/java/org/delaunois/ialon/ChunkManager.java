@@ -179,35 +179,51 @@ public class ChunkManager {
         }
 
         log.info("Generating meshes for {} locations", locations.size());
-        Collection<Chunk> lowPriorityChunks = new LinkedList<>();
+
+        // First generate partially-filled chunks (usually visible)
+        // Next full chunks (usually not visible because underground)
+        // Finally, empty chunks (not visible)
+        Collection<Chunk> emptyChunks = new LinkedList<>();
+        Collection<Chunk> fullChunks = new LinkedList<>();
         locations.forEach(location -> {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk != null) {
-                if (chunk.isEmpty() || chunk.isFull()) {
-                    lowPriorityChunks.add(chunk);
+                if (chunk.isEmpty()) {
+                    // Defer empty chunks
+                    emptyChunks.add(chunk);
+
+                } else if (chunk.isFull()) {
+                    // Defer full chunks
+                    fullChunks.add(chunk);
 
                 } else {
-                    results.add(
-                            requestExecutor.submit(() -> {
-                                meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
-                                if (triggers) {
-                                    triggerListenerChunkAvailable(chunk);
-                                }
-                                return chunk;
-                            }));
+                    // Generate mesh for partially-filled chunks
+                    requestMeshChunk(results, chunk, triggers);
                 }
             }
         });
-        lowPriorityChunks.forEach(chunk -> results.add(
+
+        // Generate mesh for full chunks
+        fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers));
+
+        // Notify empty chunks (if necessary)
+        if (triggers) {
+            emptyChunks.forEach(this::triggerListenerChunkAvailable);
+        }
+
+        return results;
+    }
+
+    private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers) {
+        results.add(
                 requestExecutor.submit(() -> {
                     meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
                     if (triggers) {
                         triggerListenerChunkAvailable(chunk);
                     }
                     return chunk;
-                }))
+                })
         );
-        return results;
     }
 
     /**

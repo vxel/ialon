@@ -56,7 +56,7 @@ public class ChunkPager {
     private Vec3i gridUpperBounds = new Vec3i(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
     @Getter
-    private final Map<Vec3i, Node> attachedPages = new ConcurrentHashMap<>();
+    private final Map<Vec3i, Chunk> attachedPages = new ConcurrentHashMap<>();
 
     @Getter
     private final Map<Vec3i, Chunk> fetchedPages = new ConcurrentHashMap<>();
@@ -188,11 +188,11 @@ public class ChunkPager {
         int removed = 0;
 
         while (pageLocation != null) {
-            Node page = attachedPages.get(pageLocation);
+            Chunk page = attachedPages.get(pageLocation);
             if (page == null) {
                 log.warn("Trying to detach page at location {} that isn't attached.", pageLocation);
             } else {
-                detachPage(page);
+                detachPage(page.getNode());
                 attachedPages.remove(pageLocation);
                 removed += 1;
             }
@@ -236,16 +236,15 @@ public class ChunkPager {
         while (chunk != null) {
 
             // detach the old page if any
-            Node oldPage = attachedPages.remove(chunk.getLocation());
+            Chunk oldPage = attachedPages.remove(chunk.getLocation());
             if (oldPage != null) {
-                detachPage(oldPage);
+                detachPage(oldPage.getNode());
             }
 
             // Create the new page
-            Node node = createPage(chunk);
-            attachedPages.put(chunk.getLocation(), node);
-            if (node != null) {
-                attachPage(node);
+            attachedPages.put(chunk.getLocation(), chunk);
+            if (chunk.getNode() != null) {
+                attachPage(chunk.getNode());
                 attached += 1;
             }
 
@@ -262,22 +261,22 @@ public class ChunkPager {
         }
     }
 
-    protected Node createPage(Chunk chunk) {
-        return chunk.getNode();
-    }
-
     protected void detachPage(Node page) {
-        if (log.isTraceEnabled()) {
-            log.trace("Detaching {} from {}", page, node);
+        if (page != null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Detaching {} from {}", page, node);
+            }
+            node.detachChild(page);
         }
-        node.detachChild(page);
     }
 
     protected void attachPage(Node page) {
-        if (log.isTraceEnabled()) {
-            log.trace("Attaching {} to {}", page, node);
+        if (page != null) {
+            if (log.isTraceEnabled()) {
+                log.trace("Attaching {} to {}", page, node);
+            }
+            node.attachChild(page);
         }
-        node.attachChild(page);
     }
 
     public void cleanup() {
@@ -285,7 +284,7 @@ public class ChunkPager {
             log.trace("{} cleanup()", getClass().getSimpleName());
         }
         requestExecutor.shutdown();
-        attachedPages.forEach((loc, page) -> detachPage(page));
+        attachedPages.forEach((loc, page) -> detachPage(page.getNode()));
         attachedPages.clear();
         fetchedPages.clear();
         pagesToAttach.clear();
