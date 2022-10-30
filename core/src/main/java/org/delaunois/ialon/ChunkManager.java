@@ -18,6 +18,7 @@ import com.simsilica.mathd.Vec3i;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -153,9 +154,24 @@ public class ChunkManager {
     }
 
     public Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations) {
+        return requestMeshChunks(locations, true);
+    }
+
+    public void requestOrderedMeshChunks(Collection<Vec3i> locations) {
+        Set<Future<Chunk>> results = requestMeshChunks(locations, false);
+        results.forEach(result -> {
+            try {
+                triggerListenerChunkAvailable(result.get());
+            } catch (Exception e) {
+                log.warn("Got exception while getting task result", e);
+            }
+        });
+    }
+
+    private Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations, boolean triggers) {
         assertInitialized();
 
-        Set<Future<Chunk>> results = new HashSet<>();
+        Set<Future<Chunk>> results = new LinkedHashSet<>();
         if (locations.size() == 0) {
             log.warn("No location given for requestMeshChunks");
             return results;
@@ -168,7 +184,9 @@ public class ChunkManager {
                 results.add(
                         requestExecutor.submit(() -> {
                             meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
-                            triggerListenerChunkAvailable(chunk);
+                            if (triggers) {
+                                triggerListenerChunkAvailable(chunk);
+                            }
                             return chunk;
                         }));
             }
@@ -206,7 +224,8 @@ public class ChunkManager {
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
         assertInitialized();
 
-        Set<Vec3i> chunks = new HashSet<>();
+        // Preserves the order of the location to generate
+        Set<Vec3i> chunks = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = cache.unsafeFastGet(chunkLocation);
         if (chunk == null) {
@@ -264,6 +283,9 @@ public class ChunkManager {
             return chunks;
         }
 
+        // When adding a block, redraw chunk of added block first to avoid
+        // seeing holes in adjacent chunks when the chunks are added to the world in different
+        // frames. This requires the set keeping the order.
         chunks.add(chunk.getLocation());
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
 
@@ -298,7 +320,8 @@ public class ChunkManager {
     public Set<Vec3i> removeBlock(Vector3f location) {
         assertInitialized();
 
-        Set<Vec3i> chunks = new HashSet<>();
+        // Preserves the order of the location to generate
+        Set<Vec3i> chunks = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = cache.unsafeFastGet(chunkLocation);
         if (chunk == null) {
@@ -356,7 +379,8 @@ public class ChunkManager {
         }
 
         // When removing a block, redraw chunk of removed block last to avoid
-        // seeing holes in adjacent chunks
+        // seeing holes in adjacent chunks when the chunks are added to the world in different
+        // frames. This requires the set keeping the order.
         chunks.add(chunk.getLocation());
 
         if (chunkLightManager != null) {

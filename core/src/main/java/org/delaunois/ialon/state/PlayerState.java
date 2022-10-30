@@ -712,7 +712,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 }
 
                 if (!updatedChunks.isEmpty()) {
-                    chunkManager.requestMeshChunks(updatedChunks);
+                    chunkManager.requestOrderedMeshChunks(updatedChunks);
 
                     for (Vec3i loc : updatedChunks) {
                         app.asyncSave(loc);
@@ -758,7 +758,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 }
 
                 if (!updatedChunks.isEmpty()) {
-                    chunkManager.requestMeshChunks(updatedChunks);
+                    chunkManager.requestOrderedMeshChunks(updatedChunks);
 
                     for (Vec3i location : updatedChunks) {
                         app.asyncSave(location);
