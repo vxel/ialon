@@ -70,6 +70,8 @@ public class PhysicsChunkPager {
     private final Queue<CreatedPage> pagesToAttach = new ConcurrentLinkedQueue<>();
     private final Queue<Vec3i> pagesToDetach = new LinkedList<>();
     private ExecutorService requestExecutor;
+    private final Vec3i min = new Vec3i();
+    private final Vec3i max = new Vec3i();
 
     public PhysicsChunkPager(PhysicsSpace physicsSpace, ChunkManager chunkManager) {
         this.physicsSpace = physicsSpace;
@@ -111,13 +113,19 @@ public class PhysicsChunkPager {
         }
     }
 
+    protected boolean isInGrid(Vec3i location) {
+        return location.x >= min.x && location.x <= max.x
+                && location.y >= min.y && location.y <= max.y
+                && location.z >= min.z && location.z <= max.z;
+    }
+
     protected void updateQueues() {
-        Vec3i min = new Vec3i(
+        min.set(
                 Math.max(centerPage.x - ((gridSize.x - 1) / 2), gridLowerBounds.x),
                 Math.max(centerPage.y - ((gridSize.y - 1) / 2), gridLowerBounds.y),
                 Math.max(centerPage.z - ((gridSize.z - 1) / 2), gridLowerBounds.z)
         );
-        Vec3i max = new Vec3i(
+        max.set(
                 Math.min(centerPage.x + ((gridSize.x - 1) / 2), gridUpperBounds.x),
                 Math.min(centerPage.y + ((gridSize.y - 1) / 2), gridUpperBounds.y),
                 Math.min(centerPage.z + ((gridSize.z - 1) / 2), gridUpperBounds.z)
@@ -242,7 +250,7 @@ public class PhysicsChunkPager {
         }
 
         if (attached > 0) {
-            log.info("{} physic pages attached", attached);
+            log.info("{} physic pages attached (+{})", getAttachedPages().size(), attached);
         }
     }
 
@@ -308,8 +316,12 @@ public class PhysicsChunkPager {
 
         @Override
         public void onChunkAvailable(Chunk chunk) {
-            log.info("Chunk Physic page update available at {}", chunk.getLocation());
-            pagesToCreate.offer(chunk.getLocation());
+            if (isInGrid(chunk.getLocation())) {
+                log.info("Chunk Physic page update available at {}", chunk.getLocation());
+                pagesToCreate.offer(chunk.getLocation());
+            } else {
+                log.info("Ignoring outside physic grid chunk update at {}", chunk.getLocation());
+            }
         }
 
         @Override
