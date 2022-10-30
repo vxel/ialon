@@ -749,14 +749,6 @@ public class ChunkManager {
     }
 
     private void handleMeshGenerationResult(Chunk chunk) {
-/*
-        if (getChunk(chunk.getLocation()).isPresent()) {
-            triggerListenerChunkUpdated(chunk);
-        } else {
-            addToCache(chunk);
-        }
-*/
-
         triggerListenerChunkAvailable(chunk);
     }
 
