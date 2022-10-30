@@ -29,10 +29,6 @@ dependencies {
     implementation "com.simsilica:sim-math:${simMathVersion}"
     implementation "com.simsilica:sio2:${sio2Version}"
     implementation "com.simsilica:lemur-proto:${lemurprotoVersion}"
-    implementation ("com.github.myworldllc:jme-fastnoise-jayfella-github:-SNAPSHOT") {
-        exclude group: "org.jmonkeyengine", module: "jme3-desktop"
-        exclude group: "org.jmonkeyengine", module: "jme3-lwjgl3"
-    }
 
     // logging
     implementation "ch.qos.logback:logback-core:${logbackVersion}"
