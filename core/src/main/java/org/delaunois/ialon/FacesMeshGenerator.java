@@ -131,10 +131,6 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     @Override
     public void createAndSetNodeAndCollisionMesh(Chunk chunk) {
-        long start = System.nanoTime();
-        ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
-        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
-
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
         Node node = new Node("Chunk - " + chunkLocation);
@@ -142,6 +138,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             chunk.setNode(node);
             return;
         }
+
+        long start = System.nanoTime();
+        ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
 
         short[] blocks = chunk.getBlocks();
         if (blocks == null) {

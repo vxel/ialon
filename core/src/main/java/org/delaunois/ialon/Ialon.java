@@ -68,6 +68,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.CHUNK_HEIGHT;
@@ -95,6 +96,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     private static final String SAVEDIR = "./save";
     private static Path FILEPATH = FileSystems.getDefault().getPath(SAVEDIR);
+
+    @Getter
+    @Setter
+    private boolean saveUserPreferencesOnStop = true;
 
     @Getter
     private Node chunkNode;
@@ -391,7 +396,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             if (playerStateDTO.getLocation() != null) {
                 playerState.setPlayerLocation(playerStateDTO.getLocation());
             }
-            if (playerStateDTO.getRotation() != null) {
+            if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
                 cam.setRotation(playerStateDTO.getRotation());
             }
             playerState.setFly(playerStateDTO.isFly());
@@ -644,6 +649,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
         if (executorService != null) {
             executorService.shutdown();
         }
+        if (saveUserPreferencesOnStop) {
+            saveUserPreferences();
+        }
+    }
+
+    public void saveUserPreferences() {
         if (playerStateRepository != null) {
             PlayerStateDTO pstate = new PlayerStateDTO(
                     playerState.getPlayerLocation(),

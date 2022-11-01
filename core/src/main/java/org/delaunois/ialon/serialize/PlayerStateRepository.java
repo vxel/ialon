@@ -109,17 +109,13 @@ public class PlayerStateRepository {
     }
 
     private boolean writePlayerStateToPath(PlayerStateDTO playerStateDTO, Path path) {
-        if (log.isTraceEnabled()) {
-            log.trace("Saving player state to {}", path.toAbsolutePath());
-        }
+        log.info("Saving player state to {}", path.toAbsolutePath());
 
         long start = System.nanoTime();
 
         try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
             write(playerStateDTO, fos);
-            if (log.isTraceEnabled()) {
-                log.trace("Saving player state took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-            }
+            log.info("Saving player state took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
 
         } catch (IOException e) {
             log.error(e.getMessage(), e);
@@ -148,11 +144,10 @@ public class PlayerStateRepository {
 
     private void write(PlayerStateDTO playerStateDTO, OutputStream outputStream) {
         try {
+            log.info("Saving player preferences");
             objectMapper.writeValue(outputStream, playerStateDTO);
-            if (log.isTraceEnabled()) {
-                log.trace("Saved player state to outputstream.");
-            }
-        } catch (IOException e) {
+            log.info("Saved player preferences");
+        } catch (Exception e) {
             log.error("Unable to write outputstream. Error: {}", e.getMessage(), e);
         }
     }

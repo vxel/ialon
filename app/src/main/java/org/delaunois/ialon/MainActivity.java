@@ -36,10 +36,13 @@ public class MainActivity extends AndroidHarness {
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
         app.setSettings(settings);
+        ((Ialon) app).setSaveUserPreferencesOnStop(false);
     }
 
     @Override
     protected void onStop() {
+        // User preferences cannot be written during onDestroy
+        ((Ialon)app).saveUserPreferences();
         super.onStop();
     }
 

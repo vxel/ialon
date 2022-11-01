@@ -187,6 +187,7 @@ public class ChunkManager {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk != null) {
                 if (chunk.isEmpty()) {
+                    meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
                     if (triggers) {
                         triggerListenerChunkAvailable(chunk);
                     }
