@@ -1,7 +1,9 @@
 package org.delaunois.ialon;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.NinePatchDrawable;
 import android.opengl.GLSurfaceView;
@@ -42,10 +44,6 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-
 /**
  * <code>AndroidHarness</code> wraps a jme application object and runs it on
  * Android
@@ -53,7 +51,7 @@ import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
  * @author Kirill
  * @author larynx
  */
-public class AndroidHarness extends AppCompatActivity implements TouchListener, DialogInterface.OnClickListener, SystemListener {
+public class AndroidHarness extends Activity implements TouchListener, DialogInterface.OnClickListener, SystemListener {
 
     protected final static Logger logger = Logger.getLogger(AndroidHarness.class.getName());
     /**
@@ -89,8 +87,8 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
     protected int eglDepthBits = 16;
 
     /**
-     * Sets the number of samples to use for multisampling.</br>
-     * Leave 0 (default) to disable multisampling.</br>
+     * Sets the number of samples to use for multisampling.<br>
+     * Leave 0 (default) to disable multisampling.<br>
      * Set to 2 or 4 to enable multisampling.
      */
     protected int eglSamples = 0;
@@ -195,6 +193,16 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
     }
 
     @Override
+    public Object onRetainNonConfigurationInstance() {
+        logger.log(Level.FINE, "onRetainNonConfigurationInstance");
+        final DataObject data = new DataObject();
+        data.app = this.app;
+        inConfigChange = true;
+        return data;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
     public void onCreate(Bundle savedInstanceState) {
         initializeLogHandler();
 
@@ -203,14 +211,16 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
 
         if (screenFullScreen) {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
+            int flags = WindowManager.LayoutParams.FLAG_FULLSCREEN
+                      | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+            getWindow().setFlags(flags, flags);
 
             View decorView = getWindow().getDecorView();
-            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
+            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE;
             decorView.setSystemUiVisibility(uiOptions);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -229,11 +239,14 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
             logger.log(Level.FINE, "Using Retained App");
             this.app = data.app;
         } else {
-            // Discover the screen reolution
+            // Discover the screen resolution
             //TODO try to find a better way to get a hand on the resolution
             WindowManager wind = this.getWindowManager();
             Display disp = wind.getDefaultDisplay();
-            Log.d("AndroidHarness", "Resolution from Window, width:" + disp.getWidth() + ", height: " + disp.getHeight());
+            Point p = new Point();
+            disp.getSize(p);
+            Log.d("AndroidHarness", "Resolution from Window, width:" + p.x + ", height: " + p.y);
+
 
             // Create Settings
             logger.log(Level.FINE, "Creating settings");
@@ -249,11 +262,11 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
             settings.setSamples(eglSamples);
             settings.setStencilBits(eglStencilBits);
 
-            settings.setResolution(disp.getWidth(), disp.getHeight());
+            settings.setResolution(p.x, p.y);
             settings.setAudioRenderer(audioRendererType);
 
             settings.setFrameRate(frameRate);
-            
+
             // Create application instance
             try {
                 if (app == null) {
@@ -377,9 +390,10 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
      * Called by the android alert dialog, terminate the activity and OpenGL
      * rendering
      *
-     * @param dialog
-     * @param whichButton
+     * @param dialog ignored
+     * @param whichButton the button index
      */
+    @Override
     public void onClick(DialogInterface dialog, int whichButton) {
         if (whichButton != -2) {
             if (app != null) {
@@ -491,6 +505,7 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
         handler.setLevel(Level.ALL);
     }
 
+    @Override
     public void initialize() {
         app.initialize();
         if (handleExitHook) {
@@ -506,6 +521,7 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
         }
     }
 
+    @Override
     public void reshape(int width, int height) {
         app.reshape(width, height);
     }
@@ -521,10 +537,12 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
         }
     }
 
+    @Override
     public void requestClose(boolean esc) {
         app.requestClose(esc);
     }
 
+    @Override
     public void destroy() {
         if (app != null) {
             app.destroy();
@@ -534,6 +552,7 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
         }
     }
 
+    @Override
     public void gainFocus() {
         logger.fine("gainFocus");
         if (view != null) {
@@ -565,6 +584,7 @@ public class AndroidHarness extends AppCompatActivity implements TouchListener, 
         }
     }
 
+    @Override
     public void loseFocus() {
         logger.fine("loseFocus");
         if (app != null) {
