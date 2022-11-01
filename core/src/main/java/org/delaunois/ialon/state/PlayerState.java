@@ -607,9 +607,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 if (aboveAbove == null) {
                     player.jump();
                 } else {
+                    float availableJumpSpace = ((int)camera.getLocation().y) + 2 - camera.getLocation().y;
                     // Hack to avoid bug when jumping and touching a block above
                     // Still does not work when being on half-blocks
-                    player.setJumpSpeed(JUMP_SPEED * 0.75f);
+                    player.setJumpSpeed(JUMP_SPEED * availableJumpSpace * 0.4f);
                     player.jump();
                     player.setJumpSpeed(JUMP_SPEED);
                 }
