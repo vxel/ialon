@@ -595,19 +595,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             return;
         }
 
-        Block above = null;
-        CollisionResults collisionResults = new CollisionResults();
-        Ray ray = new Ray(playerLocation, Vector3f.UNIT_Y);
-
-        app.getChunkNode().collideWith(ray, collisionResults);
-
-        for (CollisionResult collisionResult : collisionResults) {
-            if (collisionResult.getDistance() < 2.5f) {
-                above = chunkManager.getBlock(playerLocation.add(0, collisionResult.getDistance(), 0)).orElse(null);
-                log.info("Block {} above jump", above);
-                break;
-            }
-        }
+        Block above = chunkManager.getBlock(camera.getLocation().add(0, 1, 0)).orElse(null);
 
         // Do not jump if there is a block above the player, unless it is water
         if (above == null || above.getLiquidLevel() >= 0) {
@@ -615,7 +603,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             // Do not jump if the player is not on the ground, unless he is in water
             Block block = chunkManager.getBlock(playerLocation).orElse(null);
             if ((block != null && block.getLiquidLevel() == 6) || player.onGround()) {
-                player.jump();
+                Block aboveAbove = chunkManager.getBlock(camera.getLocation().add(0, 2, 0)).orElse(null);
+                if (aboveAbove == null) {
+                    player.jump();
+                } else {
+                    // Hack to avoid bug when jumping and touching a block above
+                    // Still does not work when being on half-blocks
+                    player.setJumpSpeed(JUMP_SPEED * 0.75f);
+                    player.jump();
+                    player.setJumpSpeed(JUMP_SPEED);
+                }
             }
         }
     }
