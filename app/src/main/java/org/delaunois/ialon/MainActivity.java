@@ -5,15 +5,13 @@ import android.view.View;
 
 import com.jme3.system.AppSettings;
 
-import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-
 public class MainActivity extends AndroidHarness {
     public MainActivity() {
         appClass = Ialon.class.getCanonicalName();
         exitDialogTitle = "Exit?";
         exitDialogMessage = "Are you sure you want to quit?";
         mouseEventsEnabled = true;
-        screenShowTitle=false;
+        screenShowTitle = false;
         frameRate = Config.FPS_LIMIT;
         Config.GRID_RADIUS_MAX = 6;
         Config.MAX_UPDATE_PER_FRAME = 2;
@@ -25,8 +23,10 @@ public class MainActivity extends AndroidHarness {
 
         // Needed to hide android buttons again
         View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE;
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE;
         decorView.setSystemUiVisibility(uiOptions);
     }
 
@@ -45,8 +45,8 @@ public class MainActivity extends AndroidHarness {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         app.stop();
+        super.onDestroy();
     }
 
     @Override
