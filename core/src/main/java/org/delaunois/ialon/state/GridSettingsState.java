@@ -58,27 +58,31 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
                 if (event.isPressed()) {
                     if (event.getButtonIndex() == 0) {
                         radius = radius + 1;
-                        if (radius > GRID_RADIUS_MAX) {
-                            radius = GRID_RADIUS_MIN;
-                        }
                     } else {
                         radius = radius - 1;
-                        if (radius < GRID_RADIUS_MIN) {
-                            radius = GRID_RADIUS_MAX;
-                        }
                     }
-                    int size = radius * 2 + 1;
-                    gridSettingsLabel.setText(size + "x" + size);
-                    updateGridSize(size);
+                    if (radius > GRID_RADIUS_MAX) {
+                        radius = GRID_RADIUS_MIN;
+                    }
+                    if (radius < GRID_RADIUS_MIN) {
+                        radius = GRID_RADIUS_MAX;
+                    }
+                    setRadius(radius);
                 }
             }
         });
     }
 
-    private void updateGridSize(int size) {
+    public void setRadius(int radius) {
+        this.radius = Math.max(Math.min(radius, GRID_RADIUS_MAX), GRID_RADIUS_MIN);
+        int size = radius * 2 + 1;
         BlocksConfig.getInstance().setGrid(new Vec3i(size, GRID_HEIGHT * 2 + 1, size));
-        app.getStateManager().getState(ChunkPagerState.class).getChunkPager().updateGridSize();
+        if (app != null) {
+            gridSettingsLabel.setText(size + "x" + size);
+            app.getStateManager().getState(ChunkPagerState.class).getChunkPager().updateGridSize();
+        }
     }
+
 
     private Container createButton(float size, float posx, float posy, MouseListener listener) {
         Container buttonContainer = new Container();
@@ -87,8 +91,8 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
         buttonContainer.setBackground(background);
-        int defaultSize = GRID_RADIUS * 2 + 1;
-        gridSettingsLabel = new Label(defaultSize + "x" + defaultSize);
+        int gridSize = radius * 2 + 1;
+        gridSettingsLabel = new Label(gridSize + "x" + gridSize);
         Label label = buttonContainer.addChild(gridSettingsLabel);
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
         label.getFont().getPage(0).clearParam("VertexColor");

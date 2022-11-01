@@ -5,6 +5,8 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 
+import org.delaunois.ialon.Config;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,6 +33,9 @@ public class PlayerStateDTO {
     private float rotw;
 
     private float time = FastMath.HALF_PI;
+    private int timeFactorIndex = 1;
+    private int gridRadius = Config.GRID_RADIUS;
+    private boolean fly = Config.PLAYER_START_FLY;
 
     public PlayerStateDTO(Vector3f location, Quaternion rotation, float time) {
         this.posx = location.x;

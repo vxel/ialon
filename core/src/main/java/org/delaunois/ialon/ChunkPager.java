@@ -70,8 +70,8 @@ public class ChunkPager {
 
     public ChunkPager(Node node, ChunkManager chunkManager) {
         this.node = node;
-        this.gridSize = BlocksConfig.getInstance().getGrid();
         this.chunkManager = chunkManager;
+        this.gridSize = BlocksConfig.getInstance().getGrid();
     }
 
     public void initialize() {
@@ -79,6 +79,7 @@ public class ChunkPager {
             log.trace("{} initialize()", getClass().getSimpleName());
         }
 
+        this.gridSize.set(BlocksConfig.getInstance().getGrid());
         chunkManager.addListener(listener);
         requestExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("chunk-pager-%d").build());
     }

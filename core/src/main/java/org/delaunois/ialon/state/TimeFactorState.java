@@ -18,6 +18,7 @@ import com.simsilica.lemur.event.MouseListener;
 
 import org.delaunois.ialon.Ialon;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -33,7 +34,10 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
     private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
+
+    @Getter
     private int timeFactorIndex = 1;
+
     private int buttonSize;
     private Label timeFactorLabel;
 
@@ -68,8 +72,10 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     }
 
     private void updateTimeFactor() {
-        app.getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
-        timeFactorLabel.setText(TIME_FACTORS_LABELS[timeFactorIndex]);
+        if (app != null) {
+            app.getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
+            timeFactorLabel.setText(TIME_FACTORS_LABELS[timeFactorIndex]);
+        }
     }
 
     private Container createButton(float size, float posx, float posy, MouseListener listener) {

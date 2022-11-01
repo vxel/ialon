@@ -121,7 +121,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false, jump = false;
-    private boolean fly = PLAYER_START_FLY;
     private boolean underWater = false;
     private boolean onScale = false;
     private Ialon app;
@@ -137,6 +136,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     @Getter
     @Setter
     private Vector3f playerLocation;
+
+    @Getter
+    private boolean fly = PLAYER_START_FLY;
 
     @Getter
     private Camera camera;
@@ -215,7 +217,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     protected void onEnable() {
         log.info("Enabling player");
         app.getGuiNode().attachChild(crossHair);
-        player.setGravity(fly ? 0 : GROUND_GRAVITY);
+        setFly(fly);
         addKeyMappings();
         showControlButtons();
     }
@@ -644,7 +646,15 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void toogleFly() {
-        fly = !fly;
+        setFly(!fly);
+    }
+
+    public void setFly(boolean fly) {
+        this.fly = fly;
+        if (player == null) {
+            return;
+        }
+
         highlight(fly, buttonFly);
         if (fly) {
             log.info("Flying");

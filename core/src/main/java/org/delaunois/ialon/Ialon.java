@@ -167,7 +167,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         PlayerStateDTO playerStateDTO = initPlayer();
 
         // Block world setup depends on the player position
-        initBlockFramework();
+        initBlockFramework(playerStateDTO);
         SunControl sunControl = initSun(playerStateDTO.getTime());
         initMoon(sunControl);
         initSky(sunControl);
@@ -394,6 +394,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
             if (playerStateDTO.getRotation() != null) {
                 cam.setRotation(playerStateDTO.getRotation());
             }
+            playerState.setFly(playerStateDTO.isFly());
+
         } else {
             playerStateDTO = new PlayerStateDTO();
         }
@@ -403,7 +405,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         return playerStateDTO;
     }
 
-    private void initBlockFramework() {
+    private void initBlockFramework(PlayerStateDTO playerStateDTO) {
         ChunkManagerState chunkManagerState;
         ChunkPagerState chunkPagerState;
         PhysicsChunkPagerState physicsChunkPagerState;
@@ -459,7 +461,9 @@ public class Ialon extends SimpleApplication implements ActionListener {
         chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
         BlockSelectionState blockSelectionState = new BlockSelectionState();
         TimeFactorState timeFactorState = new TimeFactorState();
+        timeFactorState.setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
         GridSettingsState gridSettingsState = new GridSettingsState();
+        gridSettingsState.setRadius(playerStateDTO.getGridRadius());
 
         stateManager.attachAll(
                 chunkManagerState,
@@ -564,6 +568,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public void startPlayer() {
+        int gridSize = getStateManager().getState(GridSettingsState.class).getRadius() * 2 + 1;
         ChunkPager chunkPager = getStateManager().getState(ChunkPagerState.class).getChunkPager();
         PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
         int numPagesAttached = chunkPager.getAttachedPages().size();
@@ -573,7 +578,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
         }
-        if (numPagesAttached >= GRID_SIZE * GRID_SIZE * GRID_HEIGHT && physicsChunkPager.isReady()) {
+        if (numPagesAttached >= gridSize * gridSize * GRID_HEIGHT && physicsChunkPager.isReady()) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);
@@ -640,11 +645,16 @@ public class Ialon extends SimpleApplication implements ActionListener {
             executorService.shutdown();
         }
         if (playerStateRepository != null) {
-            this.playerStateRepository.save(
-                    new PlayerStateDTO(
-                            playerState.getPlayerLocation(),
-                            cam.getRotation(),
-                            sunControl.getTime()));
+            PlayerStateDTO pstate = new PlayerStateDTO(
+                    playerState.getPlayerLocation(),
+                    cam.getRotation(),
+                    sunControl.getTime());
+
+            pstate.setFly(playerState.isFly());
+            pstate.setTimeFactorIndex(stateManager.getState(TimeFactorState.class).getTimeFactorIndex());
+            pstate.setGridRadius(stateManager.getState(GridSettingsState.class).getRadius());
+
+            this.playerStateRepository.save(pstate);
         }
     }
 
