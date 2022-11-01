@@ -14,6 +14,7 @@ public class DesktopLauncher {
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);
         settings.setUseInput(true);
         settings.setAudioRenderer(null);
+        settings.setVSync(false);
 
         app.setSettings(settings);
         app.setShowSettings(false);
