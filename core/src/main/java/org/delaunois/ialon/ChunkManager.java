@@ -182,15 +182,14 @@ public class ChunkManager {
 
         // First generate partially-filled chunks (usually visible)
         // Next full chunks (usually not visible because underground)
-        // Finally, empty chunks (not visible)
-        Collection<Chunk> emptyChunks = new LinkedList<>();
         Collection<Chunk> fullChunks = new LinkedList<>();
         locations.forEach(location -> {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk != null) {
                 if (chunk.isEmpty()) {
-                    // Defer empty chunks
-                    emptyChunks.add(chunk);
+                    if (triggers) {
+                        triggerListenerChunkAvailable(chunk);
+                    }
 
                 } else if (chunk.isFull()) {
                     // Defer full chunks
@@ -205,11 +204,6 @@ public class ChunkManager {
 
         // Generate mesh for full chunks
         fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers));
-
-        // Notify empty chunks (if necessary)
-        if (triggers) {
-            emptyChunks.forEach(this::triggerListenerChunkAvailable);
-        }
 
         return results;
     }
