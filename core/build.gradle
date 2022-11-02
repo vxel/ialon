@@ -7,8 +7,8 @@ ext {
     lombokVersion = "1.18.20"
     slf4jsimpleVersion = "1.7.30"
     log4j2Version = "[2.11,)"
-    simMathVersion = "[1.4,)"
-    sio2Version = "[1.6,)"
+    simMathVersion = '1.5.0'
+    sio2Version = '1.7.0'
     blocksVersion = "1.6.4"
     protobufVersion = "[3.10,)"
     jacksonVersion = "2.12.3"
@@ -36,4 +36,8 @@ dependencies {
 
 
     testImplementation 'junit:junit:4.13.2'
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }

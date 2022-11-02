@@ -2,3 +2,7 @@ apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 dependencies {
 }
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
