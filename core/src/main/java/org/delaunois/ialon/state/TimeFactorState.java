@@ -122,7 +122,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     public void resize() {
         log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonTimeFactor.setLocalTranslation(SCREEN_MARGIN + SPACING + buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonTimeFactor.setLocalTranslation(SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
     }
 
     @Override

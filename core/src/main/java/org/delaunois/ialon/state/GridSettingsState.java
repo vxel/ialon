@@ -129,7 +129,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
 
     public void resize() {
         log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonSettings.setLocalTranslation(SCREEN_MARGIN + SPACING + buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonSettings.setLocalTranslation(SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
     }
 
     @Override
