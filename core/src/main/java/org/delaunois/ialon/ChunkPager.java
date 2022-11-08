@@ -271,14 +271,18 @@ public class ChunkPager {
         if (log.isTraceEnabled()) {
             log.trace("Detaching {} from {}", page, node);
         }
-        node.detachChild(page);
+        if (!(node instanceof EmptyNode)) {
+            node.detachChild(page);
+        }
     }
 
     protected void attachPage(Node page) {
         if (log.isTraceEnabled()) {
             log.trace("Attaching {} to {}", page, node);
         }
-        node.attachChild(page);
+        if (!(node instanceof EmptyNode)) {
+            node.attachChild(page);
+        }
     }
 
     public void cleanup() {

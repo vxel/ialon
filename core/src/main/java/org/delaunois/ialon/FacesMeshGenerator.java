@@ -42,6 +42,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     @Override
     public Node createNode(Chunk chunk) {
+        if (chunk.isEmpty()) {
+            return new EmptyNode();
+        }
+        
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
