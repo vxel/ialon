@@ -1,16 +1,17 @@
 /build
-/core/build/
-/app/build/
-/desktop/build/
-/save/
+/core/build
+/app/debug
+/app/release
+/app/build
+/desktop/build
+/save
 /local
-/captures
-/.idea
 
 /*.so
 /*.jpg
 /*.png
+/*.iml
 
-*.iml
-.gradle
+/.idea
+/.gradle
 local.properties

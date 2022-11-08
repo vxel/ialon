@@ -34,6 +34,9 @@ android {
     }
 
     packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
         merge "com/simsilica/lemur/style/base/glass-styles.groovy"
         exclude 'META-INF/DEPENDENCIES'
         exclude 'META-INF/INDEX.LIST'
@@ -42,6 +45,9 @@ android {
 
 dependencies {
     implementation 'androidx.core:core-splashscreen:1.0.0'
+    implementation('androidx.appcompat:appcompat:1.5.1') {
+        exclude group: 'com.google.guava', module: 'listenablefuture'
+    }
     implementation('com.google.android.material:material:1.7.0') {
         exclude group: 'com.google.guava', module: 'listenablefuture'
     }
