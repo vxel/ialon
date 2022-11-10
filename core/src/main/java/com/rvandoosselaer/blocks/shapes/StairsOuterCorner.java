@@ -44,7 +44,7 @@ public class StairsOuterCorner implements Shape {
         Quaternion rotation = Shape.getYawFromDirection(direction);
         if (upsideDown) {
             Quaternion inverse = PI_X.mult(PI_Y);
-            rotation = inverse.multLocal(rotation.inverseLocal());
+            rotation = inverse.multLocal(rotation.inverse());
         }
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
@@ -73,6 +73,10 @@ public class StairsOuterCorner implements Shape {
             createDown(location, chunkMesh, rotation, blockScale, multipleImages);
             enlightFace(location, Shape.getYawFaceDirection(upsideDown ? Direction.UP : Direction.DOWN, direction), chunk, chunkMesh, 4);
         }
+    }
+
+    public boolean fullyCoversFace(Direction direction) {
+        return Shape.getOppositeYawFaceDirection(direction, this.direction) == Direction.DOWN;
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh, int numVertices) {

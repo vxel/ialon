@@ -122,6 +122,7 @@ public class Chunk {
                 log.trace("Added {} at ({}, {}, {}) to {}", block, x, y, z, this);
             }
             dirty = true;
+            empty = false;
             return previous;
         }
         log.warn("Block location ({}, {}, {}) is outside of the chunk boundaries!", x, y, z);
@@ -385,25 +386,32 @@ public class Chunk {
             // Optimisation : Do not render faces below the world
             return false;
         }
-        return isFaceVisible(block, neighbour);
+        return isFaceVisible(block, direction, neighbour);
     }
 
-    public boolean isFaceVisible(Block block, Block neighbour) {
+    public boolean isFaceVisible(Block block, @NonNull Direction direction, Block neighbour) {
         if (neighbour == null) {
             return true;
         }
         if (neighbour.isTransparent() || block.isTransparent()) {
             return !(block.getType().equals(neighbour.getType()));
         }
-        return !(ShapeIds.CUBE.equals(neighbour.getShape())
-                || ShapeIds.LIQUID.equals(neighbour.getShape()));
+
+        boolean fullyCovers = BlocksConfig
+                .getInstance()
+                .getShapeRegistry()
+                .get(neighbour.getShape())
+                .fullyCoversFace(direction.opposite());
+
+        return !fullyCovers
+                && !ShapeIds.LIQUID.equals(neighbour.getShape());
     }
 
     public boolean isNeighbourFaceVisible(@NonNull Vec3i location, @NonNull Direction neighbourBlockDirection, @NonNull Direction neighbourFaceDirection) {
         Block neighbour = getNeighbour(location, neighbourBlockDirection);
         Block neighbourNeighbour = getNeighbour(location.add(neighbourBlockDirection.getVector()), neighbourFaceDirection);
 
-        return isFaceVisible(neighbour, neighbourNeighbour);
+        return isFaceVisible(neighbour, neighbourBlockDirection, neighbourNeighbour);
     }
 
     private boolean hasChunkResolver() {

@@ -45,7 +45,7 @@ public class Wedge implements Shape {
         Quaternion rotation = Shape.getYawFromDirection(direction);
         if (upsideDown) {
             Quaternion inverse = PI_X.mult(PI_Y);
-            rotation = inverse.multLocal(rotation.inverseLocal());
+            rotation = inverse.multLocal(rotation.inverse());
         }
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
@@ -70,6 +70,16 @@ public class Wedge implements Shape {
         if (chunk.isFaceVisible(location, Shape.getYawFaceDirection(upsideDown ? Direction.UP : Direction.DOWN, direction))) {
             createDown(location, chunkMesh, rotation, blockScale, multipleImages);
             enlightFace(location, Shape.getYawFaceDirection(upsideDown ? Direction.UP : Direction.DOWN, direction), chunk, chunkMesh, 4);
+        }
+    }
+
+    public boolean fullyCoversFace(Direction direction) {
+        switch (Shape.getOppositeYawFaceDirection(direction, this.direction)) {
+            case DOWN:
+            case NORTH:
+                return true;
+            default:
+                return false;
         }
     }
 

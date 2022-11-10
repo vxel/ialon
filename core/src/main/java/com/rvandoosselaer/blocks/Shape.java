@@ -63,6 +63,18 @@ public interface Shape {
     }
 
     /**
+     * Defines whether the shape fully covers the face in the given direction, i.e. does
+     * the face leaves any empty space on this face.
+     * Example : a wedge fully covers the DOWN and NORTH face, but not the others.
+     *
+     * @param direction the face
+     * @return true if the shape covers the given face, false if not
+     */
+    default boolean fullyCoversFace(Direction direction) {
+        return false;
+    }
+
+    /**
      * A helper method that offsets a vertex based on the location of the block in the chunk and the block scale.
      *
      * @param vertex
@@ -121,6 +133,19 @@ public interface Shape {
         }
     }
 
+    static Quaternion getOppositeYawFromDirection(Direction direction) {
+        switch (direction) {
+            case NORTH:
+                return YAW_NORTH;
+            case EAST:
+                return YAW_WEST;
+            case WEST:
+                return YAW_EAST;
+            default:
+                return YAW_UP;
+        }
+    }
+
     /**
      * Calculates the new direction of a face, based on the rotation of the shape. eg. The north face of a shape that is
      * rotated, is not facing north anymore.
@@ -148,4 +173,10 @@ public interface Shape {
         return Direction.fromVector(newFaceDirection);
     }
 
+    static Direction getOppositeYawFaceDirection(Direction faceDirection, Direction shapeDirection) {
+        Quaternion shapeRotation = getOppositeYawFromDirection(shapeDirection);
+        Vector3f newFaceDirection = shapeRotation.mult(faceDirection.getVector().toVector3f());
+
+        return Direction.fromVector(newFaceDirection);
+    }
 }

@@ -83,6 +83,17 @@ public class Slab implements Shape {
         }
     }
 
+    public boolean fullyCoversFace(Direction direction) {
+        switch (Shape.getOppositeYawFaceDirection(direction, this.direction)) {
+            case DOWN:
+                return this.startY == -0.5f;
+            case UP:
+                return this.startY == 0.5f;
+            default:
+                return false;
+        }
+    }
+
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();

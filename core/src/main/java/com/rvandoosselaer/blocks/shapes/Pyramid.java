@@ -58,6 +58,10 @@ public class Pyramid implements Shape {
         }
     }
 
+    public boolean fullyCoversFace(Direction direction) {
+        return Shape.getOppositeYawFaceDirection(direction, this.direction) == Direction.DOWN;
+    }
+
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh, int numVertices) {
         Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();

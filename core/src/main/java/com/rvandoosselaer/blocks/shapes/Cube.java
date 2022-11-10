@@ -84,6 +84,10 @@ public class Cube implements Shape {
         add(new BlockNeighborhood(location, chunk), chunkMesh);
     }
 
+    public boolean fullyCoversFace(Direction direction) {
+        return true;
+    }
+
     private boolean enlightFace(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
         List<Vector4f> colors = chunkMesh.getColors();
