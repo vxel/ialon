@@ -15,7 +15,6 @@ import com.simsilica.mathd.Vec3i;
 
 import java.util.List;
 
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
 /**
@@ -24,7 +23,6 @@ import lombok.ToString;
  * @author rvandoosselaer
  */
 @ToString
-@RequiredArgsConstructor
 public class StairsOuterCorner implements Shape {
 
     private static final Quaternion PI_X = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);
@@ -32,20 +30,27 @@ public class StairsOuterCorner implements Shape {
 
     private final Direction direction;
     private final boolean upsideDown;
+    private Quaternion rotation;
 
     public StairsOuterCorner() {
         this(Direction.UP, false);
     }
 
-    @Override
-    public void add(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
+    public StairsOuterCorner(Direction direction, boolean upsideDown) {
+        this.direction = direction;
+        this.upsideDown = upsideDown;
+
         // when the shape is upside down (inverted), we need to perform 3 rotations. Two to invert the shape and one
         // for the direction.
-        Quaternion rotation = Shape.getYawFromDirection(direction);
+        rotation = Shape.getYawFromDirection(direction);
         if (upsideDown) {
             Quaternion inverse = PI_X.mult(PI_Y);
             rotation = inverse.multLocal(rotation.inverse());
         }
+    }
+
+    @Override
+    public void add(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         // check if we have 3 textures or only one

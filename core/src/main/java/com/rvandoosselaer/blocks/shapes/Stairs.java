@@ -15,7 +15,6 @@ import com.simsilica.mathd.Vec3i;
 
 import java.util.List;
 
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
 /**
@@ -24,7 +23,6 @@ import lombok.ToString;
  * @author rvandoosselaer
  */
 @ToString
-@RequiredArgsConstructor
 public class Stairs implements Shape {
 
     private static final Quaternion PI_X = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);
@@ -32,9 +30,23 @@ public class Stairs implements Shape {
 
     private final Direction direction;
     private final boolean upsideDown;
+    private Quaternion rotation;
 
     public Stairs() {
         this(Direction.UP, false);
+    }
+
+    public Stairs(Direction direction, boolean upsideDown) {
+        this.direction = direction;
+        this.upsideDown = upsideDown;
+
+        // when the shape is upside down (inverted), we need to perform 3 rotations. Two to invert the shape and one
+        // for the direction.
+        rotation = Shape.getYawFromDirection(direction);
+        if (upsideDown) {
+            Quaternion inverse = PI_X.mult(PI_Y);
+            rotation = inverse.multLocal(rotation.inverse());
+        }
     }
 
     @Override
@@ -76,13 +88,9 @@ public class Stairs implements Shape {
     }
 
     public boolean fullyCoversFace(Direction direction) {
-        switch (Shape.getOppositeYawFaceDirection(direction, this.direction)) {
-            case DOWN:
-            case NORTH:
-                return true;
-            default:
-                return false;
-        }
+        Direction oppositeYawFaceDirection = Shape.getOppositeYawFaceDirection(direction, this.direction);
+        return oppositeYawFaceDirection == (upsideDown ? Direction.UP : Direction.DOWN)
+                || oppositeYawFaceDirection == Direction.NORTH;
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh, int numVertices) {
