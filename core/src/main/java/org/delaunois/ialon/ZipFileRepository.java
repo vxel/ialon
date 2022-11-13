@@ -8,7 +8,13 @@ import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
-
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.delaunois.ialon.protobuf.BlocksProtos;
 
 import java.io.FileOutputStream;
@@ -23,14 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * A File repository implementation for loading and storing chunks using the Protocol Buffers method
@@ -221,7 +219,15 @@ public class ZipFileRepository implements ChunkRepository {
 
     private static Chunk chunkProtoToChunk(@NonNull BlocksProtos.ChunkProto chunkProto) {
         Vec3i location = getVector(chunkProto.getLocationList());
+        if (location == null) {
+            log.error("Null chunk location");
+            return null;
+        }
         Vec3i size = getVector(chunkProto.getSizeList());
+        if (size == null) {
+            log.error("Null chunk size");
+            return null;
+        }
 
         int expectedSize = size.x * size.y * size.z;
 
@@ -273,7 +279,7 @@ public class ZipFileRepository implements ChunkRepository {
 
     private static Vec3i getVector(@NonNull List<Integer> integers) {
         if (integers.size() != 3) {
-            throw new IllegalArgumentException("Invalid vector data specified! data: " + integers);
+            return null;
         }
 
         return new Vec3i(integers.get(0), integers.get(1), integers.get(2));

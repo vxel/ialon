@@ -134,24 +134,29 @@ public class ChunkManager {
 
         log.info("Generating chunks for {} locations", locations.size());
         locations.forEach(location ->
-                results.add(requestExecutor.submit(
-                        () -> {
-                            Chunk chunk = cache.unsafeFastGet(location);
-                            if (chunk == null) {
-                                chunk = repository.load(location);
-                                if (chunk == null) {
-                                    chunk = generator.generate(location);
-                                    chunk.update();
-                                    chunk.setGenerated(true);
-                                }
-                                addToCache(chunk);
-                            }
-                            triggerListenerChunkFetched(chunk);
-                            return chunk;
-                        })
-                )
+                results.add(requestExecutor.submit(() -> generateChunk(location)))
         );
         return results;
+    }
+
+    private Chunk generateChunk(Vec3i location) {
+        try {
+            Chunk chunk = cache.unsafeFastGet(location);
+            if (chunk == null) {
+                chunk = repository.load(location);
+                if (chunk == null) {
+                    chunk = generator.generate(location);
+                    chunk.update();
+                    chunk.setGenerated(true);
+                }
+                addToCache(chunk);
+            }
+            triggerListenerChunkFetched(chunk);
+            return chunk;
+        } catch (Exception e) {
+            log.error("Exception while generating chunk", e);
+            return null;
+        }
     }
 
     public Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations) {
@@ -178,33 +183,49 @@ public class ChunkManager {
             return results;
         }
 
-        log.info("Generating meshes for {} locations", locations.size());
-
+        final int[] saved = {0};
         // First generate partially-filled chunks (usually visible)
         // Next full chunks (usually not visible because underground)
         Collection<Chunk> fullChunks = new LinkedList<>();
         locations.forEach(location -> {
             Chunk chunk = cache.unsafeFastGet(location);
-            if (chunk != null) {
-                if (chunk.isEmpty()) {
-                    meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
+            // All chunks should be loaded into cache, chunk is never null here
+            if (chunk.isEmpty()) {
+                saved[0]++;
+                chunk.setNode(new EmptyNode());
+                if (triggers) {
+                    triggerListenerChunkAvailable(chunk);
+                }
+
+            } else if (chunk.isFull()) {
+                Chunk up = cache.unsafeFastGet(location.add(0, 1, 0));
+                Chunk down = cache.unsafeFastGet(location.add(0, -1, 0));
+                Chunk a = cache.unsafeFastGet(location.add(1, 0, 0));
+                Chunk b = cache.unsafeFastGet(location.add(0, 0, 1));
+                Chunk c = cache.unsafeFastGet(location.add(-1, 0, 0));
+                Chunk d = cache.unsafeFastGet(location.add(0, 0, -1));
+                if ((up == null || up.isFull()) && (down == null || down.isFull()) && a.isFull() && b.isFull() && c.isFull() && d.isFull()) {
+                    saved[0]++;
+                    chunk.setNode(new EmptyNode());
                     if (triggers) {
                         triggerListenerChunkAvailable(chunk);
                     }
 
-                } else if (chunk.isFull()) {
+                } else {
                     // Defer full chunks
                     fullChunks.add(chunk);
-
-                } else {
-                    // Generate mesh for partially-filled chunks
-                    requestMeshChunk(results, chunk, triggers);
                 }
+
+            } else {
+                // Generate mesh for partially-filled chunks
+                requestMeshChunk(results, chunk, triggers);
             }
         });
 
         // Generate mesh for full chunks
         fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers));
+
+        log.info("{} locations generated and {} empty locations", locations.size() - saved[0], saved[0]);
 
         return results;
     }

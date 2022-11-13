@@ -18,14 +18,13 @@ import com.rvandoosselaer.blocks.ShapeRegistry;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.mathd.Vec3i;
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-
-import lombok.ToString;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * A chunk mesh generator that creates and combines a quad mesh for each of the visible faces of a block of the same
@@ -45,7 +44,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (chunk.isEmpty()) {
             return new EmptyNode();
         }
-        
+
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
@@ -135,13 +134,14 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     @Override
     public void createAndSetNodeAndCollisionMesh(Chunk chunk) {
+        if (chunk.isEmpty()) {
+            chunk.setNode(new EmptyNode());
+            return;
+        }
+
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
         Node node = new Node("Chunk - " + chunkLocation);
-        if (chunk.isEmpty()) {
-            chunk.setNode(node);
-            return;
-        }
 
         long start = System.nanoTime();
         ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
@@ -202,31 +202,38 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         meshMap.forEach((type, chunkMesh) -> {
 
             Geometry geometry = createGeometry(type, chunkMesh);
-            if (TypeIds.WATER.equals(type)) {
-                /*
-                 * Special case for water.
-                 * Water must be visible from inside and outside.
-                 * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
-                 *
-                 * The only real solution is to split the geometry into 2 objects that share the
-                 * same mesh. Have one with back face culling on and one with front face culling on.
-                 * Then use a custom GeometryComparator that makes sure the inside one is always
-                 * drawn first : the Lemur LayerComparator, that lets Geometries use a UserData to
-                 * indicate relative layers. setUserData(“layer”, 0) in
-                 * the inside one and setUserData(“layer”, 1) on the outside one. (presuming they both
-                 * have the same parent node).
-                 */
-                LayerComparator.setLayer(geometry, 2);
-                Geometry inside = geometry.clone();
-                LayerComparator.setLayer(inside, 1);
-                inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
-                node.attachChild(geometry);
-                node.attachChild(inside);
+            if (geometry.getVertexCount() > 0) {
+                if (TypeIds.WATER.equals(type)) {
+                    /*
+                     * Special case for water.
+                     * Water must be visible from inside and outside.
+                     * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
+                     *
+                     * The only real solution is to split the geometry into 2 objects that share the
+                     * same mesh. Have one with back face culling on and one with front face culling on.
+                     * Then use a custom GeometryComparator that makes sure the inside one is always
+                     * drawn first : the Lemur LayerComparator, that lets Geometries use a UserData to
+                     * indicate relative layers. setUserData(“layer”, 0) in
+                     * the inside one and setUserData(“layer”, 1) on the outside one. (presuming they both
+                     * have the same parent node).
+                     */
+                    LayerComparator.setLayer(geometry, 2);
+                    Geometry inside = geometry.clone();
+                    LayerComparator.setLayer(inside, 1);
+                    inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+                    node.attachChild(geometry);
+                    node.attachChild(inside);
 
-            } else {
-                node.attachChild(geometry);
+                } else {
+                    node.attachChild(geometry);
+                }
             }
         });
+
+        if (node.getVertexCount() == 0) {
+            chunk.setNode(new EmptyNode());
+            return;
+        }
 
         // position the node
         node.setLocalTranslation(chunk.getWorldLocation());

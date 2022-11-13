@@ -39,16 +39,20 @@ public class Chunk {
     private static final String WATER_BLOCK = "water-liquid";
 
     // a one dimensional array is quicker to lookup blocks then a 3n array
-    @Setter
     private short[] blocks;
+
     @Setter(AccessLevel.PRIVATE)
     @ToString.Include
     private Vec3i location;
+
     private Vector3f worldLocation;
+
     @ToString.Include
     private boolean empty;
+
     @ToString.Include
     private boolean full;
+
     /**
      * Wheter this chunk was loaded (false) or generated (true)
      */
@@ -76,7 +80,6 @@ public class Chunk {
      * |s|s|s|s|t|t|t|t|
      * +-+-+-+-+-+-+-+-+
      */
-    @Setter
     private byte[] lightMap;
 
     // To avoid many instanciation of Vec3i (costly)
@@ -84,13 +87,27 @@ public class Chunk {
 
     public Chunk(@NonNull Vec3i location) {
         setLocation(location);
-        setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
-        setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
-        update();
+        full = false;
+        empty = true;
     }
 
     public static Chunk createAt(@NonNull Vec3i location) {
         return new Chunk(location);
+    }
+
+    private void allocate() {
+        if (blocks == null) {
+            setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+            setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+        }
+    }
+
+    public void setBlocks(short[] blocks) {
+        this.blocks = blocks;
+    }
+
+    public void setLightMap(byte[] lightMap) {
+        this.lightMap = lightMap;
     }
 
     /**
@@ -115,6 +132,7 @@ public class Chunk {
      */
     public Block addBlock(int x, int y, int z, Block block) {
         if (isInsideChunk(x, y, z)) {
+            allocate();
             int index = calculateIndex(x, y, z);
             Block previous = REGISTRY.get(blocks[index]);
             blocks[index] = block.getId();
@@ -175,7 +193,7 @@ public class Chunk {
      * @return the removed block or null
      */
     public Block removeBlock(int x, int y, int z) {
-        if (isInsideChunk(x, y, z)) {
+        if (blocks != null && isInsideChunk(x, y, z)) {
             int index = calculateIndex(x, y, z);
             Block block = REGISTRY.get(blocks[index]);
             blocks[index] = 0;
@@ -217,6 +235,12 @@ public class Chunk {
      * changed.
      */
     public void update() {
+        if (blocks == null) {
+            empty = true;
+            full = false;
+            return;
+        }
+
         long start = System.nanoTime();
         boolean empty = true;
         boolean full = true;
@@ -393,9 +417,6 @@ public class Chunk {
         if (neighbour == null) {
             return true;
         }
-        if (neighbour.isTransparent() || block.isTransparent()) {
-            return !(block.getType().equals(neighbour.getType()));
-        }
 
         boolean fullyCovers = BlocksConfig
                 .getInstance()
@@ -403,8 +424,16 @@ public class Chunk {
                 .get(neighbour.getShape())
                 .fullyCoversFace(direction.opposite());
 
-        return !fullyCovers
-                && !ShapeIds.LIQUID.equals(neighbour.getShape());
+        if (!fullyCovers) {
+            // Draw the face if the neighbour face does not fully cover the square
+            return true;
+        }
+
+        if (neighbour.isTransparent() || block.isTransparent()) {
+            return !(block.getType().equals(neighbour.getType()));
+        }
+
+        return ShapeIds.LIQUID.equals(neighbour.getShape());
     }
 
     public boolean isNeighbourFaceVisible(@NonNull Vec3i location, @NonNull Direction neighbourBlockDirection, @NonNull Direction neighbourFaceDirection) {
@@ -507,6 +536,9 @@ public class Chunk {
      * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
      */
     private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color) {
+        if (blocks == null) {
+            return new Vector4f(1f, 1f, 1f, 255);
+        }
         int index = calculateIndex(x, y, z);
         int level = this.lightMap[index];
         ColorRGBA lightColor = ColorRGBA.White;
@@ -527,10 +559,14 @@ public class Chunk {
     }
 
     private int getSunlight(int index) {
+        if (lightMap == null) {
+            return 0xF;
+        }
         return (this.lightMap[index] >> 4) & 0xF;
     }
 
     public void setSunlight(int x, int y, int z, int intensity) {
+        allocate();
         int i = calculateIndex(x, y, z);
         lightMap[i] = (byte) ((lightMap[i] & 0xF) | (intensity << 4));
         dirty = true;
@@ -541,10 +577,14 @@ public class Chunk {
     }
 
     private int getTorchlight(int index) {
+        if (lightMap == null) {
+            return 0;
+        }
         return this.lightMap[index] & 0xF;
     }
 
     public void setTorchlight(int x, int y, int z, int intensity) {
+        allocate();
         int i = calculateIndex(x, y, z);
         this.lightMap[i] = (byte) ((lightMap[i] & 0xF0) | intensity);
         dirty = true;

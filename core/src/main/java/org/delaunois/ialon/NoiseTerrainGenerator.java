@@ -10,11 +10,11 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
-
 import org.delaunois.ialon.fastnoise.FastNoise;
 import org.delaunois.ialon.fastnoise.LayeredNoise;
 import org.delaunois.ialon.fastnoise.NoiseLayer;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import static com.rvandoosselaer.blocks.TypeIds.WATER;
@@ -61,14 +61,34 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         int maxX = chunkSize.x;
         int maxY = chunkSize.y;
         int maxZ = chunkSize.z;
+        int minWorldY = chunk.getLocation().y * chunkSize.y;
+        int maxWorldY = chunk.getLocation().y * chunkSize.y + chunkSize.y - 1;
         int sizez = maxZ + 2 * CANOPY_RADIUS + 1;
         float[] heights = getHeights(chunk, -CANOPY_RADIUS, maxX + CANOPY_RADIUS, -CANOPY_RADIUS, maxZ + CANOPY_RADIUS);
+
+        float minh = heights[0] - 4; // Include mud depth
+        float maxh = heights[1] + TRUNK_HEIGHT + 2 * CANOPY_RADIUS; // Include tree heights !
+
+        if (maxh < minWorldY) {
+            // all heights are below the min Y of the chunk : the chunk is empty
+            return chunk;
+        }
+
+        if (minh > maxWorldY) {
+            // all heights are above the max Y of the chunk : the chunk is full with ROCK
+            short[] blocks = new short[chunkSize.x * chunkSize.y * chunkSize.z];
+            short rockId = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ROCK).getId();
+            Arrays.fill(blocks, rockId);
+            chunk.setBlocks(blocks);
+            chunk.setLightMap(new byte[chunkSize.x * chunkSize.y * chunkSize.z]);
+            return chunk;
+        }
 
         for (int x = 0; x < maxX; x++) {
             int rowx = (x + CANOPY_RADIUS) * sizez;
 
             for (int z = 0; z < maxZ; z++) {
-                int index = (z + CANOPY_RADIUS) + rowx;
+                int index = 2 + (z + CANOPY_RADIUS) + rowx;
                 float groundh = heights[index];
                 float horizon = Math.max(groundh, waterHeight);
 
@@ -134,14 +154,25 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private float[] getHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
         int sizex = maxx - minx + 1;
         int sizez = maxz - minz + 1;
-        float[] heights = new float[sizex * sizez];
+        float min = Float.MAX_VALUE;
+        float max = Float.MIN_VALUE;
+        float[] heights = new float[2 + sizex * sizez];
         for (int x = minx; x <= maxx; x++) {
             int rowx = (x - minx) * sizez;
             for (int z = minz; z <= maxz; z++) {
                 int index = (z - minz) + rowx;
-                heights[index] = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
+                float h = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
+                heights[index] = h;
+                if (h < min) {
+                    min = h;
+                }
+                if (h > max) {
+                    max = h;
+                }
             }
         }
+        heights[0] = min;
+        heights[1] = max;
         return heights;
     }
 

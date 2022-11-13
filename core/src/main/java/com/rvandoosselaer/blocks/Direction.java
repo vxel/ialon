@@ -58,7 +58,22 @@ public enum Direction {
     }
 
     public Direction opposite() {
-        return Direction.fromVector(getVector().toVector3f().negate());
+        if (vector.x == 0) {
+            if (vector.y == 0) {
+                if (vector.z == 1) {
+                    return NORTH;
+                } else {
+                    return SOUTH;
+                }
+            } else if (vector.y == 1) {
+                return DOWN;
+            } else {
+                return UP;
+            }
+        } else if (vector.x == 1) {
+            return WEST;
+        }
+        return EAST;
     }
 
 }
