@@ -229,17 +229,58 @@ public class Liquid implements Shape {
     protected void createUp(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
+        // Compute flow direction (x and z)
+        float[] min = v0;
+        float[] max = v0;
+        if (v1[1] < min[1]) {
+            min = v1;
+        } else if (v1[1] > max[1]) {
+            max = v1;
+        }
+        if (v2[1] < min[1]) {
+            min = v2;
+        } else if (v2[1] > max[1]) {
+            max = v2;
+        }
+        if (v3[1] < min[1]) {
+            min = v3;
+        } else if (v3[1] > max[1]) {
+            max = v3;
+        }
+        float x = min[0] - max[0];
+        float z = min[2] - max[2];
+
         if (!chunkMesh.isCollisionMesh()) {
             // normals and tangents
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 1.0f, 0.0f));
                 chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
-            // uvs
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-            chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+            // uvs, following flow direction
+            if (z > 0) {
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+
+            } else if (z < 0) {
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+
+            } else if (x > 0) {
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+
+            } else {
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
+                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
+            }
         }
     }
 
