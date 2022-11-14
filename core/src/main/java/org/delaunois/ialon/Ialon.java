@@ -50,11 +50,12 @@ import org.delaunois.ialon.state.BlockSelectionState;
 import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
+import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
-import org.delaunois.ialon.state.GridSettingsState;
+import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
@@ -125,13 +126,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Getter
     private SunControl sunControl;
 
+    @Getter
+    private final long startTime = System.currentTimeMillis();
+
     private PlayerState playerState;
     private boolean checkResize = false;
     private int camHeight = 0;
     private int camWidth = 0;
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
-    private final long startTime = System.currentTimeMillis();
     private ExecutorService executorService;
 
     public static void main(String[] args) {
@@ -149,6 +152,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Override
     public void simpleInitApp() {
         log.info("Initializing Ialon");
+        GuiGlobals.initialize(this);
+        cam.setFrustumNear(0.1f);
+        cam.setFrustumFar(400f);
+        cam.setFov(50);
+
+        stateManager.attach(new SplashscreenState());
 
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
 
@@ -179,9 +188,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         initInputManager();
         font = initGui(font);
 
-        cam.setFrustumNear(0.1f);
-        cam.setFrustumFar(400f);
-        cam.setFov(50);
         camHeight = cam.getHeight();
         camWidth = cam.getWidth();
 
@@ -204,7 +210,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     private BitmapFont initGui(BitmapFont font) {
-        GuiGlobals.initialize(this);
         stateManager.getState(BasePickState.class).removeCollisionRoot(rootNode);
 
         // Reload the font using the offset of the atlas tile
@@ -574,16 +579,19 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     public void startPlayer() {
         int gridSize = getStateManager().getState(GridSettingsState.class).getRadius() * 2 + 1;
+        int total = gridSize * gridSize * GRID_HEIGHT;
+
         ChunkPager chunkPager = getStateManager().getState(ChunkPagerState.class).getChunkPager();
         PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
         int numPagesAttached = chunkPager.getAttachedPages().size();
         int numPhysicPagesAttached = physicsChunkPager.getAttachedPages().size();
+        int percent = numPagesAttached * 100 / total;
         if (numPagesAttached > pagesAttached || numPhysicPagesAttached > physicPagesAttached) {
-            log.info("{} pages - {} physic pages attached", numPagesAttached, numPhysicPagesAttached);
+            log.info("{} pages - {} physic pages attached ({}%)", numPagesAttached, numPhysicPagesAttached, percent);
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
         }
-        if (numPagesAttached >= gridSize * gridSize * GRID_HEIGHT && physicsChunkPager.isReady()) {
+        if (numPagesAttached >= total && physicsChunkPager.isReady()) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);

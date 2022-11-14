@@ -216,6 +216,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     @Override
     protected void onEnable() {
         log.info("Enabling player");
+        app.getStateManager().getState(SplashscreenState.class).setEnabled(false);
         app.getGuiNode().attachChild(crossHair);
         setFly(fly);
         addKeyMappings();
@@ -484,6 +485,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private Container createButton(String text, float size, float posx, float posy, MouseListener listener) {
         Container buttonContainer = new Container();
+        buttonContainer.setName(text);
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader

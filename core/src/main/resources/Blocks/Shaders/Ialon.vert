@@ -114,8 +114,8 @@ void main() {
          int TorchIntensity = (int(inColor.a)) & 0xF;
          float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;
          float lightLevel = min(levels[SunIntensity], lum);
-         lightLevel = max(lightLevel, levels[TorchIntensity]);
-         AmbientSum = vec3(lightLevel, lightLevel, lightLevel) * inColor.rgb;
+         lightLevel = min(max(lightLevel, levels[TorchIntensity]), 0.7f);
+         AmbientSum.xyz = lightLevel * inColor.rgb;
          DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, 1);
     #endif
 
