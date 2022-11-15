@@ -6,7 +6,7 @@ Ialon means clearing, cleared area and, by extension, village in Gallic.
 It is currently in development although already functional.
 It is based on the jMonkeyEgine and the Blocks framework library.
 
-It is released under the BSD 3-Clause “New” or “Revised” license.
+It is released under the GNU General Public License v3.0.
 
 # Features
 
