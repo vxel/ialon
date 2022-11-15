@@ -135,6 +135,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Getter
     @Setter
+    private boolean touchEnabled = true;
+
+    @Getter
+    @Setter
     private Vector3f playerLocation;
 
     @Getter
@@ -184,7 +188,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f walkDirection = new Vector3f();
     private final Vector3f camDir = new Vector3f();
     private final Vector3f camLeft = new Vector3f();
-    private final Vector3f camUp = new Vector3f();
     private final Vector3f camLocation = new Vector3f();
     private final Vector3f move = new Vector3f();
     private long lastCollisionTest = System.currentTimeMillis();
@@ -236,7 +239,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     public void update(float tpf) {
         camDir.set(camera.getDirection());
         camLeft.set(camera.getLeft());
-        camUp.set(camera.getUp());
         walkDirection.set(0, 0, 0);
         //walkDirection.multLocal(0.9f);
         move.zero();
@@ -898,7 +900,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private static class MyTouchListener implements TouchListener {
 
-        private PlayerState playerState;
+        private final PlayerState playerState;
 
         public MyTouchListener(PlayerState playerState) {
             this.playerState = playerState;
@@ -906,11 +908,18 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         @Override
         public void onTouch(String name, TouchEvent event, float tpf) {
-            if (event.getType() == TouchEvent.Type.MOVE) {
-                if (!playerState.getDirectionButtons().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
-                        && !playerState.getButtonAddBlock().getWorldBound().merge(playerState.getButtonJump().getWorldBound()).intersects(new Vector3f(event.getX(), event.getY(), 1))
-                        && !playerState.getButtonRemoveBlock().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
-                        && !playerState.getButtonFly().getWorldBound().intersects(new Vector3f(event.getX(), event.getY(), 1))
+            if (playerState.isTouchEnabled() && event.getType() == TouchEvent.Type.MOVE) {
+                Vector3f point = new Vector3f(event.getX(), event.getY(), 1);
+                if (!playerState.getDirectionButtons().getWorldBound()
+                        .intersects(point)
+
+                        && !playerState.getButtonAddBlock().getWorldBound().merge(playerState.getButtonJump().getWorldBound())
+                        .intersects(point)
+
+                        && !playerState.getButtonRemoveBlock().getWorldBound().merge(playerState.getButtonFly().getWorldBound())
+                        .intersects(point)
+
+                        && event.getY() > 130
                 ) {
                     rotateCamera(playerState.getCamera(), -event.getDeltaX() / 400, UP);
                     rotateCamera(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());

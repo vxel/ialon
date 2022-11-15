@@ -40,6 +40,7 @@ import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonBlock;
 
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
 import lombok.extern.slf4j.Slf4j;
@@ -410,13 +411,25 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     };
 
+    private static final int BLOCK_HISTORY_SIZE = 3;
     public Node[] blocks;
 
     private Ialon app;
     private BitmapFont guiFont;
+
+    // Buttons
+    private Container nextButton;
+    private Container previousButton;
+    private Container blockSelectionButton;
+    private final Container[] historyButton = new Container[BLOCK_HISTORY_SIZE];
+
+    // Container
     private Container menuBlock;
     private Container[] menuBlockPages;
-    private Container buttonBlockSelection;
+    private final Node historyButtons = new Node();
+    private final Node[] lastSelectedBlockNode = new Node[BLOCK_HISTORY_SIZE];
+    private final int[] history = new int[BLOCK_HISTORY_SIZE];
+
     private int selectedBlockPage = 0;
     private int selectedBlockIndex = 0;
     private Node selectedBlockNode;
@@ -432,6 +445,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     public void initialize(Application app) {
         this.app = (Ialon) app;
 
+        for (int i = 0; i < lastSelectedBlockNode.length; i++) {
+            lastSelectedBlockNode[i] = new Node();
+        }
+        Arrays.fill(history, -1);
+
         BUTTON_SIZE = app.getCamera().getHeight() / 8;
         BLOCK_BUTTON_SIZE = BUTTON_SIZE;
 
@@ -442,16 +460,45 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         blocks = createBlockNodes();
         menuBlockPages = createMenuBlock(MENUBLOCK_PAGESIZE_X, MENUBLOCK_PAGESIZE_Y);
         menuBlock = menuBlockPages[0];
+
+        // Create history buttons
+        for (int i = 0; i < BLOCK_HISTORY_SIZE; i++) {
+            int index = i;
+            historyButton[i] = createBlockButton(lastSelectedBlockNode[i], BUTTON_SIZE, new DefaultMouseListener() {
+                public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                    event.setConsumed();
+                    if (event.isPressed() && history[index] >= 0) {
+                        setSelectedBlockIndex(history[index]);
+                    }
+                    highlight(event.isPressed(), historyButton[index]);
+                }
+            });
+            historyButton[i].setLocalTranslation(i * (BUTTON_SIZE + SPACING), 0, 1);
+            historyButtons.attachChild(historyButton[i]);
+        }
+        historyButtons.setLocalTranslation(app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * BUTTON_SIZE - SPACING, SCREEN_MARGIN + BUTTON_SIZE, 1);
+
+        // Create selection button
         setSelectedBlockIndex(selectedBlockIndex);
-        buttonBlockSelection = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
+        blockSelectionButton = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {
                     toggleBlockMenu();
                 }
+                highlight(event.isPressed(), blockSelectionButton);
             }
         });
-        buttonBlockSelection.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
+        blockSelectionButton.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
+
+    }
+
+    private void highlight(boolean isPressed, Container button) {
+        if (isPressed) {
+            ((QuadBackgroundComponent)button.getBackground()).getColor().set(0.5f, 0.5f, 0.5f, 0.5f);
+        } else {
+            ((QuadBackgroundComponent)button.getBackground()).getColor().set(0, 0, 0, 0.5f);
+        }
     }
 
     @Override
@@ -463,7 +510,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         menuBlockPages = createMenuBlock(MENUBLOCK_PAGESIZE_X, MENUBLOCK_PAGESIZE_Y);
         menuBlock = menuBlockPages[0];
         setSelectedBlockIndex(selectedBlockIndex);
-        buttonBlockSelection.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
+        blockSelectionButton.setLocalTranslation(
+                app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN,
+                (app.getCamera().getHeight() + BUTTON_SIZE) / 2f,
+                1);
+        historyButtons.setLocalTranslation(
+                app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * BUTTON_SIZE - SPACING,
+                SCREEN_MARGIN + BUTTON_SIZE,
+                1);
     }
 
     public void selectBlockMenuPage(int page) {
@@ -487,14 +541,22 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     public void hideBlockMenu() {
         if (menuBlock.getParent() != null) {
             menuBlock.removeFromParent();
+            app.getStateManager().getState(PlayerState.class).setTouchEnabled(true);
+        }
+    }
+
+    public void showBlockMenu() {
+        if (menuBlock.getParent() == null) {
+            app.getGuiNode().attachChild(menuBlock);
+            app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
         }
     }
 
     public void toggleBlockMenu() {
         if (menuBlock.getParent() == null) {
-            app.getGuiNode().attachChild(menuBlock);
+            showBlockMenu();
         } else {
-            menuBlock.removeFromParent();
+            hideBlockMenu();
         }
     }
 
@@ -503,17 +565,45 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     private void setSelectedBlockIndex(int index) {
-        selectedBlockIndex = index;
         log.info("Selecting {}", BLOCK_IDS[index]);
 
-        Node parent = null;
-        if (selectedBlockNode != null) {
-            parent = selectedBlockNode.getParent();
-            selectedBlockNode.removeFromParent();
+        selectedBlockIndex = index;
+        selectedBlockNode = updateBlockNode(selectedBlockNode, index);
+        updateHistory(index);
+    }
+
+    private void updateHistory(int index) {
+        for (int i : history) {
+            if (i == index) {
+                return;
+            }
         }
-        selectedBlockNode = (Node)blocks[index].clone();
+        if (history.length - 1 >= 0) {
+            System.arraycopy(history, 0, history, 1, history.length - 1);
+        }
+        history[0] = index;
+
+        for (int i = 0; i < history.length; i++) {
+            if (history[i] >= 0) {
+                lastSelectedBlockNode[i] = updateBlockNode(lastSelectedBlockNode[i], history[i]);
+            }
+        }
+    }
+
+    private Node updateBlockNode(Node nodeToRemove, int blockIndexToAdd) {
+        Node nodeToAdd = (Node)blocks[blockIndexToAdd].clone();
+        updateBlockNode(nodeToRemove, nodeToAdd);
+        return nodeToAdd;
+    }
+
+    private void updateBlockNode(Node nodeToRemove, Node newNode) {
+        Node parent = null;
+        if (nodeToRemove != null) {
+            parent = nodeToRemove.getParent();
+            nodeToRemove.removeFromParent();
+        }
         if (parent != null) {
-            parent.attachChild(selectedBlockNode);
+            parent.attachChild(newNode);
         }
     }
 
@@ -528,7 +618,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 if (block == null) {
                     log.warn("Unknown block {}", BLOCK_IDS[i]);
                 } else {
-                    blocks[i] = createBlockNode(block, BUTTON_SIZE);
+                    blocks[i] = createBlockNode(block, BUTTON_SIZE, BLOCK_IDS[i]);
                 }
             }
         }
@@ -582,26 +672,27 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             }
         }
 
-        Container next = createButton("Next", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+        nextButton = createButton("Next", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {
                     selectBlockMenuPage(selectedBlockPage + 1);
                 }
+                highlight(event.isPressed(), nextButton);
             }
         });
-        blockList.addChild(next, pageSizeX + 1, 0);
+        blockList.addChild(nextButton, pageSizeX + 1, 0);
 
-        Container previous = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+        previousButton = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                event.setConsumed();
                 event.setConsumed();
                 if (event.isPressed()) {
                     selectBlockMenuPage(selectedBlockPage - 1);
                 }
+                highlight(event.isPressed(), previousButton);
             }
         });
-        blockList.addChild(previous, pageSizeX + 1, pageSizeY - 1);
+        blockList.addChild(previousButton, pageSizeX + 1, pageSizeY - 1);
 
         blockList.setLocalTranslation(posx, posy, 1);
         return blockList;
@@ -617,7 +708,9 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
         float boxSize = size * .5f;
         Node buttonNode = new Node("block-node");
-        buttonNode.attachChild(blockNode);
+        if (blockNode != null) {
+            buttonNode.attachChild(blockNode);
+        }
         buttonNode.addControl(new GuiControl("layer") {
             @Override
             public Vector3f getPreferredSize() {
@@ -633,7 +726,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         return buttonContainer;
     }
 
-    private Node createBlockNode(Block block, float size) {
+    private Node createBlockNode(Block block, float size, String name) {
         if (block == null) {
             return null;
         }
@@ -648,6 +741,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         Node node = null;
         if (chunk.getNode().getQuantity() > 0) {
             node = chunk.getNode();
+            node.setName(name);
             Geometry geometry = (Geometry) node.getChild(0).clone();
 
             geometry.setLocalScale(size / 2f);
@@ -714,16 +808,18 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     @Override
     protected void onEnable() {
-        if (buttonBlockSelection.getParent() == null) {
-            app.getGuiNode().attachChild(buttonBlockSelection);
+        if (blockSelectionButton.getParent() == null) {
+            app.getGuiNode().attachChild(blockSelectionButton);
+            app.getGuiNode().attachChild(historyButtons);
         }
         addKeyMappings();
     }
 
     @Override
     protected void onDisable() {
-        if (buttonBlockSelection.getParent() != null) {
-            app.getGuiNode().detachChild(buttonBlockSelection);
+        if (blockSelectionButton.getParent() != null) {
+            app.getGuiNode().detachChild(blockSelectionButton);
+            app.getGuiNode().detachChild(historyButtons);
         }
         hideBlockMenu();
         deleteKeyMappings();
