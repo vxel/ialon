@@ -24,6 +24,7 @@ public enum IalonBlock {
     SPRUCE_LEAVES(TypeIds.SPRUCE_LEAVES, true, true, false, ShapeIds.CUBE),
 
     SNOW(TypeIds.SNOW, true, false, false, Config.STANDARD_SHAPES),
+    ITEM_SEAWEED("item_seaweed", false, false, false, ShapeIds.CROSS_PLANE),
     ITEM_GRASS(TypeIds.ITEM_GRASS, false, false, false, ShapeIds.CROSS_PLANE),
     SCALE(TypeIds.SCALE, false, false, false, ShapeIds.SQUARE_NORTH, ShapeIds.SQUARE_SOUTH, ShapeIds.SQUARE_WEST, ShapeIds.SQUARE_EAST),
     SAND(TypeIds.SAND, true, false, false, Config.STANDARD_SHAPES),

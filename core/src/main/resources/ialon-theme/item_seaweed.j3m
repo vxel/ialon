@@ -8,8 +8,13 @@ Material grass-block : Blocks/MatDefs/Ialon.j3md {
         Diffuse: 1.0 1.0 1.0 1.0
         Specular: 0 0 0 1.0
         VertexLighting: true
-        DiffuseMap: Flip MagBilinear BilinearNearestMipMap ialon-theme/grass.png
-        AlphaDiscardThreshold : 0
+        DiffuseMap: Flip MagNearest MinNearestNoMipMaps ialon-theme/item_seaweed.png
+        AlphaDiscardThreshold : 0.1
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+        FaceCull Off
     }
 
 }

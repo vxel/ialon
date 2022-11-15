@@ -41,8 +41,13 @@ import com.jme3.scene.shape.Sphere;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Direction;
+import com.rvandoosselaer.blocks.Shape;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
+import com.rvandoosselaer.blocks.shapes.CrossPlane;
+import com.rvandoosselaer.blocks.shapes.Pyramid;
+import com.rvandoosselaer.blocks.shapes.Stairs;
+import com.rvandoosselaer.blocks.shapes.Wedge;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
@@ -190,6 +195,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f camLocation = new Vector3f();
     private final Vector3f move = new Vector3f();
+    private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
     private long lastCollisionTest = System.currentTimeMillis();
     private Material ballMaterial;
 
@@ -374,11 +380,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private Geometry createRemovePlaceholder() {
         Material removePlaceholderMaterial = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        removePlaceholderMaterial.setColor("Color", new ColorRGBA(0.4549f, 0.851f, 1, 0.1f));
+        removePlaceholderMaterial.setColor("Color", new ColorRGBA(0.4549f, 0.851f, 1, 1));
 
         Geometry removePlaceholder = new Geometry("remove-placeholder", new WireBox(0.505f, 0.505f, 0.505f));
         removePlaceholder.setMaterial(removePlaceholderMaterial);
-        removePlaceholder.setQueueBucket(RenderQueue.Bucket.Transparent);
         removePlaceholder.setLocalScale(BlocksConfig.getInstance().getBlockScale());
 
         return removePlaceholder;
@@ -838,19 +843,36 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private void updatePlaceholders(CollisionResult result) {
-        if (result != null && result.getDistance() < 20) {
-            Vec3i pointingLocation = ChunkManager.getBlockLocation(result);
-            Vector3f offset = new Vector3f(0.5f, 0.5f, 0.5f);
-            removePlaceholder.setLocalTranslation(pointingLocation.toVector3f().addLocal(offset).multLocal(BlocksConfig.getInstance().getBlockScale()));
-            if (removePlaceholder.getParent() == null) {
-                app.getRootNode().attachChild(removePlaceholder);
-            }
-
-            Vec3i placingLocation = ChunkManager.getNeighbourBlockLocation(result);
-            addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(offset).multLocal(BlocksConfig.getInstance().getBlockScale()));
-        } else {
+        if (result == null || result.getDistance() >= 20) {
             removePlaceholder.removeFromParent();
+            return;
         }
+
+        Vec3i pointingLocation = ChunkManager.getBlockLocation(result);
+        Vector3f localTranslation = pointingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale());
+        removePlaceholder.setLocalTranslation(localTranslation);
+        if (removePlaceholder.getParent() == null) {
+            app.getRootNode().attachChild(removePlaceholder);
+        }
+
+        Vec3i placingLocation;
+        Block b = chunkManager.getBlock(localTranslation).orElse(null);
+        Shape shape = b == null ? null : BlocksConfig.getInstance().getShapeRegistry().get(b.getShape());
+
+        if ((shape instanceof Wedge
+                || shape instanceof CrossPlane
+                || shape instanceof Stairs
+                || shape instanceof Pyramid)) {
+            addPlaceholder.setLocalTranslation(localTranslation);
+            CollisionResults collisionResults = new CollisionResults();
+            Ray ray = new Ray(camera.getLocation(), camera.getDirection());
+            addPlaceholder.collideWith(ray, collisionResults);
+            placingLocation = ChunkManager.getNeighbourBlockLocation(collisionResults.getClosestCollision());
+        } else {
+            placingLocation = ChunkManager.getNeighbourBlockLocation(result);
+        }
+
+        addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
     }
 
     private void updateGravity() {

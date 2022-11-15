@@ -71,6 +71,7 @@ import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
 import static org.delaunois.ialon.IalonBlock.GRAVEL;
 import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
+import static org.delaunois.ialon.IalonBlock.ITEM_SEAWEED;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
@@ -396,7 +397,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(WINDOW, PLATE),
             getName(WINDOW, SQUARE),
             getName(ITEM_GRASS, CROSS_PLANE),
-            SPACER,
+            getName(ITEM_SEAWEED, CROSS_PLANE),
             SPACER,
 
             getName(OAK_LOG, FENCE),
