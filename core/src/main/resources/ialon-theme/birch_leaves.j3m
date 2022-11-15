@@ -13,7 +13,6 @@ Material birch_leaves : Blocks/MatDefs/Ialon.j3md {
     }
 
     AdditionalRenderState {
-        Blend Alpha
         FaceCull Off
         PolyOffset -1.0 -1.0
     }

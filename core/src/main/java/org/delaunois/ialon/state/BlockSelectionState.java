@@ -8,6 +8,7 @@ import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
@@ -471,13 +472,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     if (event.isPressed() && history[index] >= 0) {
                         setSelectedBlockIndex(history[index]);
                     }
-                    highlight(event.isPressed(), historyButton[index]);
                 }
             });
             historyButton[i].setLocalTranslation(i * (BUTTON_SIZE + SPACING), 0, 1);
             historyButtons.attachChild(historyButton[i]);
         }
         historyButtons.setLocalTranslation(app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * BUTTON_SIZE - SPACING, SCREEN_MARGIN + BUTTON_SIZE, 1);
+        historyButtons.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
+        historyButtons.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
 
         // Create selection button
         setSelectedBlockIndex(selectedBlockIndex);
@@ -491,7 +493,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             }
         });
         blockSelectionButton.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
-
+        blockSelectionButton.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
+        blockSelectionButton.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
     }
 
     private void highlight(boolean isPressed, Container button) {
@@ -574,11 +577,19 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     private void updateHistory(int index) {
-        for (int i : history) {
-            if (i == index) {
-                return;
+        boolean found = false;
+        for (int i = 0; i < history.length; i++) {
+            highlight(false, historyButton[i]);
+            if (history[i] == index) {
+                highlight(true, historyButton[i]);
+                found = true;
             }
         }
+
+        if (found) {
+            return;
+        }
+
         if (history.length - 1 >= 0) {
             System.arraycopy(history, 0, history, 1, history.length - 1);
         }
@@ -589,6 +600,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 lastSelectedBlockNode[i] = updateBlockNode(lastSelectedBlockNode[i], history[i]);
             }
         }
+        highlight(true, historyButton[0]);
     }
 
     private Node updateBlockNode(Node nodeToRemove, int blockIndexToAdd) {
@@ -645,6 +657,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         final float posy = (app.getCamera().getHeight() + sizeY) / 2f;
         blockList.setPreferredSize(new Vector3f(sizeX, sizeY, 0));
         blockList.setBackground(new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0)));
+        blockList.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
+        blockList.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
 
         int index = page * pageSizeX * pageSizeY;
         for (int y = 0; y < pageSizeY; y++) {
@@ -718,8 +732,6 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 return new Vector3f(boxSize, boxSize, boxSize);
             }
         });
-        buttonNode.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
-        buttonNode.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
         buttonContainer.addChild(buttonNode);
         if (listener != null) {
             buttonContainer.addMouseListener(listener);
@@ -748,6 +760,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             geometry.setLocalScale(size / 2f);
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
             geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
+            // For shape having (partially-) transparent materials, we override the cull-mode
+            // material parameter because the faces are not properly ordered in the Gui bucket
+            // and the cullmode Off won't work.
+            geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
             if (!TypeIds.SCALE.equals(block.getType())) {
                 geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
