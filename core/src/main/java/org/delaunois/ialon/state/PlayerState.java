@@ -219,7 +219,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     @Override
     protected void onEnable() {
         log.info("Enabling player");
-        app.getStateManager().getState(SplashscreenState.class).setEnabled(false);
         app.getGuiNode().attachChild(crossHair);
         setFly(fly);
         addKeyMappings();

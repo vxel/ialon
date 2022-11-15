@@ -617,6 +617,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             physicsChunkPager.setMaxUpdatePerFrame(10);
             playerState.setEnabled(true);
             getStateManager().getState(ChunkLiquidManagerState.class).setEnabled(true);
+            getStateManager().getState(SplashscreenState.class).setEnabled(false);
         }
     }
 

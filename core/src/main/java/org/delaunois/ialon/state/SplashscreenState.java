@@ -94,7 +94,6 @@ public class SplashscreenState extends BaseAppState {
     @Override
     protected void onEnable() {
         if (splashScreen.getParent() == null) {
-            //percentLabel.getFont().getPage(0).setColor("Color", ColorRGBA.DarkGray);
             app.getGuiNode().attachChild(splashScreen);
         }
     }
@@ -103,7 +102,6 @@ public class SplashscreenState extends BaseAppState {
     protected void onDisable() {
         if (splashScreen.getParent() != null) {
             app.getGuiNode().detachChild(splashScreen);
-            //percentLabel.getFont().getPage(0).setColor("Color", ColorRGBA.White);
         }
     }
 }
