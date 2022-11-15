@@ -265,10 +265,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             up = forward;
             down = backward;
         }
-        if (!jump && forward) {
+        if (forward && (!fly || !jump)) {
             move.addLocal(camDir.x, fly ? 0 : camDir.y, camDir.z);
         }
-        if (!jump && backward) {
+        if (backward && (!fly || !jump)) {
             move.addLocal(-camDir.x, fly ? 0 : -camDir.y, -camDir.z);
         }
         if (up && playerLocation.y <= MAXY) {
@@ -707,7 +707,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 Block block = orientateBlock(selectedBlock, location);
                 if (block == null) {
                     // Can't place the block like this
-                    block = selectedBlock;
+                    return;
                 }
 
                 if (TypeIds.WATER.equals(selectedBlock.getType())) {
@@ -863,12 +863,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 || shape instanceof CrossPlane
                 || shape instanceof Stairs
                 || shape instanceof Pyramid)) {
+            // These shapes have slew faces, it is better to define the "add location"
+            // based on the face of the enclosing cube where the user points to.
             addPlaceholder.setLocalTranslation(localTranslation);
             CollisionResults collisionResults = new CollisionResults();
             Ray ray = new Ray(camera.getLocation(), camera.getDirection());
             addPlaceholder.collideWith(ray, collisionResults);
             placingLocation = ChunkManager.getNeighbourBlockLocation(collisionResults.getClosestCollision());
         } else {
+            // For the other shapes, define the "add location" as the location next to
+            // the shape face where the user points to.
             placingLocation = ChunkManager.getNeighbourBlockLocation(result);
         }
 
