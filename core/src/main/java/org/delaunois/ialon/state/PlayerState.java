@@ -22,12 +22,9 @@ import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.input.controls.TouchListener;
 import com.jme3.input.controls.TouchTrigger;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.input.event.TouchEvent;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
-import com.jme3.math.Matrix3f;
-import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
@@ -56,8 +53,10 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.CameraHelper;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.PlayerTouchListener;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -70,6 +69,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.Config.CHUNK_SIZE;
+import static org.delaunois.ialon.Config.DEBUG_COLLISIONS;
 import static org.delaunois.ialon.Config.GROUND_GRAVITY;
 import static org.delaunois.ialon.Config.JUMP_SPEED;
 import static org.delaunois.ialon.Config.MAXY;
@@ -79,7 +79,7 @@ import static org.delaunois.ialon.Config.PLAYER_MOVE_SPEED;
 import static org.delaunois.ialon.Config.PLAYER_RADIUS;
 import static org.delaunois.ialon.Config.PLAYER_START_FLY;
 import static org.delaunois.ialon.Config.PLAYER_START_HEIGHT;
-import static org.delaunois.ialon.Config.ROTATION_SPEED;
+import static org.delaunois.ialon.Config.PLAYER_STEP_HEIGHT;
 import static org.delaunois.ialon.Config.WATER_GRAVITY;
 import static org.delaunois.ialon.Config.WATER_JUMP_SPEED;
 
@@ -193,7 +193,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f walkDirection = new Vector3f();
     private final Vector3f camDir = new Vector3f();
     private final Vector3f camLeft = new Vector3f();
-    private final Vector3f camLocation = new Vector3f();
     private final Vector3f move = new Vector3f();
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
     private long lastCollisionTest = System.currentTimeMillis();
@@ -207,7 +206,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         inputManager = app.getInputManager();
         chunkManager = app.getChunkManager();
-        touchListener = new MyTouchListener(this);
+        touchListener = new PlayerTouchListener(this);
         crossHair = createCrossHair();
         addPlaceholder = createAddPlaceholder();
         removePlaceholder = createRemovePlaceholder();
@@ -226,6 +225,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     protected void onEnable() {
         log.info("Enabling player");
         app.getGuiNode().attachChild(crossHair);
+        player.setGravity(GROUND_GRAVITY);
         setFly(fly);
         addKeyMappings();
         showControlButtons();
@@ -235,7 +235,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     protected void onDisable() {
         log.info("Disabling player");
         crossHair.removeFromParent();
-        player.setGravity(0);
         deleteKeyMappings();
         hideControlButtons();
     }
@@ -286,7 +285,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         player.setWalkDirection(walkDirection);
 
         updatePlayerPosition();
-        updateGravity();
+        updateFallSpeed();
     }
 
     public void resize() {
@@ -321,7 +320,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         inputManager.addMapping(ACTION_FORWARD, new KeyTrigger(KeyInput.KEY_Z));
         inputManager.addMapping(ACTION_BACKWARD, new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping(ACTION_JUMP, new KeyTrigger(KeyInput.KEY_SPACE));
-        inputManager.addMapping(ACTION_FIRE, new KeyTrigger(KeyInput.KEY_RETURN));
+        inputManager.addMapping(ACTION_FIRE, new KeyTrigger(KeyInput.KEY_LCONTROL));
 
         inputManager.addMapping(ACTION_FLY, new KeyTrigger(KeyInput.KEY_F));
         inputManager.addMapping(ACTION_FLY_UP, new KeyTrigger(KeyInput.KEY_UP));
@@ -348,7 +347,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         // size, stepheight, jumping, falling, and gravity.
         // We also put the player in its starting position.
         CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(PLAYER_RADIUS, PLAYER_HEIGHT - 2 * PLAYER_RADIUS, 1);
-        CharacterControl player = new CharacterControl(capsuleShape, 0.5f);
+        CharacterControl player = new CharacterControl(capsuleShape, PLAYER_STEP_HEIGHT);
         player.setJumpSpeed(JUMP_SPEED);
         player.setFallSpeed(GROUND_GRAVITY);
         player.setGravity(0);
@@ -400,9 +399,15 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             playerLocation.setY(MAXY);
             player.setPhysicsLocation(playerLocation);
         }
-        // The player location is at the center of the capsule shape. So we need to level the camera
-        // up to set it at the top of the shape.
-        camera.setLocation(playerLocation.add(0, PLAYER_HEIGHT / 2 - 0.15f, 0));
+        if (DEBUG_COLLISIONS) {
+            camera.setLocation(playerLocation.add(-2, PLAYER_HEIGHT / 2 - 0.15f, 0));
+
+        } else {
+            // The player location is at the center of the capsule shape. So we need to level the camera
+            // up to set it at the top of the shape.
+            camera.setLocation(playerLocation.add(0, PLAYER_HEIGHT / 2 - 0.15f, 0));
+        }
+
         app.getStateManager().getState(ChunkPagerState.class).setLocation(playerLocation);
         app.getStateManager().getState(PhysicsChunkPagerState.class).setLocation(playerLocation);
     }
@@ -637,16 +642,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     public void onAnalog(String name, float value, float tpf) {
         if (app.isMouselocked()) {
             if (ACTION_LOOK_LEFT.equals(name)) {
-                rotateCamera(camera, value, UP);
+                CameraHelper.rotate(camera, value, UP);
 
             } else if (ACTION_LOOK_RIGHT.equals(name)) {
-                rotateCamera(camera, -value, UP);
+                CameraHelper.rotate(camera, -value, UP);
 
             } else if (ACTION_LOOK_UP.equals(name)) {
-                rotateCamera(camera, -value, camera.getLeft());
+                CameraHelper.rotate(camera, -value, camera.getLeft());
 
             } else if (ACTION_LOOK_DOWN.equals(name)) {
-                rotateCamera(camera, value, camera.getLeft());
+                CameraHelper.rotate(camera, value, camera.getLeft());
             }
         }
     }
@@ -664,15 +669,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         highlight(fly, buttonFly);
         if (fly) {
             log.info("Flying");
-            player.setGravity(0);
             player.setFallSpeed(0);
         } else {
             log.info("Not Flying");
             if (underWater) {
-                player.setGravity(WATER_GRAVITY);
                 player.setFallSpeed(WATER_GRAVITY);
             } else {
-                player.setGravity(GROUND_GRAVITY);
                 player.setFallSpeed(GROUND_GRAVITY);
             }
         }
@@ -879,9 +881,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
     }
 
-    private void updateGravity() {
-        camLocation.set(camera.getLocation());
-        Block block = chunkManager.getBlock(camLocation.subtract(0, 1, 0)).orElse(null);
+    private void updateFallSpeed() {
+        Block block = chunkManager.getBlock(camera.getLocation().subtract(0, 1, 0)).orElse(null);
         if (block != null) {
             if (block.getName().contains("water")) {
                 if (!underWater) {
@@ -889,7 +890,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     underWater = true;
 
                     if (!fly) {
-                        player.setGravity(WATER_GRAVITY);
+                        // In water, we don't need to climb stairs, just swim ;-)
+                        // Setting step height to a low value prevents a bug in bullet
+                        // that makes the character fall with a different speed below
+                        // the stepHeight. This bug is noticeable especially under water.
+                        player.getCharacter().setStepHeight(0.03f);
                         player.setFallSpeed(WATER_GRAVITY);
                         player.setJumpSpeed(WATER_JUMP_SPEED);
                     }
@@ -901,7 +906,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 }
 
                 if (!fly) {
-                    player.setGravity(0);
                     player.setFallSpeed(0);
                 }
             }
@@ -909,7 +913,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             log.info("Water - OUT");
             underWater = false;
             if (!fly) {
-                player.setGravity(GROUND_GRAVITY);
+                player.getCharacter().setStepHeight(PLAYER_STEP_HEIGHT);
                 player.setFallSpeed(GROUND_GRAVITY);
                 player.setJumpSpeed(JUMP_SPEED);
             }
@@ -917,65 +921,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             log.info("Scale - OUT");
             onScale = false;
             if (!fly) {
-                player.setGravity(GROUND_GRAVITY);
                 player.setFallSpeed(GROUND_GRAVITY);
             }
         }
-    }
-
-    private static class MyTouchListener implements TouchListener {
-
-        private final PlayerState playerState;
-
-        public MyTouchListener(PlayerState playerState) {
-            this.playerState = playerState;
-        }
-
-        @Override
-        public void onTouch(String name, TouchEvent event, float tpf) {
-            if (playerState.isTouchEnabled() && event.getType() == TouchEvent.Type.MOVE) {
-                Vector3f point = new Vector3f(event.getX(), event.getY(), 1);
-                if (!playerState.getDirectionButtons().getWorldBound()
-                        .intersects(point)
-
-                        && !playerState.getButtonAddBlock().getWorldBound().merge(playerState.getButtonJump().getWorldBound())
-                        .intersects(point)
-
-                        && !playerState.getButtonRemoveBlock().getWorldBound().merge(playerState.getButtonFly().getWorldBound())
-                        .intersects(point)
-
-                        && event.getY() > 130
-                ) {
-                    rotateCamera(playerState.getCamera(), -event.getDeltaX() / 400, UP);
-                    rotateCamera(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());
-                }
-                event.setConsumed();
-            }
-        }
-
-    }
-
-    private static void rotateCamera(Camera cam, float value, Vector3f axis) {
-        Matrix3f mat = new Matrix3f();
-        mat.fromAngleNormalAxis(ROTATION_SPEED * value, axis);
-
-        Vector3f up = cam.getUp();
-        Vector3f left = cam.getLeft();
-        Vector3f dir = cam.getDirection();
-
-        mat.mult(up, up);
-        mat.mult(left, left);
-        mat.mult(dir, dir);
-
-        if (up.getY() < 0) {
-            return;
-        }
-
-        Quaternion q = new Quaternion();
-        q.fromAxes(left, up, dir);
-        q.normalizeLocal();
-
-        cam.setAxes(q);
     }
 
     private Material getBallMaterial() {

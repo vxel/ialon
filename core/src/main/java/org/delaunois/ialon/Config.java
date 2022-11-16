@@ -50,18 +50,19 @@ public class Config {
     public static final ColorRGBA EVENING_COLOR = ColorRGBA.fromRGBA255(255, 173, 66, 255);
     public static final ColorRGBA NIGHT_COLOR = new ColorRGBA(0.2f, 0.2f, 0.2f, 1);
     public static final float TIME_FACTOR = 0.01f; // Should be 0.01f
-    public static final float GROUND_GRAVITY = 10;
+    public static final float GROUND_GRAVITY = 9;
     public static final float WATER_GRAVITY = 0.4f;
-    public static final float JUMP_SPEED = 5.5f;
-    public static final float WATER_JUMP_SPEED = 2;
+    public static final float JUMP_SPEED = 5f;
+    public static final float WATER_JUMP_SPEED = 5f;
 
     // Player
     public static final float ROTATION_SPEED = 1.5f;
     public static final float PLAYER_START_HEIGHT = 10;
     public static final float PLAYER_MOVE_SPEED = 0.05f;
     public static final float PLAYER_FLY_SPEED = 0.1f;
-    public static final float PLAYER_HEIGHT = 1.4f;
+    public static final float PLAYER_HEIGHT = 1.6f;
     public static final float PLAYER_RADIUS = 0.3f;
+    public static final float PLAYER_STEP_HEIGHT = 0.3f;
     public static final boolean PLAYER_START_FLY = false;
 
     // Debug
