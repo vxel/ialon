@@ -760,12 +760,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             geometry.setLocalScale(size / 2f);
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
             geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
-            // For shape having (partially-) transparent materials, we override the cull-mode
-            // material parameter because the faces are not properly ordered in the Gui bucket
-            // and the cullmode Off won't work.
-            geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
             if (!TypeIds.SCALE.equals(block.getType())) {
+                // For shape having (partially-) transparent materials, we override the cull-mode
+                // material parameter because the faces are not properly ordered in the Gui bucket
+                // and the cullmode Off won't work (except for scale and items)
+                if (!block.getType().startsWith("item")) {
+                    geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+                }
                 geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
                 geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
             }
