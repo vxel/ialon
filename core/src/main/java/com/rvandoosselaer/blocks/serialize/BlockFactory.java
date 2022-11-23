@@ -37,7 +37,7 @@ public class BlockFactory {
                     .build();
             blocks.add(block);
 
-            for (Integer waterLevel : blockDefinition.getWaterLevels()) {
+            for (Byte waterLevel : blockDefinition.getWaterLevels()) {
                 block = Block.builder()
                         .name(BlockIds.getName(blockDefinition.getType(), shape, waterLevel))
                         .type(blockDefinition.getType())

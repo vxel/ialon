@@ -18,13 +18,14 @@ import com.rvandoosselaer.blocks.ShapeRegistry;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.mathd.Vec3i;
-import lombok.ToString;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A chunk mesh generator that creates and combines a quad mesh for each of the visible faces of a block of the same
@@ -185,7 +186,13 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 // add water if any
                 if (!Objects.equals(block.getType(), TypeIds.WATER) && block.getLiquidLevel() > 0) {
                     mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
-                    shape = shapeRegistry.get(block.getLiquidLevel() == 6 ? ShapeIds.LIQUID : ShapeIds.LIQUID + "_" + block.getLiquidLevel());
+                    if (block.isLiquidSource()) {
+                        shape = shapeRegistry.get(ShapeIds.LIQUID5);
+                    } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
+                        shape = shapeRegistry.get(ShapeIds.LIQUID);
+                    } else {
+                        shape = shapeRegistry.get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
+                    }
                     shape.add(neighborhood, mesh);
                 }
             }

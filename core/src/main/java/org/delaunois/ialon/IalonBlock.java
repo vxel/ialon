@@ -17,6 +17,7 @@
 
 package org.delaunois.ialon;
 
+import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
@@ -25,13 +26,13 @@ public enum IalonBlock {
 
     WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.SQUARE),
 
-    WATER_SOURCE(BlockIds.WATER_SOURCE, TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, 5),
-    WATER(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID), TypeIds.WATER, false, true, false, ShapeIds.LIQUID, 6),
-    WATER1(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1), TypeIds.WATER, false, true, false, ShapeIds.LIQUID1, 1),
-    WATER2(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2), TypeIds.WATER, false, true, false, ShapeIds.LIQUID2, 2),
-    WATER3(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3), TypeIds.WATER, false, true, false, ShapeIds.LIQUID3, 3),
-    WATER4(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4), TypeIds.WATER, false, true, false, ShapeIds.LIQUID4, 4),
-    WATER5(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5), TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, 5),
+    WATER1(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1), TypeIds.WATER, false, true, false, ShapeIds.LIQUID1, Block.LIQUID_LEVEL1),
+    WATER2(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2), TypeIds.WATER, false, true, false, ShapeIds.LIQUID2, Block.LIQUID_LEVEL2),
+    WATER3(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3), TypeIds.WATER, false, true, false, ShapeIds.LIQUID3, Block.LIQUID_LEVEL3),
+    WATER4(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4), TypeIds.WATER, false, true, false, ShapeIds.LIQUID4, Block.LIQUID_LEVEL4),
+    WATER5(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5), TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, Block.LIQUID_LEVEL5),
+    WATER(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID), TypeIds.WATER, false, true, false, ShapeIds.LIQUID, Block.LIQUID_FULL),
+    WATER_SOURCE(BlockIds.WATER_SOURCE, TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, Block.LIQUID_SOURCE),
 
     STONE_BRICKS(TypeIds.STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
     MOSSY_STONE_BRICKS(TypeIds.MOSSY_STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
@@ -86,7 +87,7 @@ public enum IalonBlock {
     private final boolean multitexture;
     private final boolean torchlight;
     private final String[] shapes;
-    private final int[] waterLevels;
+    private final byte[] waterLevels;
 
     IalonBlock(String type, boolean solid, boolean transparent, boolean multitexture, String... shapes) {
         this.name = null; // Automatically generated based on type, shape and water level
@@ -110,7 +111,7 @@ public enum IalonBlock {
         this.waterLevels = Config.ALL_LEVELS;
     }
 
-    IalonBlock(String name, String type, boolean solid, boolean transparent, boolean multitexture, String shape, int waterLevel) {
+    IalonBlock(String name, String type, boolean solid, boolean transparent, boolean multitexture, String shape, byte waterLevel) {
         this.name = name;
         this.type = type;
         this.transparent = transparent;
@@ -118,7 +119,7 @@ public enum IalonBlock {
         this.multitexture = multitexture;
         this.torchlight = false;
         this.shapes = new String[]{ shape };
-        this.waterLevels = new int[]{ waterLevel };
+        this.waterLevels = new byte[]{ waterLevel };
     }
 
     public String getName() {
@@ -145,7 +146,7 @@ public enum IalonBlock {
         return shapes;
     }
 
-    public int[] getWaterLevels() {
+    public byte[] getWaterLevels() {
         return waterLevels;
     }
 

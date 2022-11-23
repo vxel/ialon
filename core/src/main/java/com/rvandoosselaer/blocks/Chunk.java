@@ -546,7 +546,7 @@ public class Chunk {
             short bId = this.blocks[index];
             if (bId > 0) {
                 Block block = REGISTRY.get(bId);
-                if (block.getLiquidLevel() > 5 || (block.getLiquidLevel() > 0 && face == Direction.UP)) {
+                if (block.getLiquidLevel() == Block.LIQUID_FULL || (block.getLiquidLevel() > 0 && face == Direction.UP)) {
                     lightColor = color;
                 }
             }

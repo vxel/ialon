@@ -129,6 +129,6 @@ public class Config {
             ShapeIds.STAIRS_INVERTED_OUTER_CORNER_SOUTH,
             ShapeIds.STAIRS_INVERTED_OUTER_CORNER_WEST
     };
-    public static final int[] ALL_LEVELS = { 0, 1, 2, 3, 4, 5, 6 };
+    public static final byte[] ALL_LEVELS = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 }

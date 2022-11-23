@@ -211,7 +211,7 @@ public class ChunkLiquidManager {
      * @return 0 for null or non liquid block, 1 - 6 for liquid blocks
      */
     public static int getLiquidLevel(Block block) {
-        if (block == null || block.getLiquidLevel() < 0) {
+        if (block == null || block.getLiquidLevel() <= 0) {
             // Level is 0 if no block or if non liquid block
             return 0;
         }
@@ -294,7 +294,7 @@ public class ChunkLiquidManager {
         }
 
         Block block = chunk.getBlock(x, y, z);
-        if (block != null && block.getLiquidLevel() < 0) {
+        if (block != null && block.getLiquidLevel() == Block.LIQUID_DISABLED) {
             // Block does not allow liquid to flow
             if (log.isDebugEnabled()) {
                 log.debug("PL2 - Liquid blocked at ({}, {}, {})", x, y, z);
@@ -398,7 +398,7 @@ public class ChunkLiquidManager {
                                 .get(BlockIds.getName(TypeIds.WATER, shapeId)));
             }
 
-        } else if (existingBlock.getLiquidLevel() >= 0) {
+        } else if (existingBlock.getLiquidLevel() != Block.LIQUID_DISABLED) {
             Block newBlock = BlocksConfig.getInstance().getBlockRegistry()
                     .get(BlockIds.getName(existingBlock.getType(), existingBlock.getShape(), level));
             if (newBlock != null) {

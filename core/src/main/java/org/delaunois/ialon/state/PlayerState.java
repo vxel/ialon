@@ -632,7 +632,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
             // Do not jump if the player is not on the ground, unless he is in water
             Block block = chunkManager.getBlock(playerLocation).orElse(null);
-            if ((block != null && block.getLiquidLevel() == 6) || player.onGround()) {
+            if ((block != null && block.getLiquidLevel() == Block.LIQUID_FULL) || player.onGround()) {
                 Block aboveAbove = chunkManager.getBlock(camera.getLocation().add(0, 2, 0)).orElse(null);
                 if (aboveAbove == null) {
                     player.jump();
@@ -722,7 +722,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         executorService.submit(() -> {
             try {
                 Vector3f location = worldBlockLocation;
-                // Get the selected block from menu
+                // Orientate the selected block
                 Block block = orientateBlock(selectedBlock, location);
                 if (block == null) {
                     // Can't place the block like this
@@ -778,19 +778,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 log.info("Removing block at {}", blockLocation);
                 Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
 
-                Vector3f[] aroundLocations = new Vector3f[] {
-                        blockLocation.add(-1, 0, 0),
-                        blockLocation.add(1, 0, 0),
-                        blockLocation.add(0, 0, 1),
-                        blockLocation.add(0, 0, -1),
-                };
-                for (Vector3f location : aroundLocations) {
-                    chunkManager.getBlock(location).ifPresent(block -> {
-                        if (TypeIds.SCALE.equals(block.getType())) {
-                            updatedChunks.addAll(chunkManager.removeBlock(location));
-                        }
-                    });
-                }
+                cleanAroundBlocks(blockLocation, updatedChunks);
 
                 if (!updatedChunks.isEmpty()) {
                     chunkManager.requestOrderedMeshChunks(updatedChunks);
@@ -803,6 +791,47 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 log.error("Failed to remove block", e);
             }
         });
+    }
+
+    private void cleanAroundBlocks(Vector3f blockLocation, Set<Vec3i> updatedChunks) {
+        Vector3f aroundLocation;
+        Block aroundBlock;
+
+        // WEST
+        aroundLocation = blockLocation.add(-1, 0, 0);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null) {
+            if (ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
+                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            }
+        }
+
+        // EAST
+        aroundLocation = blockLocation.add(1, 0, 0);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null) {
+            if (ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
+                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            }
+        }
+
+        // NORTH
+        aroundLocation = blockLocation.add(0, 0, -1);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null) {
+            if (ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
+                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            }
+        }
+
+        // SOUTH
+        aroundLocation = blockLocation.add(0, 0, 1);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null) {
+            if (ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
+                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            }
+        }
     }
 
     private Block orientateBlock(Block block, Vector3f blockLocation) {
@@ -819,8 +848,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 return null;
             }
             Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
-            if (behind == null) {
-                log.info("No block behind scale");
+            if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
+                log.info("No cube block behind scale");
                 return null;
             }
         }
@@ -836,7 +865,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (subShape.length() > 0) {
             shape = String.join("_", shape, subShape);
         }
-        String orientedBlockName = String.format("%s-%s-%s", type, String.join("_", shape, direction.name().toLowerCase()), block.getLiquidLevel());
+        String orientedBlockName = String.format("%s-%s-%s", type, String.join("_", shape, direction.name().toLowerCase()), block.getLiquidLevelId());
         Block orientedBlock = BlocksConfig.getInstance().getBlockRegistry().get(orientedBlockName);
 
         // Just in case this particulier orientation does not exist...
@@ -888,13 +917,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             CollisionResults collisionResults = new CollisionResults();
             Ray ray = new Ray(camera.getLocation(), camera.getDirection());
             addPlaceholder.collideWith(ray, collisionResults);
-            placingLocation = ChunkManager.getNeighbourBlockLocation(collisionResults.getClosestCollision());
-        } else {
-            // For the other shapes, define the "add location" as the location next to
-            // the shape face where the user points to.
-            placingLocation = ChunkManager.getNeighbourBlockLocation(result);
+            result = collisionResults.getClosestCollision();
+            if (result == null || result.getDistance() >= 20) {
+                addPlaceholder.removeFromParent();
+                return;
+            }
         }
 
+        placingLocation = ChunkManager.getNeighbourBlockLocation(result);
         addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
     }
 

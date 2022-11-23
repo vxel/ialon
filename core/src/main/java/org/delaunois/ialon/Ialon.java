@@ -523,7 +523,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
                             .torchlight(block.isTorchlight())
                             .build());
                 } else {
-                    for (int waterLevel : block.getWaterLevels()) {
+                    for (byte waterLevel : block.getWaterLevels()) {
                         registry.register(Block.builder()
                                 .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape, waterLevel))
                                 .type(block.getType())

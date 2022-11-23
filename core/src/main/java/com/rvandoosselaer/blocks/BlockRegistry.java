@@ -161,12 +161,12 @@ public class BlockRegistry {
     }
 
     private void registerWaterBlocks() {
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1)).shape(ShapeIds.LIQUID1).type(TypeIds.WATER).transparent(true).liquidLevel(1).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2)).shape(ShapeIds.LIQUID2).type(TypeIds.WATER).transparent(true).liquidLevel(2).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3)).shape(ShapeIds.LIQUID3).type(TypeIds.WATER).transparent(true).liquidLevel(3).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4)).shape(ShapeIds.LIQUID4).type(TypeIds.WATER).transparent(true).liquidLevel(4).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5)).shape(ShapeIds.LIQUID5).type(TypeIds.WATER).transparent(true).liquidLevel(5).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID)).shape(ShapeIds.LIQUID).type(TypeIds.WATER).transparent(true).liquidLevel(6).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1)).shape(ShapeIds.LIQUID1).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_LEVEL1).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2)).shape(ShapeIds.LIQUID2).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_LEVEL2).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID3)).shape(ShapeIds.LIQUID3).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_LEVEL3).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID4)).shape(ShapeIds.LIQUID4).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_LEVEL4).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID5)).shape(ShapeIds.LIQUID5).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_LEVEL5).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID)).shape(ShapeIds.LIQUID).type(TypeIds.WATER).transparent(true).liquidLevel(Block.LIQUID_FULL).build());
     }
 
     private void registerStoneBrickBlocks() {
@@ -249,13 +249,13 @@ public class BlockRegistry {
     }
 
     private void registerItemBlocks() {
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(0).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 1)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(1).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 2)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(2).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 3)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(3).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 4)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(4).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 5)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(5).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 6)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(6).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_NONE).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 1)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL1).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 2)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL2).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 3)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL3).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 4)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL4).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 5)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL5).build());
+        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 6)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_FULL).build());
     }
 
     private void registerScaleBlocks() {
@@ -289,7 +289,6 @@ public class BlockRegistry {
         register(BlockFactory.create(oakLogDef));
 
         register(BlockFactory.create(new BlockDefinition(TypeIds.OAK_LOG, true, false, true)
-                .addWaterLevels(0, 1, 2, 3, 4, 5, 6)
                 .addShapes(ShapeIds.ALL_PYRAMIDS)
                 .addShapes(ShapeIds.ALL_POLES)
                 .addShapes(ShapeIds.ALL_FENCES)

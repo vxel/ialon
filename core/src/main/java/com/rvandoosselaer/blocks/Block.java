@@ -26,6 +26,17 @@ import lombok.ToString;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Block {
 
+    public static byte LIQUID_DISABLED = -1;
+    public static byte LIQUID_NONE = 0;
+    public static byte LIQUID_LEVEL1 = 1;
+    public static byte LIQUID_LEVEL2 = 2;
+    public static byte LIQUID_LEVEL3 = 3;
+    public static byte LIQUID_LEVEL4 = 4;
+    public static byte LIQUID_LEVEL5 = 5;
+    public static byte LIQUID_FULL = 6;
+    public static byte LIQUID_SOURCE = 7;
+
+
     @ToString.Include
     @EqualsAndHashCode.Include
     private String name;
@@ -38,6 +49,7 @@ public class Block {
      * When set to true, the {@link Shape} implementation should take care for the correct UV mapping.
      */
     private boolean usingMultipleImages;
+
     /**
      * Flag indicating if the block is transparent. Adjacent transparent blocks don't render the shared face between
      * them. When a non-transparent block is next to a transparent block, the face of the non-transparent
@@ -48,19 +60,22 @@ public class Block {
      * If A is non-transparent and B is transparent, the right face of A is rendered, the left face of B is not rendered.
      */
     private boolean transparent;
+
     /**
      * Flag indicating if the block will be part of the collision mesh of the chunk.
      */
     private boolean solid;
+
     /**
      * Flag indicating if the block is a torch light.
      */
     private boolean torchlight;
+
     /**
-     * The water level (<0 does not allow water, 0 none, 6 = full)
+     * The water level (<0 does not allow water, 0 none, 6 = full, 7 = source)
      */
     @Builder.Default
-    private int liquidLevel = -1;
+    private byte liquidLevel = LIQUID_DISABLED;
 
     public Block(String name, String shape, String type, boolean usingMultipleImages, boolean transparent, boolean solid, boolean torchlight) {
         this.name = name;
@@ -117,6 +132,18 @@ public class Block {
                 .transparent(blockDTO.isTransparent())
                 .solid(blockDTO.isSolid())
                 .build();
+    }
+
+    public byte getLiquidLevel() {
+        return liquidLevel == LIQUID_SOURCE ? LIQUID_LEVEL5 : liquidLevel;
+    }
+
+    public byte getLiquidLevelId() {
+        return liquidLevel;
+    }
+
+    public boolean isLiquidSource() {
+        return liquidLevel == LIQUID_SOURCE;
     }
 
 }
