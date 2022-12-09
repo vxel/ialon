@@ -37,8 +37,9 @@ import static org.delaunois.ialon.Config.SKY_NIGHT_COLOR;
 @Slf4j
 public class SkyControl extends AbstractControl {
 
-    private final SunControl sun;
-    private final float updateThreshold;
+    private SunControl sun;
+
+    private float updateThreshold = Float.MAX_VALUE;
 
     @Getter
     private final ColorRGBA color = new ColorRGBA();
@@ -48,7 +49,10 @@ public class SkyControl extends AbstractControl {
 
     private long lastUpdate = 0;
 
-    public SkyControl(SunControl sun) {
+    public SkyControl() {
+    }
+
+    public void setSunControl(SunControl sun) {
         this.sun = sun;
         if (sun.getTimeFactor() > 0) {
             updateThreshold = 1 / (sun.getTimeFactor() * 2);
@@ -60,7 +64,7 @@ public class SkyControl extends AbstractControl {
     @Override
     protected void controlUpdate(float tpf) {
         long now = System.currentTimeMillis();
-        if (lastUpdate == 0 || now - lastUpdate > updateThreshold) {
+        if (this.sun != null && (lastUpdate == 0 || now - lastUpdate > updateThreshold)) {
             lastUpdate = now;
 
             float sunHeight = sun.getSunHeight();

@@ -61,6 +61,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     @Override
     public void initialize(Application app) {
         this.app = (Ialon) app;
+
         buttonSize = app.getCamera().getHeight() / 12;
 
         if (guiFont == null) {
@@ -79,8 +80,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
                 }
             }
         });
-
-        updateTimeFactor();
     }
 
     public void setTimeFactorIndex(int index) {
@@ -90,7 +89,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     private void updateTimeFactor() {
         if (app != null) {
-            app.getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
+            app.getStateManager().getState(SunState.class).getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
             timeFactorLabel.setText(TIME_FACTORS_LABELS[timeFactorIndex]);
         }
     }
@@ -123,6 +122,12 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onEnable() {
+        SunState sunState = app.getStateManager().getState(SunState.class);
+        if (sunState == null) {
+            log.error("TimeFactorState requires SunState");
+            return;
+        }
+        updateTimeFactor();
         if (buttonTimeFactor.getParent() == null) {
             app.getGuiNode().attachChild(buttonTimeFactor);
         }

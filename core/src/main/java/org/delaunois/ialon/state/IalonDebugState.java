@@ -66,6 +66,8 @@ public class IalonDebugState extends BaseAppState {
 
     private ChunkPager chunkPager;
     private PlayerState playerState;
+    private SunState sunState;
+
     private Ialon app;
     private long lastUpdate = System.currentTimeMillis();
 
@@ -75,6 +77,7 @@ public class IalonDebugState extends BaseAppState {
 
         chunkPager = app.getStateManager().getState(ChunkPagerState.class).getChunkPager();
         playerState = app.getStateManager().getState(PlayerState.class);
+        sunState = app.getStateManager().getState(SunState.class);
 
         container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.Even, FillMode.Even));
 
@@ -263,7 +266,13 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getLocalTimeString() {
-        return String.format(Locale.ENGLISH, "%02d:%02d:%02d", app.getLocalTime().getHour(), app.getLocalTime().getMinute(), app.getLocalTime().getSecond());
+        if (sunState.getSunControl() != null) {
+            return String.format(Locale.ENGLISH, "%02d:%02d:%02d",
+                    sunState.getSunControl().getLocalTime().getHour(),
+                    sunState.getSunControl().getLocalTime().getMinute(),
+                    sunState.getSunControl().getLocalTime().getSecond());
+        }
+        return "-";
     }
 
     private String getDirectString() {
