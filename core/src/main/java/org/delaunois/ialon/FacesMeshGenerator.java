@@ -137,6 +137,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     public void createAndSetNodeAndCollisionMesh(Chunk chunk) {
         if (chunk.isEmpty()) {
             chunk.setNode(new EmptyNode());
+            chunk.setCollisionMesh(null);
             return;
         }
 
@@ -239,6 +240,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         if (node.getVertexCount() == 0) {
             chunk.setNode(new EmptyNode());
+            chunk.setCollisionMesh(null);
             return;
         }
 
