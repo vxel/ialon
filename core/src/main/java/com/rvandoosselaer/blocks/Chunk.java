@@ -104,6 +104,7 @@ public class Chunk {
 
     public void setBlocks(short[] blocks) {
         this.blocks = blocks;
+        update();
     }
 
     public void setLightMap(byte[] lightMap) {
@@ -537,7 +538,7 @@ public class Chunk {
      */
     private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color) {
         if (blocks == null) {
-            return new Vector4f(1f, 1f, 1f, 255);
+            return new Vector4f(1f, 1f, 1f, 0xF << 4);
         }
         int index = calculateIndex(x, y, z);
         int level = this.lightMap[index];
