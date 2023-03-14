@@ -208,6 +208,21 @@ public class ZipFileRepository implements ChunkRepository {
         }
 
         long start = System.nanoTime();
+        BlocksProtos.ChunkProto chunkProto = chunkToChunkProto(chunk);
+        if (chunkProto == null) {
+            if (Files.exists(chunkPath)) {
+                // Empty chunk, remove the file
+                try {
+                    Files.delete(chunkPath);
+                    if (log.isTraceEnabled()) {
+                        log.trace("Removed empty {} took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+                    }
+                } catch (IOException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            return true;
+        }
 
         try (FileOutputStream fos = new FileOutputStream(chunkPath.toFile());
              ZipOutputStream zipOut = new ZipOutputStream(fos)) {
@@ -215,11 +230,11 @@ public class ZipFileRepository implements ChunkRepository {
             ZipEntry zipEntry = new ZipEntry(ZIP_ENTRY_NAME);
             zipOut.putNextEntry(zipEntry);
 
-            BlocksProtos.ChunkProto chunkProto = chunkToChunkProto(chunk);
             chunkProto.writeTo(zipOut);
             if (log.isTraceEnabled()) {
                 log.trace("Saving {} took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             }
+            return true;
 
         } catch (IOException e) {
             log.error(e.getMessage(), e);
@@ -277,6 +292,10 @@ public class ZipFileRepository implements ChunkRepository {
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         short[] blocks = chunk.getBlocks();
+        if (blocks == null) {
+            return null;
+        }
+
         List<String> blockList = new ArrayList<>(blocks.length);
         for (short block : blocks) {
             blockList.add(block == 0 ? BlockIds.NONE : blockRegistry.get(block).getName());
