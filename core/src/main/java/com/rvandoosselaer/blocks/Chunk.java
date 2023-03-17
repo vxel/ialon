@@ -9,6 +9,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import lombok.AccessLevel;
@@ -98,7 +99,11 @@ public class Chunk {
     private void allocate() {
         if (blocks == null) {
             setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
-            setLightMap(new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+            byte[] lightmap = new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z];
+            // TODO implement when the chunk is empty but below a non-empty chunk
+            // the lightmap should be properly computed
+            Arrays.fill(lightmap, (byte) (0xF << 4));
+            setLightMap(lightmap);
         }
     }
 
