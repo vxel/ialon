@@ -35,6 +35,8 @@ public enum IalonBlock {
     WATER_SOURCE(BlockIds.WATER_SOURCE, TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, Block.LIQUID_SOURCE),
 
     STONE_BRICKS(TypeIds.STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
+    STONE_BRICKS2("stone_bricks2", true, false, false, Config.STANDARD_SHAPES),
+    STONE_BRICKS3("stone_bricks3", true, false, false, ShapeIds.CUBE),
     MOSSY_STONE_BRICKS(TypeIds.MOSSY_STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
 
     SPRUCE_LOG(TypeIds.SPRUCE_LOG, true, false, true, Config.STANDARD_SHAPES_NO_STAIRS),

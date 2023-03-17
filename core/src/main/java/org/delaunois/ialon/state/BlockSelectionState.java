@@ -112,6 +112,8 @@ import static org.delaunois.ialon.IalonBlock.SPRUCE_LEAVES;
 import static org.delaunois.ialon.IalonBlock.SPRUCE_LOG;
 import static org.delaunois.ialon.IalonBlock.SPRUCE_PLANKS;
 import static org.delaunois.ialon.IalonBlock.STONE_BRICKS;
+import static org.delaunois.ialon.IalonBlock.STONE_BRICKS2;
+import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
@@ -121,6 +123,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     public static String SPACER = null;
     public static String[] BLOCK_IDS = {
+            // Page 1
             getName(GRASS, CUBE),
             getName(GRASS, DOUBLE_SLAB),
             getName(GRASS, SLAB),
@@ -165,6 +168,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(BIRCH_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(BIRCH_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 2
             getName(BRICKS, CUBE),
             getName(BRICKS, DOUBLE_SLAB),
             getName(BRICKS, SLAB),
@@ -209,6 +213,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(GRAVEL, STAIRS_INNER_CORNER_SOUTH),
             getName(GRAVEL, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 3
             getName(SLATE, CUBE),
             getName(SLATE, DOUBLE_SLAB),
             getName(SLATE, SLAB),
@@ -253,6 +258,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(PALM_TREE_PLANKS, STAIRS_INNER_CORNER_SOUTH),
             getName(PALM_TREE_PLANKS, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 4
             getName(ROCK, CUBE),
             getName(ROCK, DOUBLE_SLAB),
             getName(ROCK, SLAB),
@@ -297,6 +303,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(SAND, STAIRS_INNER_CORNER_SOUTH),
             getName(SAND, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 5
             getName(SNOW, CUBE),
             getName(SNOW, DOUBLE_SLAB),
             getName(SNOW, SLAB),
@@ -341,6 +348,18 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(STONE_BRICKS, STAIRS_INNER_CORNER_SOUTH),
             getName(STONE_BRICKS, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 6
+            getName(STONE_BRICKS2, CUBE),
+            getName(STONE_BRICKS3, CUBE),
+            getName(STONE_BRICKS2, DOUBLE_SLAB),
+            getName(STONE_BRICKS2, SLAB),
+            getName(STONE_BRICKS2, WEDGE_SOUTH),
+            getName(STONE_BRICKS2, PYRAMID),
+            getName(STONE_BRICKS2, POLE),
+            getName(STONE_BRICKS2, STAIRS_EAST),
+            getName(STONE_BRICKS2, STAIRS_INNER_CORNER_SOUTH),
+            getName(STONE_BRICKS2, STAIRS_OUTER_CORNER_SOUTH),
+
             getName(MOSSY_STONE_BRICKS, CUBE),
             getName(MOSSY_STONE_BRICKS, DOUBLE_SLAB),
             getName(MOSSY_STONE_BRICKS, SLAB),
@@ -374,6 +393,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(METAL2, STAIRS_INNER_CORNER_SOUTH),
             getName(METAL2, STAIRS_OUTER_CORNER_SOUTH),
 
+            // Page 7
             getName(METAL3, CUBE),
             getName(METAL3, DOUBLE_SLAB),
             getName(METAL3, SLAB),
@@ -418,8 +438,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             getName(ITEM_SEAWEED, CROSS_PLANE),
             SPACER,
 
+            // Page 8
             getName(OAK_LOG, FENCE),
             getName(STONE_BRICKS, FENCE),
+            getName(STONE_BRICKS2, FENCE),
             getName(BIRCH_LOG, FENCE),
             getName(BIRCH_PLANKS, FENCE),
             getName(METAL1, FENCE),
