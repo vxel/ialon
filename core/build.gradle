@@ -3,7 +3,7 @@ sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     jmeFastNoise = "[1.0,)"
-    minieVersion = "[3.0,)"
+    minieVersion = "7.2.0"
     lombokVersion = "1.18.20"
     slf4jsimpleVersion = "1.7.30"
     log4j2Version = "[2.11,)"
@@ -22,21 +22,19 @@ dependencies {
     implementation "com.github.stephengold:Minie:${minieVersion}"
 
     // utilities
+    //noinspection AnnotationProcessorOnCompilePath
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
     implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
     implementation "com.simsilica:sim-math:${simMathVersion}"
-    implementation "com.simsilica:sio2:${sio2Version}"
     implementation "com.simsilica:lemur-proto:${lemurprotoVersion}"
 
     // logging
     implementation "ch.qos.logback:logback-core:${logbackVersion}"
     implementation "ch.qos.logback:logback-classic:${logbackVersion}"
-
-
-    testImplementation 'junit:junit:4.13.2'
 }
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8

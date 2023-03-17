@@ -1,7 +1,21 @@
 apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src/main/java"]
-dependencies {
+
+ext {
+    mockitoVersion = "[4.2,)"
+    junitVersion = "[5.8.0,)"
 }
+
+dependencies {
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+}
+
+test {
+    useJUnitPlatform()
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8

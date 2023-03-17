@@ -22,6 +22,7 @@ import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetInfo;
 import com.jme3.asset.AssetKey;
+import com.jme3.asset.AssetManager;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
@@ -272,24 +273,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     private void initBlockFramework(PlayerStateDTO playerStateDTO) {
-        ChunkManagerState chunkManagerState;
-        ChunkPagerState chunkPagerState;
-        PhysicsChunkPagerState physicsChunkPagerState;
-
-        BlocksConfig.initialize(assetManager, false);
-        BlocksConfig config = BlocksConfig.getInstance();
-        config.setGrid(new Vec3i(GRID_SIZE, GRID_HEIGHT * 2 + 1, GRID_SIZE));
-        config.setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
-        config.setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
-        config.getShapeRegistry().registerDefaultShapes();
-        config.setChunkMeshGenerator(new FacesMeshGenerator());
-
-        TypeRegistry typeRegistry = config.getTypeRegistry();
-        typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
-        typeRegistry.setAtlasRepository(atlasManager);
-        typeRegistry.registerDefaultMaterials();
-
-        registerIalonBlocks();
+        configureBlocksFramework(assetManager, atlasManager);
 
         log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
 
@@ -320,9 +304,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
         physicsChunkPager.setGridLowerBounds(GRID_LOWER_BOUND);
         physicsChunkPager.setGridUpperBounds(GRID_UPPER_BOUND);
 
-        chunkManagerState = new ChunkManagerState(chunkManager);
-        chunkPagerState = new ChunkPagerState(chunkPager);
-        physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
+        ChunkManagerState chunkManagerState = new ChunkManagerState(chunkManager);
+        ChunkPagerState chunkPagerState = new ChunkPagerState(chunkPager);
+        PhysicsChunkPagerState physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
+
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
         chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
         BlockSelectionState blockSelectionState = new BlockSelectionState();
@@ -339,7 +324,24 @@ public class Ialon extends SimpleApplication implements ActionListener {
         );
     }
 
-    private void registerIalonBlocks() {
+    public static void configureBlocksFramework(AssetManager assetManager, TextureAtlasManager atlasManager) {
+        BlocksConfig.initialize(assetManager, false);
+        BlocksConfig config = BlocksConfig.getInstance();
+        config.setGrid(new Vec3i(GRID_SIZE, GRID_HEIGHT * 2 + 1, GRID_SIZE));
+        config.setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
+        config.setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
+        config.getShapeRegistry().registerDefaultShapes();
+        config.setChunkMeshGenerator(new FacesMeshGenerator());
+
+        TypeRegistry typeRegistry = config.getTypeRegistry();
+        typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
+        typeRegistry.setAtlasRepository(atlasManager);
+        typeRegistry.registerDefaultMaterials();
+
+        registerIalonBlocks();
+    }
+
+    public static void registerIalonBlocks() {
         BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
         for (IalonBlock block : IalonBlock.values() ) {
             Material material = BlocksConfig.getInstance().getTypeRegistry().get(block.getType());

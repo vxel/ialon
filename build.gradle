@@ -26,6 +26,7 @@ task clean(type: Delete) {
 }
 
 def jme3 = [v: '3.5.2-stable', g: 'org.jmonkeyengine']
+def sio2 = [v: '1.7.0', g: 'com.simsilica']
 
 project(":core") {
     apply plugin: "java"
@@ -34,6 +35,7 @@ project(":core") {
         implementation "${jme3.g}:jme3-effects:${jme3.v}"
         implementation "${jme3.g}:jme3-jogg:${jme3.v}"
         implementation "${jme3.g}:jme3-plugins:${jme3.v}"
+        implementation "${sio2.g}:sio2:${sio2.v}"
     }
 }
 
@@ -43,6 +45,8 @@ project(":desktop") {
         implementation project(":core")
         implementation "${jme3.g}:jme3-desktop:${jme3.v}"
         implementation "${jme3.g}:jme3-lwjgl:${jme3.v}"
+        implementation "${sio2.g}:sio2:${sio2.v}"
+        testImplementation project(":core").sourceSets.main.resources
     }
 }
 
