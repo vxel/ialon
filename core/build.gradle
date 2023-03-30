@@ -11,7 +11,7 @@ ext {
     protobufVersion = "[3.10,)"
     jacksonVersion = "2.12.3"
     lemurprotoVersion = "[1.12,)"
-    logbackVersion = "1.4.6"
+    logbackVersion = "1.2.3"
 }
 
 dependencies {
