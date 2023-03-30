@@ -217,20 +217,39 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         Block trunk = blockRegistry.get(BlockIds.OAK_LOG);
         Block leaves = blockRegistry.get(BlockIds.OAK_LEAVES);
 
+        Vector3f locf = new Vector3f();
+        Vec3i loci = new Vec3i();
+
         // create a tree
-        for (int i = 0; i < TRUNK_HEIGHT; i++) {
-            addBlock(chunk, treeLocation, trunk);
+        for (int i = 0; i < TRUNK_HEIGHT + CANOPY_RADIUS - 1; i++) {
+            if (i < TRUNK_HEIGHT) {
+                addBlock(chunk, treeLocation, trunk);
+            }
+
+            for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
+                for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
+                    if (Chunk.isInsideChunk(x, treeLocation.y, z)) {
+                        locf.set(x, treeLocation.y, z);
+                        loci.set(x, treeLocation.y, z);
+                        float distance = locf.distance(treeLocation.toVector3f());
+                        if (distance <= CANOPY_RADIUS) {
+                            chunk.setSunlight(x, treeLocation.y, z, Math.max(0, 11 + ((int) distance)));
+                        }
+                    }
+                }
+            }
             treeLocation.addLocal(0, 1, 0);
         }
 
-        Vec3i canopyCenter = treeLocation.addLocal(0, CANOPY_RADIUS - 1, 0);
+        Vec3i canopyCenter = treeLocation;
         for (int x = canopyCenter.x - CANOPY_RADIUS; x <= canopyCenter.x + CANOPY_RADIUS; x++) {
             for (int y = canopyCenter.y - CANOPY_RADIUS; y <= canopyCenter.y + CANOPY_RADIUS; y++) {
                 for (int z = canopyCenter.z - CANOPY_RADIUS; z <= canopyCenter.z + CANOPY_RADIUS; z++) {
-                    Vector3f location = new Vector3f(x, y, z);
-                    float distance = location.distance(canopyCenter.toVector3f());
+                    locf.set(x, y, z);
+                    loci.set(x, y, z);
+                    float distance = locf.distance(canopyCenter.toVector3f());
                     if (distance <= CANOPY_RADIUS && y > canopyCenter.y - CANOPY_RADIUS) {
-                        addBlock(chunk, new Vec3i(x, y, z), leaves);
+                        addBlock(chunk, loci, leaves);
                     }
                 }
             }
@@ -240,6 +259,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private void addBlock(Chunk chunk, Vec3i location, Block block) {
         if (Chunk.isInsideChunk(location.x, location.y, location.z)) {
             chunk.addBlock(location, block);
+            chunk.setSunlight(location.x, location.y, location.z, 0);
         }
     }
 
