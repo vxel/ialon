@@ -1,11 +1,17 @@
 <configuration scan="false" scanPeriod="30 seconds">
 
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <!-- reset all previous level configurations of all j.u.l. loggers -->
+        <resetJUL>true</resetJUL>
+    </contextListener>
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>[%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
+    <logger name="com.jme3.bullet.objects.PhysicsRigidBody" level="error"/>
     <logger name="com.rvandoosselaer" level="info"/>
     <logger name="com.rvandoosselaer.blocks.shapes.Liquid" level="error" />
     <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>

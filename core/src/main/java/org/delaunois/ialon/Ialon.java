@@ -65,6 +65,7 @@ import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -150,6 +151,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Override
     public void simpleInitApp() {
         log.info("Initializing Ialon");
+
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+
         GuiGlobals.initialize(this);
         cam.setFrustumNear(0.1f);
         cam.setFrustumFar(400f);
