@@ -1,10 +1,13 @@
 package org.delaunois.ialon;
 
+import com.jme3.material.Material;
 import com.jme3.material.RenderState;
+import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.debug.WireBox;
 import com.jme3.texture.Texture;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockRegistry;
@@ -244,6 +247,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             return;
         }
 
+        if (Config.DEBUG_CHUNKS) {
+            node.attachChild(createChunkDebugGeometry());
+        }
+
         // position the node
         node.setLocalTranslation(chunk.getWorldLocation());
 
@@ -255,6 +262,20 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (log.isTraceEnabled()) {
             log.trace("Total chunk node generation took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
         }
+    }
+
+    public Geometry createChunkDebugGeometry() {
+        Material material = new Material(BlocksConfig.getInstance().getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        material.setColor("Color", new ColorRGBA(0.4f, 0.4f, 0.4f, 1f));
+
+        final float margin = 0f;
+        final float localTranslation = (Config.CHUNK_SIZE / 2f) - 0.5f + (margin / 2f);
+        Geometry debugChunkGeometry = new Geometry("debugChunk",
+                new WireBox(Config.CHUNK_SIZE / 2f - margin, Config.CHUNK_SIZE / 2f - margin, Config.CHUNK_SIZE / 2f - margin));
+        debugChunkGeometry.setMaterial(material);
+        debugChunkGeometry.setLocalScale(BlocksConfig.getInstance().getBlockScale());
+        debugChunkGeometry.setLocalTranslation(localTranslation, localTranslation, localTranslation);
+        return debugChunkGeometry;
     }
 
     private Geometry createGeometry(String type, ChunkMesh chunkMesh) {

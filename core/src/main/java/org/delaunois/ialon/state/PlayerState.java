@@ -72,6 +72,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.CameraHelper;
 import org.delaunois.ialon.ChunkManager;
+import org.delaunois.ialon.Config;
 import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.PlayerTouchListener;
 
@@ -120,6 +121,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private static final String ACTION_ADD_BLOCK = "add-block";
     private static final String ACTION_REMOVE_BLOCK = "remove-block";
+    private static final String ACTION_DEBUG_CHUNK = "debug-chunk";
 
     private static final String TOUCH_MAPPING = "touch";
 
@@ -139,6 +141,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             ACTION_LOOK_DOWN,
             ACTION_ADD_BLOCK,
             ACTION_REMOVE_BLOCK,
+            ACTION_DEBUG_CHUNK
     };
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
@@ -342,6 +345,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         inputManager.addMapping(ACTION_FLY, new KeyTrigger(KeyInput.KEY_F));
         inputManager.addMapping(ACTION_FLY_UP, new KeyTrigger(KeyInput.KEY_UP));
         inputManager.addMapping(ACTION_FLY_DOWN, new KeyTrigger(KeyInput.KEY_DOWN));
+        inputManager.addMapping(ACTION_DEBUG_CHUNK, new KeyTrigger(KeyInput.KEY_C));
 
         inputManager.addListener(this, ACTIONS);
     }
@@ -603,6 +607,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         } else if (ACTION_FLY.equals(name) && isPressed) {
             toogleFly();
+        } else if (ACTION_DEBUG_CHUNK.equals(name) && isPressed) {
+            Config.DEBUG_CHUNKS = !Config.DEBUG_CHUNKS;
         }
     }
 
@@ -882,7 +888,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         app.getChunkNode().collideWith(ray, collisionResults);
 
         for (CollisionResult collisionResult : collisionResults) {
-            if (!collisionResult.getGeometry().getMaterial().getName().contains("water")) {
+            if (collisionResult.getGeometry().getMaterial().getName() != null &&
+                    !collisionResult.getGeometry().getMaterial().getName().contains("water")) {
                 return collisionResult;
             }
         }

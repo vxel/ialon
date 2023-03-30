@@ -68,6 +68,7 @@ public class Config {
     // Debug
     public static final boolean DEV_MODE = false;
     public static final boolean DEBUG_COLLISIONS = false;
+    public static boolean DEBUG_CHUNKS = false;
 
 
     // Shapes
