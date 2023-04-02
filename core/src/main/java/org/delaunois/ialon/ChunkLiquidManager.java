@@ -245,6 +245,10 @@ public class ChunkLiquidManager {
         int previousLiquidLevel = getLiquidLevel(block);
         updateChunkMeshUpdateRequests(chunk, x, y, z, context);
 
+        if (block != null && block.isLiquidSource()) {
+            return false;
+        }
+
         if ((!dims && previousLiquidLevel == LEVEL_MAX) || previousLiquidLevel > 0 && previousLiquidLevel < liquidLevel) {
             if (log.isDebugEnabled()) {
                 log.debug("PRL2 - Setting liquid ({}, {}, {}) to {}. PL={} LL={} D={}", x, y, z, 0, previousLiquidLevel, liquidLevel, dims);

@@ -420,6 +420,10 @@ public class ChunkManager {
                     BlocksConfig.getInstance().getBlockRegistry()
                             .get(BlockIds.getName(TypeIds.WATER, shapeId)));
 
+            if (chunkLiquidManager != null) {
+                chunkLiquidManager.flowLiquid(location);
+            }
+
         } else if (chunkLiquidManager != null) {
             Vector3f above = location.add(0, 1, 0);
             chunkLiquidManager.removeSource(above);
