@@ -22,6 +22,7 @@ import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
+import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
@@ -103,7 +104,7 @@ public class ChunkLiquidManager {
     }
 
     /**
-     * Starts the liquid flow simulation for blocks surrouding the given location.
+     * Starts the liquid flow simulation for blocks surrounding the given location.
      * Used typically when a block is removed.
      * @param location the location
      */
@@ -144,41 +145,40 @@ public class ChunkLiquidManager {
     }
 
     private boolean stepUnFlow(LiquidRunningContext context) {
-        if (!liquidRemovalBfsQueue.isEmpty()) {
-            log.debug("Unflowing liquid");
-
-            LiquidNode node = liquidRemovalBfsQueue.poll();
-            if (log.isDebugEnabled()) {
-                log.debug("Processing liquid node({}, {}, {})", node.x, node.y, node.z);
-            }
-
-            if (!propagateRemovedLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context)) {
-                propagateRemovedLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context);
-                propagateRemovedLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context);
-                propagateRemovedLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context);
-                propagateRemovedLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
-            }
-            return true;
+        LiquidNode node = liquidRemovalBfsQueue.poll();
+        if (node == null) {
+            return false;
         }
-        return false;
+
+        if (log.isDebugEnabled()) {
+            log.debug("stepUnFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
+        }
+
+        if (!propagateRemovedLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context)) {
+            propagateRemovedLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context);
+            propagateRemovedLiquid(node.chunk, node.x + 1, node.y, node.z, node.level, true, context);
+            propagateRemovedLiquid(node.chunk, node.x, node.y, node.z - 1, node.level, true, context);
+            propagateRemovedLiquid(node.chunk, node.x, node.y, node.z + 1, node.level, true, context);
+        }
+        return true;
     }
 
     private void stepFlow(LiquidRunningContext context) {
-        if (!liquidBfsQueue.isEmpty()) {
-            log.debug("Flowing liquid");
+        LiquidNode node = liquidBfsQueue.poll();
+        if (node == null) {
+            return;
+        }
 
-            LiquidNode node = liquidBfsQueue.poll();
-            if (log.isDebugEnabled()) {
-                log.debug("Processing liquid node({}, {}, {})", node.x, node.y, node.z);
-            }
-            int liquidLevel = getLiquidLevel(node.chunk, node.x, node.y, node.z);
-            if (liquidLevel > 0 && !propagateLiquid(node.chunk, node.x, node.y - 1, node.z, liquidLevel, false, context)) {
-                // If the liquid can't propagate downwards, try horizontally
-                propagateLiquid(node.chunk, node.x - 1, node.y, node.z, liquidLevel, true, context);
-                propagateLiquid(node.chunk, node.x + 1, node.y, node.z, liquidLevel, true, context);
-                propagateLiquid(node.chunk, node.x, node.y, node.z - 1, liquidLevel, true, context);
-                propagateLiquid(node.chunk, node.x, node.y, node.z + 1, liquidLevel, true, context);
-            }
+        if (log.isDebugEnabled()) {
+            log.debug("stepFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
+        }
+        int liquidLevel = getLiquidLevel(node.chunk, node.x, node.y, node.z);
+        if (liquidLevel > 0 && !propagateLiquid(node, Direction.DOWN, liquidLevel, false, context)) {
+            // If the liquid can't propagate downwards, try horizontally
+            propagateLiquid(node, Direction.WEST, liquidLevel, true, context);
+            propagateLiquid(node, Direction.EAST, liquidLevel, true, context);
+            propagateLiquid(node, Direction.NORTH, liquidLevel, true, context);
+            propagateLiquid(node, Direction.SOUTH, liquidLevel, true, context);
         }
     }
 
@@ -271,14 +271,30 @@ public class ChunkLiquidManager {
         return false;
     }
 
-    private boolean propagateLiquid(Chunk c, int x, int y, int z, int liquidLevel, boolean dims, LiquidRunningContext context) {
-        Chunk chunk = c;
+    private boolean propagateLiquid(LiquidNode node, Direction direction, int liquidLevel, boolean dims, LiquidRunningContext context) {
+        Vec3i dir = direction.getVector();
+        Chunk chunk = node.chunk;
+        int x = node.x + dir.x;
+        int y = node.y + dir.y;
+        int z = node.z + dir.z;
+
+        if (BlocksConfig
+                .getInstance()
+                .getShapeRegistry()
+                .get(chunk.getBlock(node.x, node.y, node.z).getShape())
+                .fullyCoversFace(direction)) {
+            // Block does not allow liquid to flow
+            if (log.isDebugEnabled()) {
+                log.debug("PL0 - Liquid blocked by face at ({}, {}, {})", x, y, z);
+            }
+            return false;
+        }
 
         if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
+            if (node.chunk.getChunkResolver() != null) {
                 Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+                Vec3i chunkLocation = calculateNeighbourChunkLocation(node.chunk, location);
+                chunk = node.chunk.getChunkResolver().get(chunkLocation).orElse(null);
                 Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
                 x = neighbourBlockLocation.x;
                 y = neighbourBlockLocation.y;
@@ -294,12 +310,26 @@ public class ChunkLiquidManager {
         }
 
         Block block = chunk.getBlock(x, y, z);
-        if (block != null && block.getLiquidLevel() == Block.LIQUID_DISABLED) {
-            // Block does not allow liquid to flow
-            if (log.isDebugEnabled()) {
-                log.debug("PL2 - Liquid blocked at ({}, {}, {})", x, y, z);
+        if (block != null) {
+            if (block.getLiquidLevel() == Block.LIQUID_DISABLED) {
+                // Block does not allow liquid to flow
+                if (log.isDebugEnabled()) {
+                    log.debug("PL2.1 - Liquid blocked at ({}, {}, {})", x, y, z);
+                }
+                return false;
             }
-            return false;
+
+            if (BlocksConfig
+                        .getInstance()
+                        .getShapeRegistry()
+                        .get(block.getShape())
+                        .fullyCoversFace(direction.opposite())) {
+                // Block does not allow liquid to flow
+                if (log.isDebugEnabled()) {
+                    log.debug("PL2.2 - Liquid blocked by face at ({}, {}, {})", x, y, z);
+                }
+                return false;
+            }
         }
 
         updateChunkMeshUpdateRequests(chunk, x, y, z, context);
