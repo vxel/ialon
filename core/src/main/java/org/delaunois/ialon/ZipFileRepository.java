@@ -177,30 +177,32 @@ public class ZipFileRepository implements ChunkRepository {
 
         long start = System.nanoTime();
 
-        ZipFile zfile;
-        try {
-            zfile = new ZipFile(chunkPath.toFile());
+        ZipEntry entry;
+        try (ZipFile zfile = new ZipFile(chunkPath.toFile())) {
+            entry = zfile.getEntry(ZIP_ENTRY_NAME);
+            if (entry == null) {
+                log.error("Missing entry in file {}", chunkPath.toAbsolutePath());
+                return null;
+            }
+
+            Chunk chunk = loadChunkFromPath(zfile, entry);
+            if (log.isTraceEnabled()) {
+                log.trace("Loading {} took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            }
+            return chunk;
+
         } catch (IOException e) {
             log.error(e.getMessage(), e);
             return null;
         }
+    }
 
-        ZipEntry entry = zfile.getEntry(ZIP_ENTRY_NAME);
-        if (entry == null) {
-            log.error("Missing entry in file {}", chunkPath.toAbsolutePath());
-            return null;
-        }
-
+    private Chunk loadChunkFromPath(ZipFile zfile, ZipEntry entry) {
         try (InputStream in = zfile.getInputStream(entry)) {
             BlocksProtos.ChunkProto chunkProto = BlocksProtos.ChunkProto.newBuilder()
                     .mergeFrom(in)
                     .build();
-            Chunk chunk = chunkProtoToChunk(chunkProto);
-            if (log.isTraceEnabled()) {
-                log.trace("Loading {} took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-            }
-
-            return chunk;
+            return chunkProtoToChunk(chunkProto);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
         }
@@ -259,7 +261,6 @@ public class ZipFileRepository implements ChunkRepository {
     private static Chunk chunkProtoToChunk(@NonNull BlocksProtos.ChunkProto chunkProto) {
         Vec3i location = getVector(chunkProto.getLocationList());
         if (location == null) {
-            log.error("Null chunk location");
             return null;
         }
         Vec3i size = getVector(chunkProto.getSizeList());
