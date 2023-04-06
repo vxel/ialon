@@ -12,6 +12,8 @@ import com.rvandoosselaer.blocks.ChunkGenerator;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
 import com.rvandoosselaer.blocks.ChunkRepository;
+import com.rvandoosselaer.blocks.Direction;
+import com.rvandoosselaer.blocks.Shape;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
@@ -329,17 +331,22 @@ public class ChunkManager {
             } else if (TypeIds.WATER.equals(previousBlock.getType())) {
                 // 3.3 Adding a regular block where there is already some water
                 // Optimisation : if adding a block in water, apply directly the water level
-                // of the block location
+                // of the block location if the block does not cover any of its faces
                 String blockName = BlockIds.getName(block.getType(), block.getShape(), previousBlock.getLiquidLevel());
                 block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
                 if (block == null) {
                     log.warn("Block {} not found", blockName);
-                } else if (ShapeIds.CUBE.equals(block.getShape())) {
-                    chunk.addBlock(blockLocationInsideChunk, block);
-                    chunkLiquidManager.removeSource(location);
-                    chunkLiquidManager.flowLiquid(location);
                 } else {
+                    Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
                     chunk.addBlock(blockLocationInsideChunk, block);
+                    if (shape.fullyCoversFace(Direction.DOWN)
+                            || shape.fullyCoversFace(Direction.NORTH)
+                            || shape.fullyCoversFace(Direction.SOUTH)
+                            || shape.fullyCoversFace(Direction.EAST)
+                            || shape.fullyCoversFace(Direction.WEST)) {
+                        chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+                        chunkLiquidManager.flowLiquid(location);
+                    }
                 }
             } else {
                 // There is already a block at this location
