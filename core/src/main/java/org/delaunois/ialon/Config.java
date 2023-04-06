@@ -9,7 +9,7 @@ public class Config {
     // Screen - Rendering
     public static final int SCREEN_WIDTH = 1520;
     public static final int SCREEN_HEIGHT = 720;
-    public static final int FPS_LIMIT = 120;
+    public static final int FPS_LIMIT = 60;
     public static int MAX_UPDATE_PER_FRAME = 8;
     public static final int CHUNK_POOLSIZE = 4;
 
