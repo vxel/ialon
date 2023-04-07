@@ -1,6 +1,6 @@
 <img src="https://user-images.githubusercontent.com/28866693/201870048-1ca6b73c-6e46-4e16-b00d-05d996c5ab92.png" width="100">
 
-# A block (voxel) construction game
+# Ialon - A block (voxel) construction game
 
 [![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
 
