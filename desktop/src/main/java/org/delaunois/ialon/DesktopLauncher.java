@@ -18,10 +18,17 @@
 package org.delaunois.ialon;
 
 import com.jme3.system.AppSettings;
+import com.jme3.util.BufferAllocatorFactory;
+import com.jme3.util.PrimitiveAllocator;
 
 import static org.delaunois.ialon.Config.FPS_LIMIT;
 
 public class DesktopLauncher {
+
+    static {
+        System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
+    }
+
     public static void main(String[] args) {
         Ialon app = new Ialon();
 
