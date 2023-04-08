@@ -228,7 +228,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         try {
             atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, atlasManager.getAtlas());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Failed to load atlas font", e);
             return null;
         }
 

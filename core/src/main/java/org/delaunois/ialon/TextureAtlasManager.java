@@ -74,23 +74,13 @@ public class TextureAtlasManager {
     public void dump(Image img, String filename) {
         ByteBuffer sourceData = img.getData(0);
         ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
-        OutputStream out = null;
-        try {
-            out = new FileOutputStream(filename);
+        try (OutputStream out = new FileOutputStream(filename)) {
             for (int i = 0; i < sourceData.limit(); i++) {
                 outData.put(i, sourceData.get(i));
             }
             JmeSystem.writeImageFile(out, "png", outData, img.getWidth(), img.getHeight());
         } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            log.error("Failed to dump image", e);
         }
     }
 
