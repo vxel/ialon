@@ -1,4 +1,4 @@
-name: Build Ialon
+name: SonarCloud Analysis Ialon
 
 on:
   push:
