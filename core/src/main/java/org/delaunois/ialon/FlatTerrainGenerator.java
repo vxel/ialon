@@ -45,7 +45,7 @@ public class FlatTerrainGenerator implements TerrainGenerator {
     }
 
     public float getWaterHeight() {
-        return ground - 1;
+        return ((float) ground) - 1f;
     }
 
     public void setWaterHeight(float waterHeight) {}

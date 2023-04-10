@@ -475,8 +475,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     private int selectedBlockIndex = 0;
     private Node selectedBlockNode;
 
-    private int BUTTON_SIZE = 100;
-    private int BLOCK_BUTTON_SIZE = 100;
+    private float BUTTON_SIZE = 100;
+    private float BLOCK_BUTTON_SIZE = 100;
     private static final int SCREEN_MARGIN = 30;
     private static final int SPACING = 10;
     private static final int MENUBLOCK_PAGESIZE_X = 10;
@@ -491,7 +491,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
         Arrays.fill(history, -1);
 
-        BUTTON_SIZE = app.getCamera().getHeight() / 8;
+        BUTTON_SIZE = app.getCamera().getHeight() / 8f;
         BLOCK_BUTTON_SIZE = BUTTON_SIZE;
 
         if (guiFont == null) {
@@ -690,8 +690,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private Container createBlockList(int page, int pageSizeX, int pageSizeY) {
         Container blockList = new Container(new SpringGridLayout(Axis.X, Axis.Y));
-        final int sizeX = (pageSizeX + 1) * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
-        final int sizeY = pageSizeY * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
+        final float sizeX = (pageSizeX + 1) * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
+        final float sizeY = pageSizeY * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
         final float posx = app.getCamera().getWidth() - SCREEN_MARGIN - sizeX;
         final float posy = (app.getCamera().getHeight() + sizeY) / 2f;
         blockList.setPreferredSize(new Vector3f(sizeX, sizeY, 0));

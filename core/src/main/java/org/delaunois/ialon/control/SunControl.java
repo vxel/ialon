@@ -134,8 +134,14 @@ public class SunControl extends AbstractControl {
         } else {
             sunColor.interpolateLocal(EVENING_COLOR, NIGHT_COLOR, shift);
         }
-        directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
-        ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
+
+        if (directionalLight != null) {
+            directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
+        }
+
+        if (ambientLight != null) {
+            ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
+        }
 
         ((Geometry)spatial).getMaterial().setColor("Color", sunColor);
     }

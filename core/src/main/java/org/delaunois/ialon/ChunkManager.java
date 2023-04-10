@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -170,8 +171,11 @@ public class ChunkManager {
         results.forEach(result -> {
             try {
                 triggerListenerChunkAvailable(result.get());
-            } catch (Exception e) {
+            } catch (ExecutionException e) {
                 log.warn("Got exception while getting task result", e);
+            } catch (InterruptedException e) {
+                log.warn("Interrupted !", e);
+                Thread.currentThread().interrupt();
             }
         });
     }
@@ -548,8 +552,11 @@ public class ChunkManager {
         tasks.forEach(result -> {
             try {
                 result.get();
-            } catch (Exception e) {
+            } catch (ExecutionException e) {
                 log.warn("Got exception while getting task result", e);
+            } catch (InterruptedException e) {
+                log.warn("Interrupted !", e);
+                Thread.currentThread().interrupt();
             }
         });
     }

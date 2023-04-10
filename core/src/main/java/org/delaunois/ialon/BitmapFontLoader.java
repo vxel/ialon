@@ -109,7 +109,7 @@ public class BitmapFontLoader {
                     }
                 }
                 // set page
-                if (index >= 0 && tex != null) {
+                if (index >= 0 && tex != null && matPages != null) {
                     Material mat = new Material(spriteMat);
                     mat.setTexture("ColorMap", tex);
                     mat.setBoolean("VertexColor", true);
@@ -118,7 +118,7 @@ public class BitmapFontLoader {
                 }
             } else if (tokens[0].equals("char")) {
                 // New BitmapCharacter
-                BitmapCharacter ch = null;
+                BitmapCharacter ch = new BitmapCharacter();
                 for (int i = 1; i < tokens.length; i++) {
                     String token = tokens[i];
                     if (token.equals("id")) {

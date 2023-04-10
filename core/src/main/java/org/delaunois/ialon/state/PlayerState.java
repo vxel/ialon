@@ -176,10 +176,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private int buttonSize = 100;
 
     @Getter
-    private static final int SCREEN_MARGIN = 30;
+    private static final float SCREEN_MARGIN = 30;
 
     @Getter
-    private static final int SPACING = 10;
+    private static final float SPACING = 10;
 
     @Getter
     private Node directionButtons;

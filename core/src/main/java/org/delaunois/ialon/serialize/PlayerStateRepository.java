@@ -60,7 +60,8 @@ public class PlayerStateRepository {
     public PlayerStateDTO load() {
         // path doesn't exist
         if (path == null || Files.notExists(path)) {
-            log.warn("Unable to load player state, file path {} doesn't exist.", path.toAbsolutePath());
+            log.warn("Unable to load player state, file path {} doesn't exist.",
+                    path == null ? "<null>" : path.toAbsolutePath());
             return null;
         }
 

@@ -2,7 +2,6 @@ package org.delaunois.ialon.fastnoise;
 
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
-import com.jme3.math.Vector3f;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.image.ColorSpace;
@@ -18,7 +17,7 @@ public class NoiseLayer {
 
     private int seed;
 
-    private FastNoise primaryNoise;
+    private final FastNoise primaryNoise;
     private FastNoise perturbNoise;
     private FastNoise lookupNoise;
 
@@ -27,7 +26,7 @@ public class NoiseLayer {
     private boolean inverted = false;
     private boolean enabled = true;
     private float strength = 1;
-    private Vector2f scale = new Vector2f(1, 1);
+    private final Vector2f scale = new Vector2f(1, 1);
 
     // fastnoise changes the GradientPerturbAmp value when you set it, so when we get it, it won't be the same value.
     // So we'll keep a copy of what it's set to and get that, but we'll still set it on fastnoise.
@@ -66,18 +65,33 @@ public class NoiseLayer {
 
     }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public FastNoise getPrimaryNoise() {
         return primaryNoise;
     }
 
-    public FastNoise getPerturbNoise() { return perturbNoise; }
-    public void setPerturbNoise(FastNoise perturbNoise) { this.perturbNoise = perturbNoise; }
+    public FastNoise getPerturbNoise() {
+        return perturbNoise;
+    }
 
-    public FastNoise getLookupNoise() { return lookupNoise; }
-    public void setLookupNoise(FastNoise lookupNoise) { this.lookupNoise = lookupNoise; }
+    public void setPerturbNoise(FastNoise perturbNoise) {
+        this.perturbNoise = perturbNoise;
+    }
+
+    public FastNoise getLookupNoise() {
+        return lookupNoise;
+    }
+
+    public void setLookupNoise(FastNoise lookupNoise) {
+        this.lookupNoise = lookupNoise;
+    }
 
     public float evaluate(Vector2f v) {
 
@@ -87,8 +101,7 @@ public class NoiseLayer {
 
         Vector2f f = v.clone();
 
-        switch (gradientPerturb.ordinal())
-        {
+        switch (gradientPerturb.ordinal()) {
             case 1:
                 perturbNoise.GradientPerturb(f);
                 break;
@@ -107,104 +120,47 @@ public class NoiseLayer {
 
     }
 
-    private boolean get3d;
-    private float zPos = 0.5f;
-
-    public boolean isGet3d() {
-        return get3d;
-    }
-
-    public void setGet3d(boolean get3d) {
-        this.get3d = get3d;
-    }
-
     public Texture2D generateTexture(int size) {
-
         ByteBuffer buffer = BufferUtils.createByteBuffer(size * size * 4);
         Image result = new Image(Image.Format.RGB8, size, size, buffer, ColorSpace.sRGB);
         ImageRaster imageRaster = ImageRaster.create(result);
 
-
-
         int halfSize = size / 2;
-
-        float avg = 0;
         float maxN = 0;
         float minN = 0;
-
         int index = 0;
-
-        long current = 0;
-
-        // boolean get3d = false;
-
-        float noise = 0;
+        float noise;
 
         if (!primaryNoise.GetNoiseType().toString().toLowerCase().endsWith("perturb")) {
 
             float[] noiseValues = new float[size * size];
             int warpIndex = gradientPerturb.ordinal();
 
-            if (get3d) {
-
-                for (int x = 0; x < size; x++) {
-                    for (int y = 0; y < size; y++) {
-
-                        Vector3f f = new Vector3f(x - halfSize, y - halfSize, zPos);
-
-                        switch (warpIndex) {
-                            case 1:
-                                perturbNoise.GradientPerturb(f);
-                                break;
-                            case 2:
-                                perturbNoise.GradientPerturbFractal(f);
-                                break;
-                        }
-                        //noise = fNoise.GetNoise(xf, yf, zf);
-                        noise = primaryNoise.GetNoise(f.x, f.y, f.z);
-
-                        avg += noise;
-                        maxN = Math.max(maxN, noise);
-                        minN = Math.min(minN, noise);
-                        noiseValues[index++] = noise;
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    Vector2f f = new Vector2f((float) (x - halfSize), (float) (y - halfSize));
+                    switch (warpIndex) {
+                        case 1:
+                            perturbNoise.GradientPerturb(f);
+                            break;
+                        case 2:
+                            perturbNoise.GradientPerturbFractal(f);
+                            break;
                     }
 
+                    noise = primaryNoise.GetNoise(f.x, f.y);
+
+                    maxN = Math.max(maxN, noise);
+                    minN = Math.min(minN, noise);
+                    noiseValues[index++] = noise;
                 }
             }
 
-            else {
-
-                for (int x = 0; x < size; x++) {
-                    for (int y = 0; y < size; y++) {
-
-                        // float xf = (float) (x - halfSize);
-                        // float yf = (float) (y - halfSize);
-                        Vector2f f = new Vector2f((float) (x - halfSize), (float) (y - halfSize));
-
-                        switch (warpIndex)
-                        {
-                            case 1:
-                                perturbNoise.GradientPerturb(f);
-                                break;
-                            case 2:
-                                perturbNoise.GradientPerturbFractal(f);
-                                break;
-                        }
-
-                        noise = primaryNoise.GetNoise(f.x, f.y);
-
-                        avg += noise;
-                        maxN = Math.max(maxN, noise);
-                        minN = Math.min(minN, noise);
-                        noiseValues[index++] = noise;
-
-                    }
-                }
-            }
-
-            avg /= index - 1;
             index = 0;
-            float scale = 255 / (maxN - minN);
+            float scale = 255;
+            if (maxN > minN) {
+                scale = 255 / (maxN - minN);
+            }
 
             for (int x = 0; x < size; x++) {
                 for (int y = 0; y < size; y++) {
@@ -221,56 +177,33 @@ public class NoiseLayer {
                     // bitmap->SetPixel(x, y, Color::FromArgb(255, value, value, value));
                     ColorRGBA color = new ColorRGBA(value / 255f, value / 255f, value / 255f, 1.0f);
                     imageRaster.setPixel(x, y, color);
-
                 }
             }
 
 
-        }
-        else {
+        } else {
 
             float[] noiseValues = new float[size * size * 3];
             boolean fractal = primaryNoise.GetNoiseType().toString().toLowerCase().endsWith("fractal");
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    Vector2f f = new Vector2f(x, y);
 
-            if (get3d) {
-
-            }
-            else {
-
-                for (int x = 0; x < size; x++) {
-                    for (int y = 0; y < size; y++) {
-
-                        // float xf = (float)x;
-                        // float yf = (float)y;
-
-                        Vector2f f = new Vector2f(x, y);
-
-                        if (fractal) {
-                            primaryNoise.GradientPerturbFractal(f);
-                        }
-                        else {
-                            primaryNoise.GradientPerturb(f);
-                        }
-
-                        f.x -= x;
-                        f.y -= y;
-
-                        //avg += f.x + f.y;
-
-                        maxN = Math.max(maxN, Math.max(f.x, f.y));
-                        minN = Math.min(minN, Math.min(f.x, f.y));
-
-                        noiseValues[index++] = f.x;
-                        noiseValues[index++] = f.y;
+                    if (fractal) {
+                        primaryNoise.GradientPerturbFractal(f);
+                    } else {
+                        primaryNoise.GradientPerturb(f);
                     }
-                }
-            }
 
-            if (get3d) {
-                //avg /= (index - 1) * 3;
-            }
-            else {
-                //avg /= (index - 1) * 2;
+                    f.x -= x;
+                    f.y -= y;
+
+                    maxN = Math.max(maxN, Math.max(f.x, f.y));
+                    minN = Math.min(minN, Math.min(f.x, f.y));
+
+                    noiseValues[index++] = f.x;
+                    noiseValues[index++] = f.y;
+                }
             }
 
             index = 0;
@@ -279,27 +212,20 @@ public class NoiseLayer {
             for (int x = 0; x < size; x++) {
                 for (int y = 0; y < size; y++) {
 
-                    int red = 0;
-                    int green = 0;
-                    int blue = 0;
+                    int red;
+                    int green;
+                    int blue;
 
-                    if (get3d) {
+                    HSV hsv = new HSV();
+                    hsv.h = (int) ((noiseValues[index++] - minN) * scale);
+                    hsv.s = 255;
+                    hsv.v = (int) ((noiseValues[index++] - minN) * scale);
 
-                    }
-                    else {
+                    RGB rgb = HSV2RGB(hsv);
 
-                        HSV hsv = new HSV();
-                        hsv.h = (int) ((noiseValues[index++] - minN) * scale);
-                        hsv.s = 255;
-                        hsv.v = (int) ((noiseValues[index++] - minN) * scale);
-
-                        // RGB rgb = HSV2RGB(HSV{ (unsigned char)((noiseValues[index++] - minN) * scale), 255, (unsigned char)((noiseValues[index++] - minN) * scale) });
-                        RGB rgb = HSV2RGB(hsv);
-
-                        red = rgb.r;
-                        green = rgb.g;
-                        blue = rgb.b;
-                    }
+                    red = rgb.r;
+                    green = rgb.g;
+                    blue = rgb.b;
 
                     if (inverted) {
                         red = 255 - red;
@@ -463,11 +389,11 @@ public class NoiseLayer {
         scale.setY(y);
     }
 
-    private class RGB {
+    private static class RGB {
         public int r, g, b;
     }
 
-    private class HSV {
+    private static class HSV {
         public int h, s, v;
     }
 
@@ -477,8 +403,7 @@ public class NoiseLayer {
 
         int region, remainder, p, q, t;
 
-        if (hsv.s == 0)
-        {
+        if (hsv.s == 0) {
             rgb.r = hsv.v;
             rgb.g = hsv.v;
             rgb.b = hsv.v;
@@ -492,25 +417,36 @@ public class NoiseLayer {
         q = (hsv.v * (255 - ((hsv.s * remainder) >> 8))) >> 8;
         t = (hsv.v * (255 - ((hsv.s * (255 - remainder)) >> 8))) >> 8;
 
-        switch (region)
-        {
+        switch (region) {
             case 0:
-                rgb.r = hsv.v; rgb.g = t; rgb.b = p;
+                rgb.r = hsv.v;
+                rgb.g = t;
+                rgb.b = p;
                 break;
             case 1:
-                rgb.r = q; rgb.g = hsv.v; rgb.b = p;
+                rgb.r = q;
+                rgb.g = hsv.v;
+                rgb.b = p;
                 break;
             case 2:
-                rgb.r = p; rgb.g = hsv.v; rgb.b = t;
+                rgb.r = p;
+                rgb.g = hsv.v;
+                rgb.b = t;
                 break;
             case 3:
-                rgb.r = p; rgb.g = q; rgb.b = hsv.v;
+                rgb.r = p;
+                rgb.g = q;
+                rgb.b = hsv.v;
                 break;
             case 4:
-                rgb.r = t; rgb.g = p; rgb.b = hsv.v;
+                rgb.r = t;
+                rgb.g = p;
+                rgb.b = hsv.v;
                 break;
             default:
-                rgb.r = hsv.v; rgb.g = p; rgb.b = q;
+                rgb.r = hsv.v;
+                rgb.g = p;
+                rgb.b = q;
                 break;
         }
 

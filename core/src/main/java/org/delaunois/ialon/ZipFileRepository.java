@@ -79,7 +79,12 @@ public class ZipFileRepository implements ChunkRepository {
             return null;
         }
 
-        return loadChunkFromPath(getChunkPath(location));
+        Path path = getChunkPath(location);
+        if (path == null) {
+            return null;
+        }
+
+        return loadChunkFromPath(path);
     }
 
     public Chunk load(String filename) {

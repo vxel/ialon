@@ -117,7 +117,7 @@ public class LayerComparator implements GeometryComparator {
             // of children... since right now if we exceed more
             // than 10 layers under a parent then we overflow
             layer = layer * 0.1F;
-            layer += i != null ? (i + 1) : 1;
+            layer += i + 1;
         }
 
         return layer;
