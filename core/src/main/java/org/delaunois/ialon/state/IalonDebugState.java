@@ -101,7 +101,7 @@ public class IalonDebugState extends BaseAppState {
         container.setLocalTranslation(0, getApplication().getCamera().getHeight() / 2f + container.getPreferredSize().getY(), 1);
 
         grid = new Container(new SpringGridLayout(Axis.X, Axis.Y));
-        grid.setLocalTranslation((getApplication().getCamera().getWidth() - container.getPreferredSize().getX()) / 2f, getApplication().getCamera().getHeight() - 30, 1);
+        grid.setLocalTranslation((getApplication().getCamera().getWidth() - container.getPreferredSize().getX()) / 2f, getApplication().getCamera().getHeight() - 30f, 1);
     }
 
     private Label addField(Container container, String title) {

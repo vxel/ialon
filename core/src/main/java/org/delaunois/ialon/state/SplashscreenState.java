@@ -79,7 +79,7 @@ public class SplashscreenState extends BaseAppState {
         GridSettingsState gridSettingsState = getStateManager().getState(GridSettingsState.class);
         if (chunkPagerState != null && chunkPagerState.getChunkPager() != null && gridSettingsState != null) {
             int gridSize = gridSettingsState.getRadius() * 2 + 1;
-            float total = gridSize * gridSize * GRID_HEIGHT;
+            float total = gridSize * gridSize * (float) GRID_HEIGHT;
             int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
             percent = numPagesAttached / total;
         }

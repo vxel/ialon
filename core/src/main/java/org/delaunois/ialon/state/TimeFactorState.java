@@ -45,8 +45,8 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private BitmapFont guiFont;
     private Container buttonTimeFactor;
 
-    private static final int SCREEN_MARGIN = 30;
-    private static final int SPACING = 10;
+    private static final float SCREEN_MARGIN = 30;
+    private static final float SPACING = 10;
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};

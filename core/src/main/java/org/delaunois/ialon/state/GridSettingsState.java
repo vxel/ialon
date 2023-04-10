@@ -51,8 +51,8 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
     private BitmapFont guiFont;
     private Container buttonSettings;
 
-    private static final int SCREEN_MARGIN = 30;
-    private static final int SPACING = 10;
+    private static final float SCREEN_MARGIN = 30;
+    private static final float SPACING = 10;
 
     private int buttonSize;
     private Label gridSettingsLabel;
