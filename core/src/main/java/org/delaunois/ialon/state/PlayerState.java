@@ -144,7 +144,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             ACTION_DEBUG_CHUNK
     };
 
-    private static final Vector3f UP = new Vector3f(0, 1, 0);
+    private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false, jump = false;
     private boolean underWater = false;
     private boolean onScale = false;
@@ -665,10 +665,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     public void onAnalog(String name, float value, float tpf) {
         if (app.isMouselocked()) {
             if (ACTION_LOOK_LEFT.equals(name)) {
-                CameraHelper.rotate(camera, value, UP);
+                CameraHelper.rotate(camera, value, DIRECTION_UP);
 
             } else if (ACTION_LOOK_RIGHT.equals(name)) {
-                CameraHelper.rotate(camera, -value, UP);
+                CameraHelper.rotate(camera, -value, DIRECTION_UP);
 
             } else if (ACTION_LOOK_UP.equals(name)) {
                 CameraHelper.rotate(camera, -value, camera.getLeft());

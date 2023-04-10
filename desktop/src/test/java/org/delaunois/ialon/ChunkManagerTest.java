@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ChunkManagerTest {
 
@@ -56,6 +57,7 @@ public class ChunkManagerTest {
     @Test
     public void testAddBlock() {
         ChunkManager chunkManager = ChunkManager.builder().poolSize(1).build();
+        assertNotNull(chunkManager);
         chunkManager.initialize();
 
         Vector3f location = new Vector3f(16, 32, 2);

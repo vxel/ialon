@@ -134,6 +134,7 @@ public class PlayerStateRepository {
         try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
             write(playerStateDTO, fos);
             log.info("Saving player state took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            return true;
 
         } catch (IOException e) {
             log.error(e.getMessage(), e);
