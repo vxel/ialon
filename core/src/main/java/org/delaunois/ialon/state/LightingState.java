@@ -57,6 +57,7 @@ public class LightingState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
     @Override

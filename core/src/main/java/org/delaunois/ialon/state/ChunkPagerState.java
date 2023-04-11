@@ -31,10 +31,12 @@ public class ChunkPagerState extends BaseAppState {
 
     @Override
     protected void onEnable() {
+        // Nothing to do
     }
 
     @Override
     protected void onDisable() {
+        // Nothing to do
     }
 
     @Override

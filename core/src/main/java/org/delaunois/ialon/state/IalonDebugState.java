@@ -38,7 +38,6 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.ChunkPager;
-import org.delaunois.ialon.Ialon;
 
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +52,6 @@ public class IalonDebugState extends BaseAppState {
     private Container container;
     private Container grid;
     private Label heapLabel;
-    private Label directLabel;
     private Label worldPositionLabel;
     private Label positionLabel;
     private Label cursorPositionLabel;
@@ -68,13 +66,10 @@ public class IalonDebugState extends BaseAppState {
     private PlayerState playerState;
     private SunState sunState;
 
-    private Ialon app;
     private long lastUpdate = System.currentTimeMillis();
 
     @Override
     protected void initialize(Application app) {
-        this.app = (Ialon) app;
-
         chunkPager = app.getStateManager().getState(ChunkPagerState.class).getChunkPager();
         playerState = app.getStateManager().getState(PlayerState.class);
         sunState = app.getStateManager().getState(SunState.class);
@@ -87,7 +82,6 @@ public class IalonDebugState extends BaseAppState {
         //container.setBackground(background);
 
         heapLabel = addField(container, "Mem Heap: ");
-        directLabel = addField(container, "Mem Direct: ");
         worldPositionLabel = addField(container, "Worl Pos: ");
         positionLabel = addField(container, "Chunk Pos: ");
         cursorPositionLabel = addField(container, "Cursor Pos:");
@@ -147,7 +141,6 @@ public class IalonDebugState extends BaseAppState {
         lastUpdate = System.currentTimeMillis();
 
         heapLabel.setText(getHeapString());
-        directLabel.setText(getDirectString());
         worldPositionLabel.setText(getWorldLocationString());
         positionLabel.setText(getChunkLocationString());
         cursorPositionLabel.setText(getCursorLocationString());
@@ -232,13 +225,13 @@ public class IalonDebugState extends BaseAppState {
     private String getCursorLocationString() {
         Vector3f loc = playerState.getRemovePlaceholderPosition();
         String blockLocation = "?";
+        if (loc == null) {
+            return "?";
+        }
         Chunk c = chunkPager.getChunkManager().getChunk(ChunkManager.getChunkLocation(loc)).orElse(null);
         if (c != null) {
             Vec3i blockLocalLocation = c.toLocalLocation(ChunkManager.getBlockLocation(loc));
             blockLocation = String.format(Locale.ENGLISH,"(%d, %d, %d)", blockLocalLocation.x, blockLocalLocation.y, blockLocalLocation.z);
-        }
-        if (loc == null) {
-            return "?";
         }
         return String.format(Locale.ENGLISH,"(%.0f, %.0f, %.0f) %s", loc.x, loc.y, loc.z, blockLocation);
     }
@@ -273,18 +266,6 @@ public class IalonDebugState extends BaseAppState {
                     sunState.getSunControl().getLocalTime().getSecond());
         }
         return "-";
-    }
-
-    private String getDirectString() {
-        long memUsage = 0;
-        long memCount = 0;
-        try {
-            //memUsage = MemoryUtils.getDirectMemoryUsage();
-            //memCount = MemoryUtils.getDirectMemoryCount();
-        } catch (NoClassDefFoundError e) {
-            // Unsupported on Android
-        }
-        return String.format(Locale.ENGLISH,"%d MB / %d objects", memUsage / MB, memCount);
     }
 
     private String getHeapString() {

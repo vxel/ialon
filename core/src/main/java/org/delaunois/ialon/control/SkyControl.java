@@ -70,8 +70,6 @@ public class SkyControl extends AbstractControl {
             float sunHeight = sun.getSunHeight();
             float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
 
-            //log.info("time:{} sunHeight:{}, shift:{}", sun.getLocalTime(), sunHeight, shift);
-
             if (sunHeight > 0) {
                 color.interpolateLocal(SKY_EVENING_COLOR, SKY_DAY_COLOR, shift);
                 groundColor.interpolateLocal(GROUND_EVENING_COLOR, GROUND_DAY_COLOR, shift);
@@ -84,5 +82,7 @@ public class SkyControl extends AbstractControl {
     }
 
     @Override
-    protected void controlRender(RenderManager rm, ViewPort vp) {}
+    protected void controlRender(RenderManager rm, ViewPort vp) {
+        // Nothing to do
+    }
 }

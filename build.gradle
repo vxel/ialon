@@ -22,7 +22,7 @@ sonarqube {
         property "sonar.projectKey", "vxel_ialon"
         property "sonar.organization", "vxel"
         property "sonar.host.url", "https://sonarcloud.io"
-        property "sonar.exclusions","**/protobuf/*.java,**/com/rvandoosselaer/**/*.java"
+        property "sonar.exclusions","**/protobuf/*.java,**/com/rvandoosselaer/**/*.java,**/fastnoise/*.java"
     }
 }
 

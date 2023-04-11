@@ -54,14 +54,17 @@ public class ChunkLiquidManagerState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
     @Override
     protected void onEnable() {
+        // Nothing to do
     }
 
     @Override
     protected void onDisable() {
+        // Nothing to do
     }
 
     @Override

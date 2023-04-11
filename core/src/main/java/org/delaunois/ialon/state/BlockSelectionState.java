@@ -546,6 +546,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
     public void resize() {
@@ -885,19 +886,24 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     @Override
     public void update(float tpf) {
+        // Nothing to do
     }
 
     private void addKeyMappings() {
+        // Nothing to do
     }
 
     private void deleteKeyMappings() {
+        // Nothing to do
     }
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
+        // Nothing to do
     }
 
     @Override
     public void onAnalog(String name, float intensity, float tpf) {
+        // Nothing to do
     }
 }

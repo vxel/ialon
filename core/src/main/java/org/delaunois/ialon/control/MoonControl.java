@@ -68,7 +68,7 @@ public class MoonControl extends AbstractControl {
 
     @Override
     protected void controlRender(RenderManager rm, ViewPort vp) {
-
+        // Nothing to do
     }
 
 }
