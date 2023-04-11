@@ -507,6 +507,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         for (int i = 0; i < BLOCK_HISTORY_SIZE; i++) {
             int index = i;
             historyButton[i] = createBlockButton(lastSelectedBlockNode[i], BUTTON_SIZE, new DefaultMouseListener() {
+                @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                     event.setConsumed();
                     if (event.isPressed() && history[index] >= 0) {
@@ -524,6 +525,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         // Create selection button
         setSelectedBlockIndex(selectedBlockIndex);
         blockSelectionButton = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
+            @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {
@@ -714,6 +716,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     int finalIndex = index;
                     blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE,
                             new DefaultMouseListener() {
+                                @Override
                                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                                     event.setConsumed();
                                     if (event.isPressed()) {
@@ -729,6 +732,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
 
         nextButton = createButton("Next", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+            @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {
@@ -740,6 +744,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         blockList.addChild(nextButton, pageSizeX + 1, 0);
 
         previousButton = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+            @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
                 if (event.isPressed()) {

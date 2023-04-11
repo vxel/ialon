@@ -28,6 +28,10 @@ public class CameraHelper {
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
 
+    private CameraHelper() {
+        // Prevent instanciation
+    }
+
     public static void rotate(Camera cam, float value) {
         rotate(cam, value, UP);
     }

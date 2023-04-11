@@ -227,7 +227,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         stateManager.getState(BasePickState.class).removeCollisionRoot(rootNode);
 
         // Reload the font using the offset of the atlas tile
-        AssetInfo assetInfo = assetManager.locateAsset(new AssetKey<BitmapFont>("Textures/font-default.fnt"));
+        AssetInfo assetInfo = assetManager.locateAsset(new AssetKey<>("Textures/font-default.fnt"));
         BitmapFont atlasFont;
         try {
             atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, atlasManager.getAtlas());

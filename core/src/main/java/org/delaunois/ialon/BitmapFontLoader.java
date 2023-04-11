@@ -50,6 +50,10 @@ import java.io.InputStreamReader;
 
 public class BitmapFontLoader {
 
+    private BitmapFontLoader() {
+        // Prevent instanication
+    }
+
     private static BitmapFont load(AssetManager assetManager, String folder, InputStream in, int offx, int offy) throws IOException {
         MaterialDef spriteMat =
                 assetManager.loadAsset(new AssetKey<>("Common/MatDefs/Misc/Unshaded.j3md"));

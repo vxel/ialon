@@ -58,7 +58,6 @@ public class StatsAppState extends AbstractAppState {
 
     private Application app;
     protected StatsView statsView;
-    protected boolean showSettings = true;
     private boolean showFps = true;
     private boolean showStats = true;
     private boolean darkenBehind = false;
@@ -89,7 +88,7 @@ public class StatsAppState extends AbstractAppState {
      */
     public void setFont( BitmapFont guiFont ) {
         this.guiFont = guiFont;
-        this.fpsText = new BitmapText(guiFont, false);
+        this.fpsText = new BitmapText(guiFont);
     }
 
     public BitmapText getFpsText() {
@@ -174,7 +173,7 @@ public class StatsAppState extends AbstractAppState {
      */
     public void loadFpsText() {
         if (fpsText == null) {
-            fpsText = new BitmapText(guiFont, false);
+            fpsText = new BitmapText(guiFont);
         }
 
         fpsText.setLocalTranslation(0, fpsText.getLineHeight(), 0);

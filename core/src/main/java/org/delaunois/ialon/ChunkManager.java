@@ -63,7 +63,7 @@ public class ChunkManager {
     private ChunkLiquidManager chunkLiquidManager;
 
     @Builder
-    private ChunkManager(ChunkRepository repository, int repositoryPoolSize, ChunkGenerator generator, int poolSize) {
+    private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize) {
         this.repository = repository;
         this.generator = generator;
         this.poolSize = poolSize;
@@ -132,7 +132,7 @@ public class ChunkManager {
         assertInitialized();
 
         Set<Future<Chunk>> results = new HashSet<>();
-        if (locations.size() == 0)
+        if (locations.isEmpty())
             return results;
 
         log.info("Generating chunks for {} locations", locations.size());
@@ -184,7 +184,7 @@ public class ChunkManager {
         assertInitialized();
 
         Set<Future<Chunk>> results = new LinkedHashSet<>();
-        if (locations.size() == 0) {
+        if (locations.isEmpty()) {
             log.warn("No location given for requestMeshChunks");
             return results;
         }

@@ -133,12 +133,12 @@ public class TextureAtlas {
     private Map<String, byte[]> images;
 
     @Getter
-    final private int atlasWidth, atlasHeight;
+    private final int atlasWidth, atlasHeight;
 
-    final private Format format = Format.ABGR8;
-    final private Node root;
-    final private Map<String, TextureAtlasTile> locationMap;
-    final private Map<String, String> mapNameMap;
+    private final Format format = Format.ABGR8;
+    private final Node root;
+    private final Map<String, TextureAtlasTile> locationMap;
+    private final Map<String, String> mapNameMap;
     private String rootMapName;
 
     public TextureAtlas(int width, int height) {
@@ -581,9 +581,9 @@ public class TextureAtlas {
 
     private class Node {
 
-        public TextureAtlasTile location;
-        public Node[] child;
-        public boolean occupied;
+        private final TextureAtlasTile location;
+        private final Node[] child;
+        private boolean occupied;
 
         public Node(int x, int y, int width, int height) {
             location = new TextureAtlasTile(x, y, width, height);
@@ -639,8 +639,8 @@ public class TextureAtlas {
 
     public class TextureAtlasTile {
 
-        final private int x;
-        final private int y;
+        private final int x;
+        private final int y;
         private final int width;
         private final int height;
 

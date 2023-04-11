@@ -93,8 +93,9 @@ public class BlockNeighborhood {
                 return getNeighboursNorth();
             case SOUTH:
                 return getNeighboursSouth();
+            default:
+                throw new IllegalArgumentException("Illegal Direction");
         }
-        return null;
     }
 
     public Block[] getNeighboursUp() {

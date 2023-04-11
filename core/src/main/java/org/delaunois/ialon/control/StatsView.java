@@ -69,7 +69,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
 
     private boolean enabled = true;
 
-    private final float scale = 0.75f;
+    private static final float SCALE = 0.75f;
 
     private final StringBuilder stringBuilder = new StringBuilder();
 
@@ -90,15 +90,15 @@ public class StatsView extends Node implements Control, JmeCloneable {
             font = manager.loadFont("Interface/Fonts/Default.fnt");
         }
         statText = new BitmapText(font);
-        statText.setLocalTranslation(0, statText.getLineHeight() * statLabels.length * scale, 0);
-        statText.scale(scale);
+        statText.setLocalTranslation(0, statText.getLineHeight() * statLabels.length * SCALE, 0);
+        statText.scale(SCALE);
         attachChild(statText);
 
         addControl(this);
     }
 
     public float getHeight() {
-        return statText.getLineHeight() * statLabels.length * scale;
+        return statText.getLineHeight() * statLabels.length * SCALE;
     }
 
     @Override

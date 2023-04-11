@@ -190,10 +190,10 @@ public class ChunkPager {
         // request the new pages pages to load/generate and mesh
         chunkManager.requestChunks(
                 pagesToFetch.stream()
-                        .filter((location) -> !fetchedPages.containsKey(location))
+                        .filter(location -> !fetchedPages.containsKey(location))
                         .collect(Collectors.toList()),
                 pagesToMesh.stream()
-                        .filter((location) -> !attachedPages.containsKey(location))
+                        .filter(location -> !attachedPages.containsKey(location))
                         .sorted(Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage)))
                         .collect(Collectors.toList()));
 

@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2022 Cédric de Launois
- *
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -69,25 +69,29 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonSettings = createButton(buttonSize, SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
-            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                event.setConsumed();
-                if (event.isPressed()) {
-                    if (event.getButtonIndex() == 0) {
-                        radius = radius + 1;
-                    } else {
-                        radius = radius - 1;
+        buttonSettings = createButton(buttonSize,
+                SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize,
+                app.getCamera().getHeight() - SCREEN_MARGIN,
+                new DefaultMouseListener() {
+                    @Override
+                    public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                        event.setConsumed();
+                        if (event.isPressed()) {
+                            if (event.getButtonIndex() == 0) {
+                                radius = radius + 1;
+                            } else {
+                                radius = radius - 1;
+                            }
+                            if (radius > GRID_RADIUS_MAX) {
+                                radius = GRID_RADIUS_MIN;
+                            }
+                            if (radius < GRID_RADIUS_MIN) {
+                                radius = GRID_RADIUS_MAX;
+                            }
+                            setRadius(radius);
+                        }
                     }
-                    if (radius > GRID_RADIUS_MAX) {
-                        radius = GRID_RADIUS_MIN;
-                    }
-                    if (radius < GRID_RADIUS_MIN) {
-                        radius = GRID_RADIUS_MAX;
-                    }
-                    setRadius(radius);
-                }
-            }
-        });
+                });
     }
 
     public void setRadius(int radius) {

@@ -214,17 +214,14 @@ public class ChunkLightManager {
     private void propagateAddedTorchlight(Chunk c, int x, int y, int z, int lightLevel, LightRunningContext context) {
         Chunk chunk = c;
 
-        //log.debug("Computing light at ({}, {}, {}) level={}", x, y, z, lightLevel);
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
@@ -247,16 +244,14 @@ public class ChunkLightManager {
     private void propagateRemovedTorchlight(Chunk c, int x, int y, int z, int lightLevel, LightRunningContext context) {
         Chunk chunk = c;
 
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
@@ -282,16 +277,14 @@ public class ChunkLightManager {
     private void propagateAddedSunlight(Chunk c, int x, int y, int z, int lightLevel, boolean dimLight, LightRunningContext context) {
         Chunk chunk = c;
 
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
@@ -348,16 +341,14 @@ public class ChunkLightManager {
     private void propagateRemovedSunlight(Chunk c, int x, int y, int z, int lightLevel, boolean dimLight, LightRunningContext context) {
         Chunk chunk = c;
 
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
