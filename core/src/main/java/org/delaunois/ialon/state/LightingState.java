@@ -76,6 +76,7 @@ public class LightingState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
+        // Nothing to do
     }
 
     private void attachLights() {

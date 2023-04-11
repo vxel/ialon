@@ -49,9 +49,6 @@ public class SkyControl extends AbstractControl {
 
     private long lastUpdate = 0;
 
-    public SkyControl() {
-    }
-
     public void setSunControl(SunControl sun) {
         this.sun = sun;
         if (sun.getTimeFactor() > 0) {

@@ -29,7 +29,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.delaunois.ialon.state;
+package org.delaunois.ialon.control;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.font.BitmapFont;
@@ -69,7 +69,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
 
     private boolean enabled = true;
 
-    private float scale = 0.75f;
+    private final float scale = 0.75f;
 
     private final StringBuilder stringBuilder = new StringBuilder();
 
@@ -141,6 +141,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
 
     @Override
     public void setSpatial(Spatial spatial) {
+        // Nothing to do
     }
 
     public void setEnabled(boolean enabled) {
@@ -154,6 +155,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
 
     @Override
     public void render(RenderManager rm, ViewPort vp) {
+        // Nothing to do
     }
 
 }

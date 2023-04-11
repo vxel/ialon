@@ -117,6 +117,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
 

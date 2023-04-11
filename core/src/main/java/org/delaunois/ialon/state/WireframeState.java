@@ -10,7 +10,7 @@ import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.TypeRegistry;
 
 /**
- * @author: rvandoosselaer
+ * @author rvandoosselaer
  */
 public class WireframeState extends BaseAppState implements ActionListener {
 
@@ -33,10 +33,12 @@ public class WireframeState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onEnable() {
+        // Nothing to do
     }
 
     @Override
     protected void onDisable() {
+        // Nothing to do
     }
 
     @Override

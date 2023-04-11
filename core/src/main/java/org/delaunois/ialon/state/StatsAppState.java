@@ -45,6 +45,8 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Quad;
 
+import org.delaunois.ialon.control.StatsView;
+
 
 /**
  *  Displays stats in SimpleApplication's GUI node or

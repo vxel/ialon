@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 public class IalonDebugState extends BaseAppState {
 
     private static final int MB = 1024 * 1024;
+    private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
     private Node node;
     private Container container;
@@ -60,7 +61,6 @@ public class IalonDebugState extends BaseAppState {
     private Label sunlightLevelLabel;
     private Label cacheSizeLabel;
     private Label timeLabel;
-
 
     private ChunkPager chunkPager;
     private PlayerState playerState;
@@ -78,7 +78,7 @@ public class IalonDebugState extends BaseAppState {
 
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
+        background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
         //container.setBackground(background);
 
         heapLabel = addField(container, "Mem Heap: ");
@@ -103,18 +103,19 @@ public class IalonDebugState extends BaseAppState {
         Label textLabel = new Label(title);
         textLabel.setColor(ColorRGBA.White);
         textLabel.setFontSize(10);
-        textLabel.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        textLabel.getFont().getPage(0).clearParam(APLHA_DISCARD_THRESHOLD);
         newContainer.addChild(textLabel);
         Label label = newContainer.addChild(new Label("-"));
         label.setTextHAlignment(HAlignment.Right);
         label.setColor(ColorRGBA.White);
         label.setFontSize(10);
-        label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        label.getFont().getPage(0).clearParam(APLHA_DISCARD_THRESHOLD);
         return label;
     }
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
     @Override
