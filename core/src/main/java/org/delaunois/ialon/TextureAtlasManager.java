@@ -49,7 +49,7 @@ public class TextureAtlasManager {
 
     public Texture getDiffuseMap() {
         if (diffuseMap == null) {
-            diffuseMap = atlas.getAtlasTexture("DiffuseMap");
+            diffuseMap = atlas.getAtlasTexture(DIFFUSE);
             diffuseMap.setName("TextureAtlasRepository/DiffuseMap");
             diffuseMap.getImage().setColorSpace(ColorSpace.sRGB);
             log.info("Atlas texture {} generated", diffuseMap);
@@ -59,7 +59,7 @@ public class TextureAtlasManager {
 
     public Texture getOverlayMap() {
         if (overlayMap == null) {
-            overlayMap = atlas.getAtlasTexture("OverlayMap");
+            overlayMap = atlas.getAtlasTexture(OVERLAY);
             overlayMap.setName("TextureAtlasRepository/OverlayMap");
             overlayMap.getImage().setColorSpace(ColorSpace.sRGB);
             log.info("Atlas texture {} generated", overlayMap);
