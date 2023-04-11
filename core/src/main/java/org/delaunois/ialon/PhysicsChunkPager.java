@@ -329,6 +329,7 @@ public class PhysicsChunkPager {
 
         @Override
         public void onChunkUpdated(Chunk chunk) {
+            // Nothing to to
         }
 
         @Override
@@ -343,6 +344,7 @@ public class PhysicsChunkPager {
 
         @Override
         public void onChunkFetched(Chunk chunk) {
+            // Nothing to to
         }
     }
 

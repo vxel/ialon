@@ -124,11 +124,11 @@ public class LayerComparator implements GeometryComparator {
     }
 
     public float getLayer(Geometry g) {
-        Float d = g.getUserData("effectiveLayer");
+        Float d = g.getUserData(EFFECTIVE_LAYER);
         if (d != null)
             return d;
         d = calculateEffectiveLayer(g);
-        g.setUserData("effectiveLayer", d);
+        g.setUserData(EFFECTIVE_LAYER, d);
         return d;
     }
 

@@ -311,7 +311,7 @@ public class ChunkManager {
                     String blockName = BlockIds.getName(previousBlock.getType(), previousBlock.getShape(), Block.LIQUID_SOURCE);
                     block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
                     if (block == null) {
-                        log.warn("Block {} not found", blockName);
+                        log.warn("Source block {} not found", blockName);
                     }
                 }
                 chunk.addBlock(blockLocationInsideChunk, block);
@@ -339,7 +339,7 @@ public class ChunkManager {
                 String blockName = BlockIds.getName(block.getType(), block.getShape(), previousBlock.getLiquidLevel());
                 block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
                 if (block == null) {
-                    log.warn("Block {} not found", blockName);
+                    log.warn("Regular block {} not found", blockName);
                 } else {
                     Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
                     chunk.addBlock(blockLocationInsideChunk, block);
@@ -523,9 +523,6 @@ public class ChunkManager {
 
         Vector3f adjustedContactPoint = getAdjustedContactPoint(collisionResult.getContactPoint(), collisionResult.getContactNormal());
         return getBlock(adjustedContactPoint);
-    }
-
-    public void update() {
     }
 
     public void cleanup() {

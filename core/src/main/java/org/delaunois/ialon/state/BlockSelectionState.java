@@ -453,6 +453,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     };
 
     private static final int BLOCK_HISTORY_SIZE = 3;
+    private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     public Node[] blocks;
 
     private Ialon app;
@@ -758,7 +759,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
+        background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
         buttonContainer.setBackground(background);
 
         float boxSize = size * .5f;
@@ -839,11 +840,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         buttonContainer.setPreferredSize(new Vector3f(sizeX, sizeY, 0));
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
+        background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
         buttonContainer.setBackground(background);
 
         Label label = buttonContainer.addChild(new Label(text));
-        label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        label.getFont().getPage(0).clearParam(APLHA_DISCARD_THRESHOLD);
         label.getFont().getPage(0).clearParam("VertexColor");
 
         // Center the text in the box.

@@ -108,11 +108,11 @@ import lombok.Getter;
  * TextureAtlas atlas = TextureAtlas.createAtlas(scene);
  * //or create manually by adding textures or geometries with textures
  * TextureAtlas atlas = new TextureAtlas(1024,1024);
- * atlas.addTexture(myTexture, "DiffuseMap");
+ * atlas.addTexture(myTexture, DIFFUSE_MAP);
  * atlas.addGeometry(myGeometry);
  * //create material and set texture
  * Material mat = new Material(mgr, "Common/MatDefs/Light/Lighting.j3md");
- * mat.setTexture("DiffuseMap", atlas.getAtlasTexture("DiffuseMap"));
+ * mat.setTexture(DIFFUSE_MAP, atlas.getAtlasTexture(DIFFUSE_MAP));
  * //change one geometry to use atlas, apply texture coordinates and replace material.
  * Geometry geom = scene.getChild("MyGeometry");
  * atlas.applyCoords(geom);
@@ -124,6 +124,12 @@ import lombok.Getter;
 public class TextureAtlas {
 
     private static final Logger logger = Logger.getLogger(TextureAtlas.class.getName());
+
+    private static final String DIFFUSE_MAP = "DiffuseMap";
+    private static final String NORMAL_MAP = "NormalMap";
+    private static final String SPECULAR_MAP = "SpecularMap";
+    private static final String COLOR_MAP = "ColorMap";
+
     private Map<String, byte[]> images;
 
     @Getter
@@ -139,8 +145,8 @@ public class TextureAtlas {
         this.atlasWidth = width;
         this.atlasHeight = height;
         root = new Node(0, 0, width, height);
-        locationMap = new TreeMap<String, TextureAtlasTile>();
-        mapNameMap = new HashMap<String, String>();
+        locationMap = new TreeMap<>();
+        mapNameMap = new HashMap<>();
     }
 
     /**
@@ -150,23 +156,22 @@ public class TextureAtlas {
      * @return false if the atlas is full.
      */
     public boolean addGeometry(Geometry geometry) {
-        Texture diffuse = getMaterialTexture(geometry, "DiffuseMap");
-        Texture normal = getMaterialTexture(geometry, "NormalMap");
-        Texture specular = getMaterialTexture(geometry, "SpecularMap");
+        Texture diffuse = getMaterialTexture(geometry, DIFFUSE_MAP);
+        Texture normal = getMaterialTexture(geometry, NORMAL_MAP);
+        Texture specular = getMaterialTexture(geometry, SPECULAR_MAP);
         if (diffuse == null) {
-            diffuse = getMaterialTexture(geometry, "ColorMap");
-
+            diffuse = getMaterialTexture(geometry, COLOR_MAP);
         }
         if (diffuse != null && diffuse.getKey() != null) {
             String keyName = diffuse.getKey().toString();
-            if (!addTexture(diffuse, "DiffuseMap")) {
+            if (!addTexture(diffuse, DIFFUSE_MAP)) {
                 return false;
             } else {
                 if (normal != null && normal.getKey() != null) {
-                    addTexture(normal, "NormalMap", keyName);
+                    addTexture(normal, NORMAL_MAP, keyName);
                 }
                 if (specular != null && specular.getKey() != null) {
-                    addTexture(specular, "SpecularMap", keyName);
+                    addTexture(specular, SPECULAR_MAP, keyName);
                 }
             }
             return true;
@@ -229,7 +234,7 @@ public class TextureAtlas {
         if (texture == null) {
             return null;
         }
-        AssetKey key = texture.getKey();
+        AssetKey<?> key = texture.getKey();
         if (key != null) {
             return key.toString();
         } else {
@@ -251,10 +256,8 @@ public class TextureAtlas {
             if (!mapName.equals(mapNameMap.get(name))) {
                 logger.log(Level.WARNING, "Same texture " + name + " is used in different maps! (" + mapName + " and " + mapNameMap.get(name) + "). Location will be based on location in " + mapNameMap.get(name) + "!");
                 drawImage(image, location.getX(), location.getY(), mapName);
-                return true;
-            } else {
-                return true;
             }
+            return true;
         } else if (sourceTextureName == null) {
             //need to make new tile
             Node node = root.insert(image);
@@ -279,16 +282,12 @@ public class TextureAtlas {
 
     private void drawImage(Image source, int x, int y, String mapName) {
         if (images == null) {
-            images = new HashMap<String, byte[]>();
+            images = new HashMap<>();
         }
-        byte[] image = images.get(mapName);
-        
         //FIXME this is not accounting for color space.
-        //Texture Atlas should linearize the data if the source image isSRGB        
-        if (image == null) {
-            image = new byte[atlasWidth * atlasHeight * 4];
-            images.put(mapName, image);
-        }
+        //Texture Atlas should linearize the data if the source image isSRGB
+        byte[] image = images.computeIfAbsent(mapName, k -> new byte[atlasWidth * atlasHeight * 4]);
+
         //TODO: all buffers?
         ByteBuffer sourceData = source.getData(0);
         int height = source.getHeight();
@@ -322,7 +321,7 @@ public class TextureAtlas {
                     image[i + 2] = sourceData.get(j + 1); //g
                     image[i + 3] = sourceData.get(j); //r
                 } else if (source.getFormat() == Format.Luminance8) {
-                    int j = (xPos + yPos * width) * 1;
+                    int j = (xPos + yPos * width);
                     image[i] = 1; //a
                     image[i + 1] = sourceData.get(j); //b
                     image[i + 2] = sourceData.get(j); //g
@@ -356,16 +355,12 @@ public class TextureAtlas {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Image convertImageToAwt(Image source) {
         //use awt dependent classes without actual dependency via reflection
         try {
-            Class clazz = Class.forName("jme3tools.converters.ImageToAwt");
-            if (clazz == null) {
-                return null;
-            }
+            Class<?> clazz = Class.forName("jme3tools.converters.ImageToAwt");
             Image newImage = new Image(format, source.getWidth(), source.getHeight(), BufferUtils.createByteBuffer(source.getWidth() * source.getHeight() * 4), null, ColorSpace.Linear);
-            clazz.getMethod("convert", Image.class, Image.class).invoke(clazz.newInstance(), source, newImage);
+            clazz.getMethod("convert", Image.class, Image.class).invoke(clazz.getDeclaredConstructor().newInstance(), source, newImage);
             return newImage;
         } catch (InstantiationException
                 | IllegalAccessException
@@ -374,6 +369,7 @@ public class TextureAtlas {
                 | NoSuchMethodException
                 | SecurityException
                 | ClassNotFoundException ex) {
+            logger.log(Level.WARNING, "Failed to convert image to awt", ex);
         }
         return null;
     }
@@ -394,7 +390,7 @@ public class TextureAtlas {
     /**
      * Get the <code>TextureAtlasTile</code> for the given Texture
      * @param assetName The texture to retrieve the <code>TextureAtlasTile</code> for.
-     * @return 
+     * @return the TextureAtlasTile
      */
     private TextureAtlasTile getAtlasTile(String assetName) {
         return locationMap.get(assetName);
@@ -471,9 +467,9 @@ public class TextureAtlas {
             throw new IllegalStateException("Geometry mesh has no texture coordinate buffer.");
         }
 
-        Texture tex = getMaterialTexture(geom, "DiffuseMap");
+        Texture tex = getMaterialTexture(geom, DIFFUSE_MAP);
         if (tex == null) {
-            tex = getMaterialTexture(geom, "ColorMap");
+            tex = getMaterialTexture(geom, COLOR_MAP);
 
         }
         if (tex != null) {
@@ -534,17 +530,17 @@ public class TextureAtlas {
         geom.setMesh(mesh);
 
         Material mat = new Material(mgr, "Common/MatDefs/Light/Lighting.j3md");
-        Texture diffuseMap = atlas.getAtlasTexture("DiffuseMap");
-        Texture normalMap = atlas.getAtlasTexture("NormalMap");
-        Texture specularMap = atlas.getAtlasTexture("SpecularMap");
+        Texture diffuseMap = atlas.getAtlasTexture(DIFFUSE_MAP);
+        Texture normalMap = atlas.getAtlasTexture(NORMAL_MAP);
+        Texture specularMap = atlas.getAtlasTexture(SPECULAR_MAP);
         if (diffuseMap != null) {
-            mat.setTexture("DiffuseMap", diffuseMap);
+            mat.setTexture(DIFFUSE_MAP, diffuseMap);
         }
         if (normalMap != null) {
-            mat.setTexture("NormalMap", normalMap);
+            mat.setTexture(NORMAL_MAP, normalMap);
         }
         if (specularMap != null) {
-            mat.setTexture("SpecularMap", specularMap);
+            mat.setTexture(SPECULAR_MAP, specularMap);
         }
         mat.setFloat("Shininess", 16.0f);
 
@@ -580,19 +576,13 @@ public class TextureAtlas {
             return null;
         }
         MatParamTexture param = (MatParamTexture) mat.getParam(mapName);
-        Texture texture = param.getTextureValue();
-        if (texture == null) {
-            return null;
-        }
-        return texture;
-
-
+        return param.getTextureValue();
     }
 
     private class Node {
 
         public TextureAtlasTile location;
-        public Node child[];
+        public Node[] child;
         public boolean occupied;
 
         public Node(int x, int y, int width, int height) {
@@ -651,8 +641,8 @@ public class TextureAtlas {
 
         final private int x;
         final private int y;
-        private int width;
-        private int height;
+        private final int width;
+        private final int height;
 
         public TextureAtlasTile(int x, int y, int width, int height) {
             this.x = x;
@@ -709,11 +699,11 @@ public class TextureAtlas {
             offset *= 2;
 
             for (int i = 0; i < inBuf.limit() / 2; i++) {
-                tex.x = inBuf.get(i * 2 + 0);
+                tex.x = inBuf.get(i * 2);
                 tex.y = inBuf.get(i * 2 + 1);
                 Vector2f location = getLocation(tex, padding);
                 //TODO: add proper texture wrapping for atlases..
-                outBuf.put(offset + i * 2 + 0, location.x);
+                outBuf.put(offset + i * 2, location.x);
                 outBuf.put(offset + i * 2 + 1, location.y);
             }
         }

@@ -320,6 +320,7 @@ public class ChunkPager {
 
         @Override
         public void onChunkUpdated(Chunk chunk) {
+            // Nothing to do
         }
 
         @Override

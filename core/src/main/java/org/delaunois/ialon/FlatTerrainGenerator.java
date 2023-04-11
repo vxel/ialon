@@ -48,7 +48,9 @@ public class FlatTerrainGenerator implements TerrainGenerator {
         return ((float) ground) - 1f;
     }
 
-    public void setWaterHeight(float waterHeight) {}
+    public void setWaterHeight(float waterHeight) {
+        throw new UnsupportedOperationException("Water is not supported by " + this.getClass().getSimpleName());
+    }
 
     public float getHeight(Vector3f blockLocation) {
         return ground;

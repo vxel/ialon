@@ -100,6 +100,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private static final String SAVEDIR = "./save";
     private static Path FILEPATH = FileSystems.getDefault().getPath(SAVEDIR);
 
+    private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
+    private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
+    private static final String ACTION_TOGGLE_FULLSCREEN = "toggle-fullscreen";
+
     @Getter
     @Setter
     private boolean saveUserPreferencesOnStop = true;
@@ -384,10 +388,10 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     private void initInputManager() {
-        inputManager.addMapping("switch-mouselock", new KeyTrigger(KeyInput.KEY_BACK));
-        inputManager.addMapping("toggle-time-run", new KeyTrigger(KeyInput.KEY_P));
-        inputManager.addMapping("toggle-fullscreen", new KeyTrigger(KeyInput.KEY_F2));
-        inputManager.addListener(this, "switch-mouselock", "toggle-time-run", "toggle-fullscreen");
+        inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
+        inputManager.addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));
+        inputManager.addMapping(ACTION_TOGGLE_FULLSCREEN, new KeyTrigger(KeyInput.KEY_F2));
+        inputManager.addListener(this, ACTION_SWITCH_MOUSELOCK, ACTION_TOGGLE_TIME_RUN, ACTION_TOGGLE_FULLSCREEN);
     }
 
     @Override
@@ -411,13 +415,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        if ("switch-mouselock".equals(name) && isPressed) {
+        if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
             log.info("Switching mouse lock to {}", !mouselocked);
             switchMouseLock();
-        } else if ("toggle-time-run".equals(name) && isPressed) {
+
+        } else if (ACTION_TOGGLE_TIME_RUN.equals(name) && isPressed) {
             log.info("Toggle time run");
             getStateManager().getState(SunState.class).getSunControl().toggleTimeRun();
-        } else if ("toggle-fullscreen".equals(name) && isPressed) {
+
+        } else if (ACTION_TOGGLE_FULLSCREEN.equals(name) && isPressed) {
             log.info("Toggle fullscreen");
             if (this.settings.isFullscreen()) {
                 settings.setResolution(Config.SCREEN_WIDTH, Config.SCREEN_HEIGHT);

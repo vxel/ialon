@@ -53,7 +53,7 @@ import java.util.logging.Logger;
  */
 public class AndroidHarness extends Activity implements TouchListener, DialogInterface.OnClickListener, SystemListener {
 
-    protected final static Logger logger = Logger.getLogger(AndroidHarness.class.getName());
+    protected static final Logger logger = Logger.getLogger(AndroidHarness.class.getName());
     /**
      * The application class to start
      */
@@ -184,11 +184,11 @@ public class AndroidHarness extends Activity implements TouchListener, DialogInt
     protected boolean isGLThreadPaused = true;
     protected ImageView splashImageView = null;
     protected FrameLayout frameLayout = null;
-    final private String ESCAPE_EVENT = "TouchEscape";
+    private static final String ESCAPE_EVENT = "TouchEscape";
     private boolean firstDrawFrame = true;
     private boolean inConfigChange = false;
 
-    private class DataObject {
+    private static class DataObject {
         protected LegacyApplication app = null;
     }
 
