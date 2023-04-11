@@ -25,7 +25,7 @@ public class ChunkManagerTest {
     }
 
     @Test
-    public void testLocationCalculation() {
+    void testLocationCalculation() {
         BlocksConfig.getInstance().setChunkSize(new Vec3i(16, 16, 16));
 
         Vector3f location = new Vector3f(0, 0, 0);
@@ -55,7 +55,7 @@ public class ChunkManagerTest {
     }
 
     @Test
-    public void testAddBlock() {
+    void testAddBlock() {
         ChunkManager chunkManager = ChunkManager.builder().poolSize(1).build();
         assertNotNull(chunkManager);
         chunkManager.initialize();

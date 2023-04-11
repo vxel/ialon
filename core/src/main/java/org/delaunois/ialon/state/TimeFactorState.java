@@ -68,18 +68,20 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonTimeFactor = createButton(buttonSize, SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, new DefaultMouseListener() {
-            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                event.setConsumed();
-                if (event.isPressed()) {
-                    if (event.getButtonIndex() == 0) {
-                        setTimeFactorIndex(timeFactorIndex + 1);
-                    } else {
-                        setTimeFactorIndex(timeFactorIndex - 1);
+        buttonTimeFactor = createButton(buttonSize, SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN,
+                new DefaultMouseListener() {
+                    @Override
+                    public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                        event.setConsumed();
+                        if (event.isPressed()) {
+                            if (event.getButtonIndex() == 0) {
+                                setTimeFactorIndex(timeFactorIndex + 1);
+                            } else {
+                                setTimeFactorIndex(timeFactorIndex - 1);
+                            }
+                        }
                     }
-                }
-            }
-        });
+                });
     }
 
     public void setTimeFactorIndex(int index) {
@@ -132,7 +134,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         if (buttonTimeFactor.getParent() == null) {
             app.getGuiNode().attachChild(buttonTimeFactor);
         }
-        addKeyMappings();
     }
 
     @Override
@@ -140,7 +141,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         if (buttonTimeFactor.getParent() != null) {
             app.getGuiNode().detachChild(buttonTimeFactor);
         }
-        deleteKeyMappings();
     }
 
     public void resize() {
@@ -150,16 +150,12 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     public void update(float tpf) {
-    }
-
-    private void addKeyMappings() {
-    }
-
-    private void deleteKeyMappings() {
+        // Nothing to do
     }
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
+        // Nothing to do
     }
 
 }

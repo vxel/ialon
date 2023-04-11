@@ -145,6 +145,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     };
 
     private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
+    private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
+
     private boolean left = false, right = false, forward = false, backward = false, up = false, down = false, jump = false;
     private boolean underWater = false;
     private boolean onScale = false;
@@ -390,7 +392,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         Label crossHair = new Label("+");
         crossHair.setColor(ColorRGBA.White);
         crossHair.setFontSize(30);
-        crossHair.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        crossHair.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
 
         int width = camera.getWidth();
         int height = camera.getHeight();
@@ -545,11 +547,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
+        background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         buttonContainer.setBackground(background);
         //buttonContainer.setBackground(TbtQuadBackgroundComponent.create("/com/simsilica/lemur/icons/border.png", 1, 2, 2, 3, 3, 0, false));
         Label label = buttonContainer.addChild(new Label(text));
-        label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
+        label.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
         label.getFont().getPage(0).clearParam("VertexColor");
 
         // Center the text in the box.
@@ -630,10 +632,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             fireBall();
 
         } else if (ACTION_FLY.equals(name) && isPressed) {
-
             toogleFly();
+
         } else if (ACTION_DEBUG_CHUNK.equals(name) && isPressed) {
-            Config.DEBUG_CHUNKS = !Config.DEBUG_CHUNKS;
+            Config.setDebugChunks(!Config.isDebugChunks());
         }
     }
 

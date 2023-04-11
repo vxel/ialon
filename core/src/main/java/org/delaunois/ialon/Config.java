@@ -4,6 +4,9 @@ import com.jme3.math.ColorRGBA;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
+import lombok.Getter;
+import lombok.Setter;
+
 public class Config {
 
     // Screen - Rendering
@@ -68,8 +71,10 @@ public class Config {
     // Debug
     public static final boolean DEV_MODE = false;
     public static final boolean DEBUG_COLLISIONS = false;
-    public static boolean DEBUG_CHUNKS = false;
 
+    @Getter
+    @Setter
+    private static boolean debugChunks = false;
 
     // Shapes
     public static final String[] STANDARD_SHAPES_NO_STAIRS = {

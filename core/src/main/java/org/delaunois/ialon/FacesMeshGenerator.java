@@ -247,7 +247,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             return;
         }
 
-        if (Config.DEBUG_CHUNKS) {
+        if (Config.isDebugChunks()) {
             node.attachChild(createChunkDebugGeometry());
         }
 
