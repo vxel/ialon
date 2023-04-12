@@ -552,9 +552,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     @Override
                     public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                         event.setConsumed();
-                        if (event.isPressed()) {
-                            toogleFly();
-                        }
+                        toogleFly(event.isPressed());
                     }
                 });
 
@@ -614,72 +612,108 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         switch (name) {
             case ACTION_ADD_BLOCK:
-                if (buttonAddBlock.getParent() == null) {
-                    if (isPressed) {
-                        addBlock();
-                    }
-                    highlight(isPressed, buttonAddBlock);
-                }
+                actionAddBlock(isPressed);
                 break;
             case ACTION_REMOVE_BLOCK:
-                if (buttonRemoveBlock.getParent() == null) {
-                    if (isPressed) {
-                        removeBlock();
-                    }
-                    highlight(isPressed, buttonRemoveBlock);
-                }
+                actionRemoveBlock(isPressed);
                 break;
             case ACTION_LEFT:
-                left = isPressed;
-                highlight(isPressed, buttonLeft);
+                actionLeft(isPressed);
                 break;
             case ACTION_RIGHT:
-                right = isPressed;
-                highlight(isPressed, buttonRight);
+                actionRight(isPressed);
                 break;
             case ACTION_FORWARD:
-                forward = isPressed;
-                highlight(isPressed, buttonForward);
+                actionForward(isPressed);
                 break;
             case ACTION_BACKWARD:
-                backward = isPressed;
-                highlight(isPressed, buttonBackward);
+                actionBackward(isPressed);
                 break;
             case ACTION_FLY_UP:
-                if (fly) {
-                    up = isPressed;
-                }
+                actionFlyUp(isPressed);
                 break;
             case ACTION_FLY_DOWN:
-                if (fly) {
-                    down = isPressed;
-                }
+                actionFlyDown(isPressed);
                 break;
             case ACTION_JUMP:
-                if (isPressed) {
-                    playerJump();
-                }
-                highlight(isPressed, buttonJump);
+                actionJump(isPressed);
                 break;
             case ACTION_FIRE:
-                if (isPressed) {
-                    fireBall();
-                }
+                actionFireBall(isPressed);
                 break;
             case ACTION_FLY:
-                if (isPressed) {
-                    toogleFly();
-                }
+                toogleFly(isPressed);
                 break;
             case ACTION_DEBUG_CHUNK:
-                if (isPressed) {
-                    Config.setDebugChunks(!Config.isDebugChunks());
-                }
+                actionDebugChunks(isPressed);
                 break;
+            default:
+                log.warn("Unrecognized action {}", name);
         }
     }
 
-    private void fireBall() {
+    private void actionAddBlock(boolean isPressed) {
+        if (buttonAddBlock.getParent() == null) {
+            if (isPressed) {
+                addBlock();
+            }
+            highlight(isPressed, buttonAddBlock);
+        }
+    }
+
+    private void actionRemoveBlock(boolean isPressed) {
+        if (buttonRemoveBlock.getParent() == null) {
+            if (isPressed) {
+                removeBlock();
+            }
+            highlight(isPressed, buttonRemoveBlock);
+        }
+    }
+
+    private void actionLeft(boolean isPressed) {
+        left = isPressed;
+        highlight(isPressed, buttonLeft);
+    }
+
+    private void actionRight(boolean isPressed) {
+        right = isPressed;
+        highlight(isPressed, buttonRight);
+    }
+
+    private void actionForward(boolean isPressed) {
+        forward = isPressed;
+        highlight(isPressed, buttonForward);
+    }
+
+    private void actionBackward(boolean isPressed) {
+        backward = isPressed;
+        highlight(isPressed, buttonBackward);
+    }
+
+    private void actionFlyUp(boolean isPressed) {
+        if (fly) {
+            up = isPressed;
+        }
+    }
+
+    private void actionFlyDown(boolean isPressed) {
+        if (fly) {
+            down = isPressed;
+        }
+    }
+
+    private void actionJump(boolean isPressed) {
+        if (isPressed) {
+            playerJump();
+        }
+        highlight(isPressed, buttonJump);
+    }
+
+    private void actionFireBall(boolean isPressed) {
+        if (!isPressed) {
+            return;
+        }
+
         Geometry ball = new Geometry("ball", new Sphere(32, 32, 0.4f));
         ball.setMaterial(getBallMaterial());
         ball.setLocalTranslation(app.getCamera().getLocation());
@@ -691,6 +725,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         app.getRootNode().attachChild(ball);
         app.getStateManager().getState(BulletAppState.class).getPhysicsSpace().add(bulletControl);
+    }
+
+    private void actionDebugChunks(boolean isPressed) {
+        if (isPressed) {
+            Config.setDebugChunks(!Config.isDebugChunks());
+        }
     }
 
     private void playerJump() {
@@ -746,8 +786,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
     }
 
-    private void toogleFly() {
-        setFly(!fly);
+    private void toogleFly(boolean isPressed) {
+        if (isPressed) {
+            setFly(!fly);
+        }
     }
 
     public void setFly(boolean fly) {
