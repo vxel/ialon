@@ -647,6 +647,12 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             case ACTION_DEBUG_CHUNK:
                 actionDebugChunks(isPressed);
                 break;
+            case ACTION_LOOK_LEFT:
+            case ACTION_LOOK_RIGHT:
+            case ACTION_LOOK_UP:
+            case ACTION_LOOK_DOWN:
+                // Handled by onAnalog()
+                break;
             default:
                 log.warn("Unrecognized action {}", name);
         }
@@ -834,45 +840,40 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             return;
         }
 
-        executorService.submit(() -> {
-            try {
-                Vector3f location = worldBlockLocation;
-                // Orientate the selected block
-                Block block = orientateBlock(selectedBlock, location);
-                if (block == null) {
-                    // Can't place the block like this
-                    return;
-                }
+        executorService.submit(() -> addBlockTask(worldBlockLocation, selectedBlock));
+    }
 
-                if (TypeIds.WATER.equals(selectedBlock.getType())) {
-                    Vector3f tmp = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-                    Block previousBlock = chunkManager.getBlock(tmp).orElse(null);
-                    if (previousBlock != null && !ShapeIds.CUBE.equals(previousBlock.getShape())) {
-                        location = tmp;
-                    }
-                }
+    private void addBlockTask(Vector3f location, Block block) {
+        // Orientate the selected block
+        Block orientatedBlock = orientateBlock(block, location);
+        if (orientatedBlock == null) {
+            // Can't place the block like this
+            return;
+        }
 
-                // Add the block, which removes the light at this location
-                log.info("Adding block {}", block.getName());
-                Set<Vec3i> updatedChunks = chunkManager.addBlock(location, block);
-
-                // Computes the light if the block is a torch
-                if (block.isTorchlight()) {
-                    updatedChunks.addAll(chunkManager.addTorchlight(location, 15));
-                }
-
-                if (!updatedChunks.isEmpty()) {
-                    chunkManager.requestOrderedMeshChunks(updatedChunks);
-
-                    for (Vec3i loc : updatedChunks) {
-                        app.asyncSave(loc);
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Failed to add block", e);
+        if (TypeIds.WATER.equals(block.getType())) {
+            Vector3f tmp = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
+            Block previousBlock = chunkManager.getBlock(tmp).orElse(null);
+            if (previousBlock != null && !ShapeIds.CUBE.equals(previousBlock.getShape())) {
+                location = tmp;
             }
+        }
 
-        });
+        // Add the block, which removes the light at this location
+        log.info("Adding block {}", orientatedBlock.getName());
+        Set<Vec3i> updatedChunks = chunkManager.addBlock(location, orientatedBlock);
+
+        // Computes the light if the block is a torch
+        if (orientatedBlock.isTorchlight()) {
+            updatedChunks.addAll(chunkManager.addTorchlight(location, 15));
+        }
+
+        if (!updatedChunks.isEmpty()) {
+            chunkManager.requestOrderedMeshChunks(updatedChunks);
+            for (Vec3i loc : updatedChunks) {
+                app.asyncSave(loc);
+            }
+        }
     }
 
     private void removeBlock() {
@@ -883,29 +884,28 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             return;
         }
 
-        executorService.submit(() -> {
-            try {
-                Vector3f blockLocation = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-                if (blockLocation.y <= 1) {
-                    return;
-                }
+        executorService.submit(() -> removeBlockTask(removePlaceholder
+                .getWorldTranslation()
+                .subtract(0.5f, 0.5f, 0.5f)));
+    }
 
-                log.info("Removing block at {}", blockLocation);
-                Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
+    private void removeBlockTask(Vector3f blockLocation) {
+        if (blockLocation.y <= 1) {
+            return;
+        }
 
-                cleanAroundBlocks(blockLocation, updatedChunks);
+        log.info("Removing block at {}", blockLocation);
+        Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
 
-                if (!updatedChunks.isEmpty()) {
-                    chunkManager.requestOrderedMeshChunks(updatedChunks);
+        cleanAroundBlocks(blockLocation, updatedChunks);
 
-                    for (Vec3i location : updatedChunks) {
-                        app.asyncSave(location);
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Failed to remove block", e);
+        if (!updatedChunks.isEmpty()) {
+            chunkManager.requestOrderedMeshChunks(updatedChunks);
+
+            for (Vec3i location : updatedChunks) {
+                app.asyncSave(location);
             }
-        });
+        }
     }
 
     private void cleanAroundBlocks(Vector3f blockLocation, Set<Vec3i> updatedChunks) {
@@ -1056,44 +1056,63 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         Block block = chunkManager.getBlock(camera.getLocation().subtract(0, 1, 0)).orElse(null);
         if (block != null) {
             if (block.getName().contains("water")) {
-                if (!underWater) {
-                    log.info("Water - IN");
-                    underWater = true;
+                updateFallSpeedWaterIn();
 
-                    if (!fly) {
-                        // In water, we don't need to climb stairs, just swim ;-)
-                        // Setting step height to a low value prevents a bug in bullet
-                        // that makes the character fall with a different speed below
-                        // the stepHeight. This bug is noticeable especially under water.
-                        player.getCharacter().setStepHeight(0.03f);
-                        player.setFallSpeed(WATER_GRAVITY);
-                        player.setJumpSpeed(WATER_JUMP_SPEED);
-                    }
-                }
             } else if (TypeIds.SCALE.equals(block.getType())) {
-                if (!onScale) {
-                    log.info("Scale - IN");
-                    onScale = true;
-                }
+                updateFallSpeedScaleIn();
+            }
 
-                if (!fly) {
-                    player.setFallSpeed(0);
-                }
-            }
         } else if (underWater) {
-            log.info("Water - OUT");
-            underWater = false;
-            if (!fly) {
-                player.getCharacter().setStepHeight(PLAYER_STEP_HEIGHT);
-                player.setFallSpeed(GROUND_GRAVITY);
-                player.setJumpSpeed(JUMP_SPEED);
-            }
+            updateFallSpeedWaterOut();
+
         } else if (onScale) {
-            log.info("Scale - OUT");
-            onScale = false;
+            updateFallSpeedScaleOut();
+        }
+    }
+
+    private void updateFallSpeedWaterIn() {
+        if (!underWater) {
+            log.info("Water - IN");
+            underWater = true;
+
             if (!fly) {
-                player.setFallSpeed(GROUND_GRAVITY);
+                // In water, we don't need to climb stairs, just swim ;-)
+                // Setting step height to a low value prevents a bug in bullet
+                // that makes the character fall with a different speed below
+                // the stepHeight. This bug is noticeable especially under water.
+                player.getCharacter().setStepHeight(0.03f);
+                player.setFallSpeed(WATER_GRAVITY);
+                player.setJumpSpeed(WATER_JUMP_SPEED);
             }
+        }
+    }
+
+    private void updateFallSpeedWaterOut() {
+        log.info("Water - OUT");
+        underWater = false;
+        if (!fly) {
+            player.getCharacter().setStepHeight(PLAYER_STEP_HEIGHT);
+            player.setFallSpeed(GROUND_GRAVITY);
+            player.setJumpSpeed(JUMP_SPEED);
+        }
+    }
+
+    private void updateFallSpeedScaleIn() {
+        if (!onScale) {
+            log.info("Scale - IN");
+            onScale = true;
+        }
+
+        if (!fly) {
+            player.setFallSpeed(0);
+        }
+    }
+
+    private void updateFallSpeedScaleOut() {
+        log.info("Scale - OUT");
+        onScale = false;
+        if (!fly) {
+            player.setFallSpeed(GROUND_GRAVITY);
         }
     }
 
