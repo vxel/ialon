@@ -159,17 +159,7 @@ public class ChunkPager {
 
         Set<Vec3i> pagesToMesh = new HashSet<>();
         Set<Vec3i> pagesToFetch = new HashSet<>();
-        for (int x = fetchMin.x; x <= fetchMax.x; x++) {
-            for (int y = fetchMin.y; y <= fetchMax.y; y++) {
-                for (int z = fetchMin.z; z <= fetchMax.z; z++) {
-                    Vec3i location = new Vec3i(x, y, z);
-                    pagesToFetch.add(location);
-                    if (x >= meshMin.x && x <= meshMax.x && y >= meshMin.y && y <= meshMax.y && z >= meshMin.z && z <= meshMax.z) {
-                        pagesToMesh.add(location);
-                    }
-                }
-            }
-        }
+        collectPages(fetchMin, fetchMax, meshMin, meshMax, pagesToFetch, pagesToMesh);
 
         // detach pages outside of the grid
         pagesToDetach.clear();
@@ -199,6 +189,20 @@ public class ChunkPager {
 
         pagesToMesh.clear();
         pagesToFetch.clear();
+    }
+
+    private void collectPages(Vec3i fetchMin, Vec3i fetchMax, Vec3i meshMin, Vec3i meshMax, Set<Vec3i> pagesToFetch, Set<Vec3i> pagesToMesh) {
+        for (int x = fetchMin.x; x <= fetchMax.x; x++) {
+            for (int y = fetchMin.y; y <= fetchMax.y; y++) {
+                for (int z = fetchMin.z; z <= fetchMax.z; z++) {
+                    Vec3i location = new Vec3i(x, y, z);
+                    pagesToFetch.add(location);
+                    if (x >= meshMin.x && x <= meshMax.x && y >= meshMin.y && y <= meshMax.y && z >= meshMin.z && z <= meshMax.z) {
+                        pagesToMesh.add(location);
+                    }
+                }
+            }
+        }
     }
 
     private void detachNextPages() {
