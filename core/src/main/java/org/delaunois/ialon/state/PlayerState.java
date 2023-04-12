@@ -269,35 +269,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         //walkDirection.multLocal(0.9f);
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
-
-        if (System.currentTimeMillis() - lastCollisionTest > 100) {
-            lastCollisionTest = System.currentTimeMillis();
-            CollisionResult result = getCollisionResult();
-            updatePlaceholders(result);
-        }
-
-        if (left) {
-            move.addLocal(camLeft.x, fly ? 0 : camLeft.y, camLeft.z);
-        }
-        if (right) {
-            move.addLocal(-camLeft.x, fly ? 0 : -camLeft.y, -camLeft.z);
-        }
-        if (fly && jump) {
-            up = forward;
-            down = backward;
-        }
-        if (forward && (!fly || !jump)) {
-            move.addLocal(camDir.x, fly ? 0 : camDir.y, camDir.z);
-        }
-        if (backward && (!fly || !jump)) {
-            move.addLocal(-camDir.x, fly ? 0 : -camDir.y, -camDir.z);
-        }
-        if (up && playerLocation.y <= MAXY) {
-            move.addLocal(0, 1, 0);
-        }
-        if (down) {
-            move.addLocal(0, -1, 0);
-        }
+        updatePlaceholders();
+        updateMove(move);
 
         if (move.length() > 0) {
             move.normalizeLocal().multLocal(fly ? PLAYER_FLY_SPEED : PLAYER_MOVE_SPEED);
@@ -308,6 +281,56 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         updatePlayerPosition();
         updateFallSpeed();
+    }
+
+    private void updateMove(Vector3f move) {
+        if (fly) {
+            updateFlyMove(move);
+        } else {
+            updateWalkMove(move);
+        }
+
+        if (up && playerLocation.y <= MAXY) {
+            move.addLocal(0, 1, 0);
+        }
+        if (down) {
+            move.addLocal(0, -1, 0);
+        }
+    }
+
+    private void updateWalkMove(Vector3f move) {
+        if (left) {
+            move.addLocal(camLeft.x, camLeft.y, camLeft.z);
+        }
+        if (right) {
+            move.addLocal(-camLeft.x, -camLeft.y, -camLeft.z);
+        }
+        if (forward) {
+            move.addLocal(camDir.x, camDir.y, camDir.z);
+        }
+        if (backward) {
+            move.addLocal(-camDir.x, -camDir.y, -camDir.z);
+        }
+    }
+
+    private void updateFlyMove(Vector3f move) {
+        if (left) {
+            move.addLocal(camLeft.x, 0, camLeft.z);
+        }
+        if (right) {
+            move.addLocal(-camLeft.x, 0, -camLeft.z);
+        }
+        if (jump) {
+            up = forward;
+            down = backward;
+        } else {
+            if (forward) {
+                move.addLocal(camDir.x, 0, camDir.z);
+            }
+            if (backward) {
+                move.addLocal(-camDir.x, 0, -camDir.z);
+            }
+        }
     }
 
     public void resize() {
@@ -588,54 +611,71 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (log.isDebugEnabled()) {
             log.debug("Action {} isPressed {}", name, isPressed);
         }
-        if (ACTION_ADD_BLOCK.equals(name) && buttonAddBlock.getParent() == null) {
-            if (isPressed) {
-                addBlock();
-            }
-            highlight(isPressed, buttonAddBlock);
 
-        } else if (ACTION_REMOVE_BLOCK.equals(name) && buttonRemoveBlock.getParent() == null) {
-            if (isPressed) {
-                removeBlock();
-            }
-            highlight(isPressed, buttonRemoveBlock);
-
-        } else if (ACTION_LEFT.equals(name)) {
-            left = isPressed;
-            highlight(isPressed, buttonLeft);
-
-        } else if (ACTION_RIGHT.equals(name)) {
-            right = isPressed;
-            highlight(isPressed, buttonRight);
-
-        } else if (ACTION_FORWARD.equals(name)) {
-            forward = isPressed;
-            highlight(isPressed, buttonForward);
-
-        } else if (ACTION_BACKWARD.equals(name)) {
-            backward = isPressed;
-            highlight(isPressed, buttonBackward);
-
-        } else if (fly && ACTION_FLY_UP.equals(name)) {
-            up = isPressed;
-
-        } else if (fly && ACTION_FLY_DOWN.equals(name)) {
-            down = isPressed;
-
-        } else if (ACTION_JUMP.equals(name)) {
-            if (isPressed) {
-                playerJump();
-            }
-            highlight(isPressed, buttonJump);
-
-        } else if (ACTION_FIRE.equals(name) && isPressed) {
-            fireBall();
-
-        } else if (ACTION_FLY.equals(name) && isPressed) {
-            toogleFly();
-
-        } else if (ACTION_DEBUG_CHUNK.equals(name) && isPressed) {
-            Config.setDebugChunks(!Config.isDebugChunks());
+        switch (name) {
+            case ACTION_ADD_BLOCK:
+                if (buttonAddBlock.getParent() == null) {
+                    if (isPressed) {
+                        addBlock();
+                    }
+                    highlight(isPressed, buttonAddBlock);
+                }
+                break;
+            case ACTION_REMOVE_BLOCK:
+                if (buttonRemoveBlock.getParent() == null) {
+                    if (isPressed) {
+                        removeBlock();
+                    }
+                    highlight(isPressed, buttonRemoveBlock);
+                }
+                break;
+            case ACTION_LEFT:
+                left = isPressed;
+                highlight(isPressed, buttonLeft);
+                break;
+            case ACTION_RIGHT:
+                right = isPressed;
+                highlight(isPressed, buttonRight);
+                break;
+            case ACTION_FORWARD:
+                forward = isPressed;
+                highlight(isPressed, buttonForward);
+                break;
+            case ACTION_BACKWARD:
+                backward = isPressed;
+                highlight(isPressed, buttonBackward);
+                break;
+            case ACTION_FLY_UP:
+                if (fly) {
+                    up = isPressed;
+                }
+                break;
+            case ACTION_FLY_DOWN:
+                if (fly) {
+                    down = isPressed;
+                }
+                break;
+            case ACTION_JUMP:
+                if (isPressed) {
+                    playerJump();
+                }
+                highlight(isPressed, buttonJump);
+                break;
+            case ACTION_FIRE:
+                if (isPressed) {
+                    fireBall();
+                }
+                break;
+            case ACTION_FLY:
+                if (isPressed) {
+                    toogleFly();
+                }
+                break;
+            case ACTION_DEBUG_CHUNK:
+                if (isPressed) {
+                    Config.setDebugChunks(!Config.isDebugChunks());
+                }
+                break;
         }
     }
 
@@ -922,6 +962,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
 
         return null;
+    }
+
+    private void updatePlaceholders() {
+        if (System.currentTimeMillis() - lastCollisionTest > 100) {
+            lastCollisionTest = System.currentTimeMillis();
+            CollisionResult result = getCollisionResult();
+            updatePlaceholders(result);
+        }
     }
 
     private void updatePlaceholders(CollisionResult result) {
