@@ -183,9 +183,7 @@ public class ChunkLightManager {
 
         while (!context.sunlightRemovalBfsQueue.isEmpty()) {
             LightRemovalNode node = context.sunlightRemovalBfsQueue.poll();
-            if (log.isDebugEnabled()) {
-                log.debug("Propagating light removal node({}, {}, {})", node.x, node.y, node.z);
-            }
+            log.debug("Propagating light removal node({}, {}, {})", node.x, node.y, node.z);
             propagateRemovedSunlight(node.chunk, node.x - 1, node.y, node.z, node.intensity, false, context);
             propagateRemovedSunlight(node.chunk, node.x + 1, node.y, node.z, node.intensity, false, context);
             propagateRemovedSunlight(node.chunk, node.x, node.y - 1, node.z, node.intensity, true, context);
@@ -196,9 +194,7 @@ public class ChunkLightManager {
 
         while (!context.sunlightBfsQueue.isEmpty()) {
             LightNode node = context.sunlightBfsQueue.poll();
-            if (log.isDebugEnabled()) {
-                log.debug("Propagating light add node({}, {}, {})", node.x, node.y, node.z);
-            }
+            log.debug("Propagating light add node({}, {}, {})", node.x, node.y, node.z);
             int lightLevel = node.chunk.getSunlight(node.x, node.y, node.z);
             propagateAddedSunlight(node.chunk ,node.x - 1, node.y, node.z, lightLevel, true, context);
             propagateAddedSunlight(node.chunk, node.x + 1, node.y, node.z, lightLevel, true, context);
@@ -288,33 +284,24 @@ public class ChunkLightManager {
         }
 
         if (chunk == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("PAS1 - Chunk is null for light ({}, {}, {})", x, y, z);
-            }
+            log.debug("PAS1 - Chunk is null for light ({}, {}, {})", x, y, z);
             return;
         }
 
         Block block = chunk.getBlock(x, y, z);
         if (block != null) {
             if (block.isTransparent()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("PAS2.0 - Dimming light through transparent block at ({}, {}, {})", x, y, z);
-                }
+                log.debug("PAS2.0 - Dimming light through transparent block at ({}, {}, {})", x, y, z);
                 dimLight = true;
 
             } else if (blockingShapes.contains(block.getShape())) {
-                if (log.isDebugEnabled()) {
-                    log.debug("PAS2.1 - Light blocked at ({}, {}, {})", x, y, z);
-                }
+                log.debug("PAS2.1 - Light blocked at ({}, {}, {})", x, y, z);
                 return;
             }
         }
 
         if (!dimLight && lightLevel == 15) {
-            if (log.isDebugEnabled()) {
-                log.debug("PAS3 - Setting light ({}, {}, {}) to {}", x, y, z, lightLevel);
-            }
-
+            log.debug("PAS3 - Setting light ({}, {}, {}) to {}", x, y, z, lightLevel);
             chunk.setSunlight(x, y, z, lightLevel);
             updateChunkMeshUpdateRequests(chunk, x, y, z, context);
             context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
@@ -332,9 +319,7 @@ public class ChunkLightManager {
             context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
 
         } else {
-            if (log.isDebugEnabled()) {
-                log.debug("PAS5 - Leaving light ({}, {}, {}) at {}. BL={} LL={}", x, y, z, lightLevel, blockLightLevel, lightLevel);
-            }
+            log.debug("PAS5 - Leaving light ({}, {}, {}) at {}. BL={} LL={}", x, y, z, lightLevel, blockLightLevel, lightLevel);
         }
     }
 
@@ -352,35 +337,27 @@ public class ChunkLightManager {
         }
 
         if (chunk == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRS1 - Chunk is null for light ({}, {}, {})", x, y, z);
-            }
+            log.debug("PRS1 - Chunk is null for light ({}, {}, {})", x, y, z);
             return;
         }
 
         int neighborLevel = chunk.getSunlight(x, y, z);
 
         if ((dimLight && neighborLevel == 15) || (neighborLevel != 0 && neighborLevel < lightLevel)) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRS2 - Setting light ({}, {}, {}) to {}. NL={} LL={} D={}", x, y, z, 0, neighborLevel, lightLevel, dimLight);
-            }
+            log.debug("PRS2 - Setting light ({}, {}, {}) to {}. NL={} LL={} D={}", x, y, z, 0, neighborLevel, lightLevel, dimLight);
             chunk.setSunlight(x, y, z, 0);
             updateChunkMeshUpdateRequests(chunk, x, y, z, context);
             context.sunlightRemovalBfsQueue.offer(new LightRemovalNode(chunk, x, y, z, neighborLevel));
 
         } else if (neighborLevel >= lightLevel) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRS3 - Enqueuing light ({}, {}, {}). NL={} LL={} D={}", x, y, z, neighborLevel, lightLevel, dimLight);
-            }
+            log.debug("PRS3 - Enqueuing light ({}, {}, {}). NL={} LL={} D={}", x, y, z, neighborLevel, lightLevel, dimLight);
             // Add it to the update queue, so it can propagate to fill in the gaps
             // left behind by this removal. We should update the lightBfsQueue after
             // the lightRemovalBfsQueue is empty.
             context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
 
         } else {
-            if (log.isDebugEnabled()) {
-                log.debug("PRS3 - Leaving light ({}, {}, {}) at {}. NL={} LL={} D={}", x, y, z, neighborLevel, neighborLevel, lightLevel, dimLight);
-            }
+            log.debug("PRS3 - Leaving light ({}, {}, {}) at {}. NL={} LL={} D={}", x, y, z, neighborLevel, neighborLevel, lightLevel, dimLight);
         }
     }
 

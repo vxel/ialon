@@ -199,23 +199,13 @@ public class ChunkManager {
             if (chunk.isEmpty()) {
                 saved[0]++;
                 chunk.setNode(new EmptyNode());
-                if (triggers) {
-                    triggerListenerChunkAvailable(chunk);
-                }
+                triggerListenerChunkAvailable(chunk, triggers);
 
             } else if (chunk.isFull()) {
-                Chunk up = cache.unsafeFastGet(location.add(0, 1, 0));
-                Chunk down = cache.unsafeFastGet(location.add(0, -1, 0));
-                Chunk a = cache.unsafeFastGet(location.add(1, 0, 0));
-                Chunk b = cache.unsafeFastGet(location.add(0, 0, 1));
-                Chunk c = cache.unsafeFastGet(location.add(-1, 0, 0));
-                Chunk d = cache.unsafeFastGet(location.add(0, 0, -1));
-                if ((up == null || up.isFull()) && (down == null || down.isFull()) && a.isFull() && b.isFull() && c.isFull() && d.isFull()) {
+                if (isSurroundedByFullChunks(location)) {
                     saved[0]++;
                     chunk.setNode(new EmptyNode());
-                    if (triggers) {
-                        triggerListenerChunkAvailable(chunk);
-                    }
+                    triggerListenerChunkAvailable(chunk, triggers);
 
                 } else {
                     // Defer full chunks
@@ -234,6 +224,21 @@ public class ChunkManager {
         log.info("{} locations generated and {} empty locations", locations.size() - saved[0], saved[0]);
 
         return results;
+    }
+
+    private boolean isSurroundedByFullChunks(Vec3i location) {
+        Chunk up = cache.unsafeFastGet(location.add(0, 1, 0));
+        Chunk down = cache.unsafeFastGet(location.add(0, -1, 0));
+        Chunk east = cache.unsafeFastGet(location.add(1, 0, 0));
+        Chunk south = cache.unsafeFastGet(location.add(0, 0, 1));
+        Chunk west = cache.unsafeFastGet(location.add(-1, 0, 0));
+        Chunk north = cache.unsafeFastGet(location.add(0, 0, -1));
+        return ((up == null || up.isFull())
+                && (down == null || down.isFull())
+                && east.isFull()
+                && south.isFull()
+                && west.isFull()
+                && north.isFull());
     }
 
     private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers) {
@@ -575,6 +580,12 @@ public class ChunkManager {
     private static Vector3f getNeighbourBlockLocation(Vector3f location, Vector3f normal) {
         Vector3f neighbourDirection = normal.mult(0.99f);
         return getScaledBlockLocation(location).add(neighbourDirection);
+    }
+
+    private void triggerListenerChunkAvailable(Chunk chunk, boolean triggers) {
+        if (triggers) {
+            triggerListenerChunkAvailable(chunk);
+        }
     }
 
     private void triggerListenerChunkAvailable(Chunk chunk) {

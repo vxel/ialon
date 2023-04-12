@@ -150,9 +150,7 @@ public class ChunkLiquidManager {
             return false;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("stepUnFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
-        }
+        log.debug("stepUnFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
 
         if (!propagateRemovedLiquid(node.chunk, node.x, node.y - 1, node.z, node.level, false, context)) {
             propagateRemovedLiquid(node.chunk, node.x - 1, node.y, node.z, node.level, true, context);
@@ -169,9 +167,8 @@ public class ChunkLiquidManager {
             return;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("stepFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
-        }
+        log.debug("stepFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
+
         int liquidLevel = getLiquidLevel(node.chunk, node.x, node.y, node.z);
         if (liquidLevel > 0 && !propagateLiquid(node, Direction.DOWN, liquidLevel, false, context)) {
             // If the liquid can't propagate downwards, try horizontally
@@ -234,9 +231,7 @@ public class ChunkLiquidManager {
         }
 
         if (chunk == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRL1 - Chunk is null for liquid ({}, {}, {})", x, y, z);
-            }
+            log.debug("PRL1 - Chunk is null for liquid ({}, {}, {})", x, y, z);
             return false;
         }
 
@@ -250,27 +245,20 @@ public class ChunkLiquidManager {
         }
 
         if ((!dims && previousLiquidLevel == LEVEL_MAX) || previousLiquidLevel > 0 && previousLiquidLevel < liquidLevel) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRL2 - Setting liquid ({}, {}, {}) to {}. PL={} LL={} D={}", x, y, z, 0, previousLiquidLevel, liquidLevel, dims);
-            }
-
+            log.debug("PRL2 - Setting liquid ({}, {}, {}) to {}. PL={} LL={} D={}", x, y, z, 0, previousLiquidLevel, liquidLevel, dims);
             setLiquid(block, chunk, new Vec3i(x, y, z), 0);
             liquidRemovalBfsQueue.offer(new LiquidNode(chunk, x, y, z, previousLiquidLevel));
             return true;
 
         } else if (previousLiquidLevel >= liquidLevel) {
-            if (log.isDebugEnabled()) {
-                log.debug("PRL3 - Enqueuing flowing in ({}, {}, {}). PL={} LL={} D={}", x, y, z, previousLiquidLevel, liquidLevel, dims);
-            }
+            log.debug("PRL3 - Enqueuing flowing in ({}, {}, {}). PL={} LL={} D={}", x, y, z, previousLiquidLevel, liquidLevel, dims);
             // Add it to the update queue, so it can propagate to fill in the gaps
             // left behind by this removal. We should update the lightBfsQueue after
             // the lightRemovalBfsQueue is empty.
             liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, previousLiquidLevel));
 
         } else {
-            if (log.isDebugEnabled()) {
-                log.debug("PRL3 - Stop unflowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
-            }
+            log.debug("PRL3 - Stop unflowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
         }
         return false;
     }
@@ -288,9 +276,7 @@ public class ChunkLiquidManager {
                 .get(chunk.getBlock(node.x, node.y, node.z).getShape())
                 .fullyCoversFace(direction)) {
             // Block does not allow liquid to flow
-            if (log.isDebugEnabled()) {
-                log.debug("PL0 - Liquid blocked by face at ({}, {}, {})", x, y, z);
-            }
+            log.debug("PL0 - Liquid blocked by face at ({}, {}, {})", x, y, z);
             return false;
         }
 
@@ -307,9 +293,7 @@ public class ChunkLiquidManager {
         }
 
         if (chunk == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("PL1 - Chunk is null for liquid ({}, {}, {})", x, y, z);
-            }
+            log.debug("PL1 - Chunk is null for liquid ({}, {}, {})", x, y, z);
             return false;
         }
 
@@ -317,9 +301,7 @@ public class ChunkLiquidManager {
         if (block != null) {
             if (block.getLiquidLevel() == Block.LIQUID_DISABLED) {
                 // Block does not allow liquid to flow
-                if (log.isDebugEnabled()) {
-                    log.debug("PL2.1 - Liquid blocked at ({}, {}, {})", x, y, z);
-                }
+                log.debug("PL2.1 - Liquid blocked at ({}, {}, {})", x, y, z);
                 return false;
             }
 
@@ -329,9 +311,7 @@ public class ChunkLiquidManager {
                         .get(block.getShape())
                         .fullyCoversFace(direction.opposite())) {
                 // Block does not allow liquid to flow
-                if (log.isDebugEnabled()) {
-                    log.debug("PL2.2 - Liquid blocked by face at ({}, {}, {})", x, y, z);
-                }
+                log.debug("PL2.2 - Liquid blocked by face at ({}, {}, {})", x, y, z);
                 return false;
             }
         }
@@ -339,10 +319,7 @@ public class ChunkLiquidManager {
         updateChunkMeshUpdateRequests(chunk, x, y, z, context);
 
         if (!dims) {
-            if (log.isDebugEnabled()) {
-                log.debug("PL3 - Flowing vertically in ({}, {}, {}) to {}", x, y, z, liquidLevel);
-            }
-
+            log.debug("PL3 - Flowing vertically in ({}, {}, {}) to {}", x, y, z, liquidLevel);
             setLiquid(block, chunk, new Vec3i(x, y, z), LEVEL_MAX);
             liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, LEVEL_MAX));
             return true;
@@ -358,9 +335,7 @@ public class ChunkLiquidManager {
             liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, liquidLevel - 1));
 
         } else {
-            if (log.isDebugEnabled()) {
-                log.debug("PL5 - Stop flowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
-            }
+            log.debug("PL5 - Stop flowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
         }
         return false;
     }
