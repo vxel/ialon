@@ -454,7 +454,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private static final int BLOCK_HISTORY_SIZE = 3;
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
-    public Node[] blocks;
+    private Node[] blocks;
 
     private Ialon app;
     private BitmapFont guiFont;
