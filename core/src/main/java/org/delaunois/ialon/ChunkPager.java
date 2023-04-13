@@ -180,10 +180,10 @@ public class ChunkPager {
         // request the new pages pages to load/generate and mesh
         chunkManager.requestChunks(
                 pagesToFetch.stream()
-                        .filter(location -> !fetchedPages.containsKey(location))
+                        .filter(pageLocation -> !fetchedPages.containsKey(pageLocation))
                         .collect(Collectors.toList()),
                 pagesToMesh.stream()
-                        .filter(location -> !attachedPages.containsKey(location))
+                        .filter(pageLocation -> !attachedPages.containsKey(pageLocation))
                         .sorted(Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage)))
                         .collect(Collectors.toList()));
 
@@ -195,10 +195,10 @@ public class ChunkPager {
         for (int x = fetchMin.x; x <= fetchMax.x; x++) {
             for (int y = fetchMin.y; y <= fetchMax.y; y++) {
                 for (int z = fetchMin.z; z <= fetchMax.z; z++) {
-                    Vec3i location = new Vec3i(x, y, z);
-                    pagesToFetch.add(location);
+                    Vec3i pageLocation = new Vec3i(x, y, z);
+                    pagesToFetch.add(pageLocation);
                     if (x >= meshMin.x && x <= meshMax.x && y >= meshMin.y && y <= meshMax.y && z >= meshMin.z && z <= meshMax.z) {
-                        pagesToMesh.add(location);
+                        pagesToMesh.add(pageLocation);
                     }
                 }
             }
@@ -264,10 +264,10 @@ public class ChunkPager {
             }
 
             // Create the new page
-            Node node = createPage(chunk);
-            attachedPages.put(chunk.getLocation(), node);
-            if (node != null) {
-                attachPage(node);
+            Node newPage = createPage(chunk);
+            attachedPages.put(chunk.getLocation(), newPage);
+            if (newPage != null) {
+                attachPage(newPage);
                 attached += 1;
             }
 

@@ -266,7 +266,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         camDir.set(camera.getDirection());
         camLeft.set(camera.getLeft());
         walkDirection.set(0, 0, 0);
-        //walkDirection.multLocal(0.9f);
+
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
         updatePlaceholders();
@@ -393,22 +393,22 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         // size, stepheight, jumping, falling, and gravity.
         // We also put the player in its starting position.
         CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(PLAYER_RADIUS, PLAYER_HEIGHT - 2 * PLAYER_RADIUS, 1);
-        CharacterControl player = new CharacterControl(capsuleShape, PLAYER_STEP_HEIGHT);
-        player.setJumpSpeed(JUMP_SPEED);
-        player.setFallSpeed(GROUND_GRAVITY);
-        player.setGravity(0);
-        player.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
+        CharacterControl characterControl = new CharacterControl(capsuleShape, PLAYER_STEP_HEIGHT);
+        characterControl.setJumpSpeed(JUMP_SPEED);
+        characterControl.setFallSpeed(GROUND_GRAVITY);
+        characterControl.setGravity(0);
+        characterControl.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
 
         if (playerLocation == null) {
             playerLocation = new Vector3f(CHUNK_SIZE / 2f, app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f);
         }
-        player.setPhysicsLocation(playerLocation);
+        characterControl.setPhysicsLocation(playerLocation);
 
-        app.getStateManager().getState(BulletAppState.class).getPhysicsSpace().add(player);
+        app.getStateManager().getState(BulletAppState.class).getPhysicsSpace().add(characterControl);
 
-        playerLocation.set(player.getPhysicsLocation());
+        playerLocation.set(characterControl.getPhysicsLocation());
 
-        return player;
+        return characterControl;
     }
 
     private Label createCrossHair() {

@@ -182,16 +182,14 @@ public class ChunkLiquidManager {
     public int getLiquidLevel(Chunk c, int x, int y, int z) {
         Chunk chunk = c;
 
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
@@ -218,16 +216,14 @@ public class ChunkLiquidManager {
     private boolean propagateRemovedLiquid(Chunk c, int x, int y, int z, int liquidLevel, boolean dims, LiquidRunningContext context) {
         Chunk chunk = c;
 
-        if (isOutsideChunk(x, y, z)) {
-            if (c.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
-                chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(c, location);
+            chunk = c.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {
@@ -280,16 +276,14 @@ public class ChunkLiquidManager {
             return false;
         }
 
-        if (isOutsideChunk(x, y, z)) {
-            if (node.chunk.getChunkResolver() != null) {
-                Vec3i location = new Vec3i(x, y, z);
-                Vec3i chunkLocation = calculateNeighbourChunkLocation(node.chunk, location);
-                chunk = node.chunk.getChunkResolver().get(chunkLocation).orElse(null);
-                Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
-                x = neighbourBlockLocation.x;
-                y = neighbourBlockLocation.y;
-                z = neighbourBlockLocation.z;
-            }
+        if (isOutsideChunk(x, y, z) && node.chunk.getChunkResolver() != null) {
+            Vec3i location = new Vec3i(x, y, z);
+            Vec3i chunkLocation = calculateNeighbourChunkLocation(node.chunk, location);
+            chunk = node.chunk.getChunkResolver().get(chunkLocation).orElse(null);
+            Vec3i neighbourBlockLocation = calculateNeighbourChunkBlockLocation(location);
+            x = neighbourBlockLocation.x;
+            y = neighbourBlockLocation.y;
+            z = neighbourBlockLocation.z;
         }
 
         if (chunk == null) {

@@ -138,4 +138,7 @@ public class Config {
     };
     public static final byte[] ALL_LEVELS = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
+    private Config() {
+        // Prevent instanciation
+    }
 }

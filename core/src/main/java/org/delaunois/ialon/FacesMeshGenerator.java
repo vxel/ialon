@@ -220,7 +220,6 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
             neighborhood.setLocation(blockLocation);
             shape.add(neighborhood, mesh);
-            //shape.add(blockLocation, chunk, mesh);
 
             // add the block to the collision mesh
             if (block.isSolid()) {

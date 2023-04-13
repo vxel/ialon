@@ -664,21 +664,21 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     private Node[] createBlockNodes() {
-        Node[] blocks = new Node[BLOCK_IDS.length];
+        Node[] nodes = new Node[BLOCK_IDS.length];
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         for (int i = 0; i < BLOCK_IDS.length; i++) {
             if (Objects.equals(BLOCK_IDS[i], SPACER)) {
-                blocks[i] = null;
+                nodes[i] = null;
             } else {
                 Block block = blockRegistry.get(BLOCK_IDS[i]);
                 if (block == null) {
                     log.warn("Unknown block {}", BLOCK_IDS[i]);
                 } else {
-                    blocks[i] = createBlockNode(block, BUTTON_SIZE, BLOCK_IDS[i]);
+                    nodes[i] = createBlockNode(block, BUTTON_SIZE, BLOCK_IDS[i]);
                 }
             }
         }
-        return blocks;
+        return nodes;
     }
 
     private Container[] createMenuBlock() {

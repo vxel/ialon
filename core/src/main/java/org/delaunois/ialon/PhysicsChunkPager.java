@@ -272,8 +272,8 @@ public class PhysicsChunkPager {
     }
 
     protected void createPage(Chunk chunk) {
-        Vec3i location = chunk.getLocation();
-        if (!ready && location.x == centerPage.x && location.y <= centerPage.y && location.z == centerPage.z) {
+        Vec3i chunkLocation = chunk.getLocation();
+        if (!ready && chunkLocation.x == centerPage.x && chunkLocation.y <= centerPage.y && chunkLocation.z == centerPage.z) {
             log.info("Physic page {} is ready", chunk.getLocation());
             ready = true;
         }

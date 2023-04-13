@@ -288,7 +288,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
 
-        //terrainGenerator = new FlatTerrainGenerator(60, BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS));
         terrainGenerator = new NoiseTerrainGenerator(2);
         chunkManager = ChunkManager.builder()
                 .poolSize(CHUNK_POOLSIZE)
@@ -405,17 +404,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
         if (!playerState.isEnabled()) {
             startPlayer();
         }
-        if (checkResize) {
-            if (cam.getWidth() != camWidth || cam.getHeight() != camHeight) {
-                stateManager.getState(TimeFactorState.class).resize();
-                stateManager.getState(GridSettingsState.class).resize();
-                stateManager.getState(BlockSelectionState.class).resize();
-                stateManager.getState(PlayerState.class).resize();
+        if (checkResize && (cam.getWidth() != camWidth || cam.getHeight() != camHeight)) {
+            stateManager.getState(TimeFactorState.class).resize();
+            stateManager.getState(GridSettingsState.class).resize();
+            stateManager.getState(BlockSelectionState.class).resize();
+            stateManager.getState(PlayerState.class).resize();
 
-                checkResize = false;
-                camWidth = cam.getWidth();
-                camHeight = cam.getHeight();
-            }
+            checkResize = false;
+            camWidth = cam.getWidth();
+            camHeight = cam.getHeight();
         }
     }
 
