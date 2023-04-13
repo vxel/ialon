@@ -22,6 +22,8 @@ import android.view.View;
 
 import com.jme3.system.AppSettings;
 
+import org.delaunois.jme.AndroidHarness;
+
 public class MainActivity extends AndroidHarness {
     public MainActivity() {
         appClass = Ialon.class.getCanonicalName();

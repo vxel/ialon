@@ -22,6 +22,8 @@ import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.jme.LayerComparator;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;

@@ -47,6 +47,8 @@ import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.util.LogAdapter;
 
+import org.delaunois.ialon.jme.BitmapFontLoader;
+import org.delaunois.ialon.jme.LayerComparator;
 import org.delaunois.ialon.serialize.PlayerStateDTO;
 import org.delaunois.ialon.serialize.PlayerStateRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
@@ -351,7 +353,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public static void registerIalonBlocks() {
-        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
         for (IalonBlock block : IalonBlock.values() ) {
             Material material = BlocksConfig.getInstance().getTypeRegistry().get(block.getType());
             if (material == null) {
@@ -359,30 +360,35 @@ public class Ialon extends SimpleApplication implements ActionListener {
             }
 
             for (String shape : block.getShapes()) {
-                if (ShapeIds.CUBE.equals(shape)) {
-                    registry.register(Block.builder()
-                            .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape))
-                            .type(block.getType())
-                            .shape(shape)
-                            .solid(block.isSolid())
-                            .transparent(block.isTransparent())
-                            .usingMultipleImages(block.isMultitexture())
-                            .torchlight(block.isTorchlight())
-                            .build());
-                } else {
-                    for (byte waterLevel : block.getWaterLevels()) {
-                        registry.register(Block.builder()
-                                .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape, waterLevel))
-                                .type(block.getType())
-                                .shape(shape)
-                                .solid(block.isSolid())
-                                .transparent(block.isTransparent())
-                                .usingMultipleImages(block.isMultitexture())
-                                .liquidLevel(waterLevel)
-                                .torchlight(block.isTorchlight())
-                                .build());
-                    }
-                }
+                registerIalonBlock(block, shape);
+            }
+        }
+    }
+
+    public static void registerIalonBlock(IalonBlock block, String shape) {
+        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
+        if (ShapeIds.CUBE.equals(shape)) {
+            registry.register(Block.builder()
+                    .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape))
+                    .type(block.getType())
+                    .shape(shape)
+                    .solid(block.isSolid())
+                    .transparent(block.isTransparent())
+                    .usingMultipleImages(block.isMultitexture())
+                    .torchlight(block.isTorchlight())
+                    .build());
+        } else {
+            for (byte waterLevel : block.getWaterLevels()) {
+                registry.register(Block.builder()
+                        .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape, waterLevel))
+                        .type(block.getType())
+                        .shape(shape)
+                        .solid(block.isSolid())
+                        .transparent(block.isTransparent())
+                        .usingMultipleImages(block.isMultitexture())
+                        .liquidLevel(waterLevel)
+                        .torchlight(block.isTorchlight())
+                        .build());
             }
         }
     }

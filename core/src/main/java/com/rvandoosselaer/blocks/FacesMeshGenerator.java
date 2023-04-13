@@ -11,7 +11,7 @@ import com.jme3.util.mikktspace.MikktspaceTangentGenerator;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
-import org.delaunois.ialon.LayerComparator;
+import org.delaunois.ialon.jme.LayerComparator;
 
 import java.util.HashMap;
 import java.util.Map;

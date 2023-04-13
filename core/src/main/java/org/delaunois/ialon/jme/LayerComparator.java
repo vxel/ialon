@@ -32,7 +32,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.delaunois.ialon;
+package org.delaunois.ialon.jme;
 
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.queue.GeometryComparator;

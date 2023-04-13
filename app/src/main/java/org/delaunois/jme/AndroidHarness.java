@@ -1,4 +1,4 @@
-package org.delaunois.ialon;
+package org.delaunois.jme;
 
 import android.app.Activity;
 import android.app.AlertDialog;

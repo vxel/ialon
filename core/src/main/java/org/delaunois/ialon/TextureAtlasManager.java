@@ -22,6 +22,8 @@ import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.image.ColorSpace;
 
+import org.delaunois.ialon.jme.TextureAtlas;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
