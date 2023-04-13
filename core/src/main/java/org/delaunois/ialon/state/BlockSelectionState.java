@@ -121,8 +121,8 @@ import static org.delaunois.ialon.IalonBlock.WINDOW;
 @Slf4j
 public class BlockSelectionState extends BaseAppState implements ActionListener, AnalogListener {
 
-    public static String SPACER = null;
-    public static String[] BLOCK_IDS = {
+    private static final String SPACER = null;
+    private static final String[] BLOCK_IDS = {
             // Page 1
             getName(GRASS, CUBE),
             getName(GRASS, DOUBLE_SLAB),
@@ -476,8 +476,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     private int selectedBlockIndex = 0;
     private Node selectedBlockNode;
 
-    private float BUTTON_SIZE = 100;
-    private float BLOCK_BUTTON_SIZE = 100;
+    private float buttonSize = 100;
+    private float blockButtonSize = 100;
     private static final int SCREEN_MARGIN = 30;
     private static final int SPACING = 10;
     private static final int MENUBLOCK_PAGESIZE_X = 10;
@@ -492,8 +492,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
         Arrays.fill(history, -1);
 
-        BUTTON_SIZE = app.getCamera().getHeight() / 8f;
-        BLOCK_BUTTON_SIZE = BUTTON_SIZE;
+        buttonSize = app.getCamera().getHeight() / 8f;
+        blockButtonSize = buttonSize;
 
         if (guiFont == null) {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
@@ -506,7 +506,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         // Create history buttons
         for (int i = 0; i < BLOCK_HISTORY_SIZE; i++) {
             int index = i;
-            historyButton[i] = createBlockButton(lastSelectedBlockNode[i], BUTTON_SIZE, new DefaultMouseListener() {
+            historyButton[i] = createBlockButton(lastSelectedBlockNode[i], buttonSize, new DefaultMouseListener() {
                 @Override
                 public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                     event.setConsumed();
@@ -515,16 +515,16 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                     }
                 }
             });
-            historyButton[i].setLocalTranslation(i * (BUTTON_SIZE + SPACING), 0, 1);
+            historyButton[i].setLocalTranslation(i * (buttonSize + SPACING), 0, 1);
             historyButtons.attachChild(historyButton[i]);
         }
-        historyButtons.setLocalTranslation(app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * BUTTON_SIZE - SPACING, SCREEN_MARGIN + BUTTON_SIZE, 1);
+        historyButtons.setLocalTranslation(app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING, SCREEN_MARGIN + buttonSize, 1);
         historyButtons.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         historyButtons.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
 
         // Create selection button
         setSelectedBlockIndex(selectedBlockIndex);
-        blockSelectionButton = createBlockButton(selectedBlockNode, BUTTON_SIZE, new DefaultMouseListener() {
+        blockSelectionButton = createBlockButton(selectedBlockNode, buttonSize, new DefaultMouseListener() {
             @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
@@ -534,7 +534,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 highlight(event.isPressed(), blockSelectionButton);
             }
         });
-        blockSelectionButton.setLocalTranslation(app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN, (app.getCamera().getHeight() + BUTTON_SIZE) / 2f, 1);
+        blockSelectionButton.setLocalTranslation(app.getCamera().getWidth() - buttonSize - SCREEN_MARGIN, (app.getCamera().getHeight() + buttonSize) / 2f, 1);
         blockSelectionButton.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         blockSelectionButton.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
     }
@@ -558,12 +558,12 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         menuBlock = menuBlockPages[0];
         setSelectedBlockIndex(selectedBlockIndex);
         blockSelectionButton.setLocalTranslation(
-                app.getCamera().getWidth() - BUTTON_SIZE - SCREEN_MARGIN,
-                (app.getCamera().getHeight() + BUTTON_SIZE) / 2f,
+                app.getCamera().getWidth() - buttonSize - SCREEN_MARGIN,
+                (app.getCamera().getHeight() + buttonSize) / 2f,
                 1);
         historyButtons.setLocalTranslation(
-                app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * BUTTON_SIZE - SPACING,
-                SCREEN_MARGIN + BUTTON_SIZE,
+                app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING,
+                SCREEN_MARGIN + buttonSize,
                 1);
     }
 
@@ -674,7 +674,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 if (block == null) {
                     log.warn("Unknown block {}", BLOCK_IDS[i]);
                 } else {
-                    nodes[i] = createBlockNode(block, BUTTON_SIZE, BLOCK_IDS[i]);
+                    nodes[i] = createBlockNode(block, buttonSize, BLOCK_IDS[i]);
                 }
             }
         }
@@ -694,8 +694,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private Container createBlockList(int page) {
         Container blockList = new Container(new SpringGridLayout(Axis.X, Axis.Y));
-        final float sizeX = (BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1) * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
-        final float sizeY = BlockSelectionState.MENUBLOCK_PAGESIZE_Y * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
+        final float sizeX = (BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1) * (blockButtonSize + SPACING) - SPACING;
+        final float sizeY = BlockSelectionState.MENUBLOCK_PAGESIZE_Y * (blockButtonSize + SPACING) - SPACING;
         final float posx = app.getCamera().getWidth() - SCREEN_MARGIN - sizeX;
         final float posy = (app.getCamera().getHeight() + sizeY) / 2f;
         blockList.setPreferredSize(new Vector3f(sizeX, sizeY, 0));
@@ -720,11 +720,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 Container blockButton;
                 if (index >= blocks.length || blocks[index] == null) {
                     // Filler button
-                    blockButton = createButton("", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, null);
+                    blockButton = createButton("", blockButtonSize, blockButtonSize, null);
 
                 } else {
                     Node blockNode = blocks[index];
-                    blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE, blockButtonMouseListener);
+                    blockButton = createBlockButton(blockNode, blockButtonSize, blockButtonMouseListener);
                     blockButton.setUserData("index", index);
                 }
                 blockList.addChild(blockButton, x, y);
@@ -732,7 +732,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             }
         }
 
-        nextButton = createButton("Next", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+        nextButton = createButton("Next", blockButtonSize, blockButtonSize, new DefaultMouseListener() {
             @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();
@@ -744,7 +744,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         });
         blockList.addChild(nextButton, BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1, 0);
 
-        previousButton = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
+        previousButton = createButton("Previous", blockButtonSize, blockButtonSize, new DefaultMouseListener() {
             @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 event.setConsumed();

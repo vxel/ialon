@@ -29,7 +29,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.delaunois.ialon.control;
+package org.delaunois.ialon.jme;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.font.BitmapFont;

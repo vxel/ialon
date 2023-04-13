@@ -42,7 +42,6 @@ public class SunState extends BaseAppState {
         Material sunMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         sunMat.setTexture("ColorMap", sunTexture);
-        //sunMat.setParam("VertexColor", VarType.Boolean, true );
         sunMat.setColor("Color", ColorRGBA.White);
         sun.setMaterial(sunMat);
 

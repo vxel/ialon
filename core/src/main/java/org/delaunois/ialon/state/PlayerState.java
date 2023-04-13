@@ -147,7 +147,13 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
-    private boolean left = false, right = false, forward = false, backward = false, up = false, down = false, jump = false;
+    private boolean left = false;
+    private boolean right = false;
+    private boolean forward = false;
+    private boolean backward = false;
+    private boolean up = false;
+    private boolean down = false;
+    private boolean jump = false;
     private boolean underWater = false;
     private boolean onScale = false;
     private Ialon app;
@@ -412,32 +418,32 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     }
 
     private Label createCrossHair() {
-        Label crossHair = new Label("+");
-        crossHair.setColor(ColorRGBA.White);
-        crossHair.setFontSize(30);
-        crossHair.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
+        Label crossHairLabel = new Label("+");
+        crossHairLabel.setColor(ColorRGBA.White);
+        crossHairLabel.setFontSize(30);
+        crossHairLabel.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
 
         int width = camera.getWidth();
         int height = camera.getHeight();
-        crossHair.setLocalTranslation((width / 2f) - (crossHair.getPreferredSize().getX() / 2), (height / 2f) + (crossHair.getPreferredSize().getY() / 2), crossHair.getLocalTranslation().getZ());
-        return crossHair;
+        crossHairLabel.setLocalTranslation((width / 2f) - (crossHairLabel.getPreferredSize().getX() / 2), (height / 2f) + (crossHairLabel.getPreferredSize().getY() / 2), crossHairLabel.getLocalTranslation().getZ());
+        return crossHairLabel;
     }
 
     private Geometry createRemovePlaceholder() {
         Material removePlaceholderMaterial = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         removePlaceholderMaterial.setColor("Color", new ColorRGBA(0.4549f, 0.851f, 1, 1));
 
-        Geometry removePlaceholder = new Geometry("remove-placeholder", new WireBox(0.505f, 0.505f, 0.505f));
-        removePlaceholder.setMaterial(removePlaceholderMaterial);
-        removePlaceholder.setLocalScale(BlocksConfig.getInstance().getBlockScale());
+        Geometry geometry = new Geometry("remove-placeholder", new WireBox(0.505f, 0.505f, 0.505f));
+        geometry.setMaterial(removePlaceholderMaterial);
+        geometry.setLocalScale(BlocksConfig.getInstance().getBlockScale());
 
-        return removePlaceholder;
+        return geometry;
     }
 
     private Geometry createAddPlaceholder() {
-        Geometry addPlaceholder = new Geometry("add-placeholder", new Box(0.5f, 0.5f, 0.5f));
-        addPlaceholder.setLocalScale(BlocksConfig.getInstance().getBlockScale());
-        return addPlaceholder;
+        Geometry geometry = new Geometry("add-placeholder", new Box(0.5f, 0.5f, 0.5f));
+        geometry.setLocalScale(BlocksConfig.getInstance().getBlockScale());
+        return geometry;
     }
 
     private void updatePlayerPosition() {
@@ -570,7 +576,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         buttonContainer.setBackground(background);
-        //buttonContainer.setBackground(TbtQuadBackgroundComponent.create("/com/simsilica/lemur/icons/border.png", 1, 2, 2, 3, 3, 0, false));
+
         Label label = buttonContainer.addChild(new Label(text));
         label.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
         label.getFont().getPage(0).clearParam("VertexColor");
@@ -915,37 +921,29 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         // WEST
         aroundLocation = blockLocation.add(-1, 0, 0);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null) {
-            if (ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
-                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
-            }
+        if (aroundBlock != null && ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
         }
 
         // EAST
         aroundLocation = blockLocation.add(1, 0, 0);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null) {
-            if (ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
-                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
-            }
+        if (aroundBlock != null && ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
         }
 
         // NORTH
         aroundLocation = blockLocation.add(0, 0, -1);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null) {
-            if (ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
-                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
-            }
+        if (aroundBlock != null && ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
         }
 
         // SOUTH
         aroundLocation = blockLocation.add(0, 0, 1);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null) {
-            if (ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
-                updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
-            }
+        if (aroundBlock != null && ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
         }
     }
 

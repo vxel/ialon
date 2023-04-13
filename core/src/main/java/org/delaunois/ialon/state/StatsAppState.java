@@ -45,7 +45,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Quad;
 
-import org.delaunois.ialon.control.StatsView;
+import org.delaunois.ialon.jme.StatsView;
 
 
 /**
@@ -155,7 +155,7 @@ public class StatsAppState extends AbstractAppState {
         }
 
         if (guiNode == null) {
-            throw new RuntimeException( "No guiNode specific and cannot be automatically determined." );
+            throw new IllegalStateException( "No guiNode specific and cannot be automatically determined." );
         }
 
         if (guiFont == null) {
@@ -203,7 +203,6 @@ public class StatsAppState extends AbstractAppState {
         Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", new ColorRGBA(0,0,0,0.5f));
         mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
-        //mat.setFloat("AlphaDiscardThreshold", 0.1f);
 
         darkenFps = new Geometry("StatsDarken", new Quad(200, fpsText.getLineHeight()));
         darkenFps.setMaterial(mat);

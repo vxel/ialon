@@ -100,7 +100,7 @@ import static org.delaunois.ialon.Config.SIMULATE_LIQUID_FLOW;
 public class Ialon extends SimpleApplication implements ActionListener {
 
     private static final String SAVEDIR = "./save";
-    private static Path FILEPATH = FileSystems.getDefault().getPath(SAVEDIR);
+    private static Path filepath = FileSystems.getDefault().getPath(SAVEDIR);
 
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
     private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
@@ -147,7 +147,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public static void setFilePath(Path path) {
-        FILEPATH = path;
+        filepath = path;
     }
 
     public Ialon() {
@@ -254,12 +254,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     private void initFileRepository() {
         fileRepository = new ZipFileRepository();
-        fileRepository.setPath(FILEPATH);
+        fileRepository.setPath(filepath);
     }
 
     private void initPlayerStateRepository() {
         playerStateRepository = new PlayerStateRepository();
-        playerStateRepository.setPath(FILEPATH);
+        playerStateRepository.setPath(filepath);
     }
 
     private PlayerStateDTO initPlayer() {

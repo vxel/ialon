@@ -55,7 +55,7 @@ public class ChunkLiquidManager {
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
 
     public int queueSize() {
-        return liquidRemovalBfsQueue.size() > 0 ? liquidRemovalBfsQueue.size() : liquidBfsQueue.size();
+        return liquidRemovalBfsQueue.isEmpty() ? liquidBfsQueue.size() : liquidRemovalBfsQueue.size();
     }
 
     /**
