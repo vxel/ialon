@@ -331,27 +331,9 @@ public class ChunkManager {
         // seeing holes in adjacent chunks when the chunks are added to the world in different
         // frames. This requires the set keeping the order.
         chunks.add(chunk.getLocation());
-        Vec3i size = BlocksConfig.getInstance().getChunkSize();
 
         // Request chunk updates of neighbour blocks only if block is at the border of the chunk
-        if (blockLocationInsideChunk.x == size.x - 1) {
-            chunks.add(chunk.getLocation().add(1, 0, 0));
-        }
-        if (blockLocationInsideChunk.x == 0) {
-            chunks.add(chunk.getLocation().add(-1, 0, 0));
-        }
-        if (blockLocationInsideChunk.y == size.y - 1) {
-            chunks.add(chunk.getLocation().add(0, 1, 0));
-        }
-        if (blockLocationInsideChunk.y == 0) {
-            chunks.add(chunk.getLocation().add(0, -1, 0));
-        }
-        if (blockLocationInsideChunk.z == size.z - 1) {
-            chunks.add(chunk.getLocation().add(0, 0, 1));
-        }
-        if (blockLocationInsideChunk.z == 0) {
-            chunks.add(chunk.getLocation().add(0, 0, -1));
-        }
+        chunks.addAll(getAdjacentChunks(chunk, blockLocationInsideChunk, BlocksConfig.getInstance().getChunkSize()));
 
         if (chunkLightManager != null) {
             chunks.addAll(chunkLightManager.removeSunlight(location));
@@ -418,6 +400,29 @@ public class ChunkManager {
                 chunkLiquidManager.flowLiquid(location);
             }
         }
+    }
+
+    private Set<Vec3i> getAdjacentChunks(Chunk chunk, Vec3i blockLocationInsideChunk, Vec3i chunkSize) {
+        Set<Vec3i> chunks = new HashSet<>();
+        if (blockLocationInsideChunk.x == chunkSize.x - 1) {
+            chunks.add(chunk.getLocation().add(1, 0, 0));
+        }
+        if (blockLocationInsideChunk.x == 0) {
+            chunks.add(chunk.getLocation().add(-1, 0, 0));
+        }
+        if (blockLocationInsideChunk.y == chunkSize.y - 1) {
+            chunks.add(chunk.getLocation().add(0, 1, 0));
+        }
+        if (blockLocationInsideChunk.y == 0) {
+            chunks.add(chunk.getLocation().add(0, -1, 0));
+        }
+        if (blockLocationInsideChunk.z == chunkSize.z - 1) {
+            chunks.add(chunk.getLocation().add(0, 0, 1));
+        }
+        if (blockLocationInsideChunk.z == 0) {
+            chunks.add(chunk.getLocation().add(0, 0, -1));
+        }
+        return chunks;
     }
 
     public Set<Vec3i> removeBlock(Vector3f location) {

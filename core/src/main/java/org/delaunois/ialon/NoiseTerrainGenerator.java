@@ -228,49 +228,53 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void createTree(Chunk chunk, int x, int y, int z) {
-        Vec3i treeLocation = new Vec3i(x, y, z);
-        createTrunk(chunk, treeLocation);
-        createCanopy(chunk, treeLocation);
+        createTrunk(chunk, x, y, z);
+        createCanopy(chunk, x, y, z);
+        createTreeShadow(chunk, x, y, z);
     }
 
-    private void createTrunk(Chunk chunk, Vec3i treeLocation) {
+    private void createTrunk(Chunk chunk, int posx, int posy, int posz) {
         Block trunk = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LOG);
-        Vector3f locf = new Vector3f();
-
-        for (int i = 0; i < TRUNK_HEIGHT + CANOPY_RADIUS - 1; i++) {
-            if (i < TRUNK_HEIGHT) {
-                addBlock(chunk, treeLocation, trunk);
-            }
-
-            for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
-                for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
-                    if (!Chunk.isInsideChunk(x, treeLocation.y, z)) {
-                        continue;
-                    }
-                    locf.set(x, treeLocation.y, z);
-                    float distance = locf.distance(treeLocation.toVector3f());
-                    if (distance <= CANOPY_RADIUS) {
-                        chunk.setSunlight(x, treeLocation.y, z, Math.max(0, 11 + ((int) distance)));
-                    }
-                }
-            }
-            treeLocation.addLocal(0, 1, 0);
+        Vec3i treeLocation = new Vec3i(posx, posy, posz);
+        for (int y = 0; y < TRUNK_HEIGHT; y++) {
+            addBlock(chunk, treeLocation.add(0, y, 0), trunk);
         }
     }
 
-    private void createCanopy(Chunk chunk, Vec3i treeLocation) {
+    private void createCanopy(Chunk chunk, int posx, int posy, int posz) {
         Block leaves = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LEAVES);
         Vector3f locf = new Vector3f();
         Vec3i loci = new Vec3i();
+        Vec3i canopyCenter = new Vec3i(posx, posy + TRUNK_HEIGHT + CANOPY_RADIUS - 1, posz);
 
-        for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
-            for (int y = treeLocation.y - CANOPY_RADIUS; y <= treeLocation.y + CANOPY_RADIUS; y++) {
-                for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
+        for (int y = canopyCenter.y - CANOPY_RADIUS; y <= canopyCenter.y + CANOPY_RADIUS; y++) {
+            for (int x = canopyCenter.x - CANOPY_RADIUS; x <= canopyCenter.x + CANOPY_RADIUS; x++) {
+                for (int z = canopyCenter.z - CANOPY_RADIUS; z <= canopyCenter.z + CANOPY_RADIUS; z++) {
                     locf.set(x, y, z);
                     loci.set(x, y, z);
-                    float distance = locf.distance(treeLocation.toVector3f());
-                    if (distance <= CANOPY_RADIUS && y > treeLocation.y - CANOPY_RADIUS) {
+                    float distance = locf.distance(canopyCenter.toVector3f());
+                    if (distance <= CANOPY_RADIUS && y > canopyCenter.y - CANOPY_RADIUS) {
                         addBlock(chunk, loci, leaves);
+                    }
+                }
+            }
+        }
+    }
+
+    private void createTreeShadow(Chunk chunk, int posx, int posy, int posz) {
+        Vector3f locf = new Vector3f();
+        Vec3i treeLocation = new Vec3i(posx, posy, posz);
+
+        for (int y = treeLocation.y; y < treeLocation.y + TRUNK_HEIGHT + CANOPY_RADIUS - 1; y++) {
+            for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
+                for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
+                    if (!Chunk.isInsideChunk(x, y, z)) {
+                        continue;
+                    }
+                    locf.set(x, y, z);
+                    float distance = locf.distance(new Vector3f(treeLocation.x, y, treeLocation.z));
+                    if (distance <= CANOPY_RADIUS) {
+                        chunk.setSunlight(x, y, z, Math.max(0, 11 + ((int) distance)));
                     }
                 }
             }
