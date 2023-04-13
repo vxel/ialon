@@ -292,67 +292,98 @@ public class TextureAtlas {
         ByteBuffer sourceData = source.getData(0);
         int height = source.getHeight();
         int width = source.getWidth();
-        Image newImage = null;
+
+        PixelConverter converter;
+        switch (source.getFormat()) {
+            case ABGR8:
+                converter = this::abgr8Converter;
+                break;
+            case BGR8:
+                converter = this::bgr8Converter;
+                break;
+            case RGB8:
+                converter = this::rgb8Converter;
+                break;
+            case RGBA8:
+                converter = this::rgba8Converter;
+                break;
+            case Luminance8:
+                converter = this::luminance8Converter;
+                break;
+            case Luminance8Alpha8:
+                converter = this::luminance8Aplha8Converter;
+                break;
+            default:
+                Image newImage = convertImageToAwt(source);
+                if (newImage == null) {
+                    throw new UnsupportedOperationException("Cannot draw or convert textures with format " + source.getFormat());
+                }
+                sourceData = newImage.getData(0);
+                converter = this::awtConverter;
+        }
+
         for (int yPos = 0; yPos < height; yPos++) {
             for (int xPos = 0; xPos < width; xPos++) {
                 int i = ((xPos + x) + (yPos + y) * atlasWidth) * 4;
-                if (source.getFormat() == Format.ABGR8) {
-                    int j = (xPos + yPos * width) * 4;
-                    image[i] = sourceData.get(j); //a
-                    image[i + 1] = sourceData.get(j + 1); //b
-                    image[i + 2] = sourceData.get(j + 2); //g
-                    image[i + 3] = sourceData.get(j + 3); //r
-                } else if (source.getFormat() == Format.BGR8) {
-                    int j = (xPos + yPos * width) * 3;
-                    image[i] = 1; //a
-                    image[i + 1] = sourceData.get(j); //b
-                    image[i + 2] = sourceData.get(j + 1); //g
-                    image[i + 3] = sourceData.get(j + 2); //r
-                } else if (source.getFormat() == Format.RGB8) {
-                    int j = (xPos + yPos * width) * 3;
-                    image[i] = 1; //a
-                    image[i + 1] = sourceData.get(j + 2); //b
-                    image[i + 2] = sourceData.get(j + 1); //g
-                    image[i + 3] = sourceData.get(j); //r
-                } else if (source.getFormat() == Format.RGBA8) {
-                    int j = (xPos + yPos * width) * 4;
-                    image[i] = sourceData.get(j + 3); //a
-                    image[i + 1] = sourceData.get(j + 2); //b
-                    image[i + 2] = sourceData.get(j + 1); //g
-                    image[i + 3] = sourceData.get(j); //r
-                } else if (source.getFormat() == Format.Luminance8) {
-                    int j = (xPos + yPos * width);
-                    image[i] = 1; //a
-                    image[i + 1] = sourceData.get(j); //b
-                    image[i + 2] = sourceData.get(j); //g
-                    image[i + 3] = sourceData.get(j); //r
-                } else if (source.getFormat() == Format.Luminance8Alpha8) {
-                    int j = (xPos + yPos * width) * 2;
-                    image[i] = sourceData.get(j + 1); //a
-                    image[i + 1] = sourceData.get(j); //b
-                    image[i + 2] = sourceData.get(j); //g
-                    image[i + 3] = sourceData.get(j); //r
-                } else {
-                    //ImageToAwt conversion
-                    if (newImage == null) {
-                        newImage = convertImageToAwt(source);
-                        if (newImage != null) {
-                            source = newImage;
-                            sourceData = source.getData(0);
-                            int j = (xPos + yPos * width) * 4;
-                            image[i] = sourceData.get(j); //a
-                            image[i + 1] = sourceData.get(j + 1); //b
-                            image[i + 2] = sourceData.get(j + 2); //g
-                            image[i + 3] = sourceData.get(j + 3); //r
-                        }else{
-                            throw new UnsupportedOperationException("Cannot draw or convert textures with format " + source.getFormat());
-                        }
-                    } else {
-                        throw new UnsupportedOperationException("Cannot draw textures with format " + source.getFormat());
-                    }
-                }
+                converter.convert(image, sourceData, i, xPos, yPos, width);
             }
         }
+    }
+
+    private void abgr8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 4;
+        image[i] = sourceData.get(j); //a
+        image[i + 1] = sourceData.get(j + 1); //b
+        image[i + 2] = sourceData.get(j + 2); //g
+        image[i + 3] = sourceData.get(j + 3); //r
+    }
+
+    private void bgr8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 3;
+        image[i] = 1; //a
+        image[i + 1] = sourceData.get(j); //b
+        image[i + 2] = sourceData.get(j + 1); //g
+        image[i + 3] = sourceData.get(j + 2); //r
+    }
+
+    private void rgb8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 3;
+        image[i] = 1; //a
+        image[i + 1] = sourceData.get(j + 2); //b
+        image[i + 2] = sourceData.get(j + 1); //g
+        image[i + 3] = sourceData.get(j); //r
+    }
+
+    private void rgba8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 4;
+        image[i] = sourceData.get(j + 3); //a
+        image[i + 1] = sourceData.get(j + 2); //b
+        image[i + 2] = sourceData.get(j + 1); //g
+        image[i + 3] = sourceData.get(j); //r
+    }
+
+    private void luminance8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width);
+        image[i] = 1; //a
+        image[i + 1] = sourceData.get(j); //b
+        image[i + 2] = sourceData.get(j); //g
+        image[i + 3] = sourceData.get(j); //r
+    }
+
+    private void luminance8Aplha8Converter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 2;
+        image[i] = sourceData.get(j + 1); //a
+        image[i + 1] = sourceData.get(j); //b
+        image[i + 2] = sourceData.get(j); //g
+        image[i + 3] = sourceData.get(j); //r
+    }
+
+    private void awtConverter(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width) {
+        int j = (xPos + yPos * width) * 4;
+        image[i] = sourceData.get(j); //a
+        image[i + 1] = sourceData.get(j + 1); //b
+        image[i + 2] = sourceData.get(j + 2); //g
+        image[i + 3] = sourceData.get(j + 3); //r
     }
 
     private Image convertImageToAwt(Image source) {
@@ -635,6 +666,11 @@ public class TextureAtlas {
                 return child[0].insert(image);
             }
         }
+    }
+
+    @FunctionalInterface
+    protected interface PixelConverter {
+        void convert(byte[] image, ByteBuffer sourceData, int i, int xPos, int yPos, int width);
     }
 
     public class TextureAtlasTile {
