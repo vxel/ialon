@@ -21,12 +21,12 @@ import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
+
 import org.delaunois.ialon.fastnoise.FastNoise;
 import org.delaunois.ialon.fastnoise.LayeredNoise;
 import org.delaunois.ialon.fastnoise.NoiseLayer;
@@ -110,54 +110,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 float horizon = Math.max(groundh, waterHeight);
 
                 for (int y = maxY - 1; y >= 0; y--) {
-
                     int worldY = (chunk.getLocation().y * chunkSize.y) + y;
-
-                    Block block;
-
-                    if (worldY > horizon) {
-                        // Above horizon
-                        chunk.setSunlight(x, y, z, 15);
-                        block = null;
-
-                    } else if (worldY == (int) horizon) {
-                        // Surface
-                        chunk.setSunlight(x, y, z, 0);
-
-                        if (worldY > waterHeight) {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
-                            if (y < 15 && (groundh * 10000) % 1 == 0) {
-                                chunk.addBlock(x, y + 1, z, itemGrass);
-                            }
-                        } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
-                        } else {
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID5));
-                            chunk.setSunlight(x, y, z, 14);
-                        }
-
-                    } else {
-                        // Under ground / under water
-                        if (worldY > groundh) {
-                            // Above ground but below horizon => in water
-                            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
-                            chunk.setSunlight(x, y, z, Math.max(0, 14 - ((int) horizon - worldY)));
-
-                        } else {
-                            chunk.setSunlight(x, y, z, 0);
-                            if (waterHeight - worldY < 3 && worldY == (int) groundh) {
-                                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
-                            } else if (groundh - worldY < 3) {
-                                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.DIRT);
-                            } else {
-                                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ROCK);
-                            }
-                        }
-                    }
-
-                    if (block != null) {
-                        chunk.addBlock(x, y, z, block);
-                    }
+                    generate(chunk, x, y, z, worldY, groundh, horizon);
                 }
             }
         }
@@ -166,6 +120,68 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
         chunk.setDirty(true);
         return chunk;
+    }
+
+    private void generate(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon) {
+        Block block;
+
+        if (worldY > horizon) {
+            block = generateAboveHorizon(chunk, x, y, z);
+
+        } else if (worldY == (int) horizon) {
+            block = generateSurface(chunk, x, y, z, worldY, groundh);
+
+        } else {
+            block = generateUnderground(chunk, x, y, z, worldY, groundh, horizon);
+        }
+
+        if (block != null) {
+            chunk.addBlock(x, y, z, block);
+        }
+    }
+
+    private Block generateAboveHorizon(Chunk chunk, int x, int y, int z) {
+        chunk.setSunlight(x, y, z, 15);
+        return null;
+    }
+
+    private Block generateSurface(Chunk chunk, int x, int y, int z, int worldY, float groundh) {
+        chunk.setSunlight(x, y, z, 0);
+        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
+
+        Block block;
+        if (worldY > waterHeight) {
+            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
+            if (y < 15 && (groundh * 10000) % 1 == 0) {
+                chunk.addBlock(x, y + 1, z, itemGrass);
+            }
+        } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
+            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
+        } else {
+            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID5));
+            chunk.setSunlight(x, y, z, 14);
+        }
+        return block;
+    }
+
+    private Block generateUnderground(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon) {
+        Block block;
+        if (worldY > groundh) {
+            // Above ground but below horizon => in water
+            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
+            chunk.setSunlight(x, y, z, Math.max(0, 14 - ((int) horizon - worldY)));
+
+        } else {
+            chunk.setSunlight(x, y, z, 0);
+            if (waterHeight - worldY < 3 && worldY == (int) groundh) {
+                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
+            } else if (groundh - worldY < 3) {
+                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.DIRT);
+            } else {
+                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ROCK);
+            }
+        }
+        return block;
     }
 
     private float[] getHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
@@ -206,21 +222,22 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 float groundh = heights[index];
                 int y = (int) groundh - (chunk.getLocation().y * chunkSize.y);
                 if (y > -TREE_HEIGHT && y < chunkSize.z && groundh > (waterHeight + 1) && ((groundh * 100) % 1 == 0)) {
-                    createTree(chunk, new Vec3i(x, y, z));
+                    createTree(chunk, x, y, z);
                 }
             }
         }
     }
 
-    private void createTree(Chunk chunk, Vec3i treeLocation) {
-        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
-        Block trunk = blockRegistry.get(BlockIds.OAK_LOG);
-        Block leaves = blockRegistry.get(BlockIds.OAK_LEAVES);
+    private void createTree(Chunk chunk, int x, int y, int z) {
+        Vec3i treeLocation = new Vec3i(x, y, z);
+        createTrunk(chunk, treeLocation);
+        createCanopy(chunk, treeLocation);
+    }
 
+    private void createTrunk(Chunk chunk, Vec3i treeLocation) {
+        Block trunk = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LOG);
         Vector3f locf = new Vector3f();
-        Vec3i loci = new Vec3i();
 
-        // create a tree
         for (int i = 0; i < TRUNK_HEIGHT + CANOPY_RADIUS - 1; i++) {
             if (i < TRUNK_HEIGHT) {
                 addBlock(chunk, treeLocation, trunk);
@@ -230,7 +247,6 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
                     if (Chunk.isInsideChunk(x, treeLocation.y, z)) {
                         locf.set(x, treeLocation.y, z);
-                        loci.set(x, treeLocation.y, z);
                         float distance = locf.distance(treeLocation.toVector3f());
                         if (distance <= CANOPY_RADIUS) {
                             chunk.setSunlight(x, treeLocation.y, z, Math.max(0, 11 + ((int) distance)));
@@ -240,15 +256,20 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             }
             treeLocation.addLocal(0, 1, 0);
         }
+    }
 
-        Vec3i canopyCenter = treeLocation;
-        for (int x = canopyCenter.x - CANOPY_RADIUS; x <= canopyCenter.x + CANOPY_RADIUS; x++) {
-            for (int y = canopyCenter.y - CANOPY_RADIUS; y <= canopyCenter.y + CANOPY_RADIUS; y++) {
-                for (int z = canopyCenter.z - CANOPY_RADIUS; z <= canopyCenter.z + CANOPY_RADIUS; z++) {
+    private void createCanopy(Chunk chunk, Vec3i treeLocation) {
+        Block leaves = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LEAVES);
+        Vector3f locf = new Vector3f();
+        Vec3i loci = new Vec3i();
+
+        for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
+            for (int y = treeLocation.y - CANOPY_RADIUS; y <= treeLocation.y + CANOPY_RADIUS; y++) {
+                for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
                     locf.set(x, y, z);
                     loci.set(x, y, z);
-                    float distance = locf.distance(canopyCenter.toVector3f());
-                    if (distance <= CANOPY_RADIUS && y > canopyCenter.y - CANOPY_RADIUS) {
+                    float distance = locf.distance(treeLocation.toVector3f());
+                    if (distance <= CANOPY_RADIUS && y > treeLocation.y - CANOPY_RADIUS) {
                         addBlock(chunk, loci, leaves);
                     }
                 }
