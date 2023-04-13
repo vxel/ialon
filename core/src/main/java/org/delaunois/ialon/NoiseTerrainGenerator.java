@@ -72,7 +72,6 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     @Override
     public Chunk generate(Vec3i location) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
-        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
 
         Chunk chunk = Chunk.createAt(location);
         int maxX = chunkSize.x;
@@ -245,12 +244,13 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
             for (int x = treeLocation.x - CANOPY_RADIUS; x <= treeLocation.x + CANOPY_RADIUS; x++) {
                 for (int z = treeLocation.z - CANOPY_RADIUS; z <= treeLocation.z + CANOPY_RADIUS; z++) {
-                    if (Chunk.isInsideChunk(x, treeLocation.y, z)) {
-                        locf.set(x, treeLocation.y, z);
-                        float distance = locf.distance(treeLocation.toVector3f());
-                        if (distance <= CANOPY_RADIUS) {
-                            chunk.setSunlight(x, treeLocation.y, z, Math.max(0, 11 + ((int) distance)));
-                        }
+                    if (!Chunk.isInsideChunk(x, treeLocation.y, z)) {
+                        continue;
+                    }
+                    locf.set(x, treeLocation.y, z);
+                    float distance = locf.distance(treeLocation.toVector3f());
+                    if (distance <= CANOPY_RADIUS) {
+                        chunk.setSunlight(x, treeLocation.y, z, Math.max(0, 11 + ((int) distance)));
                     }
                 }
             }

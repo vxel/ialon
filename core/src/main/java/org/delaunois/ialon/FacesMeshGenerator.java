@@ -146,13 +146,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             return;
         }
 
-        // create the node of the chunk
-        Vec3i chunkLocation = chunk.getLocation();
-        Node node = new Node("Chunk - " + chunkLocation);
-
         long start = System.nanoTime();
-        ShapeRegistry shapeRegistry = BlocksConfig.getInstance().getShapeRegistry();
-        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
 
         short[] blocks = chunk.getBlocks();
         if (blocks == null) {
@@ -170,38 +164,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Vec3i blockLocation = new Vec3i(0, 0, 0);
         BlockNeighborhood neighborhood = new BlockNeighborhood(blockLocation, chunk);
 
+        BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         for (short blockId : blocks) {
-            Block block = blockRegistry.get(blockId);
-
-            // check if there is a block
-            if (block != null) {
-                // create a mesh for each different block type
-                ChunkMesh mesh = meshMap.computeIfAbsent(block.getType(), function -> new ChunkMesh());
-
-                // add the block mesh to the chunk mesh
-                Shape shape = shapeRegistry.get(block.getShape());
-                neighborhood.setLocation(blockLocation);
-                shape.add(neighborhood, mesh);
-                //shape.add(blockLocation, chunk, mesh);
-
-                // add the block to the collision mesh
-                if (block.isSolid()) {
-                    shape.add(neighborhood, collisionMesh);
-                }
-
-                // add water if any
-                if (!Objects.equals(block.getType(), TypeIds.WATER) && block.getLiquidLevel() > 0) {
-                    mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
-                    if (block.isLiquidSource()) {
-                        shape = shapeRegistry.get(ShapeIds.LIQUID5);
-                    } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
-                        shape = shapeRegistry.get(ShapeIds.LIQUID);
-                    } else {
-                        shape = shapeRegistry.get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
-                    }
-                    shape.add(neighborhood, mesh);
-                }
-            }
+            createMesh(blockRegistry.get(blockId), blockLocation, neighborhood, meshMap, collisionMesh);
 
             // increment the block location
             incrementBlockLocation(blockLocation);
@@ -211,37 +176,12 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             log.trace("Chunk {} meshes construction took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
         }
 
+        // create the node of the chunk
+        Vec3i chunkLocation = chunk.getLocation();
+        Node node = new Node("Chunk - " + chunkLocation);
+
         // create a geometry for each type of block
-        meshMap.forEach((type, chunkMesh) -> {
-
-            Geometry geometry = createGeometry(type, chunkMesh);
-            if (geometry.getVertexCount() > 0) {
-                if (TypeIds.WATER.equals(type)) {
-                    /*
-                     * Special case for water.
-                     * Water must be visible from inside and outside.
-                     * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
-                     *
-                     * The only real solution is to split the geometry into 2 objects that share the
-                     * same mesh. Have one with back face culling on and one with front face culling on.
-                     * Then use a custom GeometryComparator that makes sure the inside one is always
-                     * drawn first : the Lemur LayerComparator, that lets Geometries use a UserData to
-                     * indicate relative layers. setUserData(“layer”, 0) in
-                     * the inside one and setUserData(“layer”, 1) on the outside one. (presuming they both
-                     * have the same parent node).
-                     */
-                    LayerComparator.setLayer(geometry, 2);
-                    Geometry inside = geometry.clone();
-                    LayerComparator.setLayer(inside, 1);
-                    inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
-                    node.attachChild(geometry);
-                    node.attachChild(inside);
-
-                } else {
-                    node.attachChild(geometry);
-                }
-            }
-        });
+        meshMap.forEach((type, chunkMesh) -> createGeometryAndAttach(type, chunkMesh, node));
 
         if (node.getVertexCount() == 0) {
             chunk.setNode(new EmptyNode());
@@ -263,6 +203,72 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         if (log.isTraceEnabled()) {
             log.trace("Total chunk node generation took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+        }
+    }
+
+    private void createMesh(Block block,
+                            Vec3i blockLocation,
+                            BlockNeighborhood neighborhood,
+                            Map<String, ChunkMesh> meshMap,
+                            ChunkMesh collisionMesh
+    ) {
+        if (block != null) {
+            // create a mesh for each different block type
+            ChunkMesh mesh = meshMap.computeIfAbsent(block.getType(), function -> new ChunkMesh());
+
+            // add the block mesh to the chunk mesh
+            Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
+            neighborhood.setLocation(blockLocation);
+            shape.add(neighborhood, mesh);
+            //shape.add(blockLocation, chunk, mesh);
+
+            // add the block to the collision mesh
+            if (block.isSolid()) {
+                shape.add(neighborhood, collisionMesh);
+            }
+
+            // add water if any
+            if (!Objects.equals(block.getType(), TypeIds.WATER) && block.getLiquidLevel() > 0) {
+                mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
+                if (block.isLiquidSource()) {
+                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID5);
+                } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
+                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID);
+                } else {
+                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
+                }
+                shape.add(neighborhood, mesh);
+            }
+        }
+    }
+
+    private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {
+        Geometry geometry = createGeometry(type, chunkMesh);
+        if (geometry.getVertexCount() > 0) {
+            if (TypeIds.WATER.equals(type)) {
+                /*
+                 * Special case for water.
+                 * Water must be visible from inside and outside.
+                 * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
+                 *
+                 * The only real solution is to split the geometry into 2 objects that share the
+                 * same mesh. Have one with back face culling on and one with front face culling on.
+                 * Then use a custom GeometryComparator that makes sure the inside one is always
+                 * drawn first : the Lemur LayerComparator, that lets Geometries use a UserData to
+                 * indicate relative layers. setUserData(“layer”, 0) in
+                 * the inside one and setUserData(“layer”, 1) on the outside one. (presuming they both
+                 * have the same parent node).
+                 */
+                LayerComparator.setLayer(geometry, 2);
+                Geometry inside = geometry.clone();
+                LayerComparator.setLayer(inside, 1);
+                inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+                node.attachChild(geometry);
+                node.attachChild(inside);
+
+            } else {
+                node.attachChild(geometry);
+            }
         }
     }
 
