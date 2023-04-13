@@ -38,6 +38,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.ChunkPager;
+import org.delaunois.ialon.Config;
 
 import java.util.List;
 import java.util.Locale;
@@ -79,7 +80,6 @@ public class IalonDebugState extends BaseAppState {
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
-        //container.setBackground(background);
 
         heapLabel = addField(container, "Mem Heap: ");
         worldPositionLabel = addField(container, "Worl Pos: ");
@@ -150,7 +150,10 @@ public class IalonDebugState extends BaseAppState {
         torchlightLevelLabel.setText(getTorchlightLevelString());
         cacheSizeLabel.setText(getCacheSizeString());
         timeLabel.setText(getLocalTimeString());
-        //displayGrid();
+
+        if (Config.DEBUG_GRID) {
+            displayGrid();
+        }
     }
 
     private void displayGrid() {

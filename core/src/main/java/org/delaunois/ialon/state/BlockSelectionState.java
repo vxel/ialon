@@ -500,7 +500,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
 
         blocks = createBlockNodes();
-        menuBlockPages = createMenuBlock(MENUBLOCK_PAGESIZE_X, MENUBLOCK_PAGESIZE_Y);
+        menuBlockPages = createMenuBlock();
         menuBlock = menuBlockPages[0];
 
         // Create history buttons
@@ -554,7 +554,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     public void resize() {
         hideBlockMenu();
-        menuBlockPages = createMenuBlock(MENUBLOCK_PAGESIZE_X, MENUBLOCK_PAGESIZE_Y);
+        menuBlockPages = createMenuBlock();
         menuBlock = menuBlockPages[0];
         setSelectedBlockIndex(selectedBlockIndex);
         blockSelectionButton.setLocalTranslation(
@@ -681,21 +681,21 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         return blocks;
     }
 
-    private Container[] createMenuBlock(int pageSizeX, int pageSizeY) {
-        int numPages = (BLOCK_IDS.length / (pageSizeX * pageSizeY)) + 1;
+    private Container[] createMenuBlock() {
+        int numPages = (BLOCK_IDS.length / (BlockSelectionState.MENUBLOCK_PAGESIZE_X * BlockSelectionState.MENUBLOCK_PAGESIZE_Y)) + 1;
         Container[] pages = new Container[numPages];
 
         for (int i = 0; i < pages.length; i++) {
-            pages[i] = createBlockList(i, pageSizeX, pageSizeY);
+            pages[i] = createBlockList(i);
         }
 
         return pages;
     }
 
-    private Container createBlockList(int page, int pageSizeX, int pageSizeY) {
+    private Container createBlockList(int page) {
         Container blockList = new Container(new SpringGridLayout(Axis.X, Axis.Y));
-        final float sizeX = (pageSizeX + 1) * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
-        final float sizeY = pageSizeY * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
+        final float sizeX = (BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1) * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
+        final float sizeY = BlockSelectionState.MENUBLOCK_PAGESIZE_Y * (BLOCK_BUTTON_SIZE + SPACING) - SPACING;
         final float posx = app.getCamera().getWidth() - SCREEN_MARGIN - sizeX;
         final float posy = (app.getCamera().getHeight() + sizeY) / 2f;
         blockList.setPreferredSize(new Vector3f(sizeX, sizeY, 0));
@@ -703,9 +703,20 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         blockList.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         blockList.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
 
-        int index = page * pageSizeX * pageSizeY;
-        for (int y = 0; y < pageSizeY; y++) {
-            for (int x = 0; x < pageSizeX; x++) {
+        MouseListener blockButtonMouseListener = new DefaultMouseListener() {
+            @Override
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
+                if (event.isPressed()) {
+                    setSelectedBlockIndex(target.getUserData("index"));
+                    hideBlockMenu();
+                }
+            }
+        };
+
+        int index = page * BlockSelectionState.MENUBLOCK_PAGESIZE_X * BlockSelectionState.MENUBLOCK_PAGESIZE_Y;
+        for (int y = 0; y < BlockSelectionState.MENUBLOCK_PAGESIZE_Y; y++) {
+            for (int x = 0; x < BlockSelectionState.MENUBLOCK_PAGESIZE_X; x++) {
                 Container blockButton;
                 if (index >= blocks.length || blocks[index] == null) {
                     // Filler button
@@ -713,18 +724,8 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
                 } else {
                     Node blockNode = blocks[index];
-                    int finalIndex = index;
-                    blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE,
-                            new DefaultMouseListener() {
-                                @Override
-                                public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-                                    event.setConsumed();
-                                    if (event.isPressed()) {
-                                        setSelectedBlockIndex(finalIndex);
-                                        hideBlockMenu();
-                                    }
-                                }
-                            });
+                    blockButton = createBlockButton(blockNode, BLOCK_BUTTON_SIZE, blockButtonMouseListener);
+                    blockButton.setUserData("index", index);
                 }
                 blockList.addChild(blockButton, x, y);
                 index++;
@@ -741,7 +742,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 highlight(event.isPressed(), nextButton);
             }
         });
-        blockList.addChild(nextButton, pageSizeX + 1, 0);
+        blockList.addChild(nextButton, BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1, 0);
 
         previousButton = createButton("Previous", BLOCK_BUTTON_SIZE, BLOCK_BUTTON_SIZE, new DefaultMouseListener() {
             @Override
@@ -753,7 +754,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
                 highlight(event.isPressed(), previousButton);
             }
         });
-        blockList.addChild(previousButton, pageSizeX + 1, pageSizeY - 1);
+        blockList.addChild(previousButton, BlockSelectionState.MENUBLOCK_PAGESIZE_X + 1, BlockSelectionState.MENUBLOCK_PAGESIZE_Y - 1);
 
         blockList.setLocalTranslation(posx, posy, 1);
         return blockList;

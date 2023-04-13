@@ -71,6 +71,7 @@ public class Config {
     // Debug
     public static final boolean DEV_MODE = false;
     public static final boolean DEBUG_COLLISIONS = false;
+    public static final boolean DEBUG_GRID = false;
 
     @Getter
     @Setter

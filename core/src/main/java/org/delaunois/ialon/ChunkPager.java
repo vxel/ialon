@@ -85,7 +85,7 @@ public class ChunkPager {
     private final Node node;
     private ExecutorService requestExecutor;
 
-    public ChunkPager(Node node, ChunkManager chunkManager) {
+    public ChunkPager(Node node, @NonNull ChunkManager chunkManager) {
         this.node = node;
         this.chunkManager = chunkManager;
         this.gridSize = BlocksConfig.getInstance().getGrid();
