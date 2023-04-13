@@ -161,50 +161,59 @@ public class IalonDebugState extends BaseAppState {
         Map<Vec3i, Chunk> fetchedPages = chunkPager.getFetchedPages();
         Map<Vec3i, Node> attachedPages = chunkPager.getAttachedPages();
 
-        List<Vec3i> locations = fetchedPages.keySet().stream().filter(loc -> loc.y == 4).collect(Collectors.toList());
-        int minx = 0;
-        int minz = 0;
+        List<Vec3i> locations = fetchedPages.keySet()
+                .stream()
+                .filter(loc -> loc.y == 4)
+                .collect(Collectors.toList());
+
+        Vec3i min = new Vec3i();
         for (Vec3i location : locations) {
-            minx = Math.min(location.x, minx);
-            minz = Math.min(location.z, minz);
+            min.x = Math.min(location.x, min.x);
+            min.z = Math.min(location.z, min.z);
         }
 
-        int finalMinz = minz;
-        int finalMinx = minx;
-        locations.forEach(location -> {
-            ColorRGBA color = ColorRGBA.White;
-            Chunk chunk = fetchedPages.get(location);
-            Node attachedPage = attachedPages.get(location);
-            Chunk cachedChunk = chunkPager.getChunkManager().getChunk(location).orElse(null);
+        locations.forEach(location ->
+                displayGridLocation(location, centerpage, min, size, fetchedPages, attachedPages));
+    }
 
-            if (chunk.getNode() != null && cachedChunk != null && cachedChunk.getNode() != null) {
-                if (attachedPage != null) {
-                    color = ColorRGBA.Green;
-                } else {
-                    color = new ColorRGBA(0, 0.3f, 0, 1);
-                }
-            } else if (cachedChunk == null) {
-                color = ColorRGBA.Red;
-            } else if (cachedChunk.getNode() == null) {
-                color = ColorRGBA.Black;
-            } else if (cachedChunk.getNode().getParent() == null) {
-                color = ColorRGBA.Gray;
+    private void displayGridLocation(Vec3i location,
+                                     Vec3i centerpage,
+                                     Vec3i min,
+                                     float size,
+                                     Map<Vec3i, Chunk> fetchedPages,
+                                     Map<Vec3i, Node> attachedPages) {
+        ColorRGBA color = ColorRGBA.White;
+        Chunk chunk = fetchedPages.get(location);
+        Node attachedPage = attachedPages.get(location);
+        Chunk cachedChunk = chunkPager.getChunkManager().getChunk(location).orElse(null);
+
+        if (chunk.getNode() != null && cachedChunk != null && cachedChunk.getNode() != null) {
+            if (attachedPage != null) {
+                color = ColorRGBA.Green;
+            } else {
+                color = new ColorRGBA(0, 0.3f, 0, 1);
             }
+        } else if (cachedChunk == null) {
+            color = ColorRGBA.Red;
+        } else if (cachedChunk.getNode() == null) {
+            color = ColorRGBA.Black;
+        } else if (cachedChunk.getNode().getParent() == null) {
+            color = ColorRGBA.Gray;
+        }
 
-            if (attachedPage != null && (cachedChunk == null || cachedChunk.getNode() == null)) {
-                color = ColorRGBA.Orange;
-            }
+        if (attachedPage != null && (cachedChunk == null || cachedChunk.getNode() == null)) {
+            color = ColorRGBA.Orange;
+        }
 
-            if (location.x == centerpage.x && location.z == centerpage.z) {
-                color = ColorRGBA.Yellow;
-            }
+        if (location.x == centerpage.x && location.z == centerpage.z) {
+            color = ColorRGBA.Yellow;
+        }
 
-            Container block = new Container();
-            block.setPreferredSize(new Vector3f(size, size, 0));
-            block.setInsets(new Insets3f(1, 1, 1, 1));
-            block.setBackground(new QuadBackgroundComponent(color));
-            grid.addChild(block, location.x - finalMinx, location.z - finalMinz);
-        });
+        Container block = new Container();
+        block.setPreferredSize(new Vector3f(size, size, 0));
+        block.setInsets(new Insets3f(1, 1, 1, 1));
+        block.setBackground(new QuadBackgroundComponent(color));
+        grid.addChild(block, location.x - min.x, location.z - min.z);
     }
 
     private String getWorldLocationString() {
