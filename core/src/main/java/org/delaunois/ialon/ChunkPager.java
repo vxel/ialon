@@ -149,6 +149,8 @@ public class ChunkPager {
         final int fetchMaxX = Math.min(meshMaxX + 1, gridUpperBounds.x);
         final int fetchMaxY = Math.min(meshMaxY + 1, gridUpperBounds.y);
         final int fetchMaxZ = Math.min(meshMaxZ + 1, gridUpperBounds.z);
+        final Vec3i meshMin = new Vec3i(meshMinX, meshMinY, meshMinZ);
+        final Vec3i meshMax = new Vec3i(meshMaxX, meshMaxY, meshMaxZ);
 
         if (log.isDebugEnabled()) {
             log.debug("Grid is set to ({}:{}, {}:{}, {}:{})", meshMinX, meshMaxX, meshMinY, meshMaxY, meshMinZ, meshMaxZ);
@@ -162,9 +164,7 @@ public class ChunkPager {
                 for (int z = fetchMinZ; z <= fetchMaxZ; z++) {
                     Vec3i pageLocation = new Vec3i(x, y, z);
                     pagesToFetch.add(pageLocation);
-                    if (x >= meshMinX && x <= meshMaxX && y >= meshMinY && y <= meshMaxY && z >= meshMinZ && z <= meshMaxZ) {
-                        pagesToMesh.add(pageLocation);
-                    }
+                    addPageToMesh(pageLocation, meshMin, meshMax, pagesToMesh);
                 }
             }
         }
@@ -202,6 +202,14 @@ public class ChunkPager {
 
         pagesToMesh.clear();
         pagesToFetch.clear();
+    }
+
+    private void addPageToMesh(Vec3i pageLocation, Vec3i meshMin, Vec3i meshMax, Set<Vec3i> pagesToMesh) {
+        if (pageLocation.x >= meshMin.x && pageLocation.x <= meshMax.x
+                && pageLocation.y >= meshMin.y && pageLocation.y <= meshMax.y
+                && pageLocation.z >= meshMin.z && pageLocation.z <= meshMax.z) {
+            pagesToMesh.add(pageLocation);
+        }
     }
 
     private void detachNextPages() {
