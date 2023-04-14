@@ -2,8 +2,10 @@
 
 # Ialon - A block (voxel) construction game
 
-[![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vxel_ialon&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vxel_ialon)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=vxel_ialon&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=vxel_ialon)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=vxel_ialon&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=vxel_ialon)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=vxel_ialon&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=vxel_ialon)
 
 Ialon is a block construction game working on desktop and Android devices.
 Ialon means clearing, cleared area and, by extension, village in Gallic.
@@ -59,5 +61,7 @@ Water simulation and Minecraft-like lightning :
 ![Screenshot Ialon 3](https://user-images.githubusercontent.com/28866693/196790246-a1cf2706-edfb-4e7f-b533-ca147a58a68b.jpeg)
 
 # Developer
+
+[![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
 
 Cédric de Launois
