@@ -2,6 +2,8 @@ package org.delaunois.ialon;
 
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.math.Vector3f;
+import com.jme3.util.BufferAllocatorFactory;
+import com.jme3.util.PrimitiveAllocator;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.simsilica.mathd.Vec3i;
 
@@ -13,6 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ChunkManagerTest {
+
+    static {
+        System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
+    }
 
     @BeforeAll
     public static void setUp() {

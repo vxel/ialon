@@ -49,6 +49,9 @@ project(":core") {
         implementation "${jme3.g}:jme3-jogg:${jme3.v}"
         implementation "${jme3.g}:jme3-plugins:${jme3.v}"
         implementation "${sio2.g}:sio2:${sio2.v}"
+        testImplementation "${jme3.g}:jme3-desktop:${jme3.v}"
+        testImplementation "${jme3.g}:jme3-lwjgl:${jme3.v}"
+        testImplementation "${sio2.g}:sio2:${sio2.v}"
     }
 }
 
@@ -59,7 +62,6 @@ project(":desktop") {
         implementation "${jme3.g}:jme3-desktop:${jme3.v}"
         implementation "${jme3.g}:jme3-lwjgl:${jme3.v}"
         implementation "${sio2.g}:sio2:${sio2.v}"
-        testImplementation project(":core").sourceSets.main.resources
     }
 }
 
