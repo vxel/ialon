@@ -13,9 +13,6 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 
-    //noinspection AnnotationProcessorOnCompilePath
-    compileOnly "org.projectlombok:lombok:${lombokVersion}"
-
     // logging
     testImplementation "ch.qos.logback:logback-core:${logbackVersion}"
     testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
