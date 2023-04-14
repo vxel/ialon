@@ -72,6 +72,7 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -352,9 +353,9 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public static void registerIalonBlocks() {
-        for (IalonBlock block : IalonBlock.values() ) {
-            Material material = BlocksConfig.getInstance().getTypeRegistry().get(block.getType());
-            if (material == null) {
+        Collection<String> types = BlocksConfig.getInstance().getTypeRegistry().getAll();
+        for (IalonBlock block : IalonBlock.values()) {
+            if (!types.contains(block.getType())) {
                 BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
             }
 
