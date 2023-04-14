@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2022 Cédric de Launois
  *
  * This program is free software: you can redistribute it and/or modify
@@ -140,8 +140,8 @@ public enum IalonBlock {
         return transparent;
     }
 
-    public boolean isMultitexture() { 
-        return multitexture; 
+    public boolean isMultitexture() {
+        return multitexture;
     }
 
     public String[] getShapes() {

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2022 Cédric de Launois
  *
  * This program is free software: you can redistribute it and/or modify
@@ -43,7 +43,7 @@ public class BlockNeighborhood {
     private final Chunk chunk;
 
     // The neighborhood : all blocks surrounding the location
-    // Order of blocks is : 
+    // Order of blocks is :
     //  Bottom     Middle      Top            Y ---> X
     // 00 01 02   09 10 11   18 19 20         |
     // 03 04 05   12 13 14   21 22 23         v
