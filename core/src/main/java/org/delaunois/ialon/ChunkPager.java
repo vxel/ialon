@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2022 Cédric de Launois
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,7 @@ import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -36,6 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -166,30 +169,36 @@ public class ChunkPager {
             }
         }
 
-        // detach pages outside of the grid
         pagesToDetach.clear();
         for (Vec3i page : attachedPages.keySet()) {
-            if (!pagesToMesh.contains(page)) {
-                pagesToDetach.offer(page);
-            } else {
+            if (pagesToMesh.contains(page)) {
+                // page already meshed
                 pagesToMesh.remove(page);
+            } else {
+                // detach pages outside of the grid
+                pagesToDetach.offer(page);
             }
         }
 
-        // detach fetched pages outside of the grid
         pagesToUnfetch.clear();
         for (Vec3i page : fetchedPages.keySet()) {
-            if (!pagesToFetch.contains(page)) {
-                pagesToUnfetch.add(page);
-            } else {
+            if (pagesToFetch.contains(page)) {
+                // page already fetched
                 pagesToFetch.remove(page);
+            } else {
+                // detach fetched pages outside of the grid
+                pagesToUnfetch.add(page);
             }
         }
 
         // request the new pages pages to load/generate and mesh
+        // 82%
         chunkManager.requestChunks(
                 new ArrayList<>(pagesToFetch),
-                new ArrayList<>(pagesToMesh));
+                // 14%
+                pagesToMesh.stream()
+                        .sorted(Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage)))
+                        .collect(Collectors.toList()));
 
         pagesToMesh.clear();
         pagesToFetch.clear();
@@ -297,10 +306,22 @@ public class ChunkPager {
     }
 
     public void cleanup() {
+        cleanup(0);
+    }
+
+    public void cleanup(long timeout) {
         if (log.isTraceEnabled()) {
             log.trace("{} cleanup()", getClass().getSimpleName());
         }
         requestExecutor.shutdown();
+        try {
+            if (!requestExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
+                log.warn("Executors did not terminate properly within timeout");
+            }
+        } catch (InterruptedException e) {
+            log.error("Interrupted while cleaning up {}", getClass().getSimpleName());
+            Thread.currentThread().interrupt();
+        }
         attachedPages.forEach((loc, page) -> detachPage(page));
         attachedPages.clear();
         fetchedPages.clear();

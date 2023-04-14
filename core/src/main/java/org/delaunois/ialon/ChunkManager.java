@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -146,7 +147,9 @@ public class ChunkManager {
         try {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk == null) {
-                chunk = repository.load(location);
+                if (repository != null) {
+                    chunk = repository.load(location);
+                }
                 if (chunk == null) {
                     chunk = generator.generate(location);
                     chunk.update();
@@ -553,13 +556,25 @@ public class ChunkManager {
     }
 
     public void cleanup() {
+        cleanup(0);
+    }
+
+    public void cleanup(long timeout) {
         assertInitialized();
 
         if (log.isTraceEnabled()) {
             log.trace("{} - cleanup", getClass().getSimpleName());
         }
 
-        requestExecutor.shutdownNow();
+        requestExecutor.shutdown();
+        try {
+            if (!requestExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
+                log.warn("Executors did not terminate properly within timeout");
+            }
+        } catch (InterruptedException e) {
+            log.error("Interrupted while cleaning up {}", getClass().getSimpleName());
+            Thread.currentThread().interrupt();
+        }
         cache.evictAll();
         initialized = false;
     }
