@@ -34,46 +34,38 @@ public enum Direction {
         int x = Math.round(vector3f.x);
         int y = Math.round(vector3f.y);
         int z = Math.round(vector3f.z);
-        if (x == 0) {
-            if (y == 0) {
-                if (z == 1) {
-                    return SOUTH;
-                } else if (z == -1) {
-                    return NORTH;
-                }
-            } else if (y == 1 && z == 0) {
+        if (x != 0) {
+            if (x == 1) {
+                return EAST;
+            } else if (x == -1) {
+                return WEST;
+            }
+        } else if (y != 0) {
+            if (y == 1) {
                 return UP;
-            } else if (y == -1 && z == 0) {
+            } else if (y == -1) {
                 return DOWN;
             }
-        } else if (x == 1 && y == 0 && z == 0) {
-            return EAST;
-
-        } else if (x == -1 && y == 0 && z == 0) {
-            return WEST;
+        } else if (z != 0) {
+            if (z == 1) {
+                return SOUTH;
+            } else if (z == -1) {
+                return NORTH;
+            }
         }
-
         log.error("Unable to find direction from vector {}. Returning UP.", vector3f);
         return UP;
     }
 
     public Direction opposite() {
-        if (vector.x == 0) {
-            if (vector.y == 0) {
-                if (vector.z == 1) {
-                    return NORTH;
-                } else {
-                    return SOUTH;
-                }
-            } else if (vector.y == 1) {
-                return DOWN;
-            } else {
-                return UP;
-            }
-        } else if (vector.x == 1) {
-            return WEST;
+        if (vector.x != 0) {
+            return vector.x > 0 ? WEST : EAST;
+        } else if (vector.y != 0) {
+            return vector.y > 0 ? DOWN : UP;
+        } else if (vector.z != 0) {
+            return vector.z > 0 ? NORTH : SOUTH;
         }
-        return EAST;
+        throw new IllegalStateException("Invalid direction vector: " + vector);
     }
 
 }
