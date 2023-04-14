@@ -25,7 +25,7 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -36,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -132,40 +131,48 @@ public class ChunkPager {
     }
 
     protected void updateQueues() {
-        Vec3i meshMin = new Vec3i(
-                Math.max(centerPage.x - ((gridSize.x - 1) / 2), gridLowerBounds.x),
-                Math.max(centerPage.y - ((gridSize.y - 1) / 2), gridLowerBounds.y),
-                Math.max(centerPage.z - ((gridSize.z - 1) / 2), gridLowerBounds.z)
-        );
-        Vec3i meshMax = new Vec3i(
-                Math.min(centerPage.x + ((gridSize.x - 1) / 2), gridUpperBounds.x),
-                Math.min(centerPage.y + ((gridSize.y - 1) / 2), gridUpperBounds.y),
-                Math.min(centerPage.z + ((gridSize.z - 1) / 2), gridUpperBounds.z)
-        );
-        Vec3i fetchMin = new Vec3i(
-                Math.max(meshMin.x - 1, gridLowerBounds.x),
-                Math.max(meshMin.y - 1, gridLowerBounds.y),
-                Math.max(meshMin.z - 1, gridLowerBounds.z)
-        );
-        Vec3i fetchMax = new Vec3i(
-                Math.min(meshMax.x + 1, gridUpperBounds.x),
-                Math.min(meshMax.y + 1, gridUpperBounds.y),
-                Math.min(meshMax.z + 1, gridUpperBounds.z)
-        );
+        final int halfGridSizeX = (gridSize.x - 1) / 2;
+        final int halfGridSizeY = (gridSize.y - 1) / 2;
+        final int halfGridSizeZ = (gridSize.z - 1) / 2;
+        final int meshMinX = Math.max(centerPage.x - halfGridSizeX, gridLowerBounds.x);
+        final int meshMinY = Math.max(centerPage.y - halfGridSizeY, gridLowerBounds.y);
+        final int meshMinZ = Math.max(centerPage.z - halfGridSizeZ, gridLowerBounds.z);
+        final int meshMaxX = Math.min(centerPage.x + halfGridSizeX, gridUpperBounds.x);
+        final int meshMaxY = Math.min(centerPage.y + halfGridSizeY, gridUpperBounds.y);
+        final int meshMaxZ = Math.min(centerPage.z + halfGridSizeZ, gridUpperBounds.z);
+        final int fetchMinX = Math.max(meshMinX - 1, gridLowerBounds.x);
+        final int fetchMinY = Math.max(meshMinY - 1, gridLowerBounds.y);
+        final int fetchMinZ = Math.max(meshMinZ - 1, gridLowerBounds.z);
+        final int fetchMaxX = Math.min(meshMaxX + 1, gridUpperBounds.x);
+        final int fetchMaxY = Math.min(meshMaxY + 1, gridUpperBounds.y);
+        final int fetchMaxZ = Math.min(meshMaxZ + 1, gridUpperBounds.z);
 
         if (log.isDebugEnabled()) {
-            log.debug("Grid is set to ({}:{}, {}:{}, {}:{})", meshMin.x, meshMax.x, meshMin.y, meshMax.y, meshMin.z, meshMax.z);
+            log.debug("Grid is set to ({}:{}, {}:{}, {}:{})", meshMinX, meshMaxX, meshMinY, meshMaxY, meshMinZ, meshMaxZ);
         }
 
         Set<Vec3i> pagesToMesh = new HashSet<>();
         Set<Vec3i> pagesToFetch = new HashSet<>();
-        collectPages(fetchMin, fetchMax, meshMin, meshMax, pagesToFetch, pagesToMesh);
+
+        for (int x = fetchMinX; x <= fetchMaxX; x++) {
+            for (int y = fetchMinY; y <= fetchMaxY; y++) {
+                for (int z = fetchMinZ; z <= fetchMaxZ; z++) {
+                    Vec3i pageLocation = new Vec3i(x, y, z);
+                    pagesToFetch.add(pageLocation);
+                    if (x >= meshMinX && x <= meshMaxX && y >= meshMinY && y <= meshMaxY && z >= meshMinZ && z <= meshMaxZ) {
+                        pagesToMesh.add(pageLocation);
+                    }
+                }
+            }
+        }
 
         // detach pages outside of the grid
         pagesToDetach.clear();
         for (Vec3i page : attachedPages.keySet()) {
             if (!pagesToMesh.contains(page)) {
                 pagesToDetach.offer(page);
+            } else {
+                pagesToMesh.remove(page);
             }
         }
 
@@ -174,35 +181,18 @@ public class ChunkPager {
         for (Vec3i page : fetchedPages.keySet()) {
             if (!pagesToFetch.contains(page)) {
                 pagesToUnfetch.add(page);
+            } else {
+                pagesToFetch.remove(page);
             }
         }
 
         // request the new pages pages to load/generate and mesh
         chunkManager.requestChunks(
-                pagesToFetch.stream()
-                        .filter(pageLocation -> !fetchedPages.containsKey(pageLocation))
-                        .collect(Collectors.toList()),
-                pagesToMesh.stream()
-                        .filter(pageLocation -> !attachedPages.containsKey(pageLocation))
-                        .sorted(Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage)))
-                        .collect(Collectors.toList()));
+                new ArrayList<>(pagesToFetch),
+                new ArrayList<>(pagesToMesh));
 
         pagesToMesh.clear();
         pagesToFetch.clear();
-    }
-
-    private void collectPages(Vec3i fetchMin, Vec3i fetchMax, Vec3i meshMin, Vec3i meshMax, Set<Vec3i> pagesToFetch, Set<Vec3i> pagesToMesh) {
-        for (int x = fetchMin.x; x <= fetchMax.x; x++) {
-            for (int y = fetchMin.y; y <= fetchMax.y; y++) {
-                for (int z = fetchMin.z; z <= fetchMax.z; z++) {
-                    Vec3i pageLocation = new Vec3i(x, y, z);
-                    pagesToFetch.add(pageLocation);
-                    if (x >= meshMin.x && x <= meshMax.x && y >= meshMin.y && y <= meshMax.y && z >= meshMin.z && z <= meshMax.z) {
-                        pagesToMesh.add(pageLocation);
-                    }
-                }
-            }
-        }
     }
 
     private void detachNextPages() {
