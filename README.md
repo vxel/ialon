@@ -3,6 +3,7 @@
 # Ialon - A block (voxel) construction game
 
 [![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vxel_ialon&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vxel_ialon)
 
 Ialon is a block construction game working on desktop and Android devices.
 Ialon means clearing, cleared area and, by extension, village in Gallic.
