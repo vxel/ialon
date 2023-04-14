@@ -51,9 +51,8 @@ public class ChunkPagerTest {
         Vec3i grid = BlocksConfig.getInstance().getGrid();
         int numPages = grid.x * grid.y * grid.z;
 
-        Thread.sleep(1000);
-
         while (chunkPager.getAttachedPages().size() < numPages) {
+            Thread.sleep(100);
             chunkPager.update();
         }
 

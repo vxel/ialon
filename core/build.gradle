@@ -1,4 +1,5 @@
 apply plugin: "java"
+apply plugin: "jacoco"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
@@ -42,6 +43,12 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+    }
 }
 
 java {
