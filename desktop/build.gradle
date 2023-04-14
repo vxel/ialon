@@ -2,14 +2,24 @@ apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
+    lombokVersion = "1.18.20"
     mockitoVersion = "[4.2,)"
     junitVersion = "[5.8.0,)"
+    logbackVersion = "1.2.3"
 }
 
 dependencies {
     testImplementation "org.mockito:mockito-core:${mockitoVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+
+    //noinspection AnnotationProcessorOnCompilePath
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+
+    // logging
+    testImplementation "ch.qos.logback:logback-core:${logbackVersion}"
+    testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
+    testImplementation "org.slf4j:jul-to-slf4j:1.7.36"
 }
 
 test {

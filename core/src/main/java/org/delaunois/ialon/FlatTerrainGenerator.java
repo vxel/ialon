@@ -2,6 +2,7 @@ package org.delaunois.ialon;
 
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
+import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
@@ -14,10 +15,18 @@ public class FlatTerrainGenerator implements TerrainGenerator {
     private final int ground;
     private final Block block;
 
+    public FlatTerrainGenerator() {
+        this(0, null);
+    }
+
     public FlatTerrainGenerator(int y, Block block) {
         if (y < 0 || y >= BlocksConfig.getInstance().getChunkSize().y) {
             throw new IllegalArgumentException("Invalid parameters specified! [y=" + y + "]");
         }
+        if (block == null) {
+            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
+        }
+
         this.ground = y;
         this.block = block;
     }

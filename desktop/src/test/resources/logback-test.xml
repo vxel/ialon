@@ -7,7 +7,7 @@
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%-15thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%-20thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -18,8 +18,8 @@
     <logger name="com.rvandoosselaer.blocks.BlockRegistry" level="error"/>
     <logger name="org.delaunois.ialon" level="info"/>
     <logger name="org.delaunois.jme.AndroidHarness" level="trace"/>
-    <logger name="org.delaunois.ialon.ChunkManager" level="info"/>
-    <logger name="org.delaunois.ialon.ChunkPager" level="error"/>
+    <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
+    <logger name="org.delaunois.ialon.ChunkPager" level="debug"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
     <logger name="org.delaunois.ialon.ChunkLiquidManager" level="debug"/>
@@ -27,6 +27,7 @@
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>
     <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>
+    <logger name="org.delaunois.ialon.FacesMeshGenerator" level="info"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />
