@@ -31,6 +31,7 @@ public class ChunkPagerTest {
         Ialon.configureBlocksFramework(new DesktopAssetManager(true), new TextureAtlasManager());
     }
 
+    @SuppressWarnings("java:S2925")
     @Test
     void testChunkPager() throws InterruptedException {
         ChunkManager chunkManager = ChunkManager.builder()
