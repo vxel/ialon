@@ -28,13 +28,15 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor
 public class ChunkMesh {
 
+    private static final int INITIAL_CAPACITY = 2000;
+
     private boolean collisionMesh = false;
-    private final List<Vector3f> positions = new ArrayList<>();
-    private final List<Vector3f> normals = new ArrayList<>();
-    private final List<Vector4f> tangents = new ArrayList<>();
-    private final List<Vector2f> uvs = new ArrayList<>();
-    private final List<Integer> indices = new ArrayList<>();
-    private final List<Vector4f> colors = new ArrayList<>();
+    private final List<Vector3f> positions = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Vector3f> normals = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Vector4f> tangents = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Vector2f> uvs = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Integer> indices = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Vector4f> colors = new ArrayList<>(INITIAL_CAPACITY);
 
     public ChunkMesh(boolean collisionMesh) {
         this.collisionMesh = collisionMesh;
