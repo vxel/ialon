@@ -41,7 +41,7 @@ public class MainActivity extends AndroidHarness {
         super.onCreate(savedInstanceState);
     }
 
-    @SuppressWarning("java:S1874")
+    @SuppressWarnings("java:S1874")
     @Override
     protected void onResume() {
         super.onResume();
