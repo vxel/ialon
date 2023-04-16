@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2022 Cédric de Launois
  *
  * This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,7 @@ public class MainActivity extends AndroidHarness {
         super.onCreate(savedInstanceState);
     }
 
+    @SuppressWarning("java:S1874")
     @Override
     protected void onResume() {
         super.onResume();
