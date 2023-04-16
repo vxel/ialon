@@ -277,8 +277,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private void initBlockFramework(PlayerStateDTO playerStateDTO) {
         configureBlocksFramework(assetManager, atlasManager);
 
-        log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
-
         terrainGenerator = new NoiseTerrainGenerator(2);
         chunkManager = ChunkManager.builder()
                 .poolSize(config.getChunkPoolsize())
@@ -341,6 +339,12 @@ public class Ialon extends SimpleApplication implements ActionListener {
         typeRegistry.registerDefaultMaterials();
 
         registerIalonBlocks();
+
+        int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
+        int shapeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
+        log.info("{} block types registered", typeSize);
+        log.info("{} block shapes registered", shapeSize);
+        log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
     }
 
     public static void registerIalonBlocks() {

@@ -568,8 +568,8 @@ public class ChunkManager {
 
         requestExecutor.shutdown();
         try {
-            if (!requestExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
-                log.warn("Executors did not terminate properly within timeout");
+            if (!requestExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS) && timeout > 0) {
+                log.warn("Executors did not terminate properly within {}ms timeout", timeout);
             }
         } catch (InterruptedException e) {
             log.error("Interrupted while cleaning up {}", getClass().getSimpleName());
