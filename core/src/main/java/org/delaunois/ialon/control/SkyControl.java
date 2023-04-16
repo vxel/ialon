@@ -24,15 +24,10 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.control.AbstractControl;
 
+import org.delaunois.ialon.IalonConfig;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.GROUND_DAY_COLOR;
-import static org.delaunois.ialon.Config.GROUND_EVENING_COLOR;
-import static org.delaunois.ialon.Config.GROUND_NIGHT_COLOR;
-import static org.delaunois.ialon.Config.SKY_DAY_COLOR;
-import static org.delaunois.ialon.Config.SKY_EVENING_COLOR;
-import static org.delaunois.ialon.Config.SKY_NIGHT_COLOR;
 
 @Slf4j
 public class SkyControl extends AbstractControl {
@@ -48,6 +43,8 @@ public class SkyControl extends AbstractControl {
     private final ColorRGBA groundColor = new ColorRGBA();
 
     private long lastUpdate = 0;
+
+    private final IalonConfig config = IalonConfig.getInstance();
 
     public void setSunControl(SunControl sun) {
         this.sun = sun;
@@ -68,11 +65,11 @@ public class SkyControl extends AbstractControl {
             float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
 
             if (sunHeight > 0) {
-                color.interpolateLocal(SKY_EVENING_COLOR, SKY_DAY_COLOR, shift);
-                groundColor.interpolateLocal(GROUND_EVENING_COLOR, GROUND_DAY_COLOR, shift);
+                color.interpolateLocal(config.getSkyEveningColor(), config.getSkyDayColor(), shift);
+                groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundDayColor(), shift);
             } else {
-                color.interpolateLocal(SKY_EVENING_COLOR, SKY_NIGHT_COLOR, shift);
-                groundColor.interpolateLocal(GROUND_EVENING_COLOR, GROUND_NIGHT_COLOR, shift);
+                color.interpolateLocal(config.getSkyEveningColor(), config.getSkyNightColor(), shift);
+                groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundNightColor(), shift);
             }
             ((Geometry) spatial).getMaterial().setColor("Color", color);
         }

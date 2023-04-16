@@ -22,8 +22,6 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 
-import static org.delaunois.ialon.Config.ROTATION_SPEED;
-
 public class CameraHelper {
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
@@ -38,7 +36,7 @@ public class CameraHelper {
 
     public static void rotate(Camera cam, float value, Vector3f axis) {
         Matrix3f mat = new Matrix3f();
-        mat.fromAngleNormalAxis(ROTATION_SPEED * value, axis);
+        mat.fromAngleNormalAxis(IalonConfig.getInstance().getRotationSpeed() * value, axis);
 
         Vector3f up = cam.getUp();
         Vector3f left = cam.getLeft();

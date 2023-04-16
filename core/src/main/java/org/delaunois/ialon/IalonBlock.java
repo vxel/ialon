@@ -34,50 +34,50 @@ public enum IalonBlock {
     WATER(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID), TypeIds.WATER, false, true, false, ShapeIds.LIQUID, Block.LIQUID_FULL),
     WATER_SOURCE(BlockIds.WATER_SOURCE, TypeIds.WATER, false, true, false, ShapeIds.LIQUID5, Block.LIQUID_SOURCE),
 
-    STONE_BRICKS(TypeIds.STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
-    STONE_BRICKS2("stone_bricks2", true, false, false, Config.STANDARD_SHAPES),
+    STONE_BRICKS(TypeIds.STONE_BRICKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    STONE_BRICKS2("stone_bricks2", true, false, false, IalonConfig.getInstance().getStandardShapes()),
     STONE_BRICKS3("stone_bricks3", true, false, false, ShapeIds.CUBE),
-    MOSSY_STONE_BRICKS(TypeIds.MOSSY_STONE_BRICKS, true, false, false, Config.STANDARD_SHAPES),
+    MOSSY_STONE_BRICKS(TypeIds.MOSSY_STONE_BRICKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
 
-    SPRUCE_LOG(TypeIds.SPRUCE_LOG, true, false, true, Config.STANDARD_SHAPES_NO_STAIRS),
-    SPRUCE_PLANKS(TypeIds.SPRUCE_PLANKS, true, false, false, Config.STANDARD_SHAPES),
+    SPRUCE_LOG(TypeIds.SPRUCE_LOG, true, false, true, IalonConfig.getInstance().getStandardShapesNoStairs()),
+    SPRUCE_PLANKS(TypeIds.SPRUCE_PLANKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
     SPRUCE_LEAVES(TypeIds.SPRUCE_LEAVES, true, true, false, ShapeIds.CUBE),
 
-    SNOW(TypeIds.SNOW, true, false, false, Config.STANDARD_SHAPES),
+    SNOW(TypeIds.SNOW, true, false, false, IalonConfig.getInstance().getStandardShapes()),
     ITEM_SEAWEED("item_seaweed", false, false, false, ShapeIds.CROSS_PLANE),
     ITEM_GRASS(TypeIds.ITEM_GRASS, false, false, false, ShapeIds.CROSS_PLANE),
     SCALE(TypeIds.SCALE, false, false, false, ShapeIds.SQUARE_NORTH, ShapeIds.SQUARE_SOUTH, ShapeIds.SQUARE_WEST, ShapeIds.SQUARE_EAST),
-    SAND(TypeIds.SAND, true, false, false, Config.STANDARD_SHAPES),
+    SAND(TypeIds.SAND, true, false, false, IalonConfig.getInstance().getStandardShapes()),
 
-    OAK_LOG(TypeIds.OAK_LOG, true, false, true, Config.STANDARD_SHAPES_NO_STAIRS),
-    OAK_PLANKS(TypeIds.OAK_PLANKS, true, false, false, Config.STANDARD_SHAPES),
+    OAK_LOG(TypeIds.OAK_LOG, true, false, true, IalonConfig.getInstance().getStandardShapesNoStairs()),
+    OAK_PLANKS(TypeIds.OAK_PLANKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
     OAK_LEAVES(TypeIds.OAK_LEAVES, true, true, false, ShapeIds.CUBE),
 
-    ROCK(TypeIds.ROCK, true, false, false, Config.STANDARD_SHAPES),
+    ROCK(TypeIds.ROCK, true, false, false, IalonConfig.getInstance().getStandardShapes()),
 
-    PALM_TREE_LOG(TypeIds.PALM_TREE_LOG, true, false, true, Config.STANDARD_SHAPES_NO_STAIRS),
-    PALM_TREE_PLANKS(TypeIds.PALM_TREE_PLANKS, true, false, false, Config.STANDARD_SHAPES),
+    PALM_TREE_LOG(TypeIds.PALM_TREE_LOG, true, false, true, IalonConfig.getInstance().getStandardShapesNoStairs()),
+    PALM_TREE_PLANKS(TypeIds.PALM_TREE_PLANKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
     PALM_TREE_LEAVES(TypeIds.PALM_TREE_LEAVES, true, true, false, ShapeIds.CUBE),
 
     GRASS(TypeIds.GRASS, true, false, true, ShapeIds.CUBE, ShapeIds.SLAB, ShapeIds.DOUBLE_SLAB),
     GRASS_SNOW(TypeIds.GRASS_SNOW, true, false, true, ShapeIds.CUBE, ShapeIds.SLAB, ShapeIds.DOUBLE_SLAB),
-    GRAVEL(TypeIds.GRAVEL, true, false, false, Config.STANDARD_SHAPES),
-    DIRT(TypeIds.DIRT, true, false, false, Config.STANDARD_SHAPES),
-    COBBLESTONE(TypeIds.COBBLESTONE, true, false, false, Config.STANDARD_SHAPES),
-    MOSSY_COBBLESTONE(TypeIds.MOSSY_COBBLESTONE, true, false, false, Config.STANDARD_SHAPES),
-    BRICKS(TypeIds.BRICKS, true, false, false, Config.STANDARD_SHAPES),
+    GRAVEL(TypeIds.GRAVEL, true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    DIRT(TypeIds.DIRT, true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    COBBLESTONE(TypeIds.COBBLESTONE, true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    MOSSY_COBBLESTONE(TypeIds.MOSSY_COBBLESTONE, true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    BRICKS(TypeIds.BRICKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
 
-    BIRCH_LOG(TypeIds.BIRCH_LOG, true, false, true, Config.STANDARD_SHAPES_NO_STAIRS),
-    BIRCH_PLANKS(TypeIds.BIRCH_PLANKS, true, false, false, Config.STANDARD_SHAPES),
+    BIRCH_LOG(TypeIds.BIRCH_LOG, true, false, true, IalonConfig.getInstance().getStandardShapesNoStairs()),
+    BIRCH_PLANKS(TypeIds.BIRCH_PLANKS, true, false, false, IalonConfig.getInstance().getStandardShapes()),
     BIRCH_LEAVES(TypeIds.BIRCH_LEAVES, true, true, false, ShapeIds.CUBE),
 
-    TILE_RED("tile_red", true, false, false, Config.STANDARD_SHAPES),
-    SLATE("slate", true, false, false, Config.STANDARD_SHAPES),
-    METAL1("metal1", true, false, false, Config.STANDARD_SHAPES),
-    METAL2("metal2", true, true, false, Config.STANDARD_SHAPES),
-    METAL3("metal3", true, false, false, Config.STANDARD_SHAPES),
-    METAL4("metal4", true, false, false, Config.STANDARD_SHAPES),
-    METAL5("metal5", true, true, false, Config.STANDARD_SHAPES),
+    TILE_RED("tile_red", true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    SLATE("slate", true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    METAL1("metal1", true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    METAL2("metal2", true, true, false, IalonConfig.getInstance().getStandardShapes()),
+    METAL3("metal3", true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    METAL4("metal4", true, false, false, IalonConfig.getInstance().getStandardShapes()),
+    METAL5("metal5", true, true, false, IalonConfig.getInstance().getStandardShapes()),
 
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
@@ -99,7 +99,7 @@ public enum IalonBlock {
         this.multitexture = multitexture;
         this.torchlight = false;
         this.shapes = shapes;
-        this.waterLevels = Config.ALL_LEVELS;
+        this.waterLevels = IalonConfig.getInstance().getAllLevels();
     }
 
     IalonBlock(String type, boolean solid, boolean transparent, boolean multitexture, boolean torchlight, String... shapes) {
@@ -110,7 +110,7 @@ public enum IalonBlock {
         this.multitexture = multitexture;
         this.torchlight = torchlight;
         this.shapes = shapes;
-        this.waterLevels = Config.ALL_LEVELS;
+        this.waterLevels = IalonConfig.getInstance().getAllLevels();
     }
 
     IalonBlock(String name, String type, boolean solid, boolean transparent, boolean multitexture, String shape, byte waterLevel) {

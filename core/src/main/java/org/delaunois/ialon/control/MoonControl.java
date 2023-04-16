@@ -24,11 +24,11 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.control.AbstractControl;
 
+import org.delaunois.ialon.IalonConfig;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.SUN_AMPLITUDE;
 
 @Slf4j
 public class MoonControl extends AbstractControl {
@@ -58,7 +58,7 @@ public class MoonControl extends AbstractControl {
             float height = FastMath.sin(time);
             float x = FastMath.cos(time) * 100f;
             float z = FastMath.sin(time) * 100f;
-            float y = height * SUN_AMPLITUDE * 10f;
+            float y = height * IalonConfig.getInstance().getSunAmplitude() * 10f;
             position.set(x, y, z);
         }
 

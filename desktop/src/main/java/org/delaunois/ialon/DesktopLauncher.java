@@ -21,7 +21,6 @@ import com.jme3.system.AppSettings;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
 
-import static org.delaunois.ialon.Config.FPS_LIMIT;
 
 public class DesktopLauncher {
 
@@ -33,8 +32,8 @@ public class DesktopLauncher {
         Ialon app = new Ialon();
 
         AppSettings settings = new AppSettings(false);
-        settings.setFrameRate(FPS_LIMIT);
-        settings.setResolution(Config.SCREEN_WIDTH, Config.SCREEN_HEIGHT);
+        settings.setFrameRate(IalonConfig.getInstance().getFpsLimit());
+        settings.setResolution(IalonConfig.getInstance().getScreenWidth(), IalonConfig.getInstance().getScreenHeight());
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);
         settings.setUseInput(true);
         settings.setAudioRenderer(null);

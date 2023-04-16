@@ -38,7 +38,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.ChunkPager;
-import org.delaunois.ialon.Config;
+import org.delaunois.ialon.IalonConfig;
 
 import java.util.List;
 import java.util.Locale;
@@ -151,7 +151,7 @@ public class IalonDebugState extends BaseAppState {
         cacheSizeLabel.setText(getCacheSizeString());
         timeLabel.setText(getLocalTimeString());
 
-        if (Config.DEBUG_GRID) {
+        if (IalonConfig.getInstance().isDebugGrid()) {
             displayGrid();
         }
     }

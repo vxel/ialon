@@ -35,14 +35,10 @@ import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.GRID_HEIGHT;
-import static org.delaunois.ialon.Config.GRID_RADIUS;
-import static org.delaunois.ialon.Config.GRID_RADIUS_MAX;
-import static org.delaunois.ialon.Config.GRID_RADIUS_MIN;
 
 @Slf4j
 public class GridSettingsState extends BaseAppState implements ActionListener {
@@ -57,8 +53,10 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
     private int buttonSize;
     private Label gridSettingsLabel;
 
+    private final IalonConfig config = IalonConfig.getInstance();
+
     @Getter
-    private int radius = GRID_RADIUS;
+    private int radius = config.getGridRadius();
 
     @Override
     public void initialize(Application app) {
@@ -78,15 +76,15 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
                         event.setConsumed();
                         if (event.isPressed()) {
                             if (event.getButtonIndex() == 0) {
-                                radius = radius + 1;
+                                config.setGridRadius(config.getGridRadius() + 1);
                             } else {
-                                radius = radius - 1;
+                                config.setGridRadius(config.getGridRadius() - 1);
                             }
-                            if (radius > GRID_RADIUS_MAX) {
-                                radius = GRID_RADIUS_MIN;
+                            if (radius > config.getGridRadiusMax()) {
+                                radius = config.getGridRadiusMin();
                             }
-                            if (radius < GRID_RADIUS_MIN) {
-                                radius = GRID_RADIUS_MAX;
+                            if (radius < config.getGridRadiusMin()) {
+                                radius = config.getGridRadiusMax();
                             }
                             setRadius(radius);
                         }
@@ -95,9 +93,9 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
     }
 
     public void setRadius(int radius) {
-        this.radius = Math.max(Math.min(radius, GRID_RADIUS_MAX), GRID_RADIUS_MIN);
+        this.radius = Math.max(Math.min(radius, config.getGridRadiusMax()), config.getGridRadiusMin());
         int size = radius * 2 + 1;
-        BlocksConfig.getInstance().setGrid(new Vec3i(size, GRID_HEIGHT * 2 + 1, size));
+        BlocksConfig.getInstance().setGrid(new Vec3i(size, config.getGridHeight() * 2 + 1, size));
         if (app != null) {
             gridSettingsLabel.setText(size + "x" + size);
             app.getStateManager().getState(ChunkPagerState.class).getChunkPager().updateGridSize();

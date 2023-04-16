@@ -4,6 +4,7 @@ import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -18,16 +19,13 @@ import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.Ground;
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.FollowCamControl;
 import org.delaunois.ialon.control.SkyControl;
 
 import java.nio.FloatBuffer;
 
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.SKY_COLOR;
-import static org.delaunois.ialon.Config.SKY_HORIZON_COLOR;
-import static org.delaunois.ialon.Config.SKY_ZENITH_COLOR;
 
 @Slf4j
 public class SkyState extends BaseAppState {
@@ -44,56 +42,60 @@ public class SkyState extends BaseAppState {
 
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
         FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
+        final ColorRGBA skyColor = IalonConfig.getInstance().getSkyColor();
+        final ColorRGBA skyHorizonColor = IalonConfig.getInstance().getSkyHorizonColor();
+        final ColorRGBA skyZenithColor = IalonConfig.getInstance().getSkyZenithColor();
+
         fpb.put(new float[] {
                 // Sides Top Vertices
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
 
                 // Side Bottom Vertices
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
 
                 // Top Cap Vertices
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
-                SKY_COLOR.r, SKY_COLOR.g, SKY_COLOR.b, SKY_COLOR.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
+                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
 
                 // Bottom Cap Vertices
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
 
                 // Top Center Vextex
-                SKY_ZENITH_COLOR.r, SKY_ZENITH_COLOR.g, SKY_ZENITH_COLOR.b, SKY_ZENITH_COLOR.a,
+                skyZenithColor.r, skyZenithColor.g, skyZenithColor.b, skyZenithColor.a,
 
                 // Bottom center Vertex
-                SKY_HORIZON_COLOR.r, SKY_HORIZON_COLOR.g, SKY_HORIZON_COLOR.b, SKY_HORIZON_COLOR.a
+                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a
         });
         skyCylinder.setBuffer(VertexBuffer.Type.Color, 4, fpb);
         sky = new Geometry("sky", skyCylinder);

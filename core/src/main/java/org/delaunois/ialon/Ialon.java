@@ -80,18 +80,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.Config.CHUNK_HEIGHT;
-import static org.delaunois.ialon.Config.CHUNK_POOLSIZE;
-import static org.delaunois.ialon.Config.CHUNK_SIZE;
-import static org.delaunois.ialon.Config.DEBUG_COLLISIONS;
-import static org.delaunois.ialon.Config.DEV_MODE;
-import static org.delaunois.ialon.Config.GRID_HEIGHT;
-import static org.delaunois.ialon.Config.GRID_LOWER_BOUND;
-import static org.delaunois.ialon.Config.GRID_SIZE;
-import static org.delaunois.ialon.Config.GRID_UPPER_BOUND;
-import static org.delaunois.ialon.Config.MAX_UPDATE_PER_FRAME;
-import static org.delaunois.ialon.Config.PHYSICS_GRID_SIZE;
-import static org.delaunois.ialon.Config.SIMULATE_LIQUID_FLOW;
 
 /**
  * @author Cedric de Launois
@@ -142,6 +130,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
     private ExecutorService executorService;
+
+    private final IalonConfig config = IalonConfig.getInstance();
 
     public static void main(String[] args) {
         LogAdapter.initialize();
@@ -206,7 +196,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         );
 
         StatsAppState statsAppState = new StatsAppState();
-        if (DEV_MODE) {
+        if (config.isDevMode()) {
             atlasManager.dump();
             statsAppState.setDisplayStatView(true);
             statsAppState.setFont(font);
@@ -291,7 +281,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         terrainGenerator = new NoiseTerrainGenerator(2);
         chunkManager = ChunkManager.builder()
-                .poolSize(CHUNK_POOLSIZE)
+                .poolSize(config.getChunkPoolsize())
                 .generator(terrainGenerator)
                 .repository(fileRepository)
                 .build();
@@ -301,26 +291,26 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         ChunkPager chunkPager = new ChunkPager(chunkNode, chunkManager);
         chunkPager.setLocation(playerState.getPlayerLocation());
-        chunkPager.setGridLowerBounds(GRID_LOWER_BOUND);
-        chunkPager.setGridUpperBounds(GRID_UPPER_BOUND);
+        chunkPager.setGridLowerBounds(config.getGridLowerBound());
+        chunkPager.setGridUpperBounds(config.getGridUpperBound());
         chunkPager.setMaxUpdatePerFrame(100);
 
         BulletAppState bulletAppState = new BulletAppState();
-        bulletAppState.setDebugEnabled(DEBUG_COLLISIONS);
+        bulletAppState.setDebugEnabled(config.isDebugCollisions());
         stateManager.attach(bulletAppState);
 
         PhysicsSpace physicsSpace = bulletAppState.getPhysicsSpace();
         PhysicsChunkPager physicsChunkPager = new PhysicsChunkPager(physicsSpace, chunkManager);
         physicsChunkPager.setLocation(playerState.getPlayerLocation());
-        physicsChunkPager.setGridLowerBounds(GRID_LOWER_BOUND);
-        physicsChunkPager.setGridUpperBounds(GRID_UPPER_BOUND);
+        physicsChunkPager.setGridLowerBounds(config.getGridLowerBound());
+        physicsChunkPager.setGridUpperBounds(config.getGridUpperBound());
 
         ChunkManagerState chunkManagerState = new ChunkManagerState(chunkManager);
         ChunkPagerState chunkPagerState = new ChunkPagerState(chunkPager);
         PhysicsChunkPagerState physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
 
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
-        chunkLiquidManagerState.setEnabled(SIMULATE_LIQUID_FLOW);
+        chunkLiquidManagerState.setEnabled(config.isSimulateLiquidFlow());
         BlockSelectionState blockSelectionState = new BlockSelectionState();
         GridSettingsState gridSettingsState = new GridSettingsState();
         gridSettingsState.setRadius(playerStateDTO.getGridRadius());
@@ -337,14 +327,15 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
     public static void configureBlocksFramework(AssetManager assetManager, TextureAtlasManager atlasManager) {
         BlocksConfig.initialize(assetManager, false);
-        BlocksConfig config = BlocksConfig.getInstance();
-        config.setGrid(new Vec3i(GRID_SIZE, GRID_HEIGHT * 2 + 1, GRID_SIZE));
-        config.setPhysicsGrid(new Vec3i(PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE, PHYSICS_GRID_SIZE));
-        config.setChunkSize(new Vec3i(CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_SIZE));
-        config.getShapeRegistry().registerDefaultShapes();
-        config.setChunkMeshGenerator(new FacesMeshGenerator());
+        BlocksConfig blocksConfig = BlocksConfig.getInstance();
+        IalonConfig ialonConfig = IalonConfig.getInstance();
+        blocksConfig.setGrid(new Vec3i(ialonConfig.getGridSize(), ialonConfig.getGridHeight() * 2 + 1, ialonConfig.getGridSize()));
+        blocksConfig.setPhysicsGrid(new Vec3i(ialonConfig.getPhysicsGridSize(), ialonConfig.getPhysicsGridSize(), ialonConfig.getPhysicsGridSize()));
+        blocksConfig.setChunkSize(new Vec3i(ialonConfig.getChunkSize(), ialonConfig.getChunkHeight(), ialonConfig.getChunkSize()));
+        blocksConfig.getShapeRegistry().registerDefaultShapes();
+        blocksConfig.setChunkMeshGenerator(new FacesMeshGenerator());
 
-        TypeRegistry typeRegistry = config.getTypeRegistry();
+        TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
         typeRegistry.setAtlasRepository(atlasManager);
         typeRegistry.registerDefaultMaterials();
@@ -430,7 +421,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
         } else if (ACTION_TOGGLE_FULLSCREEN.equals(name) && isPressed) {
             log.info("Toggle fullscreen");
             if (this.settings.isFullscreen()) {
-                settings.setResolution(Config.SCREEN_WIDTH, Config.SCREEN_HEIGHT);
+                settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
                 settings.setFullscreen(false);
             } else {
                 settings.setResolution(-1, -1);
@@ -441,8 +432,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
     }
 
     public void startPlayer() {
-        int gridSize = getStateManager().getState(GridSettingsState.class).getRadius() * 2 + 1;
-        int total = gridSize * gridSize * GRID_HEIGHT;
+        int gridSize = config.getGridRadius() * 2 + 1;
+        int total = gridSize * gridSize * config.getGridHeight();
 
         ChunkPager chunkPager = getStateManager().getState(ChunkPagerState.class).getChunkPager();
         PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
@@ -459,7 +450,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);
             log.info("Starting player");
-            chunkPager.setMaxUpdatePerFrame(MAX_UPDATE_PER_FRAME);
+            chunkPager.setMaxUpdatePerFrame(config.getMaxUpdatePerFrame());
             physicsChunkPager.setMaxUpdatePerFrame(10);
             playerState.setEnabled(true);
             getStateManager().getState(ChunkLiquidManagerState.class).setEnabled(true);
@@ -531,7 +522,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
             pstate.setFly(playerState.isFly());
             pstate.setTimeFactorIndex(stateManager.getState(TimeFactorState.class).getTimeFactorIndex());
-            pstate.setGridRadius(stateManager.getState(GridSettingsState.class).getRadius());
+            pstate.setGridRadius(config.getGridRadius());
 
             this.playerStateRepository.save(pstate);
         }

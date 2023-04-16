@@ -29,9 +29,9 @@ public class MainActivity extends AndroidHarness {
         appClass = Ialon.class.getCanonicalName();
         mouseEventsEnabled = true;
         screenShowTitle = false;
-        frameRate = Config.FPS_LIMIT;
-        Config.GRID_RADIUS_MAX = 6;
-        Config.MAX_UPDATE_PER_FRAME = 2;
+        frameRate = IalonConfig.FPS_LIMIT;
+        IalonConfig.GRID_RADIUS_MAX = 6;
+        IalonConfig.MAX_UPDATE_PER_FRAME = 2;
     }
 
     @Override

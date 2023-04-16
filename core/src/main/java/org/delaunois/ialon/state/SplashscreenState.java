@@ -30,8 +30,7 @@ import com.simsilica.lemur.component.IconComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 
 import org.delaunois.ialon.Ialon;
-
-import static org.delaunois.ialon.Config.GRID_HEIGHT;
+import org.delaunois.ialon.IalonConfig;
 
 public class SplashscreenState extends BaseAppState {
 
@@ -78,8 +77,8 @@ public class SplashscreenState extends BaseAppState {
         ChunkPagerState chunkPagerState = getStateManager().getState(ChunkPagerState.class);
         GridSettingsState gridSettingsState = getStateManager().getState(GridSettingsState.class);
         if (chunkPagerState != null && chunkPagerState.getChunkPager() != null && gridSettingsState != null) {
-            int gridSize = gridSettingsState.getRadius() * 2 + 1;
-            float total = gridSize * gridSize * (float) GRID_HEIGHT;
+            int gridSize = IalonConfig.getInstance().getGridRadius() * 2 + 1;
+            float total = gridSize * gridSize * (float) IalonConfig.getInstance().getGridHeight();
             int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
             percent = numPagesAttached / total;
         }

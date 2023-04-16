@@ -72,7 +72,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.CameraHelper;
 import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.Config;
+import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.PlayerTouchListener;
 
@@ -85,21 +85,6 @@ import java.util.concurrent.Executors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.CHUNK_SIZE;
-import static org.delaunois.ialon.Config.DEBUG_COLLISIONS;
-import static org.delaunois.ialon.Config.GROUND_GRAVITY;
-import static org.delaunois.ialon.Config.JUMP_SPEED;
-import static org.delaunois.ialon.Config.MAXY;
-import static org.delaunois.ialon.Config.PLAYER_FLY_SPEED;
-import static org.delaunois.ialon.Config.PLAYER_HEIGHT;
-import static org.delaunois.ialon.Config.PLAYER_MOVE_SPEED;
-import static org.delaunois.ialon.Config.PLAYER_RADIUS;
-import static org.delaunois.ialon.Config.PLAYER_START_FLY;
-import static org.delaunois.ialon.Config.PLAYER_START_HEIGHT;
-import static org.delaunois.ialon.Config.PLAYER_STEP_HEIGHT;
-import static org.delaunois.ialon.Config.WATER_GRAVITY;
-import static org.delaunois.ialon.Config.WATER_JUMP_SPEED;
 
 @Slf4j
 public class PlayerState extends BaseAppState implements ActionListener, AnalogListener {
@@ -175,7 +160,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private Vector3f playerLocation;
 
     @Getter
-    private boolean fly = PLAYER_START_FLY;
+    private boolean fly = IalonConfig.getInstance().isPlayerStartFly();
 
     @Getter
     private Camera camera;
@@ -226,6 +211,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private long lastCollisionTest = System.currentTimeMillis();
     private Material ballMaterial;
 
+    private final IalonConfig config = IalonConfig.getInstance();
+
     @Override
     protected void initialize(Application simpleApp) {
         app = (Ialon) simpleApp;
@@ -253,7 +240,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     protected void onEnable() {
         log.info("Enabling player");
         app.getGuiNode().attachChild(crossHair);
-        player.setGravity(GROUND_GRAVITY);
+        player.setGravity(config.getGroundGravity());
         setFly(fly);
         addKeyMappings();
         showControlButtons();
@@ -279,7 +266,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         updateMove(move);
 
         if (move.length() > 0) {
-            move.normalizeLocal().multLocal(fly ? PLAYER_FLY_SPEED : PLAYER_MOVE_SPEED);
+            move.normalizeLocal().multLocal(fly ? config.getPlayerFlySpeed() : config.getPlayerMoveSpeed());
             walkDirection.set(move);
         }
 
@@ -296,7 +283,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             updateWalkMove(move);
         }
 
-        if (up && playerLocation.y <= MAXY) {
+        if (up && playerLocation.y <= config.getMaxy()) {
             move.addLocal(0, 1, 0);
         }
         if (down) {
@@ -398,15 +385,22 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         // The CharacterControl offers extra settings for
         // size, stepheight, jumping, falling, and gravity.
         // We also put the player in its starting position.
-        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(PLAYER_RADIUS, PLAYER_HEIGHT - 2 * PLAYER_RADIUS, 1);
-        CharacterControl characterControl = new CharacterControl(capsuleShape, PLAYER_STEP_HEIGHT);
-        characterControl.setJumpSpeed(JUMP_SPEED);
-        characterControl.setFallSpeed(GROUND_GRAVITY);
+        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(
+                config.getPlayerRadius(),
+                config.getPlayerHeight() - 2 * config.getPlayerRadius(),
+                1);
+        CharacterControl characterControl = new CharacterControl(capsuleShape, config.getPlayerStepHeight());
+        characterControl.setJumpSpeed(config.getJumpSpeed());
+        characterControl.setFallSpeed(config.getGroundGravity());
         characterControl.setGravity(0);
         characterControl.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
 
         if (playerLocation == null) {
-            playerLocation = new Vector3f(CHUNK_SIZE / 2f, app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + PLAYER_START_HEIGHT, CHUNK_SIZE / 2f);
+            playerLocation = new Vector3f(
+                    config.getChunkSize() / 2f,
+                    app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + config.getPlayerStartHeight(),
+                    config.getChunkSize() / 2f
+            );
         }
         characterControl.setPhysicsLocation(playerLocation);
 
@@ -448,16 +442,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private void updatePlayerPosition() {
         if (playerLocation.y < 1) {
-            playerLocation.setY(MAXY);
+            playerLocation.setY(config.getMaxy());
             player.setPhysicsLocation(playerLocation);
         }
-        if (DEBUG_COLLISIONS) {
-            camera.setLocation(playerLocation.add(-2, PLAYER_HEIGHT / 2 - 0.15f, 0));
+        if (config.isDebugCollisions()) {
+            camera.setLocation(playerLocation.add(-2, config.getPlayerHeight() / 2 - 0.15f, 0));
 
         } else {
             // The player location is at the center of the capsule shape. So we need to level the camera
             // up to set it at the top of the shape.
-            camera.setLocation(playerLocation.add(0, PLAYER_HEIGHT / 2 - 0.15f, 0));
+            camera.setLocation(playerLocation.add(0, config.getPlayerHeight() / 2 - 0.15f, 0));
         }
 
         app.getStateManager().getState(ChunkPagerState.class).setLocation(playerLocation);
@@ -741,7 +735,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private void actionDebugChunks(boolean isPressed) {
         if (isPressed) {
-            Config.setDebugChunks(!Config.isDebugChunks());
+            config.setDebugChunks(!config.isDebugChunks());
         }
     }
 
@@ -765,9 +759,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                     float availableJumpSpace = ((int)camera.getLocation().y) + 2 - camera.getLocation().y;
                     // Hack to avoid bug when jumping and touching a block above
                     // Still does not work when being on half-blocks
-                    player.setJumpSpeed(JUMP_SPEED * availableJumpSpace * 0.4f);
+                    player.setJumpSpeed(config.getJumpSpeed() * availableJumpSpace * 0.4f);
                     player.jump();
-                    player.setJumpSpeed(JUMP_SPEED);
+                    player.setJumpSpeed(config.getJumpSpeed());
                 }
             }
         }
@@ -817,9 +811,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         } else {
             log.info("Not Flying");
             if (underWater) {
-                player.setFallSpeed(WATER_GRAVITY);
+                player.setFallSpeed(config.getWaterGravity());
             } else {
-                player.setFallSpeed(GROUND_GRAVITY);
+                player.setFallSpeed(config.getGroundGravity());
             }
         }
     }
@@ -1079,8 +1073,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
                 // that makes the character fall with a different speed below
                 // the stepHeight. This bug is noticeable especially under water.
                 player.getCharacter().setStepHeight(0.03f);
-                player.setFallSpeed(WATER_GRAVITY);
-                player.setJumpSpeed(WATER_JUMP_SPEED);
+                player.setFallSpeed(config.getWaterGravity());
+                player.setJumpSpeed(config.getWaterJumpSpeed());
             }
         }
     }
@@ -1089,9 +1083,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         log.info("Water - OUT");
         underWater = false;
         if (!fly) {
-            player.getCharacter().setStepHeight(PLAYER_STEP_HEIGHT);
-            player.setFallSpeed(GROUND_GRAVITY);
-            player.setJumpSpeed(JUMP_SPEED);
+            player.getCharacter().setStepHeight(config.getPlayerStepHeight());
+            player.setFallSpeed(config.getGroundGravity());
+            player.setJumpSpeed(config.getJumpSpeed());
         }
     }
 
@@ -1110,7 +1104,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         log.info("Scale - OUT");
         onScale = false;
         if (!fly) {
-            player.setFallSpeed(GROUND_GRAVITY);
+            player.setFallSpeed(config.getGroundGravity());
         }
     }
 

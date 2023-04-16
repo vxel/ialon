@@ -24,13 +24,12 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.ChunkLiquidManager;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.WATER_SIMULATION_SPEED;
 
 /**
  * An application state to handle the liquid simulation.
@@ -71,7 +70,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
     public void update(float tpf) {
         elapsed += tpf;
         int queueSize = chunkLiquidManager.queueSize();
-        if (elapsed > (1 / WATER_SIMULATION_SPEED) && queueSize > 0) {
+        if (elapsed > (1 / IalonConfig.getInstance().getWaterSimulationSpeed()) && queueSize > 0) {
             Set<Vec3i> updatedChunks = new HashSet<>();
             for (int i = 0; i < queueSize; i ++) {
                 updatedChunks.addAll(chunkLiquidManager.step());

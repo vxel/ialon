@@ -37,7 +37,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
-import static org.delaunois.ialon.Config.SIMULATE_LIQUID_FLOW_MODEL;
 
 /**
  * Basic simulation of fluid
@@ -134,7 +133,7 @@ public class ChunkLiquidManager {
 
     public Set<Vec3i> step() {
         LiquidRunningContext context = new LiquidRunningContext();
-        if (SIMULATE_LIQUID_FLOW_MODEL == 1) {
+        if (IalonConfig.getInstance().getSimulateLiquidFlowModel() == 1) {
             if (!stepUnFlow(context))
                 stepFlow(context);
         } else {

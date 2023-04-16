@@ -27,7 +27,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 
-import org.delaunois.ialon.Config;
+import org.delaunois.ialon.IalonConfig;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,9 +39,9 @@ public class LightingState extends BaseAppState {
 
     private Node node;
 
-    private final ColorRGBA ambientLightColor = ColorRGBA.White.mult(Config.AMBIANT_INTENSITY);
+    private final ColorRGBA ambientLightColor = ColorRGBA.White.mult(IalonConfig.getInstance().getAmbiantIntensity());
 
-    private final ColorRGBA directionalLightColor = ColorRGBA.White.mult(Config.SUN_INTENSITY);
+    private final ColorRGBA directionalLightColor = ColorRGBA.White.mult(IalonConfig.getInstance().getSunIntensity());
 
     @Getter
     private final AmbientLight ambientLight = new AmbientLight(ambientLightColor);

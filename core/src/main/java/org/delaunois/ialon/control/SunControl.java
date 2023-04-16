@@ -28,19 +28,13 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.control.AbstractControl;
 
+import org.delaunois.ialon.IalonConfig;
+
 import java.time.LocalTime;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.Config.AMBIANT_INTENSITY;
-import static org.delaunois.ialon.Config.DAY_COLOR;
-import static org.delaunois.ialon.Config.EVENING_COLOR;
-import static org.delaunois.ialon.Config.NIGHT_COLOR;
-import static org.delaunois.ialon.Config.SUN_AMPLITUDE;
-import static org.delaunois.ialon.Config.SUN_INTENSITY;
-import static org.delaunois.ialon.Config.TIME_FACTOR;
 
 @Slf4j
 public class SunControl extends AbstractControl {
@@ -75,9 +69,11 @@ public class SunControl extends AbstractControl {
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
     private long lastUpdate = 0;
 
+    private final IalonConfig config = IalonConfig.getInstance();
+
     public SunControl(Camera cam) {
         this.cam = cam;
-        setTimeFactor(TIME_FACTOR);
+        setTimeFactor(config.getTimeFactor());
     }
 
     public void setTimeFactor(float timeFactor) {
@@ -120,7 +116,7 @@ public class SunControl extends AbstractControl {
         sunHeight = FastMath.sin(time);
         float x = FastMath.cos(time) * 100f;
         float z = FastMath.sin(time) * 100f;
-        float y = sunHeight * SUN_AMPLITUDE * 10f;
+        float y = sunHeight * config.getSunAmplitude() * 10f;
         position.set(x, y, z);
 
         if (directionalLight != null) {
@@ -130,17 +126,17 @@ public class SunControl extends AbstractControl {
         float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
 
         if (sunHeight > 0) {
-            sunColor.interpolateLocal(EVENING_COLOR, DAY_COLOR, shift);
+            sunColor.interpolateLocal(config.getEveningColor(), config.getDayColor(), shift);
         } else {
-            sunColor.interpolateLocal(EVENING_COLOR, NIGHT_COLOR, shift);
+            sunColor.interpolateLocal(config.getEveningColor(), config.getNightColor(), shift);
         }
 
         if (directionalLight != null) {
-            directionalLight.getColor().set(sunColor.mult(SUN_INTENSITY));
+            directionalLight.getColor().set(sunColor.mult(config.getSunIntensity()));
         }
 
         if (ambientLight != null) {
-            ambientLight.getColor().set(sunColor.mult(AMBIANT_INTENSITY));
+            ambientLight.getColor().set(sunColor.mult(config.getAmbiantIntensity()));
         }
 
         ((Geometry)spatial).getMaterial().setColor("Color", sunColor);
