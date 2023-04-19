@@ -60,7 +60,7 @@ public class FileRepository implements ChunkRepository {
         return load(getChunkPath(filename));
     }
 
-    private Chunk load(Path chunkPath) {
+    public Chunk load(Path chunkPath) {
         // path doesn't exist
         if (path == null || Files.notExists(path)) {
             log.warn("Unable to load chunk {}, file path {} doesn't exist.", chunkPath.getFileName(), path.toAbsolutePath());

@@ -32,9 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SkyControl extends AbstractControl {
 
-    private SunControl sun;
-
-    private float updateThreshold = Float.MAX_VALUE;
+    private SunControl sunControl;
 
     @Getter
     private final ColorRGBA color = new ColorRGBA();
@@ -46,22 +44,17 @@ public class SkyControl extends AbstractControl {
 
     private final IalonConfig config = IalonConfig.getInstance();
 
-    public void setSunControl(SunControl sun) {
-        this.sun = sun;
-        if (sun.getTimeFactor() > 0) {
-            updateThreshold = 1 / (sun.getTimeFactor() * 2);
-        } else {
-            updateThreshold = Float.MAX_VALUE;
-        }
+    public void setSunControl(SunControl sunControl) {
+        this.sunControl = sunControl;
     }
 
     @Override
     protected void controlUpdate(float tpf) {
         long now = System.currentTimeMillis();
-        if (this.sun != null && (lastUpdate == 0 || now - lastUpdate > updateThreshold)) {
+        if (this.sunControl != null && (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold())) {
             lastUpdate = now;
 
-            float sunHeight = sun.getSunHeight();
+            float sunHeight = sunControl.getSunHeight();
             float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
 
             if (sunHeight > 0) {
@@ -72,6 +65,14 @@ public class SkyControl extends AbstractControl {
                 groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundNightColor(), shift);
             }
             ((Geometry) spatial).getMaterial().setColor("Color", color);
+        }
+    }
+
+    private float getUpdateThreshold() {
+        if (config.getTimeFactor() > 0) {
+            return  1 / (config.getTimeFactor() * 2);
+        } else {
+            return Float.MAX_VALUE;
         }
     }
 

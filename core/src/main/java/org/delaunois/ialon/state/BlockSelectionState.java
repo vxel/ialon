@@ -452,6 +452,10 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     };
 
+    private static final int SCREEN_MARGIN = 30;
+    private static final int SPACING = 10;
+    private static final int MENUBLOCK_PAGESIZE_X = 10;
+    private static final int MENUBLOCK_PAGESIZE_Y = 4;
     private static final int BLOCK_HISTORY_SIZE = 3;
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private Node[] blocks;
@@ -478,10 +482,6 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private float buttonSize = 100;
     private float blockButtonSize = 100;
-    private static final int SCREEN_MARGIN = 30;
-    private static final int SPACING = 10;
-    private static final int MENUBLOCK_PAGESIZE_X = 10;
-    private static final int MENUBLOCK_PAGESIZE_Y = 4;
 
     @Override
     public void initialize(Application app) {
@@ -889,11 +889,6 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         }
         hideBlockMenu();
         deleteKeyMappings();
-    }
-
-    @Override
-    public void update(float tpf) {
-        // Nothing to do
     }
 
     private void addKeyMappings() {

@@ -95,7 +95,7 @@ public class ZipFileRepository implements ChunkRepository {
         return load(getChunkPath(filename));
     }
 
-    private Chunk load(Path chunkPath) {
+    public Chunk load(Path chunkPath) {
         // path doesn't exist
         if (path == null) {
             log.warn("Unable to load chunk {}, file path is null.", chunkPath.getFileName());

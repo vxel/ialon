@@ -12,6 +12,7 @@ import com.jme3.scene.shape.Quad;
 import com.jme3.texture.Texture;
 
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.MoonControl;
 
 import lombok.Getter;
@@ -43,8 +44,8 @@ public class MoonState extends BaseAppState {
         moonMat.setColor("Color", ColorRGBA.White);
         moon.setMaterial(moonMat);
 
-        this.app.getAtlasManager().getAtlas().applyCoords(moon, 0.1f);
-        moonMat.setTexture("ColorMap", this.app.getAtlasManager().getDiffuseMap());
+        IalonConfig.getInstance().getTextureAtlasManager().getAtlas().applyCoords(moon, 0.1f);
+        moonMat.setTexture("ColorMap", IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap());
 
         moonControl = new MoonControl();
         moonControl.setCam(app.getCamera());

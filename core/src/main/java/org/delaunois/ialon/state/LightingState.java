@@ -74,11 +74,6 @@ public class LightingState extends BaseAppState {
         detachLights();
     }
 
-    @Override
-    public void update(float tpf) {
-        // Nothing to do
-    }
-
     private void attachLights() {
         node.addLight(ambientLight);
         node.addLight(directionalLight);

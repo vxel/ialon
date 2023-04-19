@@ -19,7 +19,7 @@
     <logger name="org.delaunois.ialon" level="info"/>
     <logger name="org.delaunois.jme.AndroidHarness" level="trace"/>
     <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
-    <logger name="org.delaunois.ialon.ChunkPager" level="debug"/>
+    <logger name="org.delaunois.ialon.ChunkPager" level="warn"/>
     <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
     <logger name="org.delaunois.ialon.ChunkLiquidManager" level="debug"/>

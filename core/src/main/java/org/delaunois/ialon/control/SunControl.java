@@ -40,13 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SunControl extends AbstractControl {
 
     @Getter
-    private float time = FastMath.HALF_PI;
-
-    @Getter
     private final Vector3f position = new Vector3f();
-
-    @Getter
-    private float timeFactor;
 
     @Getter
     @Setter
@@ -62,9 +56,6 @@ public class SunControl extends AbstractControl {
     @Getter
     private float sunHeight;
 
-    @Getter
-    private float updateThreshold = 0;
-
     private final Camera cam;
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
     private long lastUpdate = 0;
@@ -73,21 +64,7 @@ public class SunControl extends AbstractControl {
 
     public SunControl(Camera cam) {
         this.cam = cam;
-        setTimeFactor(config.getTimeFactor());
-    }
-
-    public void setTimeFactor(float timeFactor) {
-        this.timeFactor = timeFactor;
-        if (timeFactor > 0) {
-            updateThreshold = 1 / (timeFactor * 2);
-        } else {
-            updateThreshold = Float.MAX_VALUE;
-        }
-    }
-
-    public void setTime(float time) {
-        this.time = time;
-        this.lastUpdate = 0;
+        updateSunPosition();
     }
 
     @Override
@@ -97,28 +74,29 @@ public class SunControl extends AbstractControl {
         }
 
         long now = System.currentTimeMillis();
-        if (lastUpdate == 0 || now - lastUpdate > updateThreshold) {
-            updateSun();
+        if (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold()) {
+            updateSunPosition();
+            updateSunLight();
             lastUpdate = now;
         }
 
         spatial.setLocalTranslation((cam.getLocation().add(position)));
         spatial.lookAt(cam.getLocation(), Vector3f.UNIT_Y);
 
-        time += tpf * timeFactor;
-        time = time % FastMath.TWO_PI;
+        config.setTime((config.getTime() + tpf * config.getTimeFactor()) % FastMath.TWO_PI);
         if (log.isTraceEnabled()) {
-            log.trace("Time is now {} ({})", getLocalTime(), FastMath.sin(time));
+            log.trace("Time is now {} ({})", getLocalTime(), FastMath.sin(config.getTime()));
         }
     }
-
-    private void updateSun() {
-        sunHeight = FastMath.sin(time);
-        float x = FastMath.cos(time) * 100f;
-        float z = FastMath.sin(time) * 100f;
+    private void updateSunPosition() {
+        sunHeight = FastMath.sin(config.getTime());
+        float x = FastMath.cos(config.getTime()) * 100f;
+        float z = FastMath.sin(config.getTime()) * 100f;
         float y = sunHeight * config.getSunAmplitude() * 10f;
         position.set(x, y, z);
+    }
 
+    private void updateSunLight() {
         if (directionalLight != null) {
             directionalLight.setDirection(position.negate());
         }
@@ -152,7 +130,15 @@ public class SunControl extends AbstractControl {
     }
 
     public LocalTime getLocalTime() {
-        return LocalTime.ofSecondOfDay((long)((time / FastMath.TWO_PI) * 86400)).plusHours(6);
+        return LocalTime.ofSecondOfDay((long)((config.getTime() / FastMath.TWO_PI) * 86400)).plusHours(6);
+    }
+
+    public float getUpdateThreshold() {
+        if (config.getTimeFactor() > 0) {
+            return  1 / (config.getTimeFactor() * 2);
+        } else {
+            return Float.MAX_VALUE;
+        }
     }
 
 }

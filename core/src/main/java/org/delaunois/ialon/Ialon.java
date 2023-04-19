@@ -17,18 +17,15 @@
  */
 package org.delaunois.ialon;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.AppState;
 import com.jme3.asset.AssetInfo;
 import com.jme3.asset.AssetKey;
 import com.jme3.asset.AssetManager;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
-import com.jme3.input.KeyInput;
-import com.jme3.input.controls.ActionListener;
-import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
@@ -49,281 +46,248 @@ import com.simsilica.util.LogAdapter;
 
 import org.delaunois.ialon.jme.BitmapFontLoader;
 import org.delaunois.ialon.jme.LayerComparator;
-import org.delaunois.ialon.serialize.PlayerStateDTO;
-import org.delaunois.ialon.serialize.PlayerStateRepository;
+import org.delaunois.ialon.serialize.UserSettingsRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
 import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
+import org.delaunois.ialon.state.ChunkSaverState;
 import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
+import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
+import org.delaunois.ialon.state.WorldBuilderState;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.util.Collection;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Optional;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 
 /**
- * @author Cedric de Launois
+ * Main class for setting up and starting Ialon
  *
+ * @author Cedric de Launois
  */
 @Slf4j
-public class Ialon extends SimpleApplication implements ActionListener {
-
-    private static final String SAVEDIR = "./save";
-    private static Path filepath = FileSystems.getDefault().getPath(SAVEDIR);
-
-    private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
-    private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
-    private static final String ACTION_TOGGLE_FULLSCREEN = "toggle-fullscreen";
+public class Ialon extends SimpleApplication {
 
     @Getter
-    @Setter
-    private boolean saveUserPreferencesOnStop = true;
-
-    @Getter
-    private Node chunkNode;
-
-    @Getter
-    private ChunkManager chunkManager;
-
-    @Getter
-    private TerrainGenerator terrainGenerator;
-
-    @Getter
-    private ZipFileRepository fileRepository;
-
-    @Getter
-    private PlayerStateRepository playerStateRepository;
-
-    @Getter
-    private TextureAtlasManager atlasManager;
-
-    @Getter
-    private boolean mouselocked = false;
-
-    @Getter
-    private final long startTime = System.currentTimeMillis();
-
-    private PlayerState playerState;
-    private boolean checkResize = false;
-    private int camHeight = 0;
-    private int camWidth = 0;
-    private int pagesAttached = 0;
-    private int physicPagesAttached = 0;
-    private ExecutorService executorService;
-
-    private final IalonConfig config = IalonConfig.getInstance();
-
-    public static void main(String[] args) {
-        LogAdapter.initialize();
-    }
-
-    public static void setFilePath(Path path) {
-        filepath = path;
-    }
+    private final UserSettingsRepository userSettingsRepository = new UserSettingsRepository();
 
     public Ialon() {
-        super(new LightingState());
+        super(new LightingState(), new SplashscreenState());
     }
 
     @Override
     public void simpleInitApp() {
         log.info("Initializing Ialon");
 
-        SLF4JBridgeHandler.removeHandlersForRootLogger();
-        SLF4JBridgeHandler.install();
+        loadUserSettings();
+        setupLogging();
+        setupCamera(this);
+        setupViewPort(this);
+        setupAtlasManager(this);
+        setupAtlasFont(this);
+        stateManager.attach(setupBulletAppState());
+        stateManager.attach(setupChunkSaverState());
+        stateManager.attach(setupPlayerState());
+        stateManager.attach(setupStatsAppState());
+        setupBlockFramework(this);
+        stateManager.attach(setupChunkManager());
+        stateManager.attach(setupChunkPager(this)); // Depends on PlayerState
+        stateManager.attach(setupPhysicsChunkPager(this)); // Depends on PlayerState and BulletAppState
+        stateManager.attach(setupChunkLiquidManager());
+        stateManager.attach(setupGridSettingsState());
+        stateManager.attach(new ScreenState(this.settings));
+        stateManager.attach(new SunState());
+        stateManager.attach(new MoonState());
+        stateManager.attach(new SkyState());
+        stateManager.attach(new BlockSelectionState());
+        stateManager.attach(new TimeFactorState());
+        stateManager.attach(new WorldBuilderState());
 
-        GuiGlobals.initialize(this);
-        cam.setFrustumNear(0.1f);
-        cam.setFrustumFar(400f);
-        cam.setFov(50);
+        setupGui(this); // Must be after block framework is initialized
 
-        stateManager.attach(new SplashscreenState());
-
-        executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
-
-        viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
-        RenderQueue rq = viewPort.getQueue();
-        rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
-                new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
-
-        BitmapFont font = assetManager.loadFont("Textures/font-default.fnt");
-        Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
-
-        atlasManager = new TextureAtlasManager();
-        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
-        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
-        atlasManager.getAtlas().addTexture(assetManager.loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
-        atlasManager.getAtlas().addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
-
-        initFileRepository();
-        initPlayerStateRepository();
-
-        PlayerStateDTO playerStateDTO = initPlayer();
-
-        // Block world setup depends on the player position
-        initBlockFramework(playerStateDTO);
-        initInputManager();
-        font = initGui(font);
-
-        camHeight = cam.getHeight();
-        camWidth = cam.getWidth();
-
-        stateManager.attachAll(
-                new SunState(),
-                new MoonState(),
-                new SkyState(),
-                new TimeFactorState()
-        );
-
-        StatsAppState statsAppState = new StatsAppState();
-        if (config.isDevMode()) {
-            atlasManager.dump();
-            statsAppState.setDisplayStatView(true);
-            statsAppState.setFont(font);
-            stateManager.attachAll(
-                    statsAppState,
-                    //new DetailedProfilerState(),
-                    new IalonDebugState(),
-                    new DebugKeysAppState(),
-                    new WireframeState()
-            );
-        } else {
-            statsAppState.setDisplayStatView(false);
-            stateManager.attach(statsAppState);
+        if (IalonConfig.getInstance().isDevMode()) {
+            stateManager.attach(new IalonDebugState());
+            stateManager.attach(new DebugKeysAppState());
+            stateManager.attach(new WireframeState());
         }
 
-        stateManager.getState(SunState.class).setTime(playerStateDTO.getTime());
-        stateManager.getState(TimeFactorState.class).setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
+        int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
+        int shapeSize = BlocksConfig.getInstance().getShapeRegistry().getAll().size();
+        log.info("{} block types registered", typeSize);
+        log.info("{} block shapes registered", shapeSize);
+        log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
+
+        if (IalonConfig.getInstance().isDevMode()) {
+            IalonConfig.getInstance().getTextureAtlasManager().dump();
+        }
     }
 
-    private BitmapFont initGui(BitmapFont font) {
-        stateManager.getState(BasePickState.class).removeCollisionRoot(rootNode);
+    public static void setupLogging() {
+        LogAdapter.initialize();
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+    }
 
+    public static void setupCamera(SimpleApplication app) {
+        app.getCamera().setFrustumNear(0.1f);
+        app.getCamera().setFrustumFar(400f);
+        app.getCamera().setFov(50);
+    }
+
+    public static void setupViewPort(SimpleApplication app) {
+        app.getViewPort().setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
+        RenderQueue rq = app.getViewPort().getQueue();
+        rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
+                new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
+    }
+
+    public static ChunkSaverState setupChunkSaverState() {
+        return new ChunkSaverState();
+    }
+
+    public static PlayerState setupPlayerState() {
+        PlayerState playerState = new PlayerState();
+        playerState.setEnabled(false);
+        return playerState;
+    }
+
+    public static void setupAtlasManager(SimpleApplication app) {
+        BitmapFont font = app.getAssetManager().loadFont("Textures/font-default.fnt");
+        Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
+
+        TextureAtlasManager atlas = IalonConfig.getInstance().getTextureAtlasManager();
+        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
+        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
+        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
+        atlas.getAtlas().addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
+    }
+
+    public static void setupAtlasFont(SimpleApplication app) {
         // Reload the font using the offset of the atlas tile
-        AssetInfo assetInfo = assetManager.locateAsset(new AssetKey<>("Textures/font-default.fnt"));
+        AssetInfo assetInfo = app.getAssetManager().locateAsset(new AssetKey<>("Textures/font-default.fnt"));
+        BitmapFont font = app.getAssetManager().loadFont("Textures/font-default.fnt");
         BitmapFont atlasFont;
         try {
-            atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, atlasManager.getAtlas());
+            atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, IalonConfig.getInstance().getTextureAtlasManager().getAtlas());
+            IalonConfig.getInstance().setFont(atlasFont);
         } catch (IOException e) {
-            log.error("Failed to load atlas font", e);
-            return null;
+            log.warn("Failed to load atlas font. Using default.", e);
+            IalonConfig.getInstance().setFont(font);
         }
+    }
+
+    public static void setupGui(SimpleApplication app) {
+        GuiGlobals.initialize(app);
+
+        BitmapFont font = Optional.ofNullable(IalonConfig.getInstance().getFont())
+                .orElse(app.getAssetManager().loadFont("Textures/font-default.fnt"));
+
+        Optional.ofNullable(app.getStateManager().getState(BasePickState.class))
+                .ifPresent(basePickState -> basePickState.removeCollisionRoot(app.getRootNode()));
 
         // Use the atlas texture
-        Texture tex = atlasManager.getDiffuseMap();
+        Texture tex = IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap();
         tex.setMagFilter(Texture.MagFilter.Bilinear);
         tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
-        Material fontMaterial = atlasFont.getPage(0);
+        Material fontMaterial = font.getPage(0);
         fontMaterial.getTextureParam("ColorMap").setTextureValue(tex);
         fontMaterial.setColor("Color", ColorRGBA.White);
 
         // Set the remapped font int the default style
         Styles styles = GuiGlobals.getInstance().getStyles();
-        styles.setDefault(atlasFont);
-        return atlasFont;
+        styles.setDefault(font);
     }
 
-    private void initFileRepository() {
-        fileRepository = new ZipFileRepository();
-        fileRepository.setPath(filepath);
-    }
-
-    private void initPlayerStateRepository() {
-        playerStateRepository = new PlayerStateRepository();
-        playerStateRepository.setPath(filepath);
-    }
-
-    private PlayerStateDTO initPlayer() {
-        playerState = new PlayerState();
-        PlayerStateDTO playerStateDTO = playerStateRepository.load();
-        if (playerStateDTO != null) {
-            if (playerStateDTO.getLocation() != null) {
-                playerState.setPlayerLocation(playerStateDTO.getLocation());
+    public static StatsAppState setupStatsAppState() {
+        StatsAppState statsAppState = new StatsAppState();
+        if (IalonConfig.getInstance().isDevMode()) {
+            statsAppState.setDisplayStatView(true);
+            if (IalonConfig.getInstance().getFont() != null) {
+                statsAppState.setFont(IalonConfig.getInstance().getFont());
             }
-            if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
-                cam.setRotation(playerStateDTO.getRotation());
-            }
-            playerState.setFly(playerStateDTO.isFly());
-
         } else {
-            playerStateDTO = new PlayerStateDTO();
+            statsAppState.setDisplayStatView(false);
+        }
+        return statsAppState;
+    }
+
+    public static BulletAppState setupBulletAppState() {
+        BulletAppState bulletAppState = new BulletAppState();
+        bulletAppState.setDebugEnabled(IalonConfig.getInstance().isDebugCollisions());
+        return bulletAppState;
+    }
+
+    public static void setupBlockFramework(SimpleApplication app) {
+        configureBlocksFramework(app.getAssetManager());
+        registerIalonBlocks();
+
+        Node chunkNode = new Node(IalonConfig.CHUNK_NODE_NAME);
+        app.getRootNode().attachChild(chunkNode);
+    }
+
+    public static AppState setupChunkManager() {
+        return new ChunkManagerState(IalonConfig.getInstance().getChunkManager());
+    }
+
+    public static AppState setupChunkPager(SimpleApplication app) {
+        PlayerState playerState = app.getStateManager().getState(PlayerState.class, true);
+
+        Node chunkNode = (Node) app.getRootNode().getChild(IalonConfig.CHUNK_NODE_NAME);
+        if (chunkNode == null) {
+            throw new IllegalStateException("Chunk Node is not attached !");
         }
 
-        playerState.setEnabled(false);
-        stateManager.attach(playerState);
-        return playerStateDTO;
-    }
-
-    private void initBlockFramework(PlayerStateDTO playerStateDTO) {
-        configureBlocksFramework(assetManager, atlasManager);
-
-        terrainGenerator = new NoiseTerrainGenerator(2);
-        chunkManager = ChunkManager.builder()
-                .poolSize(config.getChunkPoolsize())
-                .generator(terrainGenerator)
-                .repository(fileRepository)
-                .build();
-
-        chunkNode = new Node("chunk-node");
-        rootNode.attachChild(chunkNode);
-
-        ChunkPager chunkPager = new ChunkPager(chunkNode, chunkManager);
+        ChunkPager chunkPager = new ChunkPager(chunkNode, IalonConfig.getInstance().getChunkManager());
         chunkPager.setLocation(playerState.getPlayerLocation());
-        chunkPager.setGridLowerBounds(config.getGridLowerBound());
-        chunkPager.setGridUpperBounds(config.getGridUpperBound());
+        chunkPager.setGridLowerBounds(IalonConfig.getInstance().getGridLowerBound());
+        chunkPager.setGridUpperBounds(IalonConfig.getInstance().getGridUpperBound());
         chunkPager.setMaxUpdatePerFrame(100);
 
-        BulletAppState bulletAppState = new BulletAppState();
-        bulletAppState.setDebugEnabled(config.isDebugCollisions());
-        stateManager.attach(bulletAppState);
-
-        PhysicsSpace physicsSpace = bulletAppState.getPhysicsSpace();
-        PhysicsChunkPager physicsChunkPager = new PhysicsChunkPager(physicsSpace, chunkManager);
-        physicsChunkPager.setLocation(playerState.getPlayerLocation());
-        physicsChunkPager.setGridLowerBounds(config.getGridLowerBound());
-        physicsChunkPager.setGridUpperBounds(config.getGridUpperBound());
-
-        ChunkManagerState chunkManagerState = new ChunkManagerState(chunkManager);
-        ChunkPagerState chunkPagerState = new ChunkPagerState(chunkPager);
-        PhysicsChunkPagerState physicsChunkPagerState = new PhysicsChunkPagerState(physicsChunkPager);
-
-        ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
-        chunkLiquidManagerState.setEnabled(config.isSimulateLiquidFlow());
-        BlockSelectionState blockSelectionState = new BlockSelectionState();
-        GridSettingsState gridSettingsState = new GridSettingsState();
-        gridSettingsState.setRadius(playerStateDTO.getGridRadius());
-
-        stateManager.attachAll(
-                chunkManagerState,
-                chunkPagerState,
-                physicsChunkPagerState,
-                chunkLiquidManagerState,
-                blockSelectionState,
-                gridSettingsState
-        );
+        return new ChunkPagerState(chunkPager);
     }
 
-    public static void configureBlocksFramework(AssetManager assetManager, TextureAtlasManager atlasManager) {
+    public static AppState setupPhysicsChunkPager(SimpleApplication app) {
+        BulletAppState bulletAppState = app.getStateManager().getState(BulletAppState.class, true);
+        PlayerState playerState = app.getStateManager().getState(PlayerState.class, true);
+
+        PhysicsSpace physicsSpace = bulletAppState.getPhysicsSpace();
+        PhysicsChunkPager physicsChunkPager = new PhysicsChunkPager(physicsSpace, IalonConfig.getInstance().getChunkManager());
+        physicsChunkPager.setLocation(playerState.getPlayerLocation());
+        physicsChunkPager.setGridLowerBounds(IalonConfig.getInstance().getGridLowerBound());
+        physicsChunkPager.setGridUpperBounds(IalonConfig.getInstance().getGridUpperBound());
+
+        return new PhysicsChunkPagerState(physicsChunkPager);
+    }
+
+    public static AppState setupChunkLiquidManager() {
+        ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
+        chunkLiquidManagerState.setEnabled(IalonConfig.getInstance().isSimulateLiquidFlow());
+        return chunkLiquidManagerState;
+    }
+
+    public static AppState setupGridSettingsState() {
+        GridSettingsState gridSettingsState = new GridSettingsState();
+        gridSettingsState.setRadius(IalonConfig.getInstance().getGridRadius());
+        return gridSettingsState;
+    }
+
+    public static void configureBlocksFramework(AssetManager assetManager) {
         BlocksConfig.initialize(assetManager, false);
         BlocksConfig blocksConfig = BlocksConfig.getInstance();
         IalonConfig ialonConfig = IalonConfig.getInstance();
@@ -335,16 +299,8 @@ public class Ialon extends SimpleApplication implements ActionListener {
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
-        typeRegistry.setAtlasRepository(atlasManager);
+        typeRegistry.setAtlasRepository(ialonConfig.getTextureAtlasManager());
         typeRegistry.registerDefaultMaterials();
-
-        registerIalonBlocks();
-
-        int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
-        int shapeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
-        log.info("{} block types registered", typeSize);
-        log.info("{} block shapes registered", shapeSize);
-        log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
     }
 
     public static void registerIalonBlocks() {
@@ -388,110 +344,6 @@ public class Ialon extends SimpleApplication implements ActionListener {
         }
     }
 
-    private void initInputManager() {
-        inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
-        inputManager.addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));
-        inputManager.addMapping(ACTION_TOGGLE_FULLSCREEN, new KeyTrigger(KeyInput.KEY_F2));
-        inputManager.addListener(this, ACTION_SWITCH_MOUSELOCK, ACTION_TOGGLE_TIME_RUN, ACTION_TOGGLE_FULLSCREEN);
-    }
-
-    @Override
-    public void simpleUpdate(float tpf) {
-        if (!playerState.isEnabled()) {
-            startPlayer();
-        }
-        if (checkResize && (cam.getWidth() != camWidth || cam.getHeight() != camHeight)) {
-            stateManager.getState(TimeFactorState.class).resize();
-            stateManager.getState(GridSettingsState.class).resize();
-            stateManager.getState(BlockSelectionState.class).resize();
-            stateManager.getState(PlayerState.class).resize();
-
-            checkResize = false;
-            camWidth = cam.getWidth();
-            camHeight = cam.getHeight();
-        }
-    }
-
-    @Override
-    public void onAction(String name, boolean isPressed, float tpf) {
-        if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
-            log.info("Switching mouse lock to {}", !mouselocked);
-            switchMouseLock();
-
-        } else if (ACTION_TOGGLE_TIME_RUN.equals(name) && isPressed) {
-            log.info("Toggle time run");
-            getStateManager().getState(SunState.class).getSunControl().toggleTimeRun();
-
-        } else if (ACTION_TOGGLE_FULLSCREEN.equals(name) && isPressed) {
-            log.info("Toggle fullscreen");
-            if (this.settings.isFullscreen()) {
-                settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
-                settings.setFullscreen(false);
-            } else {
-                settings.setResolution(-1, -1);
-                settings.setFullscreen(true);
-            }
-            this.restart();
-        }
-    }
-
-    public void startPlayer() {
-        int gridSize = config.getGridRadius() * 2 + 1;
-        int total = gridSize * gridSize * config.getGridHeight();
-
-        ChunkPager chunkPager = getStateManager().getState(ChunkPagerState.class).getChunkPager();
-        PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
-        int numPagesAttached = chunkPager.getAttachedPages().size();
-        int numPhysicPagesAttached = physicsChunkPager.getAttachedPages().size();
-        int percent = numPagesAttached * 100 / total;
-        if (numPagesAttached > pagesAttached || numPhysicPagesAttached > physicPagesAttached) {
-            log.debug("{} pages - {} physic pages attached ({}%)", numPagesAttached, numPhysicPagesAttached, percent);
-            pagesAttached = numPagesAttached;
-            physicPagesAttached = numPhysicPagesAttached;
-        }
-        if (numPagesAttached >= total && physicsChunkPager.isReady()) {
-            long stopTime = System.currentTimeMillis();
-            long duration = stopTime - startTime;
-            log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);
-            log.info("Starting player");
-            chunkPager.setMaxUpdatePerFrame(config.getMaxUpdatePerFrame());
-            physicsChunkPager.setMaxUpdatePerFrame(10);
-            playerState.setEnabled(true);
-            getStateManager().getState(ChunkLiquidManagerState.class).setEnabled(true);
-            getStateManager().getState(SplashscreenState.class).setEnabled(false);
-        }
-    }
-
-    private void switchMouseLock() {
-        mouselocked = !mouselocked;
-        GuiGlobals.getInstance().setCursorEventsEnabled(!mouselocked);
-        inputManager.setCursorVisible(!mouselocked);
-        if (mouselocked) {
-            playerState.hideControlButtons();
-            stateManager.getState(TimeFactorState.class).setEnabled(false);
-            stateManager.getState(GridSettingsState.class).setEnabled(false);
-        } else {
-            playerState.showControlButtons();
-            stateManager.getState(TimeFactorState.class).setEnabled(true);
-            stateManager.getState(GridSettingsState.class).setEnabled(true);
-        }
-    }
-
-    /**
-     * Saves (in another thread) the chunk at the given location
-     * @param location the location of the chunk
-     */
-    public void asyncSave(Vec3i location) {
-        chunkManager.getChunk(location).ifPresent(chunk -> executorService.submit(() -> {
-            try {
-                this.getFileRepository().save(chunk);
-                log.info("Chunk {} saved", location);
-            } catch (Exception e) {
-                log.error("Failed to save chunk", e);
-            }
-        }));
-    }
-
     @Override
     public void start() {
         super.start();
@@ -501,7 +353,7 @@ public class Ialon extends SimpleApplication implements ActionListener {
     @Override
     public void restart() {
         super.restart();
-        checkResize = true;
+        Optional.ofNullable(stateManager.getState(ScreenState.class)).ifPresent(ScreenState::checkResize);
         log.info("Restarting Ialon");
     }
 
@@ -509,27 +361,17 @@ public class Ialon extends SimpleApplication implements ActionListener {
     public void stop() {
         super.stop();
         log.info("Stopping Ialon");
-        if (executorService != null) {
-            executorService.shutdown();
-        }
-        if (saveUserPreferencesOnStop) {
-            saveUserPreferences();
+        if (IalonConfig.getInstance().isSaveUserSettingsOnStop()) {
+            saveUserSettings();
         }
     }
 
-    public void saveUserPreferences() {
-        if (playerStateRepository != null) {
-            PlayerStateDTO pstate = new PlayerStateDTO(
-                    playerState.getPlayerLocation(),
-                    cam.getRotation(),
-                    stateManager.getState(SunState.class).getSunControl().getTime());
+    public void loadUserSettings() {
+        userSettingsRepository.loadUserSettings(this);
+    }
 
-            pstate.setFly(playerState.isFly());
-            pstate.setTimeFactorIndex(stateManager.getState(TimeFactorState.class).getTimeFactorIndex());
-            pstate.setGridRadius(config.getGridRadius());
-
-            this.playerStateRepository.save(pstate);
-        }
+    public void saveUserSettings() {
+        userSettingsRepository.saveUserSettings(this);
     }
 
 }

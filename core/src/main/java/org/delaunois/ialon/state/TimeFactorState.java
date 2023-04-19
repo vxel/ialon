@@ -20,7 +20,9 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
+import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -34,8 +36,8 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -47,16 +49,16 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
+    private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
     private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
 
-    @Getter
-    private int timeFactorIndex = 1;
-
     private int buttonSize;
     private Label timeFactorLabel;
+    private final IalonConfig config = IalonConfig.getInstance();
+    private boolean isMouseLocked = false;
 
     @Override
     public void initialize(Application app) {
@@ -75,24 +77,30 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
                         event.setConsumed();
                         if (event.isPressed()) {
                             if (event.getButtonIndex() == 0) {
-                                setTimeFactorIndex(timeFactorIndex + 1);
+                                setTimeFactorIndex(config.getTimeFactorIndex() + 1);
                             } else {
-                                setTimeFactorIndex(timeFactorIndex - 1);
+                                setTimeFactorIndex(config.getTimeFactorIndex() - 1);
                             }
                         }
                     }
                 });
+
+        if (!app.getInputManager().hasMapping(ACTION_SWITCH_MOUSELOCK)) {
+            app.getInputManager().addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
+        }
+        app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
     }
 
     public void setTimeFactorIndex(int index) {
-        timeFactorIndex = (index + TIME_FACTORS.length) % TIME_FACTORS.length;
+        config.setTimeFactorIndex((index + TIME_FACTORS.length) % TIME_FACTORS.length);
         updateTimeFactor();
     }
 
     private void updateTimeFactor() {
         if (app != null) {
-            app.getStateManager().getState(SunState.class).getSunControl().setTimeFactor(TIME_FACTORS[timeFactorIndex]);
-            timeFactorLabel.setText(TIME_FACTORS_LABELS[timeFactorIndex]);
+            float timeFactor = TIME_FACTORS[config.getTimeFactorIndex()];
+            config.setTimeFactor(timeFactor);
+            timeFactorLabel.setText(TIME_FACTORS_LABELS[config.getTimeFactorIndex()]);
         }
     }
 
@@ -122,7 +130,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         // Nothing to do
     }
 
-
     @Override
     protected void onEnable() {
         SunState sunState = app.getStateManager().getState(SunState.class);
@@ -149,13 +156,11 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     }
 
     @Override
-    public void update(float tpf) {
-        // Nothing to do
-    }
-
-    @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        // Nothing to do
+        if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
+            setEnabled(isMouseLocked);
+            isMouseLocked = !isMouseLocked;
+        }
     }
 
 }

@@ -66,7 +66,7 @@ public class ChunkManager {
     @Builder
     private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize) {
         this.repository = repository;
-        this.generator = generator;
+        this.generator = generator == null ? new EmptyGenerator() : generator;
         this.poolSize = poolSize;
         this.chunkLightManager = new ChunkLightManager(this);
         this.chunkLiquidManager = new ChunkLiquidManager(this);
@@ -143,7 +143,7 @@ public class ChunkManager {
         return results;
     }
 
-    private Chunk generateChunk(Vec3i location) {
+    public Chunk generateChunk(Vec3i location) {
         try {
             Chunk chunk = cache.unsafeFastGet(location);
             if (chunk == null) {

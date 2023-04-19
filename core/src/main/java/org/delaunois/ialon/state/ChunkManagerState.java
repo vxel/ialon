@@ -30,11 +30,6 @@ public class ChunkManagerState extends BaseAppState {
     }
 
     @Override
-    public void update(float tpf) {
-        // Nothing to do
-    }
-
-    @Override
     protected void onEnable() {
         // Nothing to do
     }

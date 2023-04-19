@@ -6,11 +6,16 @@ import com.jme3.scene.Node;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
 import com.rvandoosselaer.blocks.BlocksConfig;
+import com.rvandoosselaer.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,17 +28,16 @@ public class ChunkPagerTest {
 
     @BeforeAll
     public static void setUp() {
-        Ialon.configureBlocksFramework(new DesktopAssetManager(true), new TextureAtlasManager());
+        Ialon.configureBlocksFramework(new DesktopAssetManager(true));
     }
 
     @AfterEach
     public void reset() {
-        Ialon.configureBlocksFramework(new DesktopAssetManager(true), new TextureAtlasManager());
+        Ialon.configureBlocksFramework(new DesktopAssetManager(true));
     }
 
-    @SuppressWarnings("java:S2925")
     @Test
-    void testChunkPager() throws InterruptedException {
+    void testChunkPager() {
         ChunkManager chunkManager = ChunkManager.builder()
                 .generator(new FlatTerrainGenerator())
                 .poolSize(1)
@@ -53,7 +57,6 @@ public class ChunkPagerTest {
         int numPages = grid.x * grid.y * grid.z;
 
         while (chunkPager.getAttachedPages().size() < numPages) {
-            Thread.sleep(100);
             chunkPager.update();
         }
 
@@ -63,4 +66,29 @@ public class ChunkPagerTest {
         chunkManager.cleanup(100);
     }
 
+    @Test
+    void testChunkPager2() {
+        ChunkManager chunkManager = ChunkManager.builder()
+                .poolSize(1)
+                .build();
+        assertNotNull(chunkManager);
+        chunkManager.initialize();
+
+        generateAndSave(new Vec3i(), ".", chunkManager);
+    }
+
+    private Chunk load(String path) throws URISyntaxException {
+        URL resource = this.getClass().getResource("/chunk_0_0_0.zblock");
+        assertNotNull(resource);
+        ZipFileRepository repository = new ZipFileRepository();
+        return repository.load(Paths.get(resource.toURI()));
+    }
+
+    private void generateAndSave(Vec3i chunkLocation, String path, ChunkManager chunkManager) {
+        Chunk chunk = chunkManager.generateChunk(new Vec3i());
+        assertNotNull(chunk);
+        ZipFileRepository repository = new ZipFileRepository();
+        repository.setPath(Paths.get(path));
+        repository.save(chunk);
+    }
 }

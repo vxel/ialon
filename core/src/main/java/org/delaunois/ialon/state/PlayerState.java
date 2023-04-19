@@ -72,11 +72,12 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.CameraHelper;
 import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.Ialon;
+import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.PlayerTouchListener;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -107,6 +108,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private static final String ACTION_ADD_BLOCK = "add-block";
     private static final String ACTION_REMOVE_BLOCK = "remove-block";
     private static final String ACTION_DEBUG_CHUNK = "debug-chunk";
+    private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
     private static final String TOUCH_MAPPING = "touch";
 
@@ -126,7 +128,8 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             ACTION_LOOK_DOWN,
             ACTION_ADD_BLOCK,
             ACTION_REMOVE_BLOCK,
-            ACTION_DEBUG_CHUNK
+            ACTION_DEBUG_CHUNK,
+            ACTION_SWITCH_MOUSELOCK
     };
 
     private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
@@ -141,6 +144,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private boolean jump = false;
     private boolean underWater = false;
     private boolean onScale = false;
+    private boolean isMouselocked = false;
     private Ialon app;
     private Label crossHair;
     private Geometry addPlaceholder;
@@ -150,6 +154,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private ChunkManager chunkManager;
     private TouchListener touchListener;
     private ExecutorService executorService;
+
+    private Node chunkNode;
+
+    private ChunkSaverState chunkSaverState;
 
     @Getter
     @Setter
@@ -220,15 +228,22 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         buttonSize = camera.getHeight() / 6;
 
         inputManager = app.getInputManager();
-        chunkManager = app.getChunkManager();
+        chunkManager = IalonConfig.getInstance().getChunkManager();
         touchListener = new PlayerTouchListener(this);
         crossHair = createCrossHair();
         addPlaceholder = createAddPlaceholder();
         removePlaceholder = createRemovePlaceholder();
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
+        fly = IalonConfig.getInstance().isPlayerStartFly();
+        playerLocation = IalonConfig.getInstance().getPlayerLocation();
         player = createPlayer();
         updatePlayerPosition();
         createButttons();
+
+        chunkSaverState = app.getStateManager().getState(ChunkSaverState.class);
+        if (chunkSaverState == null) {
+            log.warn("No ChunkSaverState found. Chunks will not be saved.");
+        }
     }
 
     @Override
@@ -240,6 +255,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     protected void onEnable() {
         log.info("Enabling player");
         app.getGuiNode().attachChild(crossHair);
+        chunkNode = (Node) app.getRootNode().getChild(IalonConfig.CHUNK_NODE_NAME);
+        if (chunkNode == null) {
+            throw new IllegalStateException("Chunk Node is not attached !");
+        }
+
         player.setGravity(config.getGroundGravity());
         setFly(fly);
         addKeyMappings();
@@ -365,6 +385,10 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         inputManager.addMapping(ACTION_FLY_DOWN, new KeyTrigger(KeyInput.KEY_DOWN));
         inputManager.addMapping(ACTION_DEBUG_CHUNK, new KeyTrigger(KeyInput.KEY_C));
 
+        if (!app.getInputManager().hasMapping(ACTION_SWITCH_MOUSELOCK)) {
+            inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
+        }
+
         inputManager.addListener(this, ACTIONS);
     }
 
@@ -398,7 +422,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         if (playerLocation == null) {
             playerLocation = new Vector3f(
                     config.getChunkSize() / 2f,
-                    app.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + config.getPlayerStartHeight(),
+                    config.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + config.getPlayerStartHeight(),
                     config.getChunkSize() / 2f
             );
         }
@@ -647,6 +671,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
             case ACTION_DEBUG_CHUNK:
                 actionDebugChunks(isPressed);
                 break;
+            case ACTION_SWITCH_MOUSELOCK:
+                actionSwitchMouseLock(isPressed);
+                break;
             case ACTION_LOOK_LEFT:
             case ACTION_LOOK_RIGHT:
             case ACTION_LOOK_UP:
@@ -739,6 +766,17 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
     }
 
+    private void actionSwitchMouseLock(boolean isPressed) {
+        if (isPressed) {
+            isMouselocked = !isMouselocked;
+        }
+        if (isMouselocked) {
+            hideControlButtons();
+        } else {
+            showControlButtons();
+        }
+    }
+
     private void playerJump() {
         if (fly) {
             return;
@@ -776,7 +814,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
      */
     @Override
     public void onAnalog(String name, float value, float tpf) {
-        if (app.isMouselocked()) {
+        if (isMouselocked) {
             if (ACTION_LOOK_LEFT.equals(name)) {
                 CameraHelper.rotate(camera, value, DIRECTION_UP);
 
@@ -800,6 +838,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     public void setFly(boolean fly) {
         this.fly = fly;
+        IalonConfig.getInstance().setPlayerStartFly(fly);
         if (player == null) {
             return;
         }
@@ -870,8 +909,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         if (!updatedChunks.isEmpty()) {
             chunkManager.requestOrderedMeshChunks(updatedChunks);
-            for (Vec3i loc : updatedChunks) {
-                app.asyncSave(loc);
+            save(updatedChunks);
+        }
+    }
+
+    private void save(Collection<Vec3i> locations) {
+        if (chunkSaverState != null) {
+            for (Vec3i location : locations) {
+                chunkSaverState.asyncSave(location);
             }
         }
     }
@@ -901,10 +946,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         if (!updatedChunks.isEmpty()) {
             chunkManager.requestOrderedMeshChunks(updatedChunks);
-
-            for (Vec3i location : updatedChunks) {
-                app.asyncSave(location);
-            }
+            save(updatedChunks);
         }
     }
 
@@ -986,7 +1028,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         CollisionResults collisionResults = new CollisionResults();
         Ray ray = new Ray(camera.getLocation(), camera.getDirection());
 
-        app.getChunkNode().collideWith(ray, collisionResults);
+        chunkNode.collideWith(ray, collisionResults);
 
         for (CollisionResult collisionResult : collisionResults) {
             if (collisionResult.getGeometry().getMaterial().getName() != null &&

@@ -37,7 +37,7 @@ public class MainActivity extends AndroidHarness {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Ialon.setFilePath(getApplicationContext().getFilesDir().toPath());
+        IalonConfig.getInstance().setSavePath(getApplicationContext().getFilesDir().toPath());
         super.onCreate(savedInstanceState);
     }
 
@@ -65,13 +65,13 @@ public class MainActivity extends AndroidHarness {
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
         app.setSettings(settings);
-        ((Ialon) app).setSaveUserPreferencesOnStop(false);
+        IalonConfig.getInstance().setSaveUserSettingsOnStop(false);
     }
 
     @Override
     protected void onStop() {
         // User preferences cannot be written during onDestroy
-        ((Ialon) app).saveUserPreferences();
+        ((Ialon) app).saveUserSettings();
         super.onStop();
     }
 

@@ -22,12 +22,12 @@ public class ChunkManagerTest {
 
     @BeforeAll
     public static void setUp() {
-        Ialon.configureBlocksFramework(new DesktopAssetManager(true), new TextureAtlasManager());
+        Ialon.configureBlocksFramework(new DesktopAssetManager(true));
     }
 
     @AfterEach
     public void reset() {
-        Ialon.configureBlocksFramework(new DesktopAssetManager(true), new TextureAtlasManager());
+        Ialon.configureBlocksFramework(new DesktopAssetManager(true));
     }
 
     @Test

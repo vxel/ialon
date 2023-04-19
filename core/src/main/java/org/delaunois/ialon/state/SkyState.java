@@ -129,8 +129,8 @@ public class SkyState extends BaseAppState {
         groundMat.setTexture("ColorMap", groundTexture);
         groundMat.setColor("Color", skyControl.getGroundColor());
         ground.setMaterial(groundMat);
-        this.app.getAtlasManager().getAtlas().applyCoords(ground, 0.1f);
-        groundMat.setTexture("ColorMap", this.app.getAtlasManager().getDiffuseMap());
+        IalonConfig.getInstance().getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
+        groundMat.setTexture("ColorMap", IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap());
 
         ground.addControl(new FollowCamControl(app.getCamera()));
     }

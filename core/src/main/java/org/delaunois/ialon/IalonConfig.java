@@ -1,8 +1,15 @@
 package org.delaunois.ialon;
 
+import com.jme3.font.BitmapFont;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.rvandoosselaer.blocks.ChunkRepository;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
+
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +20,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class IalonConfig {
+
+    public static final String SAVEDIR = "./save";
+    public static final String CHUNK_NODE_NAME = "chunk-node";
 
     private static IalonConfig instance = new IalonConfig();
     
@@ -59,6 +69,9 @@ public class IalonConfig {
     private ColorRGBA dayColor = ColorRGBA.White;
     private ColorRGBA eveningColor = ColorRGBA.fromRGBA255(255, 173, 66, 255);
     private ColorRGBA nightColor = new ColorRGBA(0.2f, 0.2f, 0.2f, 1);
+
+    private float time = FastMath.HALF_PI;
+    private int timeFactorIndex = 1;
     private float timeFactor = 0.01f; // Should be 0.01f
     private float groundGravity = 9;
     private float waterGravity = 0.4f;
@@ -66,6 +79,7 @@ public class IalonConfig {
     private float waterJumpSpeed = 5f;
 
     // Player
+    private Vector3f playerLocation;
     private float rotationSpeed = 1.5f;
     private float playerStartHeight = 10;
     private float playerMoveSpeed = 0.05f;
@@ -74,9 +88,17 @@ public class IalonConfig {
     private float playerRadius = 0.3f;
     private float playerStepHeight = 0.3f;
     private boolean playerStartFly = false;
+    private boolean saveUserSettingsOnStop = true;
+    private Path savePath = FileSystems.getDefault().getPath(SAVEDIR);
+
+    private ChunkManager chunkManager;
+    private ChunkRepository chunkRepository;
+    private TerrainGenerator terrainGenerator;
+    private TextureAtlasManager textureAtlasManager = new TextureAtlasManager();
+    private BitmapFont font;
 
     // Debug
-    private boolean devMode = false;
+    private boolean devMode = true;
     private boolean debugCollisions = false;
     private boolean debugGrid = false;
     private boolean debugChunks = false;
@@ -148,6 +170,46 @@ public class IalonConfig {
 
     public static IalonConfig getInstance() {
         return instance;
+    }
+
+
+    public ChunkManager getChunkManager() {
+        if (chunkManager == null) {
+            chunkManager = getDefaultChunkManager();
+        }
+        return chunkManager;
+    }
+
+    public ChunkRepository getChunkRepository() {
+        if (chunkRepository == null) {
+            chunkRepository = getDefaultChunkRepository();
+        }
+        return chunkRepository;
+    }
+
+    public TerrainGenerator getTerrainGenerator() {
+        if (terrainGenerator == null) {
+            terrainGenerator = getDefaultChunkGenerator();
+        }
+        return terrainGenerator;
+    }
+
+    public static ChunkManager getDefaultChunkManager() {
+        return ChunkManager.builder()
+                .poolSize(getInstance().getChunkPoolsize())
+                .generator(getInstance().getTerrainGenerator())
+                .repository(getInstance().getChunkRepository())
+                .build();
+    }
+
+    public static ChunkRepository getDefaultChunkRepository() {
+        ZipFileRepository repository = new ZipFileRepository();
+        repository.setPath(getInstance().getSavePath());
+        return repository;
+    }
+
+    public static TerrainGenerator getDefaultChunkGenerator() {
+        return new NoiseTerrainGenerator(2);
     }
 
 }
