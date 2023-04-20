@@ -36,13 +36,12 @@ public class SplashscreenState extends BaseAppState {
 
     private static final ColorRGBA BAR_COLOR = new ColorRGBA(.137f, .693f, .145f, 1f);
 
+    private Ialon app;
     private Node splashScreen;
     private Container pbContainer;
     private Label percentLabel;
     private ChunkPagerState chunkPagerState = null;
     private GridSettingsState gridSettingsState = null;
-
-    private Ialon app;
 
     @Override
     protected void initialize(Application app) {

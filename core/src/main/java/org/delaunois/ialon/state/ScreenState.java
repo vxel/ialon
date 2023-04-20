@@ -10,7 +10,6 @@ import com.simsilica.lemur.GuiGlobals;
 
 import org.delaunois.ialon.IalonConfig;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -23,13 +22,11 @@ public class ScreenState extends BaseAppState implements ActionListener {
     private static final String ACTION_TOGGLE_FULLSCREEN = "toggle-fullscreen";
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
+    private final AppSettings settings;
     private int camHeight;
     private int camWidth;
     private Application app;
-    protected AppSettings settings;
     private boolean checkResize = false;
-
-    @Getter
     private boolean mouselocked = false;
 
     public ScreenState(AppSettings settings) {
@@ -91,7 +88,9 @@ public class ScreenState extends BaseAppState implements ActionListener {
         } else if (ACTION_TOGGLE_FULLSCREEN.equals(name) && isPressed) {
             log.info("Toggle fullscreen");
             if (settings.isFullscreen()) {
-                settings.setResolution(IalonConfig.getInstance().getScreenWidth(), IalonConfig.getInstance().getScreenHeight());
+                settings.setResolution(
+                        IalonConfig.getInstance().getScreenWidth(),
+                        IalonConfig.getInstance().getScreenHeight());
                 settings.setFullscreen(false);
             } else {
                 settings.setResolution(-1, -1);

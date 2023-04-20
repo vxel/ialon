@@ -134,6 +134,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
+    private static final float SCREEN_MARGIN = 30;
+    private static final float SPACING = 10;
+    private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
 
     private boolean left = false;
     private boolean right = false;
@@ -177,12 +180,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private int buttonSize = 100;
 
     @Getter
-    private static final float SCREEN_MARGIN = 30;
-
-    @Getter
-    private static final float SPACING = 10;
-
-    @Getter
     private Node directionButtons;
 
     @Getter
@@ -215,7 +212,6 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private final Vector3f camDir = new Vector3f();
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
-    private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
     private long lastCollisionTest = System.currentTimeMillis();
     private Material ballMaterial;
 

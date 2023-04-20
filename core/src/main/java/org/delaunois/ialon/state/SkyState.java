@@ -31,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 public class SkyState extends BaseAppState {
 
     private Ialon app;
-
     private SkyControl skyControl;
     private Geometry ground;
     private Geometry sky;

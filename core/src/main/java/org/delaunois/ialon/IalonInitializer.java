@@ -47,6 +47,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class IalonInitializer {
 
+    private IalonInitializer() {
+        // Prevent instanciation
+    }
+
     public static void setupLogging() {
         LogAdapter.initialize();
         SLF4JBridgeHandler.removeHandlersForRootLogger();

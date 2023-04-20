@@ -43,10 +43,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TimeFactorState extends BaseAppState implements ActionListener {
 
-    private Ialon app;
-    private BitmapFont guiFont;
-    private Container buttonTimeFactor;
-
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
@@ -55,6 +51,9 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
     private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
 
+    private Ialon app;
+    private BitmapFont guiFont;
+    private Container buttonTimeFactor;
     private int buttonSize;
     private Label timeFactorLabel;
     private final IalonConfig config = IalonConfig.getInstance();

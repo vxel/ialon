@@ -15,17 +15,13 @@ import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.MoonControl;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MoonState extends BaseAppState {
 
     private Ialon app;
-
-    @Getter
     private MoonControl moonControl;
-
     private Geometry moon;
 
     @Override

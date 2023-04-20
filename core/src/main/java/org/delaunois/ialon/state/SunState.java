@@ -27,11 +27,10 @@ public class SunState extends BaseAppState implements ActionListener {
     private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
 
     private Ialon app;
+    private Geometry sun;
 
     @Getter
     private SunControl sunControl;
-
-    private Geometry sun;
 
     @Override
     protected void initialize(Application app) {
