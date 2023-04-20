@@ -23,6 +23,7 @@ import android.view.View;
 
 import com.jme3.system.AppSettings;
 
+import org.delaunois.ialon.serialize.UserSettingsRepository;
 import org.delaunois.jme.AndroidHarness;
 
 public class MainActivity extends AndroidHarness {
@@ -71,7 +72,7 @@ public class MainActivity extends AndroidHarness {
     @Override
     protected void onStop() {
         // User preferences cannot be written during onDestroy
-        ((Ialon) app).saveUserSettings();
+        UserSettingsRepository.saveUserSettings(((Ialon) app));
         super.onStop();
     }
 

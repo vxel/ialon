@@ -72,7 +72,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Optional;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -84,9 +83,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Ialon extends SimpleApplication {
 
-    @Getter
-    private final UserSettingsRepository userSettingsRepository = new UserSettingsRepository();
-
     public Ialon() {
         super(new LightingState(), new SplashscreenState());
     }
@@ -95,17 +91,17 @@ public class Ialon extends SimpleApplication {
     public void simpleInitApp() {
         log.info("Initializing Ialon");
 
-        loadUserSettings();
+        UserSettingsRepository.loadUserSettings(this);
         setupLogging();
         setupCamera(this);
         setupViewPort(this);
         setupAtlasManager(this);
         setupAtlasFont(this);
+        setupBlockFramework(this);
         stateManager.attach(setupBulletAppState());
         stateManager.attach(setupChunkSaverState());
         stateManager.attach(setupPlayerState());
         stateManager.attach(setupStatsAppState());
-        setupBlockFramework(this);
         stateManager.attach(setupChunkManager());
         stateManager.attach(setupChunkPager(this)); // Depends on PlayerState
         stateManager.attach(setupPhysicsChunkPager(this)); // Depends on PlayerState and BulletAppState
@@ -235,8 +231,6 @@ public class Ialon extends SimpleApplication {
 
     public static void setupBlockFramework(SimpleApplication app) {
         configureBlocksFramework(app.getAssetManager());
-        registerIalonBlocks();
-
         Node chunkNode = new Node(IalonConfig.CHUNK_NODE_NAME);
         app.getRootNode().attachChild(chunkNode);
     }
@@ -301,6 +295,8 @@ public class Ialon extends SimpleApplication {
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
         typeRegistry.setAtlasRepository(ialonConfig.getTextureAtlasManager());
         typeRegistry.registerDefaultMaterials();
+
+        registerIalonBlocks();
     }
 
     public static void registerIalonBlocks() {
@@ -362,16 +358,8 @@ public class Ialon extends SimpleApplication {
         super.stop();
         log.info("Stopping Ialon");
         if (IalonConfig.getInstance().isSaveUserSettingsOnStop()) {
-            saveUserSettings();
+            UserSettingsRepository.saveUserSettings(this);
         }
-    }
-
-    public void loadUserSettings() {
-        userSettingsRepository.loadUserSettings(this);
-    }
-
-    public void saveUserSettings() {
-        userSettingsRepository.saveUserSettings(this);
     }
 
 }

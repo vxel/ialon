@@ -53,12 +53,9 @@ public class UserSettingsRepository {
 
     public static final String PLAYER_STATE_FILENAME = "player.yml";
 
-    public void loadUserSettings(Ialon app) {
+    public static void loadUserSettings(Ialon app) {
         IalonConfig config = IalonConfig.getInstance();
-        PlayerStateDTO playerStateDTO = null;
-        if (getPlayerSavePath() != null) {
-            playerStateDTO = loadPlayerStateDTO();
-        }
+        PlayerStateDTO playerStateDTO = loadPlayerStateDTO();
 
         if (playerStateDTO != null) {
             if (playerStateDTO.getLocation() != null) {
@@ -74,26 +71,25 @@ public class UserSettingsRepository {
         }
     }
 
-    public void saveUserSettings(Ialon app) {
+    public static void saveUserSettings(Ialon app) {
         IalonConfig config = IalonConfig.getInstance();
 
-        if (getPlayerSavePath() != null) {
-            PlayerStateDTO pstate = new PlayerStateDTO(
-                    config.getPlayerLocation(),
-                    app.getCamera().getRotation(),
-                    config.getTime());
+        getPlayerSavePath();
+        PlayerStateDTO pstate = new PlayerStateDTO(
+                config.getPlayerLocation(),
+                app.getCamera().getRotation(),
+                config.getTime());
 
-            pstate.setFly(config.isPlayerStartFly());
-            pstate.setTimeFactorIndex(config.getTimeFactorIndex());
-            pstate.setGridRadius(config.getGridRadius());
+        pstate.setFly(config.isPlayerStartFly());
+        pstate.setTimeFactorIndex(config.getTimeFactorIndex());
+        pstate.setGridRadius(config.getGridRadius());
 
-            if (!this.savePlayerStateDTO(pstate)) {
-                log.error("Could not properly save User Settings");
-            }
+        if (!savePlayerStateDTO(pstate)) {
+            log.error("Could not properly save User Settings");
         }
     }
 
-    private PlayerStateDTO loadPlayerStateDTO() {
+    private static PlayerStateDTO loadPlayerStateDTO() {
         Path path = IalonConfig.getInstance().getSavePath();
 
         // path doesn't exist
@@ -120,7 +116,7 @@ public class UserSettingsRepository {
         return loadPlayerStateFromPath(filePath);
     }
 
-    private boolean savePlayerStateDTO(PlayerStateDTO playerStateDTO) {
+    private static boolean savePlayerStateDTO(PlayerStateDTO playerStateDTO) {
         Path path = IalonConfig.getInstance().getSavePath();
         if (path == null) {
             return false;
@@ -139,7 +135,7 @@ public class UserSettingsRepository {
         return writePlayerStateToPath(playerStateDTO, getPlayerSavePath());
     }
 
-    private PlayerStateDTO loadPlayerStateFromPath(Path filePath) {
+    private static PlayerStateDTO loadPlayerStateFromPath(Path filePath) {
         if (log.isTraceEnabled()) {
             log.trace("Loading {}", filePath.toAbsolutePath());
         }
@@ -165,7 +161,7 @@ public class UserSettingsRepository {
         return null;
     }
 
-    private boolean writePlayerStateToPath(PlayerStateDTO playerStateDTO, Path path) {
+    private static boolean writePlayerStateToPath(PlayerStateDTO playerStateDTO, Path path) {
         log.info("Saving player state to {}", path.toAbsolutePath());
 
         long start = System.nanoTime();
@@ -182,14 +178,11 @@ public class UserSettingsRepository {
         return false;
     }
 
-    public Path getPlayerSavePath() {
-        if (IalonConfig.getInstance().getSavePath() != null) {
-            return Paths.get(IalonConfig.getInstance().getSavePath().toAbsolutePath().toString(), PLAYER_STATE_FILENAME);
-        }
-        return null;
+    public static Path getPlayerSavePath() {
+        return Paths.get(IalonConfig.getInstance().getSavePath().toAbsolutePath().toString(), PLAYER_STATE_FILENAME);
     }
 
-    private PlayerStateDTO read(InputStream inputStream) {
+    private static PlayerStateDTO read(InputStream inputStream) {
         try {
             PlayerStateDTO playerStateDTO = objectMapper.readValue(inputStream, objectMapper.getTypeFactory().constructType(PlayerStateDTO.class));
             if (log.isTraceEnabled()) {
@@ -203,7 +196,7 @@ public class UserSettingsRepository {
         return new PlayerStateDTO();
     }
 
-    private void write(PlayerStateDTO playerStateDTO, OutputStream outputStream) {
+    private static void write(PlayerStateDTO playerStateDTO, OutputStream outputStream) {
         try {
             log.info("Saving player preferences");
             objectMapper.writeValue(outputStream, playerStateDTO);
