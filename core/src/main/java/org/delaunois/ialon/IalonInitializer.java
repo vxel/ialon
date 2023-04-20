@@ -24,7 +24,6 @@ import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
-import com.simsilica.util.LogAdapter;
 
 import org.delaunois.ialon.jme.BitmapFontLoader;
 import org.delaunois.ialon.jme.LayerComparator;
@@ -52,7 +51,6 @@ public class IalonInitializer {
     }
 
     public static void setupLogging() {
-        LogAdapter.initialize();
         SLF4JBridgeHandler.removeHandlersForRootLogger();
         SLF4JBridgeHandler.install();
     }
