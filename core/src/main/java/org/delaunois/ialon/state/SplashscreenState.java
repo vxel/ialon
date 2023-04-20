@@ -39,6 +39,8 @@ public class SplashscreenState extends BaseAppState {
     private Node splashScreen;
     private Container pbContainer;
     private Label percentLabel;
+    private ChunkPagerState chunkPagerState = null;
+    private GridSettingsState gridSettingsState = null;
 
     private Ialon app;
 
@@ -74,8 +76,12 @@ public class SplashscreenState extends BaseAppState {
     @Override
     public void update(float tpf) {
         float percent = 0;
-        ChunkPagerState chunkPagerState = getStateManager().getState(ChunkPagerState.class);
-        GridSettingsState gridSettingsState = getStateManager().getState(GridSettingsState.class);
+        if (chunkPagerState == null) {
+            chunkPagerState = getStateManager().getState(ChunkPagerState.class);
+        }
+        if (gridSettingsState == null) {
+            gridSettingsState = getStateManager().getState(GridSettingsState.class);
+        }
         if (chunkPagerState != null && chunkPagerState.getChunkPager() != null && gridSettingsState != null) {
             int gridSize = IalonConfig.getInstance().getGridRadius() * 2 + 1;
             float total = gridSize * gridSize * (float) IalonConfig.getInstance().getGridHeight();

@@ -20,8 +20,8 @@ package org.delaunois.ialon.serialize;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.jme3.app.SimpleApplication;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 import java.io.File;
@@ -45,54 +45,58 @@ import lombok.extern.slf4j.Slf4j;
 @Builder
 @Slf4j
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class UserSettingsRepository {
+public class IalonConfigRepository {
 
     private static final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
     public static final String PLAYER_STATE_FILENAME = "player.yml";
 
-    private UserSettingsRepository() {
+    private IalonConfigRepository() {
         // Prevent instanciation
     }
 
-    public static void loadUserSettings(Ialon app) {
+    public static IalonConfig loadConfig() {
         IalonConfig config = IalonConfig.getInstance();
-        PlayerStateDTO playerStateDTO = loadPlayerStateDTO();
+        PlayerStateDTO playerStateDTO = loadPlayerStateDTO(config);
 
         if (playerStateDTO != null) {
             if (playerStateDTO.getLocation() != null) {
                 config.setPlayerLocation(playerStateDTO.getLocation());
             }
             if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
-                app.getCamera().setRotation(playerStateDTO.getRotation());
+                config.setCamRotation(playerStateDTO.getRotation());
             }
             config.setPlayerStartFly(playerStateDTO.isFly());
             config.setGridRadius(playerStateDTO.getGridRadius());
             config.setTime(playerStateDTO.getTime());
             config.setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
         }
+        return config;
     }
 
-    public static void saveUserSettings(Ialon app) {
-        IalonConfig config = IalonConfig.getInstance();
+    public static void saveConfig(SimpleApplication app) {
+        IalonConfig.getInstance().setCamRotation(app.getCamera().getRotation());
+        saveConfig(IalonConfig.getInstance());
+    }
 
-        getPlayerSavePath();
+    public static void saveConfig(IalonConfig config) {
+        getPlayerSavePath(config);
         PlayerStateDTO pstate = new PlayerStateDTO(
                 config.getPlayerLocation(),
-                app.getCamera().getRotation(),
+                config.getCamRotation(),
                 config.getTime());
 
         pstate.setFly(config.isPlayerStartFly());
         pstate.setTimeFactorIndex(config.getTimeFactorIndex());
         pstate.setGridRadius(config.getGridRadius());
 
-        if (!savePlayerStateDTO(pstate)) {
+        if (!savePlayerStateDTO(pstate, config)) {
             log.error("Could not properly save User Settings");
         }
     }
 
-    private static PlayerStateDTO loadPlayerStateDTO() {
-        Path path = IalonConfig.getInstance().getSavePath();
+    private static PlayerStateDTO loadPlayerStateDTO(IalonConfig config) {
+        Path path = config.getSavePath();
 
         // path doesn't exist
         if (path == null || Files.notExists(path)) {
@@ -107,7 +111,7 @@ public class UserSettingsRepository {
         }
 
         // player file does not exist
-        Path filePath = getPlayerSavePath();
+        Path filePath = getPlayerSavePath(config);
         if (Files.notExists(filePath)) {
             if (log.isTraceEnabled()) {
                 log.trace("User Settings {} not found in repository", filePath);
@@ -118,8 +122,8 @@ public class UserSettingsRepository {
         return loadPlayerStateFromPath(filePath);
     }
 
-    private static boolean savePlayerStateDTO(PlayerStateDTO playerStateDTO) {
-        Path path = IalonConfig.getInstance().getSavePath();
+    private static boolean savePlayerStateDTO(PlayerStateDTO playerStateDTO, IalonConfig config) {
+        Path path = config.getSavePath();
         if (path == null) {
             return false;
         }
@@ -134,7 +138,7 @@ public class UserSettingsRepository {
             }
         }
 
-        return writePlayerStateToPath(playerStateDTO, getPlayerSavePath());
+        return writePlayerStateToPath(playerStateDTO, getPlayerSavePath(config));
     }
 
     private static PlayerStateDTO loadPlayerStateFromPath(Path filePath) {
@@ -180,8 +184,8 @@ public class UserSettingsRepository {
         return false;
     }
 
-    public static Path getPlayerSavePath() {
-        return Paths.get(IalonConfig.getInstance().getSavePath().toAbsolutePath().toString(), PLAYER_STATE_FILENAME);
+    private static Path getPlayerSavePath(IalonConfig config) {
+        return Paths.get(config.getSavePath().toAbsolutePath().toString(), PLAYER_STATE_FILENAME);
     }
 
     private static PlayerStateDTO read(InputStream inputStream) {

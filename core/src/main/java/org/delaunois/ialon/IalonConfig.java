@@ -3,6 +3,7 @@ package org.delaunois.ialon;
 import com.jme3.font.BitmapFont;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.ChunkRepository;
 import com.rvandoosselaer.blocks.ShapeIds;
@@ -76,6 +77,7 @@ public class IalonConfig {
 
     // Player
     private Vector3f playerLocation;
+    private Quaternion camRotation;
     private float rotationSpeed = 1.5f;
     private float playerStartHeight = 10;
     private float playerMoveSpeed = 0.05f;
@@ -209,21 +211,21 @@ public class IalonConfig {
         return terrainGenerator;
     }
 
-    public static ChunkManager getDefaultChunkManager() {
+    public ChunkManager getDefaultChunkManager() {
         return ChunkManager.builder()
-                .poolSize(getInstance().getChunkPoolsize())
-                .generator(getInstance().getTerrainGenerator())
-                .repository(getInstance().getChunkRepository())
+                .poolSize(getChunkPoolsize())
+                .generator(getTerrainGenerator())
+                .repository(getChunkRepository())
                 .build();
     }
 
-    public static ChunkRepository getDefaultChunkRepository() {
+    public ChunkRepository getDefaultChunkRepository() {
         ZipFileRepository repository = new ZipFileRepository();
-        repository.setPath(getInstance().getSavePath());
+        repository.setPath(getSavePath());
         return repository;
     }
 
-    public static TerrainGenerator getDefaultChunkGenerator() {
+    public TerrainGenerator getDefaultChunkGenerator() {
         return new NoiseTerrainGenerator(2);
     }
 

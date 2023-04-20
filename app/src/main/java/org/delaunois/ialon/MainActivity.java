@@ -23,10 +23,11 @@ import android.view.View;
 
 import com.jme3.system.AppSettings;
 
-import org.delaunois.ialon.serialize.UserSettingsRepository;
+import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.jme.AndroidHarness;
 
 public class MainActivity extends AndroidHarness {
+
     public MainActivity() {
         appClass = Ialon.class.getCanonicalName();
         mouseEventsEnabled = true;
@@ -72,7 +73,7 @@ public class MainActivity extends AndroidHarness {
     @Override
     protected void onStop() {
         // User preferences cannot be written during onDestroy
-        UserSettingsRepository.saveUserSettings(((Ialon) app));
+        IalonConfigRepository.saveConfig((Ialon) app);
         super.onStop();
     }
 
