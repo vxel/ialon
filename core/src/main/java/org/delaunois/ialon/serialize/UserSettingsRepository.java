@@ -37,13 +37,11 @@ import java.util.concurrent.TimeUnit;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @Builder
 @Slf4j
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -52,6 +50,10 @@ public class UserSettingsRepository {
     private static final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
     public static final String PLAYER_STATE_FILENAME = "player.yml";
+
+    private UserSettingsRepository() {
+        // Prevent instanciation
+    }
 
     public static void loadUserSettings(Ialon app) {
         IalonConfig config = IalonConfig.getInstance();

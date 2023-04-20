@@ -6,8 +6,6 @@ import com.simsilica.mathd.Vec3i;
 
 public class EmptyGenerator implements TerrainGenerator {
 
-    public EmptyGenerator() {}
-
     @Override
     public Chunk generate(Vec3i location) {
         return Chunk.createAt(location);

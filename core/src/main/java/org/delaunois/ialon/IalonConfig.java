@@ -23,8 +23,9 @@ public class IalonConfig {
 
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
+    public static final String FONT_PATH = "Textures/font-default.fnt";
 
-    private static IalonConfig instance = new IalonConfig();
+    private static final IalonConfig INSTANCE = new IalonConfig();
     
     // Screen - Rendering
     private int screenWidth = 1520;
@@ -40,12 +41,7 @@ public class IalonConfig {
     private int physicsGridRadius = 1;
     private int chunkSize = 16;
     private int chunkHeight = 16;
-    private int gridSize = gridRadius * 2 + 1;
     private int gridHeight = 7;
-    private int physicsGridSize = physicsGridRadius * 2 + 1;
-    private Vec3i gridLowerBound = new Vec3i(Integer.MIN_VALUE, 0, Integer.MIN_VALUE);
-    private Vec3i gridUpperBound = new Vec3i(Integer.MAX_VALUE, gridHeight - 1, Integer.MAX_VALUE);
-    private int maxy = gridHeight * chunkHeight;
 
     // World
     private float waterHeight = 50f;
@@ -169,9 +165,28 @@ public class IalonConfig {
     }
 
     public static IalonConfig getInstance() {
-        return instance;
+        return INSTANCE;
     }
 
+    public int getGridSize() {
+        return gridRadius * 2 + 1;
+    }
+
+    public int getPhysicsGridSize() {
+        return physicsGridRadius * 2 + 1;
+    }
+
+    public int getMaxy() {
+        return gridHeight * chunkHeight;
+    }
+
+    public Vec3i getGridLowerBound() {
+        return new Vec3i(Integer.MIN_VALUE, 0, Integer.MIN_VALUE);
+    }
+
+    public Vec3i getGridUpperBound() {
+        return new Vec3i(Integer.MAX_VALUE, gridHeight - 1, Integer.MAX_VALUE);
+    }
 
     public ChunkManager getChunkManager() {
         if (chunkManager == null) {

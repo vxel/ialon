@@ -164,7 +164,7 @@ public class Ialon extends SimpleApplication {
     }
 
     public static void setupAtlasManager(SimpleApplication app) {
-        BitmapFont font = app.getAssetManager().loadFont("Textures/font-default.fnt");
+        BitmapFont font = app.getAssetManager().loadFont(IalonConfig.FONT_PATH);
         Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
 
         TextureAtlasManager atlas = IalonConfig.getInstance().getTextureAtlasManager();
@@ -176,8 +176,8 @@ public class Ialon extends SimpleApplication {
 
     public static void setupAtlasFont(SimpleApplication app) {
         // Reload the font using the offset of the atlas tile
-        AssetInfo assetInfo = app.getAssetManager().locateAsset(new AssetKey<>("Textures/font-default.fnt"));
-        BitmapFont font = app.getAssetManager().loadFont("Textures/font-default.fnt");
+        AssetInfo assetInfo = app.getAssetManager().locateAsset(new AssetKey<>(IalonConfig.FONT_PATH));
+        BitmapFont font = app.getAssetManager().loadFont(IalonConfig.FONT_PATH);
         BitmapFont atlasFont;
         try {
             atlasFont = BitmapFontLoader.mapAtlasFont(assetInfo, font, IalonConfig.getInstance().getTextureAtlasManager().getAtlas());
@@ -192,7 +192,7 @@ public class Ialon extends SimpleApplication {
         GuiGlobals.initialize(app);
 
         BitmapFont font = Optional.ofNullable(IalonConfig.getInstance().getFont())
-                .orElse(app.getAssetManager().loadFont("Textures/font-default.fnt"));
+                .orElse(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
 
         Optional.ofNullable(app.getStateManager().getState(BasePickState.class))
                 .ifPresent(basePickState -> basePickState.removeCollisionRoot(app.getRootNode()));
