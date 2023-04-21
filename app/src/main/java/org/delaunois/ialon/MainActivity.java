@@ -18,7 +18,6 @@
 package org.delaunois.ialon;
 
 import android.os.Build;
-import android.os.Bundle;
 import android.view.View;
 
 import com.jme3.system.AppSettings;
@@ -33,11 +32,6 @@ public class MainActivity extends AndroidHarness {
         mouseEventsEnabled = true;
         screenShowTitle = false;
         frameRate = IalonConfig.FPS_LIMIT;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
     }
 
     @SuppressWarnings("java:S1874")

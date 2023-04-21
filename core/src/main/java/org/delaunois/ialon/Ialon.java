@@ -106,10 +106,6 @@ public class Ialon extends SimpleApplication {
         log.info("{} block types registered", typeSize);
         log.info("{} block shapes registered", shapeSize);
         log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
-
-        if (config.isDevMode()) {
-            config.getTextureAtlasManager().dump();
-        }
     }
 
     @Override

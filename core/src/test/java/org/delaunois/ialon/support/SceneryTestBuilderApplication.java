@@ -52,6 +52,7 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
+            config.getTextureAtlasManager().dump();
         }
     }
 }
