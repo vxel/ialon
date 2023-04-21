@@ -18,6 +18,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
@@ -54,7 +55,6 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonBlock;
 
 import java.nio.FloatBuffer;
@@ -460,7 +460,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private Node[] blocks;
 
-    private Ialon app;
+    private SimpleApplication app;
     private BitmapFont guiFont;
 
     // Buttons
@@ -485,7 +485,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     @Override
     public void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
 
         for (int i = 0; i < lastSelectedBlockNode.length; i++) {
             lastSelectedBlockNode[i] = new Node();

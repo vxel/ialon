@@ -18,6 +18,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
@@ -29,14 +30,13 @@ import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.IconComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 public class SplashscreenState extends BaseAppState {
 
     private static final ColorRGBA BAR_COLOR = new ColorRGBA(.137f, .693f, .145f, 1f);
 
-    private Ialon app;
+    private SimpleApplication app;
     private Node splashScreen;
     private Container pbContainer;
     private Label percentLabel;
@@ -51,7 +51,7 @@ public class SplashscreenState extends BaseAppState {
 
     @Override
     protected void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
         splashScreen = new Node("SplashScreen");
 
         Container splashContainer = new Container();

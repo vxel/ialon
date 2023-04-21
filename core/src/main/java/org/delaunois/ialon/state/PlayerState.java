@@ -19,6 +19,7 @@ package org.delaunois.ialon.state;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
@@ -72,7 +73,6 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.CameraHelper;
 import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.PlayerTouchListener;
 
@@ -148,7 +148,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private boolean underWater = false;
     private boolean onScale = false;
     private boolean isMouselocked = false;
-    private Ialon app;
+    private SimpleApplication app;
     private Label crossHair;
     private Geometry addPlaceholder;
     private Geometry removePlaceholder;
@@ -225,7 +225,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     @Override
     protected void initialize(Application simpleApp) {
-        app = (Ialon) simpleApp;
+        app = (SimpleApplication) simpleApp;
         camera = app.getCamera();
         buttonSize = camera.getHeight() / 6;
 

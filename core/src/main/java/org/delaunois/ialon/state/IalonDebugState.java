@@ -275,7 +275,7 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getLocalTimeString() {
-        if (sunState.getSunControl() != null) {
+        if (sunState != null && sunState.getSunControl() != null) {
             return String.format(Locale.ENGLISH, "%02d:%02d:%02d",
                     sunState.getSunControl().getLocalTime().getHour(),
                     sunState.getSunControl().getLocalTime().getMinute(),

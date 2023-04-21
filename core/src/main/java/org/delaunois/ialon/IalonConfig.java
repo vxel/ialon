@@ -34,7 +34,7 @@ public class IalonConfig {
 
     // Grid
     private int gridRadius = 4;
-    private int gridRadiusMin = 2;
+    private int gridRadiusMin = 0;
     private int gridRadiusMax = 15;
     private int physicsGridRadius = 1;
     private int chunkSize = 16;

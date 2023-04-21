@@ -20,8 +20,8 @@ package org.delaunois.ialon.serialize;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.jme3.app.SimpleApplication;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 import java.io.File;
@@ -74,11 +74,11 @@ public class IalonConfigRepository {
         return config;
     }
 
-    public static void saveConfig(Ialon app) {
+    public static void saveConfig(SimpleApplication app, IalonConfig config) {
         if (app.getCamera() != null) {
-            app.getConfig().setCamRotation(app.getCamera().getRotation());
+            config.setCamRotation(app.getCamera().getRotation());
         }
-        saveConfig(app.getConfig());
+        saveConfig(config);
     }
 
     public static void saveConfig(IalonConfig config) {

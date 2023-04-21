@@ -76,7 +76,8 @@ public class MainActivity extends AndroidHarness {
     @Override
     protected void onStop() {
         // User preferences cannot be written during onDestroy
-        IalonConfigRepository.saveConfig((Ialon) app);
+        Ialon ialon = (Ialon) app;
+        IalonConfigRepository.saveConfig(ialon, ialon.getConfig());
         super.onStop();
     }
 

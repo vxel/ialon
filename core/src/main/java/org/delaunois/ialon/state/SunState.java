@@ -1,6 +1,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
@@ -14,7 +15,6 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Quad;
 import com.jme3.texture.Texture;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.SunControl;
 
@@ -26,7 +26,7 @@ public class SunState extends BaseAppState implements ActionListener {
 
     private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
 
-    private Ialon app;
+    private SimpleApplication app;
     private Geometry sun;
 
     @Getter
@@ -40,7 +40,7 @@ public class SunState extends BaseAppState implements ActionListener {
 
     @Override
     protected void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
 
         sun = new Geometry("Sun", new Quad(30f, 30f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);

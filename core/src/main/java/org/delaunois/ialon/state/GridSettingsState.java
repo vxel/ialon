@@ -18,6 +18,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.KeyInput;
@@ -36,7 +37,6 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
 
-    private Ialon app;
+    private SimpleApplication app;
     private BitmapFont guiFont;
     private Container buttonSettings;
     private int buttonSize;
@@ -65,7 +65,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
 
     @Override
     public void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
         buttonSize = app.getCamera().getHeight() / 12;
         radius = config.getGridRadius();
 

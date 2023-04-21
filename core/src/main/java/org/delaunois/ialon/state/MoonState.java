@@ -1,6 +1,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
@@ -11,7 +12,6 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Quad;
 import com.jme3.texture.Texture;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.MoonControl;
 
@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MoonState extends BaseAppState {
 
-    private Ialon app;
+    private SimpleApplication app;
     private MoonControl moonControl;
     private Geometry moon;
     private final IalonConfig config;
@@ -31,7 +31,7 @@ public class MoonState extends BaseAppState {
 
     @Override
     protected void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
 
         moon = new Geometry("moon", new Quad(15f, 15f));
         moon.setQueueBucket(RenderQueue.Bucket.Sky);

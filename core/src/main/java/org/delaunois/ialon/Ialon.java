@@ -121,7 +121,8 @@ public class Ialon extends SimpleApplication {
     @Override
     public void restart() {
         super.restart();
-        Optional.ofNullable(stateManager.getState(ScreenState.class)).ifPresent(ScreenState::checkResize);
+        Optional.ofNullable(stateManager.getState(ScreenState.class))
+                .ifPresent(ScreenState::checkResize);
         log.info("Restarting Ialon");
     }
 
@@ -130,7 +131,7 @@ public class Ialon extends SimpleApplication {
         super.stop();
         log.info("Stopping Ialon");
         if (config.isSaveUserSettingsOnStop()) {
-            IalonConfigRepository.saveConfig(this);
+            IalonConfigRepository.saveConfig(this, config);
         }
     }
 

@@ -78,7 +78,7 @@ public class ChunkPagerTest {
     }
 
     private Chunk load(String path) throws URISyntaxException {
-        URL resource = this.getClass().getResource("/chunk_0_0_0.zblock");
+        URL resource = this.getClass().getResource("/scenery/chunkpager/chunk_0_0_0.zblock");
         assertNotNull(resource);
         ZipFileRepository repository = new ZipFileRepository();
         return repository.load(Paths.get(resource.toURI()));

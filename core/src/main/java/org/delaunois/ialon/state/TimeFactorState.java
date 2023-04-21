@@ -18,6 +18,7 @@
 package org.delaunois.ialon.state;
 
 import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.KeyInput;
@@ -35,7 +36,6 @@ import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 
-import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +51,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
     private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
 
-    private Ialon app;
+    private SimpleApplication app;
     private BitmapFont guiFont;
     private Container buttonTimeFactor;
     private int buttonSize;
@@ -66,7 +66,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     public void initialize(Application app) {
-        this.app = (Ialon) app;
+        this.app = (SimpleApplication) app;
 
         buttonSize = app.getCamera().getHeight() / 12;
 
