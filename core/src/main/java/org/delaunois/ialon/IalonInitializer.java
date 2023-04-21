@@ -31,7 +31,6 @@ import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.ChunkSaverState;
-import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
@@ -69,12 +68,12 @@ public class IalonInitializer {
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
     }
 
-    public static ChunkSaverState setupChunkSaverState() {
-        return new ChunkSaverState();
+    public static ChunkSaverState setupChunkSaverState(IalonConfig config) {
+        return new ChunkSaverState(config);
     }
 
-    public static PlayerState setupPlayerState() {
-        PlayerState playerState = new PlayerState();
+    public static PlayerState setupPlayerState(IalonConfig config) {
+        PlayerState playerState = new PlayerState(config);
         playerState.setEnabled(false);
         return playerState;
     }
@@ -186,15 +185,9 @@ public class IalonInitializer {
     }
 
     public static AppState setupChunkLiquidManager(IalonConfig config) {
-        ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState();
+        ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState(config);
         chunkLiquidManagerState.setEnabled(config.isSimulateLiquidFlow());
         return chunkLiquidManagerState;
-    }
-
-    public static AppState setupGridSettingsState(IalonConfig config) {
-        GridSettingsState gridSettingsState = new GridSettingsState();
-        gridSettingsState.setRadius(config.getGridRadius());
-        return gridSettingsState;
     }
 
     public static void configureBlocksFramework(AssetManager assetManager, IalonConfig ialonConfig) {
@@ -204,7 +197,7 @@ public class IalonInitializer {
         blocksConfig.setPhysicsGrid(new Vec3i(ialonConfig.getPhysicsGridSize(), ialonConfig.getPhysicsGridSize(), ialonConfig.getPhysicsGridSize()));
         blocksConfig.setChunkSize(new Vec3i(ialonConfig.getChunkSize(), ialonConfig.getChunkHeight(), ialonConfig.getChunkSize()));
         blocksConfig.getShapeRegistry().registerDefaultShapes();
-        blocksConfig.setChunkMeshGenerator(new FacesMeshGenerator());
+        blocksConfig.setChunkMeshGenerator(new FacesMeshGenerator(ialonConfig));
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));

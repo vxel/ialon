@@ -171,7 +171,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private Vector3f playerLocation;
 
     @Getter
-    private boolean fly = IalonConfig.getInstance().isPlayerStartFly();
+    private boolean fly = false;
 
     @Getter
     private Camera camera;
@@ -215,7 +215,13 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private long lastCollisionTest = System.currentTimeMillis();
     private Material ballMaterial;
 
-    private final IalonConfig config = IalonConfig.getInstance();
+    private final CameraHelper cameraHelper;
+    private final IalonConfig config;
+
+    public PlayerState(IalonConfig config) {
+        this.config = config;
+        this.cameraHelper = new CameraHelper(config);
+    }
 
     @Override
     protected void initialize(Application simpleApp) {
@@ -224,14 +230,14 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         buttonSize = camera.getHeight() / 6;
 
         inputManager = app.getInputManager();
-        chunkManager = IalonConfig.getInstance().getChunkManager();
-        touchListener = new PlayerTouchListener(this);
+        chunkManager = config.getChunkManager();
+        touchListener = new PlayerTouchListener(this, config);
         crossHair = createCrossHair();
         addPlaceholder = createAddPlaceholder();
         removePlaceholder = createRemovePlaceholder();
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
-        fly = IalonConfig.getInstance().isPlayerStartFly();
-        playerLocation = IalonConfig.getInstance().getPlayerLocation();
+        fly = config.isPlayerStartFly();
+        playerLocation = config.getPlayerLocation();
         player = createPlayer();
         updatePlayerPosition();
         createButttons();
@@ -812,16 +818,16 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     public void onAnalog(String name, float value, float tpf) {
         if (isMouselocked) {
             if (ACTION_LOOK_LEFT.equals(name)) {
-                CameraHelper.rotate(camera, value, DIRECTION_UP);
+                cameraHelper.rotate(camera, value, DIRECTION_UP);
 
             } else if (ACTION_LOOK_RIGHT.equals(name)) {
-                CameraHelper.rotate(camera, -value, DIRECTION_UP);
+                cameraHelper.rotate(camera, -value, DIRECTION_UP);
 
             } else if (ACTION_LOOK_UP.equals(name)) {
-                CameraHelper.rotate(camera, -value, camera.getLeft());
+                cameraHelper.rotate(camera, -value, camera.getLeft());
 
             } else if (ACTION_LOOK_DOWN.equals(name)) {
-                CameraHelper.rotate(camera, value, camera.getLeft());
+                cameraHelper.rotate(camera, value, camera.getLeft());
             }
         }
     }
@@ -834,7 +840,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
     public void setFly(boolean fly) {
         this.fly = fly;
-        IalonConfig.getInstance().setPlayerStartFly(fly);
+        config.setPlayerStartFly(fly);
         if (player == null) {
             return;
         }

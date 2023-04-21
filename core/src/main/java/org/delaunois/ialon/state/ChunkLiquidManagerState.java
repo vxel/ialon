@@ -44,10 +44,15 @@ public class ChunkLiquidManagerState extends BaseAppState {
     private ChunkSaverState chunkSaverState;
 
     private float elapsed = 0;
+    private final IalonConfig config;
+
+    public ChunkLiquidManagerState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     protected void initialize(Application app) {
-        this.chunkManager = IalonConfig.getInstance().getChunkManager();
+        this.chunkManager = config.getChunkManager();
         this.chunkLiquidManager = chunkManager.getChunkLiquidManager();
         this.chunkSaverState = app.getStateManager().getState(ChunkSaverState.class);
         if (this.chunkSaverState == null) {
@@ -74,7 +79,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
     public void update(float tpf) {
         elapsed += tpf;
         int queueSize = chunkLiquidManager.queueSize();
-        if (elapsed > (1 / IalonConfig.getInstance().getWaterSimulationSpeed()) && queueSize > 0) {
+        if (elapsed > (1 / config.getWaterSimulationSpeed()) && queueSize > 0) {
             Set<Vec3i> updatedChunks = new HashSet<>();
             for (int i = 0; i < queueSize; i ++) {
                 updatedChunks.addAll(chunkLiquidManager.step());

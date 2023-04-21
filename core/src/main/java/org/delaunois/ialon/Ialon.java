@@ -19,10 +19,12 @@ package org.delaunois.ialon;
 
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.AppState;
 import com.rvandoosselaer.blocks.BlocksConfig;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
+import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
@@ -36,6 +38,7 @@ import org.delaunois.ialon.state.WorldBuilderState;
 
 import java.util.Optional;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -47,15 +50,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Ialon extends SimpleApplication {
 
+    @Getter
+    private final IalonConfig config;
+
     public Ialon() {
-        super(new LightingState(), new SplashscreenState());
+        super((AppState[]) null);
+        config = IalonConfigRepository.loadConfig();
+    }
+
+    public Ialon(IalonConfig config) {
+        super((AppState[]) null);
+        this.config = config;
     }
 
     @Override
     public void simpleInitApp() {
         log.info("Initializing Ialon");
 
-        IalonConfig config = IalonConfigRepository.loadConfig();
+        stateManager.attach(new SplashscreenState(config));
+
         IalonInitializer.setupLogging();
         IalonInitializer.setupCamera(this, config);
         IalonInitializer.setupViewPort(this);
@@ -63,26 +76,27 @@ public class Ialon extends SimpleApplication {
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
-        stateManager.attach(IalonInitializer.setupChunkSaverState());
-        stateManager.attach(IalonInitializer.setupPlayerState());
+        stateManager.attach(IalonInitializer.setupChunkSaverState(config));
+        stateManager.attach(IalonInitializer.setupPlayerState(config));
         stateManager.attach(IalonInitializer.setupStatsAppState(config));
         stateManager.attach(IalonInitializer.setupChunkManager(config));
         stateManager.attach(IalonInitializer.setupChunkPager(this, config)); // Depends on PlayerState
         stateManager.attach(IalonInitializer.setupPhysicsChunkPager(this, config)); // Depends on PlayerState and BulletAppState
         stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
-        stateManager.attach(IalonInitializer.setupGridSettingsState(config));
-        stateManager.attach(new ScreenState(this.settings));
-        stateManager.attach(new SunState());
-        stateManager.attach(new MoonState());
-        stateManager.attach(new SkyState());
+        stateManager.attach(new LightingState(config));
+        stateManager.attach(new GridSettingsState(config));
+        stateManager.attach(new ScreenState(settings, config));
+        stateManager.attach(new SunState(config));
+        stateManager.attach(new MoonState(config));
+        stateManager.attach(new SkyState(config));
         stateManager.attach(new BlockSelectionState());
-        stateManager.attach(new TimeFactorState());
-        stateManager.attach(new WorldBuilderState());
+        stateManager.attach(new TimeFactorState(config));
+        stateManager.attach(new WorldBuilderState(config));
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized
 
         if (config.isDevMode()) {
-            stateManager.attach(new IalonDebugState());
+            stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
         }
@@ -115,7 +129,7 @@ public class Ialon extends SimpleApplication {
     public void stop() {
         super.stop();
         log.info("Stopping Ialon");
-        if (IalonConfig.getInstance().isSaveUserSettingsOnStop()) {
+        if (config.isSaveUserSettingsOnStop()) {
             IalonConfigRepository.saveConfig(this);
         }
     }

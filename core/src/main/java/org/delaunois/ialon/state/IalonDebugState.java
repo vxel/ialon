@@ -62,12 +62,15 @@ public class IalonDebugState extends BaseAppState {
     private Label sunlightLevelLabel;
     private Label cacheSizeLabel;
     private Label timeLabel;
-
     private ChunkPager chunkPager;
     private PlayerState playerState;
     private SunState sunState;
-
     private long lastUpdate = System.currentTimeMillis();
+    private final IalonConfig config;
+
+    public IalonDebugState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     protected void initialize(Application app) {
@@ -151,7 +154,7 @@ public class IalonDebugState extends BaseAppState {
         cacheSizeLabel.setText(getCacheSizeString());
         timeLabel.setText(getLocalTimeString());
 
-        if (IalonConfig.getInstance().isDebugGrid()) {
+        if (config.isDebugGrid()) {
             displayGrid();
         }
     }

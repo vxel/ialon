@@ -35,15 +35,21 @@ public class SkyState extends BaseAppState {
     private Geometry ground;
     private Geometry sky;
 
+    private final IalonConfig config;
+
+    public SkyState(IalonConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void initialize(Application app) {
         this.app = (Ialon) app;
 
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
         FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
-        final ColorRGBA skyColor = IalonConfig.getInstance().getSkyColor();
-        final ColorRGBA skyHorizonColor = IalonConfig.getInstance().getSkyHorizonColor();
-        final ColorRGBA skyZenithColor = IalonConfig.getInstance().getSkyZenithColor();
+        final ColorRGBA skyColor = config.getSkyColor();
+        final ColorRGBA skyHorizonColor = config.getSkyHorizonColor();
+        final ColorRGBA skyZenithColor = config.getSkyZenithColor();
 
         fpb.put(new float[] {
                 // Sides Top Vertices
@@ -111,7 +117,7 @@ public class SkyState extends BaseAppState {
         skyMat.setParam("VertexColor", VarType.Boolean, true );
         sky.setMaterial(skyMat);
 
-        skyControl = new SkyControl();
+        skyControl = new SkyControl(config);
         FollowCamControl followCamControl = new FollowCamControl(app.getCamera());
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
@@ -128,8 +134,8 @@ public class SkyState extends BaseAppState {
         groundMat.setTexture("ColorMap", groundTexture);
         groundMat.setColor("Color", skyControl.getGroundColor());
         ground.setMaterial(groundMat);
-        IalonConfig.getInstance().getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
-        groundMat.setTexture("ColorMap", IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap());
+        config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
+        groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
 
         ground.addControl(new FollowCamControl(app.getCamera()));
     }

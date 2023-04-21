@@ -23,6 +23,11 @@ public class MoonState extends BaseAppState {
     private Ialon app;
     private MoonControl moonControl;
     private Geometry moon;
+    private final IalonConfig config;
+
+    public MoonState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     protected void initialize(Application app) {
@@ -40,10 +45,10 @@ public class MoonState extends BaseAppState {
         moonMat.setColor("Color", ColorRGBA.White);
         moon.setMaterial(moonMat);
 
-        IalonConfig.getInstance().getTextureAtlasManager().getAtlas().applyCoords(moon, 0.1f);
-        moonMat.setTexture("ColorMap", IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap());
+        config.getTextureAtlasManager().getAtlas().applyCoords(moon, 0.1f);
+        moonMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
 
-        moonControl = new MoonControl();
+        moonControl = new MoonControl(config);
         moonControl.setCam(app.getCamera());
         moon.addControl(moonControl);
     }

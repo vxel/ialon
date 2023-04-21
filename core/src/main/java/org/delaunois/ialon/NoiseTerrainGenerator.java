@@ -43,11 +43,12 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int TREE_HEIGHT = TRUNK_HEIGHT + 2 * CANOPY_RADIUS + 1;
 
     private long seed;
-    private float waterHeight = IalonConfig.getInstance().getWaterHeight();
+    private float waterHeight;
     private LayeredNoise layeredNoise;
 
-    public NoiseTerrainGenerator(long seed) {
+    public NoiseTerrainGenerator(long seed, float waterHeight) {
         this.seed = seed;
+        this.waterHeight = waterHeight;
         createWorldNoise();
     }
 

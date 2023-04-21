@@ -33,7 +33,6 @@ import java.util.Queue;
 import java.util.Set;
 
 import lombok.AllArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
@@ -44,14 +43,17 @@ import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
  * @author Cedric de Launois
  */
 @Slf4j
-@AllArgsConstructor
 public class ChunkLiquidManager {
 
-    @Setter
-    private ChunkManager chunkManager;
-
+    private final IalonConfig config;
+    private final ChunkManager chunkManager;
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
+
+    public ChunkLiquidManager(ChunkManager chunkManager, IalonConfig config) {
+        this.chunkManager = chunkManager;
+        this.config = config;
+    }
 
     public int queueSize() {
         return liquidRemovalBfsQueue.isEmpty() ? liquidBfsQueue.size() : liquidRemovalBfsQueue.size();
@@ -133,7 +135,7 @@ public class ChunkLiquidManager {
 
     public Set<Vec3i> step() {
         LiquidRunningContext context = new LiquidRunningContext();
-        if (IalonConfig.getInstance().getSimulateLiquidFlowModel() == 1) {
+        if (config.getSimulateLiquidFlowModel() == 1) {
             if (!stepUnFlow(context))
                 stepFlow(context);
         } else {

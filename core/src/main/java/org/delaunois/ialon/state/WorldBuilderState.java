@@ -27,13 +27,16 @@ public class WorldBuilderState extends BaseAppState {
     private int physicPagesAttached = 0;
 
     private PlayerState playerState;
-    private IalonConfig config;
+    private final IalonConfig config;
+
+    public WorldBuilderState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     protected void initialize(Application app) {
         playerState = app.getStateManager().getState(PlayerState.class, true);
         playerState.setEnabled(false);
-        config = IalonConfig.getInstance();
     }
 
     @Override

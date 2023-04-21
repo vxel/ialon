@@ -43,6 +43,12 @@ public class SplashscreenState extends BaseAppState {
     private ChunkPagerState chunkPagerState = null;
     private GridSettingsState gridSettingsState = null;
 
+    private final IalonConfig config;
+
+    public SplashscreenState(IalonConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void initialize(Application app) {
         this.app = (Ialon) app;
@@ -82,8 +88,8 @@ public class SplashscreenState extends BaseAppState {
             gridSettingsState = getStateManager().getState(GridSettingsState.class);
         }
         if (chunkPagerState != null && chunkPagerState.getChunkPager() != null && gridSettingsState != null) {
-            int gridSize = IalonConfig.getInstance().getGridRadius() * 2 + 1;
-            float total = gridSize * gridSize * (float) IalonConfig.getInstance().getGridHeight();
+            int gridSize = config.getGridRadius() * 2 + 1;
+            float total = gridSize * gridSize * (float) config.getGridHeight();
             int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
             percent = numPagesAttached / total;
         }

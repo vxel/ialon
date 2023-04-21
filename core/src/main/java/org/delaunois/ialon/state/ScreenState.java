@@ -28,9 +28,11 @@ public class ScreenState extends BaseAppState implements ActionListener {
     private Application app;
     private boolean checkResize = false;
     private boolean mouselocked = false;
+    private final IalonConfig config;
 
-    public ScreenState(AppSettings settings) {
+    public ScreenState(AppSettings settings, IalonConfig config) {
         this.settings = settings;
+        this.config = config;
     }
 
     @Override
@@ -88,9 +90,7 @@ public class ScreenState extends BaseAppState implements ActionListener {
         } else if (ACTION_TOGGLE_FULLSCREEN.equals(name) && isPressed) {
             log.info("Toggle fullscreen");
             if (settings.isFullscreen()) {
-                settings.setResolution(
-                        IalonConfig.getInstance().getScreenWidth(),
-                        IalonConfig.getInstance().getScreenHeight());
+                settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
                 settings.setFullscreen(false);
             } else {
                 settings.setResolution(-1, -1);

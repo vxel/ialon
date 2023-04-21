@@ -35,19 +35,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LightingState extends BaseAppState {
 
-    private final Vector3f directionalLightDir = new Vector3f(-0.2f, -1, -0.2f).normalizeLocal();
-
     private Node node;
 
-    private final ColorRGBA ambientLightColor = ColorRGBA.White.mult(IalonConfig.getInstance().getAmbiantIntensity());
-
-    private final ColorRGBA directionalLightColor = ColorRGBA.White.mult(IalonConfig.getInstance().getSunIntensity());
+    @Getter
+    private final AmbientLight ambientLight;
 
     @Getter
-    private final AmbientLight ambientLight = new AmbientLight(ambientLightColor);
+    private final DirectionalLight directionalLight;
 
-    @Getter
-    private final DirectionalLight directionalLight = new DirectionalLight(directionalLightDir, directionalLightColor);
+    public LightingState(IalonConfig config) {
+        ColorRGBA ambientLightColor = ColorRGBA.White.mult(config.getAmbiantIntensity());
+        ColorRGBA directionalLightColor = ColorRGBA.White.mult(config.getSunIntensity());
+        Vector3f directionalLightDir = new Vector3f(-0.2f, -1, -0.2f).normalizeLocal();
+        this.ambientLight = new AmbientLight(ambientLightColor);
+        this.directionalLight = new DirectionalLight(directionalLightDir, directionalLightColor);
+    }
 
     @Override
     protected void initialize(Application app) {

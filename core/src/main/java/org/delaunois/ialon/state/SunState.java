@@ -32,6 +32,12 @@ public class SunState extends BaseAppState implements ActionListener {
     @Getter
     private SunControl sunControl;
 
+    private final IalonConfig config;
+
+    public SunState(IalonConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void initialize(Application app) {
         this.app = (Ialon) app;
@@ -48,10 +54,10 @@ public class SunState extends BaseAppState implements ActionListener {
         sunMat.setColor("Color", ColorRGBA.White);
         sun.setMaterial(sunMat);
 
-        IalonConfig.getInstance().getTextureAtlasManager().getAtlas().applyCoords(sun, 0.1f);
-        sunMat.setTexture("ColorMap", IalonConfig.getInstance().getTextureAtlasManager().getDiffuseMap());
+        config.getTextureAtlasManager().getAtlas().applyCoords(sun, 0.1f);
+        sunMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
 
-        sunControl = new SunControl(this.app.getCamera());
+        sunControl = new SunControl(this.app.getCamera(), config);
         sun.addControl(sunControl);
 
         app.getInputManager().addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));

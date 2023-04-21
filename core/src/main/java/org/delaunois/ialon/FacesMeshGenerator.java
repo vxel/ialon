@@ -45,6 +45,12 @@ import lombok.extern.slf4j.Slf4j;
 @ToString(onlyExplicitlyIncluded = true)
 public class FacesMeshGenerator implements ChunkMeshGenerator {
 
+    private IalonConfig config;
+
+    public FacesMeshGenerator(IalonConfig config) {
+        this.config = config;
+    }
+
     @Override
     public Node createNode(Chunk chunk) {
         if (chunk.isEmpty()) {
@@ -189,7 +195,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             return;
         }
 
-        if (IalonConfig.getInstance().isDebugChunks()) {
+        if (config.isDebugChunks()) {
             node.attachChild(createChunkDebugGeometry());
         }
 
@@ -276,7 +282,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         material.setColor("Color", new ColorRGBA(0.4f, 0.4f, 0.4f, 1f));
 
         final float margin = 0f;
-        final int chunkSize = IalonConfig.getInstance().getChunkSize();
+        final int chunkSize = config.getChunkSize();
         final float localTranslation = (chunkSize / 2f) - 0.5f + (margin / 2f);
         Geometry debugChunkGeometry = new Geometry("debugChunk",
                 new WireBox(chunkSize / 2f - margin, chunkSize / 2f - margin, chunkSize / 2f - margin));

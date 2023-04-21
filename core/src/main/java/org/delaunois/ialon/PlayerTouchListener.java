@@ -26,9 +26,11 @@ import org.delaunois.ialon.state.PlayerState;
 public class PlayerTouchListener implements TouchListener {
 
     private final PlayerState playerState;
+    private final CameraHelper cameraHelper;
 
-    public PlayerTouchListener(PlayerState playerState) {
+    public PlayerTouchListener(PlayerState playerState, IalonConfig config) {
         this.playerState = playerState;
+        this.cameraHelper = new CameraHelper(config);
     }
 
     @Override
@@ -46,8 +48,8 @@ public class PlayerTouchListener implements TouchListener {
 
                     && event.getY() > 130
             ) {
-                CameraHelper.rotate(playerState.getCamera(), -event.getDeltaX() / 400);
-                CameraHelper.rotate(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());
+                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaX() / 400);
+                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());
             }
             event.setConsumed();
         }

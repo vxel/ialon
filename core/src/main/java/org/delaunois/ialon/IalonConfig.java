@@ -6,7 +6,6 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.ChunkRepository;
-import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.nio.file.FileSystems;
@@ -25,13 +24,11 @@ public class IalonConfig {
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
     public static final String FONT_PATH = "Textures/font-default.fnt";
+    public static final int FPS_LIMIT = 60;
 
-    private static final IalonConfig INSTANCE = new IalonConfig();
-    
     // Screen - Rendering
     private int screenWidth = 1520;
     private int screenHeight = 720;
-    private int fpsLimit = 60;
     private int maxUpdatePerFrame = 8;
     private int chunkPoolsize = 4;
 
@@ -76,8 +73,8 @@ public class IalonConfig {
     private float waterJumpSpeed = 5f;
 
     // Player
-    private Vector3f playerLocation;
-    private Quaternion camRotation;
+    private Vector3f playerLocation = new Vector3f();
+    private Quaternion camRotation = new Quaternion();
     private float rotationSpeed = 1.5f;
     private float playerStartHeight = 10;
     private float playerMoveSpeed = 0.05f;
@@ -101,73 +98,12 @@ public class IalonConfig {
     private boolean debugGrid = false;
     private boolean debugChunks = false;
 
-    // Shapes
-    private String[] standardShapesNoStairs = {
-            ShapeIds.CUBE,
-            ShapeIds.PYRAMID,
-            ShapeIds.POLE,
-            ShapeIds.FENCE,
-            ShapeIds.SLAB,
-            ShapeIds.DOUBLE_SLAB,
-            ShapeIds.PLATE,
-            ShapeIds.WEDGE_NORTH,
-            ShapeIds.WEDGE_EAST,
-            ShapeIds.WEDGE_SOUTH,
-            ShapeIds.WEDGE_WEST,
-            ShapeIds.WEDGE_INVERTED_NORTH,
-            ShapeIds.WEDGE_INVERTED_EAST,
-            ShapeIds.WEDGE_INVERTED_SOUTH,
-            ShapeIds.WEDGE_INVERTED_WEST,
-    };
-    private String[] standardShapes = {
-            ShapeIds.CUBE,
-            ShapeIds.PYRAMID,
-            ShapeIds.POLE,
-            ShapeIds.FENCE,
-            ShapeIds.SLAB,
-            ShapeIds.DOUBLE_SLAB,
-            ShapeIds.PLATE,
-            ShapeIds.WEDGE_NORTH,
-            ShapeIds.WEDGE_EAST,
-            ShapeIds.WEDGE_SOUTH,
-            ShapeIds.WEDGE_WEST,
-            ShapeIds.WEDGE_INVERTED_NORTH,
-            ShapeIds.WEDGE_INVERTED_EAST,
-            ShapeIds.WEDGE_INVERTED_SOUTH,
-            ShapeIds.WEDGE_INVERTED_WEST,
-            ShapeIds.STAIRS_NORTH,
-            ShapeIds.STAIRS_EAST,
-            ShapeIds.STAIRS_SOUTH,
-            ShapeIds.STAIRS_WEST,
-            ShapeIds.STAIRS_INVERTED_NORTH,
-            ShapeIds.STAIRS_INVERTED_EAST,
-            ShapeIds.STAIRS_INVERTED_SOUTH,
-            ShapeIds.STAIRS_INVERTED_WEST,
-            ShapeIds.STAIRS_INNER_CORNER_NORTH,
-            ShapeIds.STAIRS_INNER_CORNER_EAST,
-            ShapeIds.STAIRS_INNER_CORNER_SOUTH,
-            ShapeIds.STAIRS_INNER_CORNER_WEST,
-            ShapeIds.STAIRS_INVERTED_INNER_CORNER_NORTH,
-            ShapeIds.STAIRS_INVERTED_INNER_CORNER_EAST,
-            ShapeIds.STAIRS_INVERTED_INNER_CORNER_SOUTH,
-            ShapeIds.STAIRS_INVERTED_INNER_CORNER_WEST,
-            ShapeIds.STAIRS_OUTER_CORNER_NORTH,
-            ShapeIds.STAIRS_OUTER_CORNER_EAST,
-            ShapeIds.STAIRS_OUTER_CORNER_SOUTH,
-            ShapeIds.STAIRS_OUTER_CORNER_WEST,
-            ShapeIds.STAIRS_INVERTED_OUTER_CORNER_NORTH,
-            ShapeIds.STAIRS_INVERTED_OUTER_CORNER_EAST,
-            ShapeIds.STAIRS_INVERTED_OUTER_CORNER_SOUTH,
-            ShapeIds.STAIRS_INVERTED_OUTER_CORNER_WEST
-    };
-    private byte[] allLevels = { 0, 1, 2, 3, 4, 5, 6, 7 };
-
-    private IalonConfig() {
-        // Prevent instanciation
+    public void setGridRadius(int gridRadius) {
+        this.gridRadius = clamp(gridRadius, gridRadiusMin, gridRadiusMax);
     }
 
-    public static IalonConfig getInstance() {
-        return INSTANCE;
+    public void setTimeFactorIndex(int timeFactorIndex) {
+        this.timeFactorIndex = clamp(timeFactorIndex, 0, 5);
     }
 
     public int getGridSize() {
@@ -226,7 +162,11 @@ public class IalonConfig {
     }
 
     public TerrainGenerator getDefaultChunkGenerator() {
-        return new NoiseTerrainGenerator(2);
+        return new NoiseTerrainGenerator(2, this.getWaterHeight());
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(Math.min(value, max), min);
     }
 
 }

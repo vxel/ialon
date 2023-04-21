@@ -27,25 +27,24 @@ import com.jme3.scene.control.AbstractControl;
 import org.delaunois.ialon.IalonConfig;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SkyControl extends AbstractControl {
 
+    @Setter
     private SunControl sunControl;
-
-    @Getter
-    private final ColorRGBA color = new ColorRGBA();
 
     @Getter
     private final ColorRGBA groundColor = new ColorRGBA();
 
+    private final ColorRGBA color = new ColorRGBA();
     private long lastUpdate = 0;
+    private final IalonConfig config;
 
-    private final IalonConfig config = IalonConfig.getInstance();
-
-    public void setSunControl(SunControl sunControl) {
-        this.sunControl = sunControl;
+    public SkyControl(IalonConfig config) {
+        this.config = config;
     }
 
     @Override

@@ -56,8 +56,13 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private Container buttonTimeFactor;
     private int buttonSize;
     private Label timeFactorLabel;
-    private final IalonConfig config = IalonConfig.getInstance();
     private boolean isMouseLocked = false;
+
+    private final IalonConfig config;
+
+    public TimeFactorState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     public void initialize(Application app) {

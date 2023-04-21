@@ -44,7 +44,11 @@ public class MoonControl extends AbstractControl {
     private Camera cam;
 
     private long lastUpdate = 0;
-    private final IalonConfig config = IalonConfig.getInstance();
+    private final IalonConfig config;
+
+    public MoonControl(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     protected void controlUpdate(float tpf) {
@@ -59,7 +63,7 @@ public class MoonControl extends AbstractControl {
             float height = FastMath.sin(time);
             float x = FastMath.cos(time) * 100f;
             float z = FastMath.sin(time) * 100f;
-            float y = height * IalonConfig.getInstance().getSunAmplitude() * 10f;
+            float y = height * config.getSunAmplitude() * 10f;
             position.set(x, y, z);
         }
 

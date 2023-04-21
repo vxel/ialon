@@ -64,12 +64,12 @@ public class ChunkManager {
     private ChunkLiquidManager chunkLiquidManager;
 
     @Builder
-    private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize) {
+    private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize, IalonConfig config) {
         this.repository = repository;
         this.generator = generator == null ? new EmptyGenerator() : generator;
         this.poolSize = poolSize;
         this.chunkLightManager = new ChunkLightManager(this);
-        this.chunkLiquidManager = new ChunkLiquidManager(this);
+        this.chunkLiquidManager = new ChunkLiquidManager(this, config);
     }
 
     public void initialize() {

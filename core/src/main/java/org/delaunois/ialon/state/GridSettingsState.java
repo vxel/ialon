@@ -54,8 +54,14 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
     private int buttonSize;
     private Label gridSettingsLabel;
     private boolean isMouseLocked = false;
-    private final IalonConfig config = IalonConfig.getInstance();
     private int radius;
+
+    private final IalonConfig config;
+
+    public GridSettingsState(IalonConfig config) {
+        this.config = config;
+        this.radius = config.getGridRadius();
+    }
 
     @Override
     public void initialize(Application app) {

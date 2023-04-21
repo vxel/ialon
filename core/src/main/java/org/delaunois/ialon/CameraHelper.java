@@ -25,18 +25,19 @@ import com.jme3.renderer.Camera;
 public class CameraHelper {
 
     private static final Vector3f UP = new Vector3f(0, 1, 0);
+    private final IalonConfig config;
 
-    private CameraHelper() {
-        // Prevent instanciation
+    public CameraHelper(IalonConfig config) {
+        this.config = config;
     }
 
-    public static void rotate(Camera cam, float value) {
+    public void rotate(Camera cam, float value) {
         rotate(cam, value, UP);
     }
 
-    public static void rotate(Camera cam, float value, Vector3f axis) {
+    public void rotate(Camera cam, float value, Vector3f axis) {
         Matrix3f mat = new Matrix3f();
-        mat.fromAngleNormalAxis(IalonConfig.getInstance().getRotationSpeed() * value, axis);
+        mat.fromAngleNormalAxis(config.getRotationSpeed() * value, axis);
 
         Vector3f up = cam.getUp();
         Vector3f left = cam.getLeft();

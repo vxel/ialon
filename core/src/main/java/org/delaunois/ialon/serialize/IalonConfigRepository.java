@@ -20,8 +20,8 @@ package org.delaunois.ialon.serialize;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.jme3.app.SimpleApplication;
 
+import org.delaunois.ialon.Ialon;
 import org.delaunois.ialon.IalonConfig;
 
 import java.io.File;
@@ -56,7 +56,7 @@ public class IalonConfigRepository {
     }
 
     public static IalonConfig loadConfig() {
-        IalonConfig config = IalonConfig.getInstance();
+        IalonConfig config = new IalonConfig();
         PlayerStateDTO playerStateDTO = loadPlayerStateDTO(config);
 
         if (playerStateDTO != null) {
@@ -74,9 +74,11 @@ public class IalonConfigRepository {
         return config;
     }
 
-    public static void saveConfig(SimpleApplication app) {
-        IalonConfig.getInstance().setCamRotation(app.getCamera().getRotation());
-        saveConfig(IalonConfig.getInstance());
+    public static void saveConfig(Ialon app) {
+        if (app.getCamera() != null) {
+            app.getConfig().setCamRotation(app.getCamera().getRotation());
+        }
+        saveConfig(app.getConfig());
     }
 
     public static void saveConfig(IalonConfig config) {

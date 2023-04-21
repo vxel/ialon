@@ -32,14 +32,11 @@ public class MainActivity extends AndroidHarness {
         appClass = Ialon.class.getCanonicalName();
         mouseEventsEnabled = true;
         screenShowTitle = false;
-        frameRate = IalonConfig.getInstance().getFpsLimit();
-        IalonConfig.getInstance().setGridRadiusMax(6);
-        IalonConfig.getInstance().setMaxUpdatePerFrame(2);
+        frameRate = IalonConfig.FPS_LIMIT;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        IalonConfig.getInstance().setSavePath(getApplicationContext().getFilesDir().toPath());
         super.onCreate(savedInstanceState);
     }
 
@@ -63,11 +60,17 @@ public class MainActivity extends AndroidHarness {
 
     @Override
     protected void onStart() {
-        super.onStart();
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
         app.setSettings(settings);
-        IalonConfig.getInstance().setSaveUserSettingsOnStop(false);
+
+        IalonConfig config = ((Ialon) app).getConfig();
+        config.setSavePath(getApplicationContext().getFilesDir().toPath());
+        config.setSaveUserSettingsOnStop(false);
+        config.setGridRadiusMax(6);
+        config.setMaxUpdatePerFrame(2);
+
+        super.onStart();
     }
 
     @Override

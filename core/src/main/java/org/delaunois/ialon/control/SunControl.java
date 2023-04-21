@@ -60,9 +60,10 @@ public class SunControl extends AbstractControl {
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
     private long lastUpdate = 0;
 
-    private final IalonConfig config = IalonConfig.getInstance();
+    private final IalonConfig config;
 
-    public SunControl(Camera cam) {
+    public SunControl(Camera cam, IalonConfig config) {
+        this.config = config;
         this.cam = cam;
         updateSunPosition();
     }

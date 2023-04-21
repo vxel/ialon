@@ -22,6 +22,12 @@ public class ChunkSaverState extends BaseAppState {
 
     private ExecutorService executorService;
 
+    private final IalonConfig config;
+
+    public ChunkSaverState(IalonConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void initialize(Application app) {
         executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("chunk-saver").build());
@@ -32,12 +38,12 @@ public class ChunkSaverState extends BaseAppState {
      * @param location the location of the chunk
      */
     public void asyncSave(Vec3i location) {
-        IalonConfig.getInstance()
+        config
                 .getChunkManager()
                 .getChunk(location)
                 .ifPresent(chunk -> executorService.submit(() -> {
                     try {
-                        IalonConfig.getInstance().getChunkRepository().save(chunk);
+                        config.getChunkRepository().save(chunk);
                         log.info("Chunk {} saved", location);
                     } catch (Exception e) {
                         log.error("Failed to save chunk", e);
