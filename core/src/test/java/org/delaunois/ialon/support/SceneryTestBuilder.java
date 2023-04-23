@@ -47,6 +47,7 @@ public class SceneryTestBuilder {
         IalonConfig config = new IalonConfig();
         config.setSavePath(saveDir);
         config.setDevMode(true);
+        config.setDebugChunks(true);
         config.setPlayerLocation(new Vector3f(8, 11, 8));
         config.setPlayerStartFly(true);
 

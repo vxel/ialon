@@ -5,7 +5,7 @@ import com.rvandoosselaer.blocks.BlockIds;
 import org.delaunois.ialon.support.BaseSceneryTest;
 import org.junit.jupiter.api.Test;
 
-public class WaterTest extends BaseSceneryTest {
+class WaterTest extends BaseSceneryTest {
 
     @Test
     void testAddSource() {
