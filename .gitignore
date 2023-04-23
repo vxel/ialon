@@ -1,5 +1,6 @@
 /build
 /core/build
+/core/src/test/resources/scenery/saved/
 /app/debug
 /app/release
 /app/build
