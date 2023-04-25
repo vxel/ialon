@@ -43,6 +43,9 @@ public class SceneryTestBuilder {
 
     public static void main(String[] args) {
         Path saveDir = Paths.get("core/src/test/resources/scenery/saved");
+        if (args.length > 0) {
+            saveDir = Paths.get(args[0]);
+        }
 
         IalonConfig config = new IalonConfig();
         config.setSavePath(saveDir);

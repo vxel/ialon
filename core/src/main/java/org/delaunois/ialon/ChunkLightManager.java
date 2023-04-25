@@ -49,8 +49,8 @@ public class ChunkLightManager {
     // Shapes that block the light
     private final Set<String> blockingShapes = new HashSet<>();
 
-    public ChunkLightManager(ChunkManager chunkManager) {
-        this.chunkManager = chunkManager;
+    public ChunkLightManager(IalonConfig config) {
+        this.chunkManager = config.getChunkManager();
         blockingShapes.add(ShapeIds.CUBE);
     }
 

@@ -261,13 +261,15 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getSunlightLevelString() {
-        return String.format(Locale.ENGLISH,"%d (%d)", chunkPager.getChunkManager().getSunlightLevel(playerState.getAddPlaceholderPosition()),
-                chunkPager.getChunkManager().getSunlightLevel(playerState.getRemovePlaceholderPosition()));
+        return String.format(Locale.ENGLISH,"%d (%d)",
+                playerState.getWorldManager().getSunlightLevel(playerState.getAddPlaceholderPosition()),
+                playerState.getWorldManager().getSunlightLevel(playerState.getRemovePlaceholderPosition()));
     }
 
     private String getTorchlightLevelString() {
-        return String.format(Locale.ENGLISH,"%d (%d)", chunkPager.getChunkManager().getTorchlightLevel(playerState.getAddPlaceholderPosition()),
-                chunkPager.getChunkManager().getTorchlightLevel(playerState.getRemovePlaceholderPosition()));
+        return String.format(Locale.ENGLISH,"%d (%d)",
+                playerState.getWorldManager().getTorchlightLevel(playerState.getAddPlaceholderPosition()),
+                playerState.getWorldManager().getTorchlightLevel(playerState.getRemovePlaceholderPosition()));
     }
 
     private String getCacheSizeString() {

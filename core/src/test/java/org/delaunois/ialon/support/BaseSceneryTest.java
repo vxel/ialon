@@ -14,10 +14,13 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkResolver;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.ChunkLightManager;
+import org.delaunois.ialon.ChunkLiquidManager;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.EmptyGenerator;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
+import org.delaunois.ialon.WorldManager;
 import org.delaunois.ialon.ZipFileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,7 +38,7 @@ public abstract class BaseSceneryTest {
     protected static final Vec3i ORIGIN = new Vec3i(0, 0, 0);
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new JsonFactory());
 
-    protected ChunkManager chunkManager = null;
+    protected WorldManager worldManager = null;
     protected Path path = null;
 
     static {
@@ -49,9 +52,9 @@ public abstract class BaseSceneryTest {
 
     @AfterEach
     public void reset() {
-        if (chunkManager != null) {
-            chunkManager.cleanup(10000);
-            chunkManager = null;
+        if (worldManager != null && worldManager.getChunkManager() != null) {
+            worldManager.getChunkManager().cleanup(10000);
+            worldManager = null;
             path = null;
         }
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), new IalonConfig());
@@ -63,25 +66,28 @@ public abstract class BaseSceneryTest {
         config.setSavePath(path);
         config.setTerrainGenerator(new EmptyGenerator());
 
-        chunkManager = ChunkManager.builder()
+        ChunkManager chunkManager = ChunkManager.builder()
                 .repository(config.getChunkRepository())
                 .poolSize(1)
-                .config(config)
                 .build();
         assertNotNull(chunkManager);
         chunkManager.initialize();
+        config.setChunkManager(chunkManager);
+        worldManager = new WorldManager(chunkManager,
+                new ChunkLightManager(config),
+                new ChunkLiquidManager(config));
 
         chunkManager.generateChunk(ORIGIN);
     }
 
     public void addBlock(String blockName, int x, int y, int z) {
         assertInitialized();
-        chunkManager.addBlock(new Vector3f(x, y, z), BlocksConfig.getInstance().getBlockRegistry().get(blockName));
+        worldManager.addBlock(new Vector3f(x, y, z), BlocksConfig.getInstance().getBlockRegistry().get(blockName));
     }
 
     public void removeBlock(int x, int y, int z) {
         assertInitialized();
-        chunkManager.removeBlock(new Vector3f(x, y, z));
+        worldManager.removeBlock(new Vector3f(x, y, z));
     }
 
     public void removeSourceBlock(int x, int y, int z) {
@@ -93,15 +99,15 @@ public abstract class BaseSceneryTest {
     public void waitLiquidSimulationEnd() {
         assertInitialized();
         int i = 0;
-        while (chunkManager.getChunkLiquidManager().queueSize() > 0 && i < MAX_SIMULATION_STEPS) {
-            chunkManager.getChunkLiquidManager().step();
+        while (worldManager.getChunkLiquidManager().queueSize() > 0 && i < MAX_SIMULATION_STEPS) {
+            worldManager.getChunkLiquidManager().step();
             i++;
         }
     }
 
     public void verify(String blockFileName, String message) {
         assertInitialized();
-        Chunk actual = chunkManager.getChunk(ORIGIN).orElse(null);
+        Chunk actual = worldManager.getChunkManager().getChunk(ORIGIN).orElse(null);
         ZipFileRepository zipFileRepository = new ZipFileRepository(path);
         Chunk expected = zipFileRepository.load(blockFileName);
 
@@ -110,7 +116,7 @@ public abstract class BaseSceneryTest {
 
     @SuppressWarnings("unused")
     public void save(Vec3i chunkLocation, String name) {
-        Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
+        Chunk chunk = worldManager.getChunkManager().getChunk(chunkLocation).orElse(null);
         ZipFileRepository zipFileRepository = new ZipFileRepository(path);
         zipFileRepository.save(chunk, name);
     }
@@ -144,7 +150,7 @@ public abstract class BaseSceneryTest {
     }
 
     private void assertInitialized() {
-        if (path == null || chunkManager == null) {
+        if (path == null || worldManager == null) {
             throw new IllegalStateException("Please initialize the test first with init()");
         }
     }

@@ -152,7 +152,6 @@ public class IalonConfig {
                 .poolSize(getChunkPoolsize())
                 .generator(getTerrainGenerator())
                 .repository(getChunkRepository())
-                .config(this)
                 .build();
     }
 

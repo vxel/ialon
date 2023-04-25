@@ -52,8 +52,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
 
     @Override
     protected void initialize(Application app) {
-        this.chunkManager = config.getChunkManager();
-        this.chunkLiquidManager = chunkManager.getChunkLiquidManager();
+        this.chunkLiquidManager = new ChunkLiquidManager(config);
         this.chunkSaverState = app.getStateManager().getState(ChunkSaverState.class);
         if (this.chunkSaverState == null) {
             log.warn("No ChunkSaverState found. Chunks will not be saved.");

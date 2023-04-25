@@ -50,8 +50,8 @@ public class ChunkLiquidManager {
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
 
-    public ChunkLiquidManager(ChunkManager chunkManager, IalonConfig config) {
-        this.chunkManager = chunkManager;
+    public ChunkLiquidManager(IalonConfig config) {
+        this.chunkManager = config.getChunkManager();
         this.config = config;
     }
 

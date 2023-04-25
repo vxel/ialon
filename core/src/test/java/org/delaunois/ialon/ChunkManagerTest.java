@@ -66,7 +66,14 @@ public class ChunkManagerTest {
         assertNotNull(chunkManager);
         chunkManager.initialize();
 
+        IalonConfig config = new IalonConfig();
+        config.setChunkManager(chunkManager);
+
+        WorldManager worldManager = new WorldManager(chunkManager,
+                new ChunkLightManager(config),
+                new ChunkLiquidManager(config));
+
         Vector3f location = new Vector3f(16, 32, 2);
-        chunkManager.addBlock(location, BlocksConfig.getInstance().getBlockRegistry().get((short)1));
+        worldManager.addBlock(location, BlocksConfig.getInstance().getBlockRegistry().get((short)1));
     }
 }

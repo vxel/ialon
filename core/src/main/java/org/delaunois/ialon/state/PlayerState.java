@@ -72,9 +72,12 @@ import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.CameraHelper;
+import org.delaunois.ialon.ChunkLightManager;
+import org.delaunois.ialon.ChunkLiquidManager;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.PlayerTouchListener;
+import org.delaunois.ialon.WorldManager;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -163,6 +166,9 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
     private ChunkSaverState chunkSaverState;
 
     @Getter
+    private WorldManager worldManager;
+
+    @Getter
     @Setter
     private boolean touchEnabled = true;
 
@@ -231,6 +237,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         inputManager = app.getInputManager();
         chunkManager = config.getChunkManager();
+        worldManager = new WorldManager(chunkManager, new ChunkLightManager(config), new ChunkLiquidManager(config));
         touchListener = new PlayerTouchListener(this, config);
         crossHair = createCrossHair();
         addPlaceholder = createAddPlaceholder();
@@ -902,11 +909,11 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
 
         // Add the block, which removes the light at this location
         log.info("Adding block {}", orientatedBlock.getName());
-        Set<Vec3i> updatedChunks = chunkManager.addBlock(location, orientatedBlock);
+        Set<Vec3i> updatedChunks = worldManager.addBlock(location, orientatedBlock);
 
         // Computes the light if the block is a torch
         if (orientatedBlock.isTorchlight()) {
-            updatedChunks.addAll(chunkManager.addTorchlight(location, 15));
+            updatedChunks.addAll(worldManager.addTorchlight(location, 15));
         }
 
         if (!updatedChunks.isEmpty()) {
@@ -942,7 +949,7 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         }
 
         log.info("Removing block at {}", blockLocation);
-        Set<Vec3i> updatedChunks = chunkManager.removeBlock(blockLocation);
+        Set<Vec3i> updatedChunks = worldManager.removeBlock(blockLocation);
 
         cleanAroundBlocks(blockLocation, updatedChunks);
 
@@ -960,28 +967,28 @@ public class PlayerState extends BaseAppState implements ActionListener, AnalogL
         aroundLocation = blockLocation.add(-1, 0, 0);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
         if (aroundBlock != null && ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
-            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            updatedChunks.addAll(worldManager.removeBlock(aroundLocation));
         }
 
         // EAST
         aroundLocation = blockLocation.add(1, 0, 0);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
         if (aroundBlock != null && ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
-            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            updatedChunks.addAll(worldManager.removeBlock(aroundLocation));
         }
 
         // NORTH
         aroundLocation = blockLocation.add(0, 0, -1);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
         if (aroundBlock != null && ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
-            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            updatedChunks.addAll(worldManager.removeBlock(aroundLocation));
         }
 
         // SOUTH
         aroundLocation = blockLocation.add(0, 0, 1);
         aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
         if (aroundBlock != null && ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
-            updatedChunks.addAll(chunkManager.removeBlock(aroundLocation));
+            updatedChunks.addAll(worldManager.removeBlock(aroundLocation));
         }
     }
 
