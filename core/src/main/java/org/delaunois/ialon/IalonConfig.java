@@ -93,7 +93,7 @@ public class IalonConfig {
     private BitmapFont font;
 
     // Debug
-    private boolean devMode = false;
+    private boolean devMode = true;
     private boolean debugCollisions = false;
     private boolean debugGrid = false;
     private boolean debugChunks = false;

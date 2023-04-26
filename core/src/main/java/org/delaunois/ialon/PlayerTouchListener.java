@@ -17,7 +17,10 @@
 
 package org.delaunois.ialon;
 
+import com.jme3.input.InputManager;
+import com.jme3.input.TouchInput;
 import com.jme3.input.controls.TouchListener;
+import com.jme3.input.controls.TouchTrigger;
 import com.jme3.input.event.TouchEvent;
 import com.jme3.math.Vector3f;
 
@@ -25,11 +28,15 @@ import org.delaunois.ialon.state.PlayerState;
 
 public class PlayerTouchListener implements TouchListener {
 
-    private final PlayerState playerState;
+    private static final String TOUCH_MAPPING = "touch";
+
     private final CameraHelper cameraHelper;
+    private final PlayerState playerState;
+    private final InputManager inputManager;
 
     public PlayerTouchListener(PlayerState playerState, IalonConfig config) {
         this.playerState = playerState;
+        this.inputManager = playerState.getApplication().getInputManager();
         this.cameraHelper = new CameraHelper(config);
     }
 
@@ -37,13 +44,15 @@ public class PlayerTouchListener implements TouchListener {
     public void onTouch(String name, TouchEvent event, float tpf) {
         if (playerState.isTouchEnabled() && event.getType() == TouchEvent.Type.MOVE) {
             Vector3f point = new Vector3f(event.getX(), event.getY(), 1);
-            if (!playerState.getDirectionButtons().getWorldBound()
+            if (!playerState.getPlayerActionButtons().getDirectionButtons().getWorldBound()
                     .intersects(point)
 
-                    && !playerState.getButtonAddBlock().getWorldBound().merge(playerState.getButtonJump().getWorldBound())
+                    && !playerState.getPlayerActionButtons().getButtonAddBlock().getWorldBound()
+                    .merge(playerState.getPlayerActionButtons().getButtonJump().getWorldBound())
                     .intersects(point)
 
-                    && !playerState.getButtonRemoveBlock().getWorldBound().merge(playerState.getButtonFly().getWorldBound())
+                    && !playerState.getPlayerActionButtons().getButtonRemoveBlock().getWorldBound()
+                    .merge(playerState.getPlayerActionButtons().getButtonFly().getWorldBound())
                     .intersects(point)
 
                     && event.getY() > 130
@@ -53,6 +62,16 @@ public class PlayerTouchListener implements TouchListener {
             }
             event.setConsumed();
         }
+    }
+
+    public void addKeyMappings() {
+        inputManager.addMapping(TOUCH_MAPPING, new TouchTrigger(TouchInput.ALL));
+        inputManager.addListener(this, TOUCH_MAPPING);
+    }
+
+    public void deleteKeyMappings() {
+        inputManager.deleteMapping(TOUCH_MAPPING);
+        inputManager.removeListener(this);
     }
 
 }

@@ -9,6 +9,7 @@
 /local
 
 /*.so
+/core/*.so
 /*.jpg
 /*.png
 /*.iml

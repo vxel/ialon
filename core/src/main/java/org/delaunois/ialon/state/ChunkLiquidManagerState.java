@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -39,8 +40,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ChunkLiquidManagerState extends BaseAppState {
 
-    private ChunkManager chunkManager;
-    private ChunkLiquidManager chunkLiquidManager;
+    @Getter
+    private final ChunkLiquidManager chunkLiquidManager;
+
+    private final ChunkManager chunkManager;
     private ChunkSaverState chunkSaverState;
 
     private float elapsed = 0;
@@ -48,11 +51,12 @@ public class ChunkLiquidManagerState extends BaseAppState {
 
     public ChunkLiquidManagerState(IalonConfig config) {
         this.config = config;
+        this.chunkManager = config.getChunkManager();
+        this.chunkLiquidManager = new ChunkLiquidManager(config);
     }
 
     @Override
     protected void initialize(Application app) {
-        this.chunkLiquidManager = new ChunkLiquidManager(config);
         this.chunkSaverState = app.getStateManager().getState(ChunkSaverState.class);
         if (this.chunkSaverState == null) {
             log.warn("No ChunkSaverState found. Chunks will not be saved.");

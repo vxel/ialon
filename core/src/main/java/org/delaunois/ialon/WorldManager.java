@@ -11,12 +11,16 @@ import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.state.ChunkSaverState;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,19 +33,43 @@ import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
  * @author Cedric de Launois
  */
 @Slf4j
-@AllArgsConstructor
 public class WorldManager {
 
     @Getter
-    private ChunkManager chunkManager;
+    private final ChunkManager chunkManager;
 
     @Getter
-    private ChunkLightManager chunkLightManager;
+    private final ChunkLightManager chunkLightManager;
 
     @Getter
-    private ChunkLiquidManager chunkLiquidManager;
+    private final ChunkLiquidManager chunkLiquidManager;
+
+    @Getter
+    private final ChunkSaverState chunkSaverState;
+
+    public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager) {
+        this(chunkManager, chunkLightManager, chunkLiquidManager, null);
+    }
+
+    public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager, ChunkSaverState chunkSaverState) {
+        this.chunkManager = chunkManager;
+        this.chunkLightManager = chunkLightManager;
+        this.chunkLiquidManager = chunkLiquidManager;
+        this.chunkSaverState = chunkSaverState;
+        if (chunkSaverState == null) {
+            log.warn("No ChunkSaverState found. Chunks will not be saved.");
+        }
+        if (chunkLiquidManager == null) {
+            log.warn("No ChunkLiquidManager given. Liquid flow will not be supported.");
+        }
+        if (chunkLightManager == null) {
+            log.warn("No ChunkLightManager given. Light will not propagate.");
+        }
+    }
 
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
+        log.info("Adding block {}", block.getName());
+
         // Preserves the order of the location to generate
         Set<Vec3i> chunks = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
@@ -95,14 +123,68 @@ public class WorldManager {
         chunks.addAll(getAdjacentChunks(chunk, blockLocationInsideChunk, BlocksConfig.getInstance().getChunkSize()));
 
         if (chunkLightManager != null) {
-            chunks.addAll(chunkLightManager.removeSunlight(location));
-            chunks.addAll(chunkLightManager.removeTorchlight(location));
+            // Computes the light if the block is a torch
+            if (block.isTorchlight()) {
+                chunks.addAll(chunkLightManager.addTorchlight(location, 15));
+            } else {
+                chunks.addAll(chunkLightManager.removeSunlight(location));
+                chunks.addAll(chunkLightManager.removeTorchlight(location));
+            }
         }
+
+        chunkManager.requestOrderedMeshChunks(chunks);
+        save(chunks);
 
         return chunks;
     }
 
+    public Block orientateBlock(Block block, Vector3f blockLocation, Direction direction) {
+        String type = block.getType();
+        String[] shapeProperties = block.getShape().split("_");
+        String shape = shapeProperties[0];
+
+        // Turn the block according to where the user clicked
+        if (TypeIds.SCALE.equals(block.getType())) {
+            // A scale can only be added if a block exists behind it
+            if (Direction.UP.equals(direction) || Direction.DOWN.equals(direction)) {
+                log.info("Can't add an horizontal scale");
+                return null;
+            }
+            Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
+            if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
+                log.info("No cube block behind scale");
+                return null;
+            }
+        }
+
+        String subShape = shapeProperties.length <= 2 ? "" : String.join("_", Arrays.copyOfRange(shapeProperties, 1, shapeProperties.length - 1));
+        Block above = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
+        Block below = chunkManager.getBlock(blockLocation.add(0, -1, 0)).orElse(null);
+        if (above != null && below == null
+                && (Objects.equals("stairs", shape) || Objects.equals("wedge", shape))) {
+            shape = String.join("_", shape, "inverted");
+        }
+
+        if (subShape.length() > 0) {
+            shape = String.join("_", shape, subShape);
+        }
+        String orientedBlockName = String.format("%s-%s-%s", type, String.join("_", shape, direction.name().toLowerCase()), block.getLiquidLevelId());
+        Block orientedBlock = BlocksConfig.getInstance().getBlockRegistry().get(orientedBlockName);
+
+        // Just in case this particulier orientation does not exist...
+        if (orientedBlock != null) {
+            block = orientedBlock;
+        }
+        return block;
+    }
+
     public Set<Vec3i> removeBlock(Vector3f location) {
+        log.info("Removing block at {}", location);
+
+        if (location.y <= 1) {
+            return Collections.emptySet();
+        }
+
         // Preserves the order of the location to generate
         Set<Vec3i> chunks = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
@@ -143,6 +225,9 @@ public class WorldManager {
             chunkLiquidManager.flowLiquid(above);
         }
 
+        // When adding Square (e.g. a Scale), remove other scales conflicting with the added scale
+        chunks.addAll(cleanAroundBlocks(location));
+
         Vec3i size = BlocksConfig.getInstance().getChunkSize();
 
         // Request chunk updates of neighbour blocks only if block is at the border of the chunk
@@ -175,11 +260,10 @@ public class WorldManager {
             chunks.addAll(chunkLightManager.restoreSunlight(location));
         }
 
-        return chunks;
-    }
+        chunkManager.requestOrderedMeshChunks(chunks);
+        save(chunks);
 
-    public Set<Vec3i> addTorchlight(Vector3f location, int intensity) {
-        return chunkLightManager.addTorchlight(location, intensity);
+        return chunks;
     }
 
     public int getSunlightLevel(Vector3f location) {
@@ -200,7 +284,7 @@ public class WorldManager {
 
     private void addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
         chunk.addBlock(blockLocationInsideChunk, block);
-        if (WATER_SOURCE.equals(block.getName())) {
+        if (WATER_SOURCE.equals(block.getName()) && chunkLiquidManager != null) {
             chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
         }
     }
@@ -216,14 +300,18 @@ public class WorldManager {
             }
         }
         chunk.addBlock(blockLocationInsideChunk, block);
-        chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
+        if (chunkLiquidManager != null) {
+            chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
+        }
     }
 
     private void addBlockInSourceWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
         // 3.2 Adding a block on a water source removes the source if the block is a cube
         if (ShapeIds.CUBE.equals(block.getShape())) {
             chunk.addBlock(blockLocationInsideChunk, block);
-            chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+            if (chunkLiquidManager != null) {
+                chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+            }
         } else {
             String blockName = BlockIds.getName(block.getType(), block.getShape(), Block.LIQUID_SOURCE);
             block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
@@ -246,11 +334,12 @@ public class WorldManager {
         } else {
             Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
             chunk.addBlock(blockLocationInsideChunk, block);
-            if (shape.fullyCoversFace(Direction.DOWN)
+            if (chunkLiquidManager != null
+                    && (shape.fullyCoversFace(Direction.DOWN)
                     || shape.fullyCoversFace(Direction.NORTH)
                     || shape.fullyCoversFace(Direction.SOUTH)
                     || shape.fullyCoversFace(Direction.EAST)
-                    || shape.fullyCoversFace(Direction.WEST)) {
+                    || shape.fullyCoversFace(Direction.WEST))) {
                 chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
                 chunkLiquidManager.flowLiquid(location);
             }
@@ -280,5 +369,47 @@ public class WorldManager {
         return chunks;
     }
 
+    private Set<Vec3i> cleanAroundBlocks(Vector3f blockLocation) {
+        Vector3f aroundLocation;
+        Block aroundBlock;
+        Set<Vec3i> updatedChunks = new HashSet<>();
 
+        // WEST
+        aroundLocation = blockLocation.add(-1, 0, 0);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null && ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(removeBlock(aroundLocation));
+        }
+
+        // EAST
+        aroundLocation = blockLocation.add(1, 0, 0);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null && ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(removeBlock(aroundLocation));
+        }
+
+        // NORTH
+        aroundLocation = blockLocation.add(0, 0, -1);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null && ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(removeBlock(aroundLocation));
+        }
+
+        // SOUTH
+        aroundLocation = blockLocation.add(0, 0, 1);
+        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (aroundBlock != null && ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
+            updatedChunks.addAll(removeBlock(aroundLocation));
+        }
+
+        return updatedChunks;
+    }
+
+    private void save(Collection<Vec3i> locations) {
+        if (chunkSaverState != null) {
+            for (Vec3i location : locations) {
+                chunkSaverState.asyncSave(location);
+            }
+        }
+    }
 }

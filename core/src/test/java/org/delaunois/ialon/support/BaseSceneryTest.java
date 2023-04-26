@@ -11,7 +11,6 @@ import com.jme3.util.PrimitiveAllocator;
 import com.rvandoosselaer.blocks.BlockIds;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkResolver;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkLightManager;
@@ -125,21 +124,11 @@ public abstract class BaseSceneryTest {
         if (chunk != null) {
             String s;
             try {
-                boolean dirty = chunk.isDirty();
-                boolean generate = chunk.isGenerated();
-                ChunkResolver chunkResolver = chunk.getChunkResolver();
-                chunk.setDirty(false);
-                chunk.setGenerated(true);
-                chunk.setChunkResolver(null);
-
+                ComparedChunk comparedChunk = new ComparedChunk(chunk);
                 s = OBJECT_MAPPER
                         .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                         .writerWithDefaultPrettyPrinter()
-                        .writeValueAsString(chunk);
-
-                chunk.setDirty(dirty);
-                chunk.setGenerated(generate);
-                chunk.setChunkResolver(chunkResolver);
+                        .writeValueAsString(comparedChunk);
                 return s;
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
@@ -152,6 +141,26 @@ public abstract class BaseSceneryTest {
     private void assertInitialized() {
         if (path == null || worldManager == null) {
             throw new IllegalStateException("Please initialize the test first with init()");
+        }
+    }
+
+    protected static class ComparedChunk {
+        private final short[] blocks;
+        private final byte[] lightMap;
+
+        public ComparedChunk(Chunk chunk) {
+            this.blocks = chunk.getBlocks();
+            this.lightMap = chunk.getLightMap();
+        }
+
+        @SuppressWarnings("unused")
+        public short[] getBlocks() {
+            return blocks;
+        }
+
+        @SuppressWarnings("unused")
+        public byte[] getLightMap() {
+            return lightMap;
         }
     }
 
