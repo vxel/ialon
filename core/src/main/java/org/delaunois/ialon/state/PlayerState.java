@@ -58,14 +58,18 @@ import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.PlayerActionButtons;
 import org.delaunois.ialon.PlayerActionListener;
+import org.delaunois.ialon.PlayerListener;
 import org.delaunois.ialon.PlayerTouchListener;
 import org.delaunois.ialon.WorldManager;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -82,11 +86,9 @@ public class PlayerState extends BaseAppState {
     private CharacterControl player;
     private PlayerActionListener playerActionListener;
     private PlayerTouchListener playerTouchListener;
-    private ChunkManager chunkManager;
+
     private ExecutorService executorService;
     private Node chunkNode;
-    private ChunkPagerState chunkPagerState;
-    private PhysicsChunkPagerState physicsChunkPagerState;
     private BlockSelectionState blockSelectionState;
 
     @Getter
@@ -132,6 +134,7 @@ public class PlayerState extends BaseAppState {
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
     private long lastCollisionTest = System.currentTimeMillis();
+    private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
 
     private Material ballMaterial;
     private final IalonConfig config;
@@ -145,26 +148,22 @@ public class PlayerState extends BaseAppState {
         app = (SimpleApplication) simpleApp;
         camera = app.getCamera();
 
-        chunkManager = config.getChunkManager();
         worldManager = new WorldManager(
-                chunkManager,
+                config.getChunkManager(),
                 new ChunkLightManager(config),
                 Optional.ofNullable(app.getStateManager().getState(ChunkLiquidManagerState.class))
-                        .map(ChunkLiquidManagerState::getChunkLiquidManager).orElse(null),
-                app.getStateManager().getState(ChunkSaverState.class)
+                        .map(ChunkLiquidManagerState::getChunkLiquidManager).orElse(null)
         );
         crossHair = createCrossHair();
         addPlaceholder = createAddPlaceholder();
         removePlaceholder = createRemovePlaceholder();
-        executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("save").build());
+        executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("player").build());
         fly = config.isPlayerStartFly();
         playerLocation = config.getPlayerLocation();
         player = createPlayer();
         playerActionListener = new PlayerActionListener(this, config);
         playerTouchListener = new PlayerTouchListener(this, config);
         playerActionButtons = new PlayerActionButtons(this);
-        chunkPagerState = app.getStateManager().getState(ChunkPagerState.class, true);
-        physicsChunkPagerState = app.getStateManager().getState(PhysicsChunkPagerState.class, true);
         blockSelectionState = app.getStateManager().getState(BlockSelectionState.class, true);
         updatePlayerPosition();
     }
@@ -363,8 +362,7 @@ public class PlayerState extends BaseAppState {
             camera.setLocation(playerLocation.add(0, config.getPlayerHeight() / 2 - 0.15f, 0));
         }
 
-        chunkPagerState.setLocation(playerLocation);
-        physicsChunkPagerState.setLocation(playerLocation);
+        listeners.forEach(listener -> listener.onMove(playerLocation));
     }
 
     public void actionLeft(boolean isPressed) {
@@ -429,19 +427,19 @@ public class PlayerState extends BaseAppState {
         }
 
         // Do not jump if there is a block above the player, unless it is water
-        Block above = chunkManager.getBlock(camera.getLocation().add(0, 1, 0)).orElse(null);
+        Block above = worldManager.getBlock(camera.getLocation().add(0, 1, 0));
         if (above != null && above.getLiquidLevel() < 0) {
             return;
         }
 
         // Do not jump if the player is not on the ground, unless he is in water
-        Block block = chunkManager.getBlock(playerLocation).orElse(null);
+        Block block = worldManager.getBlock(playerLocation);
         if (!player.onGround() && (block == null || block.getLiquidLevel() != Block.LIQUID_FULL)) {
             return;
         }
 
         // Adjust jump strength according to space available above the player
-        Block aboveAbove = chunkManager.getBlock(camera.getLocation().add(0, 2, 0)).orElse(null);
+        Block aboveAbove = worldManager.getBlock(camera.getLocation().add(0, 2, 0));
         if (aboveAbove == null) {
             player.jump();
         } else {
@@ -518,13 +516,17 @@ public class PlayerState extends BaseAppState {
 
         if (TypeIds.WATER.equals(block.getType())) {
             Vector3f tmp = removePlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-            Block previousBlock = chunkManager.getBlock(tmp).orElse(null);
+            Block previousBlock = worldManager.getBlock(tmp);
             if (previousBlock != null && !ShapeIds.CUBE.equals(previousBlock.getShape())) {
                 location = tmp;
             }
         }
 
         worldManager.addBlock(location, orientatedBlock);
+    }
+
+    public void addListener(@NonNull PlayerListener listener) {
+        listeners.add(listener);
     }
 
     public void removeBlock() {
@@ -582,7 +584,7 @@ public class PlayerState extends BaseAppState {
         }
 
         Vec3i placingLocation;
-        Block b = chunkManager.getBlock(localTranslation).orElse(null);
+        Block b = worldManager.getBlock(localTranslation);
         Shape shape = b == null ? null : BlocksConfig.getInstance().getShapeRegistry().get(b.getShape());
 
         if ((shape instanceof Wedge
@@ -607,7 +609,7 @@ public class PlayerState extends BaseAppState {
     }
 
     private void updateFallSpeed() {
-        Block block = chunkManager.getBlock(camera.getLocation().subtract(0, 1, 0)).orElse(null);
+        Block block = worldManager.getBlock(camera.getLocation().subtract(0, 1, 0));
         if (block != null) {
             if (block.getName().contains("water")) {
                 updateFallSpeedWaterIn();

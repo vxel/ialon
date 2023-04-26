@@ -11,10 +11,7 @@ import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.state.ChunkSaverState;
-
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -44,27 +41,20 @@ public class WorldManager {
     @Getter
     private final ChunkLiquidManager chunkLiquidManager;
 
-    @Getter
-    private final ChunkSaverState chunkSaverState;
-
     public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager) {
-        this(chunkManager, chunkLightManager, chunkLiquidManager, null);
-    }
-
-    public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager, ChunkSaverState chunkSaverState) {
         this.chunkManager = chunkManager;
         this.chunkLightManager = chunkLightManager;
         this.chunkLiquidManager = chunkLiquidManager;
-        this.chunkSaverState = chunkSaverState;
-        if (chunkSaverState == null) {
-            log.warn("No ChunkSaverState found. Chunks will not be saved.");
-        }
         if (chunkLiquidManager == null) {
             log.warn("No ChunkLiquidManager given. Liquid flow will not be supported.");
         }
         if (chunkLightManager == null) {
             log.warn("No ChunkLightManager given. Light will not propagate.");
         }
+    }
+
+    public Block getBlock(Vector3f location) {
+        return chunkManager.getBlock(location).orElse(null);
     }
 
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
@@ -133,7 +123,6 @@ public class WorldManager {
         }
 
         chunkManager.requestOrderedMeshChunks(chunks);
-        save(chunks);
 
         return chunks;
     }
@@ -242,7 +231,6 @@ public class WorldManager {
         }
 
         chunkManager.requestOrderedMeshChunks(chunks);
-        save(chunks);
 
         return chunks;
     }
@@ -386,11 +374,4 @@ public class WorldManager {
         return updatedChunks;
     }
 
-    private void save(Collection<Vec3i> locations) {
-        if (chunkSaverState != null) {
-            for (Vec3i location : locations) {
-                chunkSaverState.asyncSave(location);
-            }
-        }
-    }
 }

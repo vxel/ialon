@@ -153,6 +153,7 @@ public class ChunkManager {
         results.forEach(result -> {
             try {
                 triggerListenerChunkAvailable(result.get());
+                triggerListenerChunkUpdated(result.get());
             } catch (ExecutionException e) {
                 log.warn("Got exception while getting task result", e);
             } catch (InterruptedException e) {
@@ -359,6 +360,10 @@ public class ChunkManager {
 
     private void triggerListenerChunkAvailable(Chunk chunk) {
         listeners.forEach(listener -> listener.onChunkAvailable(chunk));
+    }
+
+    private void triggerListenerChunkUpdated(Chunk chunk) {
+        listeners.forEach(listener -> listener.onChunkUpdated(chunk));
     }
 
     private void triggerListenerChunkFetched(Chunk chunk) {

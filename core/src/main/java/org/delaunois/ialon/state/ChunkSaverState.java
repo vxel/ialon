@@ -3,6 +3,8 @@ package org.delaunois.ialon.state;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
+import com.rvandoosselaer.blocks.Chunk;
+import com.rvandoosselaer.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
@@ -18,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class ChunkSaverState extends BaseAppState {
+public class ChunkSaverState extends BaseAppState implements ChunkManagerListener {
 
     private ExecutorService executorService;
 
@@ -67,5 +69,13 @@ public class ChunkSaverState extends BaseAppState {
         // Nothing to do
     }
 
+    @Override
+    public void onChunkUpdated(Chunk chunk) {
+        asyncSave(chunk.getLocation());
+    }
 
+    @Override
+    public void onChunkAvailable(Chunk chunk) {
+        // Nothing to do
+    }
 }

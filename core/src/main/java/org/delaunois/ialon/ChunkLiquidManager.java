@@ -27,6 +27,7 @@ import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -212,6 +213,10 @@ public class ChunkLiquidManager {
             return 0;
         }
         return block.getLiquidLevel();
+    }
+
+    public void updateChunkMesh(Collection<Vec3i> locations) {
+        chunkManager.requestOrderedMeshChunks(locations);
     }
 
     private boolean propagateRemovedLiquid(Chunk c, int x, int y, int z, int liquidLevel, boolean dims, LiquidRunningContext context) {

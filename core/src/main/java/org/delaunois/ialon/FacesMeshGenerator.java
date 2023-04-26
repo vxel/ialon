@@ -45,7 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 @ToString(onlyExplicitlyIncluded = true)
 public class FacesMeshGenerator implements ChunkMeshGenerator {
 
-    private IalonConfig config;
+    private final IalonConfig config;
 
     public FacesMeshGenerator(IalonConfig config) {
         this.config = config;

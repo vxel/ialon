@@ -22,10 +22,8 @@ import com.jme3.app.state.BaseAppState;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkLiquidManager;
-import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.IalonConfig;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,24 +41,17 @@ public class ChunkLiquidManagerState extends BaseAppState {
     @Getter
     private final ChunkLiquidManager chunkLiquidManager;
 
-    private final ChunkManager chunkManager;
-    private ChunkSaverState chunkSaverState;
-
     private float elapsed = 0;
     private final IalonConfig config;
 
     public ChunkLiquidManagerState(IalonConfig config) {
         this.config = config;
-        this.chunkManager = config.getChunkManager();
         this.chunkLiquidManager = new ChunkLiquidManager(config);
     }
 
     @Override
     protected void initialize(Application app) {
-        this.chunkSaverState = app.getStateManager().getState(ChunkSaverState.class);
-        if (this.chunkSaverState == null) {
-            log.warn("No ChunkSaverState found. Chunks will not be saved.");
-        }
+        // Nothing to do
     }
 
     @Override
@@ -88,18 +79,9 @@ public class ChunkLiquidManagerState extends BaseAppState {
                 updatedChunks.addAll(chunkLiquidManager.step());
             }
             if (!updatedChunks.isEmpty()) {
-                chunkManager.requestMeshChunks(updatedChunks);
-                save(updatedChunks);
+                chunkLiquidManager.updateChunkMesh(updatedChunks);
             }
             elapsed = 0;
-        }
-    }
-
-    private void save(Collection<Vec3i> locations) {
-        if (chunkSaverState != null) {
-            for (Vec3i location : locations) {
-                chunkSaverState.asyncSave(location);
-            }
         }
     }
 

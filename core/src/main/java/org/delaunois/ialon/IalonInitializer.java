@@ -69,7 +69,12 @@ public class IalonInitializer {
     }
 
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {
-        return new ChunkSaverState(config);
+        ChunkSaverState chunkSaverState = new ChunkSaverState(config);
+        if (config.getChunkManager() == null) {
+            throw new IllegalStateException("ChunkManager must be initialised before ChunkSaverState !");
+        }
+        config.getChunkManager().addListener(chunkSaverState);
+        return chunkSaverState;
     }
 
     public static PlayerState setupPlayerState(IalonConfig config) {
@@ -167,6 +172,7 @@ public class IalonInitializer {
         chunkPager.setGridLowerBounds(config.getGridLowerBound());
         chunkPager.setGridUpperBounds(config.getGridUpperBound());
         chunkPager.setMaxUpdatePerFrame(100);
+        playerState.addListener(chunkPager::setLocation);
 
         return new ChunkPagerState(chunkPager);
     }
@@ -180,6 +186,7 @@ public class IalonInitializer {
         physicsChunkPager.setLocation(playerState.getPlayerLocation());
         physicsChunkPager.setGridLowerBounds(config.getGridLowerBound());
         physicsChunkPager.setGridUpperBounds(config.getGridUpperBound());
+        playerState.addListener(physicsChunkPager::setLocation);
 
         return new PhysicsChunkPagerState(physicsChunkPager);
     }
