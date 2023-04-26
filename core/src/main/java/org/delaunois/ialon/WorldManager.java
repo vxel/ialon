@@ -228,27 +228,8 @@ public class WorldManager {
         // When adding Square (e.g. a Scale), remove other scales conflicting with the added scale
         chunks.addAll(cleanAroundBlocks(location));
 
-        Vec3i size = BlocksConfig.getInstance().getChunkSize();
-
         // Request chunk updates of neighbour blocks only if block is at the border of the chunk
-        if (blockLocationInsideChunk.x == size.x - 1) {
-            chunks.add(chunk.getLocation().add(1, 0, 0));
-        }
-        if (blockLocationInsideChunk.x == 0) {
-            chunks.add(chunk.getLocation().add(-1, 0, 0));
-        }
-        if (blockLocationInsideChunk.y == size.y - 1) {
-            chunks.add(chunk.getLocation().add(0, 1, 0));
-        }
-        if (blockLocationInsideChunk.y == 0) {
-            chunks.add(chunk.getLocation().add(0, -1, 0));
-        }
-        if (blockLocationInsideChunk.z == size.z - 1) {
-            chunks.add(chunk.getLocation().add(0, 0, 1));
-        }
-        if (blockLocationInsideChunk.z == 0) {
-            chunks.add(chunk.getLocation().add(0, 0, -1));
-        }
+        chunks.addAll(getAdjacentChunks(chunk, blockLocationInsideChunk, BlocksConfig.getInstance().getChunkSize()));
 
         // When removing a block, redraw chunk of removed block last to avoid
         // seeing holes in adjacent chunks when the chunks are added to the world in different

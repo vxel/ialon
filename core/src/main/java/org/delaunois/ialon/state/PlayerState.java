@@ -84,11 +84,10 @@ public class PlayerState extends BaseAppState {
     private PlayerTouchListener playerTouchListener;
     private ChunkManager chunkManager;
     private ExecutorService executorService;
-
     private Node chunkNode;
-
     private ChunkPagerState chunkPagerState;
     private PhysicsChunkPagerState physicsChunkPagerState;
+    private BlockSelectionState blockSelectionState;
 
     @Getter
     private WorldManager worldManager;
@@ -166,6 +165,7 @@ public class PlayerState extends BaseAppState {
         playerActionButtons = new PlayerActionButtons(this);
         chunkPagerState = app.getStateManager().getState(ChunkPagerState.class, true);
         physicsChunkPagerState = app.getStateManager().getState(PhysicsChunkPagerState.class, true);
+        blockSelectionState = app.getStateManager().getState(BlockSelectionState.class, true);
         updatePlayerPosition();
     }
 
@@ -491,7 +491,7 @@ public class PlayerState extends BaseAppState {
         final Vector3f worldBlockLocation = addPlaceholder.getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
         Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerLocation);
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
-        final Block selectedBlock = app.getStateManager().getState(BlockSelectionState.class).getSelectedBlock();
+        final Block selectedBlock = blockSelectionState.getSelectedBlock();
 
         // Prevents adding a solid block where the player stands
         if (selectedBlock.isSolid()
