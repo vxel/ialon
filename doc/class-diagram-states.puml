@@ -1,0 +1,126 @@
+@startuml
+title Ialon Application States
+
+class Ialon
+class BlockSelectionState
+class ChunkManagerState
+class ChunkPagerState
+class ChunkSaverState
+class GridSettingsState
+class IalonDebugState
+class LightingState {
+  AmbientLight ambientLight
+  DirectionalLight directionalLight
+}
+class MoonState
+class PhysicsChunkPagerState
+class ScreenState
+class SkyState
+class SplashscreenState
+class StatsAppState
+class SunState
+class TimeFactorState
+class WireframeState
+class WorldBuilderState
+
+class PlayerState {
+  List<PlayerListener> listeners
+  CharacterControl player
+  Vector3f playerLocation
+  boolean jump
+  boolean underWater
+  boolean onScale
+  addBlock()
+  removeBlock()
+}
+
+class ChunkSaverState implements ChunkManagerListener {
+  asyncSave(Vec3i location)
+  onChunkUpdated(Chunk chunk)
+}
+
+class ChunkPager {
+  Vec3i gridSize
+  Vector3f location
+  Map<Vec3i, Node> attachedPages
+  Map<Vec3i, Chunk> fetchedPages
+}
+
+class PhysicsChunkPager {
+  Vec3i gridSize
+  Vector3f location
+  Map<Vec3i, Node> attachedPages
+}
+
+
+class ChunkLiquidManager {
+  Queue liquidBfsQueue
+  Queue liquidRemovalBfsQueue
+  addSource(Vector3f location)
+  removeSource(Vector3f location)
+  flowLiquid(Vector3f location)
+  step()
+}
+
+class ScreenState {
+  AppSettings
+}
+
+ChunkLiquidManagerState --> ChunkLiquidManager
+ChunkPagerState --> ChunkPager
+PhysicsChunkPagerState --> PhysicsChunkPager
+MoonState --> MoonControl
+SkyState --> SkyControl
+SunState --> SunControl
+BlockSelectionState --> PlayerState
+
+SplashscreenState --> ChunkPagerState
+SplashscreenState --> GridSettingsState
+
+WorldBuilderState --> PlayerState
+WorldBuilderState --> ChunkPagerState
+WorldBuilderState --> PhysicsChunkPagerState
+WorldBuilderState --> SplashscreenState
+WorldBuilderState --> ChunkLiquidManagerState
+
+
+ScreenState --> TimeFactorState
+ScreenState --> GridSettingsState
+ScreenState --> BlockSelectionState
+ScreenState --> PlayerState
+
+GridSettingsState --> PlayerState
+
+IalonDebugState --> ChunkPagerState
+IalonDebugState --> PlayerState
+IalonDebugState --> SunState
+
+MoonState --> SunState
+SkyState --> SunState
+SunState --> LightingState
+TimeFactorState --> SunState
+
+PlayerState --> ChunkLiquidManagerState
+PlayerState --> BulletAppState
+
+
+Ialon --> PlayerState
+Ialon -->  BlockSelectionState
+Ialon -->  ChunkManagerState
+Ialon -->  ChunkPagerState
+Ialon -->  ChunkSaverState
+Ialon -->  GridSettingsState
+Ialon -->  IalonDebugState
+Ialon -->  LightingState
+Ialon -->  MoonState
+Ialon -->  PhysicsChunkPagerState
+Ialon -->  ScreenState
+Ialon -->  SkyState
+Ialon -->  SplashscreenState
+Ialon -->  StatsAppState
+Ialon -->  SunState
+Ialon -->  TimeFactorState
+Ialon -->  WireframeState
+Ialon -->  WorldBuilderState
+
+@enduml

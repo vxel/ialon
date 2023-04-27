@@ -1,0 +1,68 @@
+@startuml
+title Ialon Add Block Sequence Diagram
+
+hide footbox
+
+actor player
+
+player -> PlayerActionButton : click Add
+activate PlayerActionButton
+PlayerActionButton -> PlayerActionButton: highlight(button)
+PlayerActionButton -> PlayerState: addBlock()
+activate PlayerState
+PlayerState -> PlayerState: config.getSelectedBlock()
+PlayerState -> PlayerStateExecutorService: addBlockTask(location, selectedBlock)
+activate PlayerStateExecutorService
+PlayerActionButton <-- PlayerState
+deactivate PlayerActionButton
+deactivate PlayerState
+
+PlayerStateExecutorService -> WorldManager: orientateBlock
+activate WorldManager
+PlayerStateExecutorService -> WorldManager: addBlock(location, orientatedBlock)
+WorldManager -> ChunkManager: getChunkLocation(location)
+activate ChunkManager
+WorldManager -> ChunkManager: getChunk(chunkLocation)
+WorldManager -> ChunkManager: addBlock()
+deactivate ChunkManager
+
+WorldManager -> ChunkLiquidManager: removeSource(...)
+activate ChunkLiquidManager
+ChunkLiquidManager -> ChunkLiquidManager: liquidRemovalBfsQueue.offer(...)
+WorldManager <-- ChunkLiquidManager
+deactivate ChunkLiquidManager
+
+WorldManager -> ChunkLiquidManager: flowLiquid(...)
+activate ChunkLiquidManager
+ChunkLiquidManager -> ChunkLiquidManager: liquidBfsQueue.offer(...)
+WorldManager <-- ChunkLiquidManager
+deactivate ChunkLiquidManager
+
+WorldManager -> ChunkLightManager: removeSunlight(location)
+activate ChunkLightManager
+WorldManager <-- ChunkLightManager: modifiedChunks
+WorldManager -> ChunkLightManager: removeTorchlight(location)
+WorldManager <-- ChunkLightManager: modifiedChunks
+deactivate ChunkLightManager
+WorldManager -> ChunkManager: requestOrderedMeshChunks(modifiedChunks)
+activate ChunkManager
+WorldManager --> PlayerStateExecutorService: modifiedChunks
+deactivate PlayerStateExecutorService
+deactivate WorldManager
+ChunkManager -> ChunkManager: requestMeshChunks(locations)
+ChunkManager -> ChunkPager: onChunkAvailable(chunk)
+activate ChunkPager
+ChunkPager -> ChunkPager: pagesToAttach.offer(chunk)
+ChunkManager <-- ChunkPager
+deactivate ChunkPager
+ChunkManager -> PhysicsChunkPager: onChunkAvailable(chunk)
+activate PhysicsChunkPager
+PhysicsChunkPager -> PhysicsChunkPager: pagesToCreate.offer(chunk)
+ChunkManager <-- PhysicsChunkPager
+deactivate PhysicsChunkPager
+ChunkManager -> ChunkSaverState++: onChunkUpdated(chunk)
+ChunkManager <-- ChunkSaverState
+deactivate ChunkManager
+ChunkSaverState -> ChunkRepository--: save(chunk)
+
+@enduml

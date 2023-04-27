@@ -1,0 +1,136 @@
+@startuml
+title Ialon Main Class Hierarchy
+
+'class Ialon
+
+class PlayerState {
+  List<PlayerListener> listeners
+  CharacterControl player
+  Vector3f playerLocation
+  boolean jump
+  boolean underWater
+  boolean onScale
+  addBlock()
+  removeBlock()
+}
+
+note as N1
+Most top classes use IalonConfig
+for configuration variables.
+
+Only major classes, fields and
+methods are displayed.
+end note
+
+interface ChunkRepository {
+  load(Vec3i location)
+  save(Chunk chunk)
+}
+
+interface ChunkMeshGenerator {
+  createNode(Chunk chunk)
+  createCollisionMesh(Chunk chunk)
+  createAndSetNodeAndCollisionMesh(Chunk chunk)
+}
+
+interface ChunkGenerator {
+  generate(Vec3i location)
+}
+
+interface TerrainGenerator extends ChunkGenerator {
+  getHeight(Vector3f blockLocation)
+  setWaterHeight(float waterHeight)
+}
+
+class FlatTerrainGenerator implements TerrainGenerator
+class NoiseTerrainGenerator implements TerrainGenerator
+class EmptyGenerator implements TerrainGenerator
+class FacesMeshGenerator implements ChunkMeshGenerator
+class ZipFileRepository implements ChunkRepository
+class FileRepository implements ChunkRepository
+
+class ChunkSaverState implements ChunkManagerListener {
+  asyncSave(Vec3i location)
+  onChunkUpdated(Chunk chunk)
+}
+
+class ChunkManager {
+  List<ChunkManagerListener> listeners
+  Optional<Chunk> getChunk(Vec3i location)
+  requestChunks(Collection<Vec3i> locationsToGenerate, Collection<Vec3i> locationsToMesh)
+  requestGenerateChunks(Collection<Vec3i> locations)
+  requestMeshChunks(Collection<Vec3i> locations)
+}
+
+class Chunk {
+  Vec3i location
+  short[] blocks
+  byte[] lightMap
+  getBlock(Vec3i location)
+  addBlock(Vec3i location, Block block)
+  removeBlock(Vec3i location)
+}
+
+class ChunkPager {
+  Vec3i gridSize
+  Vector3f location
+  Map<Vec3i, Node> attachedPages
+  Map<Vec3i, Chunk> fetchedPages
+}
+
+class PhysicsChunkPager {
+  Vec3i gridSize
+  Vector3f location
+  Map<Vec3i, Node> attachedPages
+}
+
+class ChunkCache {
+  get(Vec3i location)
+  put(Chunk chunk)
+}
+
+PlayerState --> WorldManager
+
+ChunkManager --> Chunk
+ChunkManager --> ChunkCache
+ChunkManager --> ChunkRepository
+ChunkManager --> ChunkGenerator
+ChunkManager --> ChunkMeshGenerator
+
+class ChunkLiquidManager {
+  Queue liquidBfsQueue
+  Queue liquidRemovalBfsQueue
+  addSource(Vector3f location)
+  removeSource(Vector3f location)
+  flowLiquid(Vector3f location)
+  step()
+}
+
+class ChunkLightManager {
+  addTorchlight(Vector3f location, int intensity)
+  removeTorchlight(Vector3f location)
+  restoreSunlight(Vector3f location)
+  removeSunlight(Vector3f location)
+}
+
+WorldManager --> ChunkManager
+WorldManager --> ChunkLightManager
+WorldManager --> ChunkLiquidManager
+
+ChunkLiquidManager --> ChunkManager
+ChunkLiquidManagerState --> ChunkLiquidManager
+ChunkLightManager --> ChunkManager
+
+ChunkPager --> ChunkManager
+ChunkPagerState --> ChunkPager
+PhysicsChunkPager --> ChunkManager
+PhysicsChunkPagerState --> PhysicsChunkPager
+
+ZipFileRepository --> BlocksProtos
+'Ialon --> PlayerState
+'Ialon --> ChunkPagerState
+'Ialon --> BlockSelectionState
+'Ialon --> ChunkLiquidManagerState
+'Ialon --> PhysicsChunkPagerState
+
+@enduml
