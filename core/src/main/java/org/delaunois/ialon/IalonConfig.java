@@ -5,6 +5,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
 
@@ -86,6 +87,7 @@ public class IalonConfig {
     private boolean saveUserSettingsOnStop = true;
     private Path savePath = FileSystems.getDefault().getPath(SAVEDIR);
 
+    private Block selectedBlock = null;
     private ChunkManager chunkManager;
     private ChunkRepository chunkRepository;
     private TerrainGenerator terrainGenerator;

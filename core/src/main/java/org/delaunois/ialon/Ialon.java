@@ -89,7 +89,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
-        stateManager.attach(new BlockSelectionState());
+        stateManager.attach(new BlockSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new WorldBuilderState(config));
 

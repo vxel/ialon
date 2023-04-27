@@ -56,6 +56,7 @@ import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonBlock;
+import org.delaunois.ialon.IalonConfig;
 
 import java.nio.FloatBuffer;
 import java.util.Arrays;
@@ -482,6 +483,11 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
     private float buttonSize = 100;
     private float blockButtonSize = 100;
+    private final IalonConfig config;
+
+    public BlockSelectionState(IalonConfig config) {
+        this.config = config;
+    }
 
     @Override
     public void initialize(Application app) {
@@ -616,6 +622,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
         selectedBlockIndex = index;
         selectedBlockNode = updateBlockNode(selectedBlockNode, index);
+        config.setSelectedBlock(getSelectedBlock());
         updateHistory(index);
     }
 

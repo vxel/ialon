@@ -43,7 +43,7 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
         stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
         stateManager.attach(new LightingState(config));
         stateManager.attach(new ScreenState(settings, config));
-        stateManager.attach(new BlockSelectionState());
+        stateManager.attach(new BlockSelectionState(config));
         stateManager.attach(new WorldBuilderState(config));
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized

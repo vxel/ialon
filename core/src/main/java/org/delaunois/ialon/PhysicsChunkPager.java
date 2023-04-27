@@ -90,7 +90,7 @@ public class PhysicsChunkPager {
     private final Vec3i min = new Vec3i();
     private final Vec3i max = new Vec3i();
 
-    public PhysicsChunkPager(PhysicsSpace physicsSpace, ChunkManager chunkManager) {
+    public PhysicsChunkPager(PhysicsSpace physicsSpace, @NonNull ChunkManager chunkManager) {
         this.physicsSpace = physicsSpace;
         this.gridSize = BlocksConfig.getInstance().getPhysicsGrid();
         this.chunkManager = chunkManager;
