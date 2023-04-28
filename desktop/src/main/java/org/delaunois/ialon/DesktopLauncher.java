@@ -31,9 +31,10 @@ public class DesktopLauncher {
     }
 
     public static void main(String[] args) {
-        IalonConfig config = IalonConfigRepository.loadConfig();
-
-        Ialon app = new Ialon(config);
+        IalonConfig config = new IalonConfig();
+        config.setGridRadiusMin(2);
+        config.setGridRadiusMax(9);
+        Ialon app = new Ialon(IalonConfigRepository.loadConfig(config));
 
         AppSettings settings = new AppSettings(false);
         settings.setFrameRate(IalonConfig.FPS_LIMIT);

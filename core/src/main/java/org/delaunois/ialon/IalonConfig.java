@@ -47,8 +47,8 @@ public class IalonConfig {
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 2f;
-    private float ambiantIntensity = 0.3f;
-    private float sunIntensity = 1.2f;
+    private float ambiantIntensity = 0.5f;
+    private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;
 
     private ColorRGBA skyColor = ColorRGBA.fromRGBA255(100, 172, 255, 255);

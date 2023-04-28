@@ -25,7 +25,12 @@ import com.jme3.system.AppSettings;
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.jme.AndroidHarness;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class MainActivity extends AndroidHarness {
+
+    protected static final Logger logger = Logger.getLogger(MainActivity.class.getName());
 
     public MainActivity() {
         appClass = Ialon.class.getCanonicalName();
@@ -54,15 +59,20 @@ public class MainActivity extends AndroidHarness {
 
     @Override
     protected void onStart() {
+        logger.log(Level.INFO, "Android Start Ialon");
+
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
         app.setSettings(settings);
 
-        IalonConfig config = ((Ialon) app).getConfig();
+        IalonConfig config = new IalonConfig();
         config.setSavePath(getApplicationContext().getFilesDir().toPath());
         config.setSaveUserSettingsOnStop(false);
         config.setGridRadiusMax(6);
+        config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
+        IalonConfigRepository.loadConfig(config);
+        ((Ialon) app).setConfig(config);
 
         super.onStart();
     }

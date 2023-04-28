@@ -118,7 +118,7 @@ void main() {
          float lightLevel = levels[SunIntensity] * lum;
 
          // Get the maximum light between Sun and Torch lights
-         lightLevel = max(lightLevel, levels[TorchIntensity]);
+         lightLevel = min(max(lightLevel, levels[TorchIntensity]), 0.7f);
 
          AmbientSum.xyz = lightLevel * inColor.rgb;
          DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, 1);

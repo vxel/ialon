@@ -55,8 +55,7 @@ public class IalonConfigRepository {
         // Prevent instanciation
     }
 
-    public static IalonConfig loadConfig() {
-        IalonConfig config = new IalonConfig();
+    public static IalonConfig loadConfig(IalonConfig config) {
         PlayerStateDTO playerStateDTO = loadPlayerStateDTO(config);
 
         if (playerStateDTO != null) {

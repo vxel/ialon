@@ -39,6 +39,7 @@ import org.delaunois.ialon.state.WorldBuilderState;
 import java.util.Optional;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -51,15 +52,18 @@ import lombok.extern.slf4j.Slf4j;
 public class Ialon extends SimpleApplication {
 
     @Getter
-    private final IalonConfig config;
+    @Setter
+    private IalonConfig config;
 
     public Ialon() {
         super((AppState[]) null);
-        config = IalonConfigRepository.loadConfig();
+        log.info("Instanciating Ialon");
+        config = new IalonConfig();
     }
 
     public Ialon(IalonConfig config) {
         super((AppState[]) null);
+        log.info("Instanciating Ialon");
         this.config = config;
     }
 
