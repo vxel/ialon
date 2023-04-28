@@ -47,7 +47,7 @@ public class IalonConfig {
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 2f;
-    private float ambiantIntensity = 0.5f;
+    private float ambiantIntensity = 0.3f;
     private float sunIntensity = 1.2f;
     private float sunAmplitude = 10f;
 

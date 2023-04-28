@@ -43,7 +43,7 @@ out vec2 texCoord;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
-    const float lightDecay = 2.0;
+    const float lightDecay = 2.2;
     const float levels[16] = float[16](
         0.0,
         pow(1.0 / 15.0, lightDecay),
@@ -112,9 +112,14 @@ void main() {
     #ifdef VERTEX_COLOR
          int SunIntensity = (int(inColor.a) >> 4) & 0xF;
          int TorchIntensity = (int(inColor.a)) & 0xF;
+
+         // Adapt the sunlight to the current ambient level (i.e. night or day)
          float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;
-         float lightLevel = min(levels[SunIntensity], lum);
-         lightLevel = min(max(lightLevel, levels[TorchIntensity]), 0.7f);
+         float lightLevel = levels[SunIntensity] * lum;
+
+         // Get the maximum light between Sun and Torch lights
+         lightLevel = max(lightLevel, levels[TorchIntensity]);
+
          AmbientSum.xyz = lightLevel * inColor.rgb;
          DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, 1);
     #endif
