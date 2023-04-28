@@ -115,10 +115,10 @@ public class WorldManager {
         if (chunkLightManager != null) {
             // Computes the light if the block is a torch
             if (block.isTorchlight()) {
-                chunks.addAll(chunkLightManager.addTorchlight(location, 15));
+                chunks.addAll(chunkLightManager.addTorchlight(blockLocationInsideChunk, chunk, 15));
             } else {
-                chunks.addAll(chunkLightManager.removeSunlight(location));
-                chunks.addAll(chunkLightManager.removeTorchlight(location));
+                chunks.addAll(chunkLightManager.removeSunlight(blockLocationInsideChunk, chunk));
+                chunks.addAll(chunkLightManager.removeTorchlight(blockLocationInsideChunk, chunk));
             }
         }
 
@@ -226,7 +226,7 @@ public class WorldManager {
         chunks.add(chunk.getLocation());
 
         if (chunkLightManager != null) {
-            chunks.addAll(chunkLightManager.removeTorchlight(location));
+            chunks.addAll(chunkLightManager.removeTorchlight(blockLocationInsideChunk, chunk));
             chunks.addAll(chunkLightManager.restoreSunlight(location));
         }
 

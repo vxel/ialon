@@ -24,6 +24,7 @@ import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -65,14 +66,19 @@ public class ChunkLightManager {
             log.debug("Adding torchlight at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
         }
 
-        LightRunningContext context = new LightRunningContext();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
-        chunkManager.getChunk(chunkLocation).ifPresent(chunk -> {
+        Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
+        if (chunk != null) {
             Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity);
-            context.lightBfsQueue.offer(new LightNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z));
-        });
+            return addTorchlight(blockLocationInsideChunk, chunk, intensity);
+        }
+        return Collections.emptySet();
+    }
 
+    public Set<Vec3i> addTorchlight(Vec3i blockLocationInsideChunk, Chunk chunk, int intensity) {
+        LightRunningContext context = new LightRunningContext();
+        chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity);
+        context.lightBfsQueue.offer(new LightNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z));
         return updateTorchLight(context);
     }
 
@@ -86,15 +92,20 @@ public class ChunkLightManager {
             log.debug("Removing torchlight at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
         }
 
-        LightRunningContext context = new LightRunningContext();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
-        chunkManager.getChunk(chunkLocation).ifPresent(chunk -> {
+        Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
+        if (chunk != null) {
             Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            int intensity = chunk.getTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
-            context.lightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
-            chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
-        });
+            return removeTorchlight(blockLocationInsideChunk, chunk);
+        }
+        return Collections.emptySet();
+    }
 
+    public Set<Vec3i> removeTorchlight(Vec3i blockLocationInsideChunk, Chunk chunk) {
+        LightRunningContext context = new LightRunningContext();
+        int intensity = chunk.getTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
+        context.lightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
+        chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
         return updateTorchLight(context);
     }
 
@@ -139,15 +150,21 @@ public class ChunkLightManager {
             log.debug("Removing sunlight at ({}, {}, {}) in chunk {}", location.x, location.y, location.z, this);
         }
 
-        LightRunningContext context = new LightRunningContext();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
-        chunkManager.getChunk(chunkLocation).ifPresent(chunk -> {
+        Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
+        if (chunk != null) {
             Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
-            int intensity = chunk.getSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
-            context.sunlightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
-            chunk.setSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
-        });
+            return removeSunlight(blockLocationInsideChunk, chunk);
+        }
 
+        return Collections.emptySet();
+    }
+
+    public Set<Vec3i> removeSunlight(Vec3i blockLocationInsideChunk, Chunk chunk) {
+        LightRunningContext context = new LightRunningContext();
+        int intensity = chunk.getSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
+        context.sunlightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
+        chunk.setSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
         return updateSunlight(context);
     }
 
@@ -379,20 +396,19 @@ public class ChunkLightManager {
         // Request chunk updates of neighbour blocks only if block is at the border of the chunk
         if (x == size.x - 1) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(1, 0, 0));
-        }
-        if (x == 0) {
+        } else if (x == 0) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(-1, 0, 0));
         }
+
         if (y == size.y - 1) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(0, 1, 0));
-        }
-        if (y == 0) {
+        } else if (y == 0) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(0, -1, 0));
         }
+
         if (z == size.z - 1) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(0, 0, 1));
-        }
-        if (z == 0) {
+        } else if (z == 0) {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(0, 0, -1));
         }
 
@@ -417,46 +433,47 @@ public class ChunkLightManager {
 
         if (blockLocation.x < 0) {
             chunkLocation.addLocal(-1, 0, 0);
-        }
-        if (blockLocation.x >= chunkSize.x) {
+        } else if (blockLocation.x >= chunkSize.x) {
             chunkLocation.addLocal(1, 0, 0);
         }
+
         if (blockLocation.y < 0) {
             chunkLocation.addLocal(0, -1, 0);
-        }
-        if (blockLocation.y >= chunkSize.y) {
+        } else if (blockLocation.y >= chunkSize.y) {
             chunkLocation.addLocal(0, 1, 0);
         }
+
         if (blockLocation.z < 0) {
             chunkLocation.addLocal(0, 0, -1);
-        }
-        if (blockLocation.z >= chunkSize.z) {
+        } else if (blockLocation.z >= chunkSize.z) {
             chunkLocation.addLocal(0, 0, 1);
         }
+
         return chunkLocation;
     }
 
     private static Vec3i calculateNeighbourChunkBlockLocation(Vec3i blockLocation) {
         Vec3i toReturn = new Vec3i(blockLocation);
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+
         if (blockLocation.x < 0) {
             toReturn.x = chunkSize.x - 1;
-        }
-        if (blockLocation.x >= chunkSize.x) {
+        } else if (blockLocation.x >= chunkSize.x) {
             toReturn.x = 0;
         }
+
         if (blockLocation.y < 0) {
             toReturn.y = chunkSize.y - 1;
-        }
-        if (blockLocation.y >= chunkSize.y) {
+        } else if (blockLocation.y >= chunkSize.y) {
             toReturn.y = 0;
         }
+
         if (blockLocation.z < 0) {
             toReturn.z = chunkSize.z - 1;
-        }
-        if (blockLocation.z >= chunkSize.z) {
+        } else if (blockLocation.z >= chunkSize.z) {
             toReturn.z = 0;
         }
+
         return toReturn;
     }
 
