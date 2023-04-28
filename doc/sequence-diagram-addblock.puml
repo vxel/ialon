@@ -3,15 +3,19 @@ title Ialon Add Block Sequence Diagram
 
 hide footbox
 
-actor player
-
-player -> PlayerActionButton : click Add
+?-> PlayerActionButton : click Add
 activate PlayerActionButton
 PlayerActionButton -> PlayerActionButton: highlight(button)
 PlayerActionButton -> PlayerState: addBlock()
 activate PlayerState
 PlayerState -> PlayerState: config.getSelectedBlock()
 PlayerState -> PlayerStateExecutorService: addBlockTask(location, selectedBlock)
+note right
+The rest of the task is performed
+asynchronously on another thread
+so that the main rendering thread
+is not blocked any longer
+end note
 activate PlayerStateExecutorService
 PlayerActionButton <-- PlayerState
 deactivate PlayerActionButton
@@ -23,10 +27,15 @@ PlayerStateExecutorService -> WorldManager: addBlock(location, orientatedBlock)
 WorldManager -> ChunkManager: getChunkLocation(location)
 activate ChunkManager
 WorldManager -> ChunkManager: getChunk(chunkLocation)
-WorldManager -> ChunkManager: addBlock()
 deactivate ChunkManager
+WorldManager -> Chunk: addBlock()
 
 WorldManager -> ChunkLiquidManager: removeSource(...)
+note right
+The scenario may vary here
+according to the block type
+that was added
+end note
 activate ChunkLiquidManager
 ChunkLiquidManager -> ChunkLiquidManager: liquidRemovalBfsQueue.offer(...)
 WorldManager <-- ChunkLiquidManager
@@ -35,13 +44,41 @@ deactivate ChunkLiquidManager
 WorldManager -> ChunkLiquidManager: flowLiquid(...)
 activate ChunkLiquidManager
 ChunkLiquidManager -> ChunkLiquidManager: liquidBfsQueue.offer(...)
+note right
+The propagation of water
+is performed later according
+to the rythm imposed by the
+ChunkLiquidManagerState
+end note
 WorldManager <-- ChunkLiquidManager
 deactivate ChunkLiquidManager
 
 WorldManager -> ChunkLightManager: removeSunlight(location)
 activate ChunkLightManager
+ChunkLightManager -> ChunkManager++: getChunk(location)
+ChunkLightManager <-- ChunkManager--: chunk
+ChunkLightManager -> Chunk: setSunlight(intensity)
+ChunkLightManager -> ChunkLightManager: propagate
+note right
+The propagation of
+light levels (sun and torch)
+is immediate
+end note
+ChunkLightManager -> Chunk: setSunlight(intensity)
+...
+ChunkLightManager -> Chunk: setSunlight(intensity)
 WorldManager <-- ChunkLightManager: modifiedChunks
+deactivate ChunkLightManager
+
 WorldManager -> ChunkLightManager: removeTorchlight(location)
+activate ChunkLightManager
+ChunkLightManager -> ChunkManager++: getChunk(location)
+ChunkLightManager <-- ChunkManager--: chunk
+ChunkLightManager -> Chunk: setTorchlight(intensity)
+ChunkLightManager -> ChunkLightManager: propagate
+ChunkLightManager -> Chunk: setTorchlight(intensity)
+...
+ChunkLightManager -> Chunk: setTorchlight(intensity)
 WorldManager <-- ChunkLightManager: modifiedChunks
 deactivate ChunkLightManager
 WorldManager -> ChunkManager: requestOrderedMeshChunks(modifiedChunks)
@@ -50,6 +87,18 @@ WorldManager --> PlayerStateExecutorService: modifiedChunks
 deactivate PlayerStateExecutorService
 deactivate WorldManager
 ChunkManager -> ChunkManager: requestMeshChunks(locations)
+ChunkManager -> ChunkMeshGenerator: createAndSetNodeAndCollisionMesh(chunk)
+activate ChunkMeshGenerator
+ChunkMeshGenerator -> Chunk++: getBlocks()
+ChunkMeshGenerator <-- Chunk--: blocks
+ChunkMeshGenerator -> ChunkMeshGenerator: createMesh(blocks)
+ChunkMeshGenerator --> Chunk: setNode(node)
+activate Chunk
+ChunkMeshGenerator --> Chunk: setCollisionMesh(node)
+deactivate Chunk
+ChunkManager <-- ChunkMeshGenerator
+deactivate ChunkMeshGenerator
+activate ChunkManager
 ChunkManager -> ChunkPager: onChunkAvailable(chunk)
 activate ChunkPager
 ChunkPager -> ChunkPager: pagesToAttach.offer(chunk)
@@ -63,6 +112,16 @@ deactivate PhysicsChunkPager
 ChunkManager -> ChunkSaverState++: onChunkUpdated(chunk)
 ChunkManager <-- ChunkSaverState
 deactivate ChunkManager
+deactivate ChunkManager
 ChunkSaverState -> ChunkRepository--: save(chunk)
+
+?-> ChunkPager: update()
+activate ChunkPager
+ChunkPager -> ChunkPager: pagesToAttach.poll()
+ChunkPager -> ChunkPager: attachedPages.remove(chunk.getLocation())
+ChunkPager -> ChunkPager: detachPage(chunk)
+ChunkPager -> Chunk: getNode()
+ChunkPager -> ChunkPager: rootNode.attachChild(node)
+deactivate ChunkPager
 
 @enduml
