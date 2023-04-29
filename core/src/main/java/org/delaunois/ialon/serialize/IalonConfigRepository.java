@@ -55,7 +55,7 @@ public class IalonConfigRepository {
         // Prevent instanciation
     }
 
-    public static IalonConfig loadConfig(IalonConfig config) {
+    public static void loadConfig(IalonConfig config) {
         PlayerStateDTO playerStateDTO = loadPlayerStateDTO(config);
 
         if (playerStateDTO != null) {
@@ -70,7 +70,6 @@ public class IalonConfigRepository {
             config.setTime(playerStateDTO.getTime());
             config.setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
         }
-        return config;
     }
 
     public static void saveConfig(SimpleApplication app, IalonConfig config) {

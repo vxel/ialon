@@ -68,10 +68,10 @@ public class MainActivity extends AndroidHarness {
         IalonConfig config = new IalonConfig();
         config.setSavePath(getApplicationContext().getFilesDir().toPath());
         config.setSaveUserSettingsOnStop(false);
+        IalonConfigRepository.loadConfig(config);
         config.setGridRadiusMax(6);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
-        IalonConfigRepository.loadConfig(config);
         ((Ialon) app).setConfig(config);
 
         super.onStart();
