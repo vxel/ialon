@@ -33,7 +33,7 @@ public class ChunkMesh {
     private boolean collisionMesh = false;
     private final List<Vector3f> positions = new ArrayList<>(INITIAL_CAPACITY);
     private final List<Vector3f> normals = new ArrayList<>(INITIAL_CAPACITY);
-    private final List<Vector4f> tangents = new ArrayList<>(INITIAL_CAPACITY);
+    private final List<Vector4f> tangents = new ArrayList<>();
     private final List<Vector2f> uvs = new ArrayList<>(INITIAL_CAPACITY);
     private final List<Integer> indices = new ArrayList<>(INITIAL_CAPACITY);
     private final List<Vector4f> colors = new ArrayList<>(INITIAL_CAPACITY);
@@ -49,7 +49,7 @@ public class ChunkMesh {
         mesh.setBuffer(VertexBuffer.Type.Position, 3, vector3fToBuffer(positions));
         mesh.setBuffer(VertexBuffer.Type.Index, 1, intToBuffer(indices));
 
-        // collision meshes don't require uvs, normals and tangents
+        // collision meshes don't require uvs, normals colors and tangents
         if (!isCollisionMesh()) {
             mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, vector2fToBuffer(uvs));
             mesh.setBuffer(VertexBuffer.Type.Normal, 3, vector3fToBuffer(normals));

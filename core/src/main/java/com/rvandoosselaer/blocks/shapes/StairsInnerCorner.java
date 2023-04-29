@@ -1,7 +1,6 @@
 package com.rvandoosselaer.blocks.shapes;
 
 import com.jme3.math.FastMath;
-import com.jme3.math.Matrix4f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
@@ -166,24 +165,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
@@ -242,12 +223,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
@@ -282,12 +257,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, 1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
@@ -374,26 +343,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, -1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
@@ -456,12 +405,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, 1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.000f, 0.000f, -1.000f, 1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
@@ -548,26 +491,6 @@ public class StairsInnerCorner implements Shape {
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
             chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            // Tangents:
-            Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
-            chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.000f, 0.000f, 0.000f, -1.000f)));
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));

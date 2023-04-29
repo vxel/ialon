@@ -63,13 +63,14 @@ public class MainActivity extends AndroidHarness {
 
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
+        settings.setFrameRate(IalonConfig.FPS_LIMIT);
         app.setSettings(settings);
 
         IalonConfig config = new IalonConfig();
         config.setSavePath(getApplicationContext().getFilesDir().toPath());
         config.setSaveUserSettingsOnStop(false);
         IalonConfigRepository.loadConfig(config);
-        config.setGridRadiusMax(6);
+        config.setGridRadiusMax(7);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
         ((Ialon) app).setConfig(config);

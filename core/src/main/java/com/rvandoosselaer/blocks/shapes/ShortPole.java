@@ -1,7 +1,6 @@
 package com.rvandoosselaer.blocks.shapes;
 
 import com.jme3.math.FastMath;
-import com.jme3.math.Matrix4f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
@@ -106,11 +105,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 0.0f, -1.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(-1.0f, 0.0f, 0.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {
@@ -144,11 +141,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 0.0f, 1.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {
@@ -182,11 +177,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.0f, 0.0f, 0.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.0f, 0.0f, -1.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {
@@ -220,11 +213,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.0f, 0.0f, 0.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {
@@ -258,11 +249,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, -1.0f, 0.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {
@@ -296,11 +285,9 @@ public class ShortPole implements Shape {
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 1.0f, 0.0f)));
-                Matrix4f rotationMatrix = rotation.toRotationMatrix(new Matrix4f());
-                chunkMesh.getTangents().add(rotationMatrix.mult(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f)));
             }
             // uvs
             if (!multipleImages) {

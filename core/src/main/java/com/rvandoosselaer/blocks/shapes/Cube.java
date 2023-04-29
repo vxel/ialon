@@ -140,10 +140,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, -1.0f));
-                chunkMesh.getTangents().add(new Vector4f(-1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {
@@ -187,10 +186,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, 1.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {
@@ -234,10 +232,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(1.0f, 0.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(0.0f, 0.0f, -1.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {
@@ -281,10 +278,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(-1.0f, 0.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {
@@ -328,10 +324,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, -1.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {
@@ -375,10 +370,9 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 1.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             if (!multipleImages) {

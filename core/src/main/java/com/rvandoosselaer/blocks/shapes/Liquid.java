@@ -145,10 +145,9 @@ public class Liquid implements Shape {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, -1.0f));
-                chunkMesh.getTangents().add(new Vector4f(-1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
@@ -162,10 +161,9 @@ public class Liquid implements Shape {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, 1.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
@@ -179,10 +177,9 @@ public class Liquid implements Shape {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(1.0f, 0.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(0.0f, 0.0f, -1.0f, 1.0f));
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
@@ -196,10 +193,9 @@ public class Liquid implements Shape {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(-1, 0.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f));
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
@@ -213,10 +209,9 @@ public class Liquid implements Shape {
         addQuad(location, chunkMesh, blockScale, v0, v1, v2, v3);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, -1.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs
             chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
@@ -251,10 +246,9 @@ public class Liquid implements Shape {
         float z = min[2] - max[2];
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals and tangents
+            // normals
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(0.0f, 1.0f, 0.0f));
-                chunkMesh.getTangents().add(new Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
             }
             // uvs, following flow direction
             if (z > 0) {
