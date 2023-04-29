@@ -529,7 +529,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         historyButtons.addLight(new AmbientLight(ColorRGBA.White.mult(.5f)));
 
         // Create selection button
-        setSelectedBlockIndex(selectedBlockIndex);
+        setSelectedBlockIndex(config.getSelectedBlockIndex());
         blockSelectionButton = createBlockButton(selectedBlockNode, buttonSize, new DefaultMouseListener() {
             @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
@@ -622,7 +622,9 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
 
         selectedBlockIndex = index;
         selectedBlockNode = updateBlockNode(selectedBlockNode, index);
-        config.setSelectedBlock(getSelectedBlock());
+        Block selectedBlock = getSelectedBlock();
+        config.setSelectedBlock(selectedBlock);
+        config.setSelectedBlockIndex(index);
         updateHistory(index);
     }
 

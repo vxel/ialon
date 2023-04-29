@@ -88,6 +88,7 @@ public class IalonConfig {
     private Path savePath = FileSystems.getDefault().getPath(SAVEDIR);
 
     private Block selectedBlock = null;
+    private int selectedBlockIndex = 0;
     private ChunkManager chunkManager;
     private ChunkRepository chunkRepository;
     private TerrainGenerator terrainGenerator;

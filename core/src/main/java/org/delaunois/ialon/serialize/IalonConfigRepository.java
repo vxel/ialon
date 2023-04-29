@@ -65,6 +65,9 @@ public class IalonConfigRepository {
             if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
                 config.setCamRotation(playerStateDTO.getRotation());
             }
+            if (playerStateDTO.getSelectedBlockIndex() != null) {
+                config.setSelectedBlockIndex(playerStateDTO.getSelectedBlockIndex());
+            }
             config.setPlayerStartFly(playerStateDTO.isFly());
             config.setGridRadius(playerStateDTO.getGridRadius());
             config.setTime(playerStateDTO.getTime());
@@ -80,17 +83,7 @@ public class IalonConfigRepository {
     }
 
     public static void saveConfig(IalonConfig config) {
-        getPlayerSavePath(config);
-        PlayerStateDTO pstate = new PlayerStateDTO(
-                config.getPlayerLocation(),
-                config.getCamRotation(),
-                config.getTime());
-
-        pstate.setFly(config.isPlayerStartFly());
-        pstate.setTimeFactorIndex(config.getTimeFactorIndex());
-        pstate.setGridRadius(config.getGridRadius());
-
-        if (!savePlayerStateDTO(pstate, config)) {
+        if (!savePlayerStateDTO(new PlayerStateDTO(config), config)) {
             log.error("Could not properly save User Settings");
         }
     }

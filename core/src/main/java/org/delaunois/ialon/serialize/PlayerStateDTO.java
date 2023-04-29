@@ -22,6 +22,8 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 
+import org.delaunois.ialon.IalonConfig;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,18 +53,23 @@ public class PlayerStateDTO {
     private int timeFactorIndex = 1;
     private int gridRadius;
     private boolean fly;
+    private Integer selectedBlockIndex;
 
-    public PlayerStateDTO(Vector3f location, Quaternion rotation, float time) {
-        this.posx = location.x;
-        this.posy = location.y;
-        this.posz = location.z;
-        if (rotation != null) {
-            this.rotx = rotation.getX();
-            this.roty = rotation.getY();
-            this.rotz = rotation.getZ();
-            this.rotw = rotation.getW();
+    public PlayerStateDTO(IalonConfig config) {
+        this.posx = config.getPlayerLocation().x;
+        this.posy = config.getPlayerLocation().y;
+        this.posz = config.getPlayerLocation().z;
+        if (config.getCamRotation() != null) {
+            this.rotx = config.getCamRotation().getX();
+            this.roty = config.getCamRotation().getY();
+            this.rotz = config.getCamRotation().getZ();
+            this.rotw = config.getCamRotation().getW();
         }
-        this.time = time;
+        this.time = config.getTime();
+        this.timeFactorIndex = config.getTimeFactorIndex();
+        this.fly = config.isPlayerStartFly();
+        this.gridRadius = config.getGridRadius();
+        this.selectedBlockIndex = config.getSelectedBlockIndex();
     }
 
     @JsonIgnore
