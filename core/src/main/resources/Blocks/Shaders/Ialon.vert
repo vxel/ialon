@@ -115,10 +115,11 @@ void main() {
 
          // Adapt the sunlight to the current ambient level (i.e. night or day)
          float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;
-         float lightLevel = levels[SunIntensity] * lum;
+         float sunlight = levels[SunIntensity] * lum;
+         float torchlight = levels[TorchIntensity];
 
          // Get the maximum light between Sun and Torch lights
-         lightLevel = min(max(lightLevel, levels[TorchIntensity]), 0.7f);
+         float lightLevel = min(max(sunlight, torchlight), 0.7f);
 
          AmbientSum.xyz = lightLevel * inColor.rgb;
          DiffuseSum *= vec4(AmbientSum.r, AmbientSum.g, AmbientSum.b, 1);

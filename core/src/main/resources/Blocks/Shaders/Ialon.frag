@@ -54,8 +54,6 @@ void main() {
         discard;
     }
 
-    gl_FragColor.rgb = AmbientSum.rgb * diffuseColor.rgb
-                         + DiffuseSum.rgb  * diffuseColor.rgb;
-
+    gl_FragColor.rgb = (AmbientSum.rgb + DiffuseSum.rgb) * diffuseColor.rgb;
     gl_FragColor.a = alpha;
 }
