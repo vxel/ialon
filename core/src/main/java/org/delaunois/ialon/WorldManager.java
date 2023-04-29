@@ -79,7 +79,7 @@ public class WorldManager {
 
         if (previousBlock == null) {
             // 2. Adding a block on empty non-water location : add the block
-            addBlockInEmptyNonWaterLocation(block, chunk, blockLocationInsideChunk);
+            addBlockInEmptyNonWaterLocation(block, location, chunk, blockLocationInsideChunk);
 
         } else if (previousBlock.getLiquidLevel() > 0) {
             // 3. Adding block in water
@@ -251,7 +251,37 @@ public class WorldManager {
         }).orElse(0);
     }
 
-    private void addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
+    private void addBlockInEmptyNonWaterLocation(Block block, Vector3f location, Chunk chunk, Vec3i blockLocationInsideChunk) {
+        if (ShapeIds.SLAB.equals(block.getShape())) {
+            Vector3f belowLocation = location.add(0, -1, 0);
+            Block below = null;
+            Vec3i belowBlockLocationInsideChunk = null;
+            Vec3i belowBlockChunkLocation = ChunkManager.getChunkLocation(belowLocation);
+            Chunk belowBlockChunk = chunkManager.getChunk(belowBlockChunkLocation).orElse(null);
+            if (belowBlockChunk != null) {
+                belowBlockLocationInsideChunk = belowBlockChunk.toLocalLocation(ChunkManager.getBlockLocation(belowLocation));
+                below = belowBlockChunk.getBlock(belowBlockLocationInsideChunk);
+            }
+
+            if (below != null) {
+                if (ShapeIds.SLAB.equals(below.getShape())) {
+                    block = BlocksConfig.getInstance()
+                            .getBlockRegistry()
+                            .get(BlockIds.getName(block.getType(), ShapeIds.DOUBLE_SLAB, 0));
+                    blockLocationInsideChunk = belowBlockLocationInsideChunk;
+                    chunk = belowBlockChunk;
+
+                } else if (ShapeIds.DOUBLE_SLAB.equals(below.getShape())) {
+                    block = BlocksConfig.getInstance()
+                            .getBlockRegistry()
+                            .get(BlockIds.getName(block.getType(), ShapeIds.CUBE, 0));
+
+                    blockLocationInsideChunk = belowBlockLocationInsideChunk;
+                    chunk = belowBlockChunk;
+                }
+            }
+        }
+
         chunk.addBlock(blockLocationInsideChunk, block);
         if (WATER_SOURCE.equals(block.getName()) && chunkLiquidManager != null) {
             chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
