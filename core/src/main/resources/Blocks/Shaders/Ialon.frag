@@ -20,6 +20,7 @@ flat in vec2 wrapCoordMax;
 in vec2 texCoord;
 in vec3 AmbientSum;
 in vec4 DiffuseSum;
+in float fogFactor;
 
 void main() {
 
@@ -56,4 +57,5 @@ void main() {
 
     gl_FragColor.rgb = (AmbientSum.rgb + DiffuseSum.rgb) * diffuseColor.rgb;
     gl_FragColor.a = alpha;
+    //gl_FragColor = mix(vec4(0.39, 0.67, 1.0, 1.0), gl_FragColor, fogFactor);
 }

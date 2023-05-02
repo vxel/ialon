@@ -14,8 +14,6 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
 
-import java.util.List;
-
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -134,11 +132,10 @@ public class Liquid implements Shape {
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location);
-        List<Vector4f> colors = chunkMesh.getColors();
-        colors.add(color);
-        colors.add(color);
-        colors.add(color);
-        colors.add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
     }
 
     protected void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, float[] v0, float[] v1, float[] v2, float[] v3) {

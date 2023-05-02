@@ -14,8 +14,6 @@ import com.rvandoosselaer.blocks.Shape;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
-import java.util.List;
-
 import lombok.Getter;
 import lombok.ToString;
 
@@ -113,11 +111,10 @@ public class Fence implements Shape {
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
-        List<Vector4f> colors = chunkMesh.getColors();
-        colors.add(color);
-        colors.add(color);
-        colors.add(color);
-        colors.add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
+        chunkMesh.getColors().add(color);
     }
 
     private boolean needFence(Vec3i location, Direction face, Chunk chunk) {

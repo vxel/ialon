@@ -13,8 +13,6 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.BlockNeighborhood;
 
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
@@ -90,7 +88,6 @@ public class Cube implements Shape {
 
     private boolean enlightFace(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
-        List<Vector4f> colors = chunkMesh.getColors();
 
         // 2 3 4    a01  a11
         // 1   5
@@ -105,10 +102,10 @@ public class Cube implements Shape {
         int grad1 = Math.abs(a00 - a11);
         int grad2 = Math.abs(a01 - a10);
 
-        colors.add(chunk.applyAO(color, a00));
-        colors.add(chunk.applyAO(color, a01));
-        colors.add(chunk.applyAO(color, a10));
-        colors.add(chunk.applyAO(color, a11));
+        chunkMesh.getColors().add(chunk.applyAO(color, a00));
+        chunkMesh.getColors().add(chunk.applyAO(color, a01));
+        chunkMesh.getColors().add(chunk.applyAO(color, a10));
+        chunkMesh.getColors().add(chunk.applyAO(color, a11));
 
         return grad1 < grad2;
     }

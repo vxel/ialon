@@ -15,6 +15,7 @@ uniform float m_Shininess;
     uniform vec4 g_LightData[NB_LIGHTS];
 #endif
 uniform vec4 g_AmbientLightColor;
+uniform vec3 g_CameraPosition;
 
 attribute vec3 inPosition;
 attribute vec2 inTexCoord;
@@ -40,6 +41,7 @@ out vec4 DiffuseSum;
 out vec3 SpecularSum;
 
 out vec2 texCoord;
+out float fogFactor;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
@@ -63,6 +65,10 @@ out vec2 texCoord;
         1.0
     );
 #endif
+
+float len2(vec3 d) {
+    return d.x*d.x + d.y*d.y + d.z*d.z;
+}
 
 void main() {
     vec4 modelSpacePos = vec4(inPosition, 1.0);
@@ -162,6 +168,10 @@ void main() {
 
          DiffuseSum.rgb  *= diffuseAccum.rgb;
          SpecularSum.rgb *= specularAccum.rgb;
-     #endif
+    #endif
 
+    //vec4 worldSpacePso = g_WorldMatrix * modelSpacePos;
+    //float dist2 = len2(worldSpacePso.xyz - g_CameraPosition.xyz);
+    //fogFactor = 1.3f - dist2 * 0.00002f;
+    //fogFactor = clamp(fogFactor, 0.0, 1.0);
 }

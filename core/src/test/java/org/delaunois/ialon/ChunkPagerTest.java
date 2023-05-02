@@ -11,6 +11,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.URISyntaxException;
@@ -64,6 +65,56 @@ public class ChunkPagerTest {
 
         chunkPager.cleanup(100);
         chunkManager.cleanup(100);
+    }
+
+    @Test
+    @Disabled("Performance test")
+    void testChunkPagerTest() {
+        System.gc();
+        for (int i = 0; i < 5; i++) {
+            testPerf();
+            System.out.println("Warmup Duration " + i);
+        }
+
+        long totalDuration = 0;
+        long totalPages = 0;
+        for (int i = 0; i < 20; i++) {
+            long start = System.currentTimeMillis();
+            int numPages = testPerf();
+            long duration = System.currentTimeMillis() - start;
+            totalDuration += duration;
+            totalPages += numPages;
+            System.out.println("Duration " + i + " : " + duration / (float) numPages);
+        }
+        System.out.println("Mean " + totalDuration / (float)totalPages);
+    }
+
+    int testPerf() {
+        ChunkManager chunkManager = ChunkManager.builder()
+                .generator(new FlatTerrainGenerator())
+                .poolSize(1)
+                .build();
+        assertNotNull(chunkManager);
+        chunkManager.initialize();
+
+        ChunkPager chunkPager = new ChunkPager(new Node(), chunkManager);
+        chunkPager.setMaxUpdatePerFrame(10000);
+        chunkPager.initialize();
+
+        Vector3f location = new Vector3f();
+        chunkPager.setLocation(location);
+        chunkPager.update();
+
+        Vec3i grid = BlocksConfig.getInstance().getGrid();
+        int numPages = grid.x * grid.y * grid.z;
+
+        while (chunkPager.getAttachedPages().size() < numPages) {
+            chunkPager.update();
+        }
+
+        chunkPager.cleanup(100);
+        chunkManager.cleanup(100);
+        return numPages;
     }
 
     @Test

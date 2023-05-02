@@ -249,7 +249,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {
         Geometry geometry = createGeometry(type, chunkMesh);
-        if (geometry.getVertexCount() > 0) {
+        if (geometry != null) {
             if (TypeIds.WATER.equals(type)) {
                 /*
                  * Special case for water.
@@ -294,9 +294,13 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private Geometry createGeometry(String type, ChunkMesh chunkMesh) {
         Mesh mesh = chunkMesh.generateMesh();
+        if (mesh == null) {
+            return null;
+        }
+
+        Geometry geometry = new Geometry(type, mesh);
         chunkMesh.clear();
         TypeRegistry typeRegistry = BlocksConfig.getInstance().getTypeRegistry();
-        Geometry geometry = new Geometry(type, mesh);
         typeRegistry.applyMaterial(geometry, type);
 
         if (geometry.getMaterial().getAdditionalRenderState().getBlendMode() == RenderState.BlendMode.Alpha) {

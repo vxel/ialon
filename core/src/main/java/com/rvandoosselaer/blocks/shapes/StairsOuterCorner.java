@@ -12,8 +12,6 @@ import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
 import com.simsilica.mathd.Vec3i;
 
-import java.util.List;
-
 import lombok.ToString;
 
 /**
@@ -85,9 +83,8 @@ public class StairsOuterCorner implements Shape {
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh, int numVertices) {
         Vector4f color = chunk.getLightLevel(location, face);
-        List<Vector4f> colors = chunkMesh.getColors();
         for (int i = 0; i < numVertices; i++) {
-            colors.add(color);
+            chunkMesh.getColors().add(color);
         }
     }
 
