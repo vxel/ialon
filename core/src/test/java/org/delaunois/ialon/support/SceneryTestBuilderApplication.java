@@ -9,8 +9,12 @@ import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.state.BlockSelectionState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
+import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.ScreenState;
+import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
+import org.delaunois.ialon.state.SunState;
+import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
 import org.delaunois.ialon.state.WorldBuilderState;
 
@@ -43,7 +47,11 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
         stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
         stateManager.attach(new LightingState(config));
         stateManager.attach(new ScreenState(settings, config));
+        stateManager.attach(new SunState(config));
+        stateManager.attach(new MoonState(config));
+        stateManager.attach(new SkyState(config));
         stateManager.attach(new BlockSelectionState(config));
+        stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new WorldBuilderState(config));
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized

@@ -370,35 +370,39 @@ public class WorldManager {
 
     private Set<Vec3i> cleanAroundBlocks(Vector3f blockLocation) {
         Vector3f aroundLocation;
-        Block aroundBlock;
         Set<Vec3i> updatedChunks = new HashSet<>();
 
         // WEST
         aroundLocation = blockLocation.add(-1, 0, 0);
-        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null && ShapeIds.SQUARE_WEST.equals(aroundBlock.getShape())) {
+        Block west = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (west != null && ShapeIds.SQUARE_WEST.equals(west.getShape())) {
             updatedChunks.addAll(removeBlock(aroundLocation));
         }
 
         // EAST
         aroundLocation = blockLocation.add(1, 0, 0);
-        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null && ShapeIds.SQUARE_EAST.equals(aroundBlock.getShape())) {
+        Block east = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (east != null && ShapeIds.SQUARE_EAST.equals(east.getShape())) {
             updatedChunks.addAll(removeBlock(aroundLocation));
         }
 
         // NORTH
         aroundLocation = blockLocation.add(0, 0, -1);
-        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null && ShapeIds.SQUARE_NORTH.equals(aroundBlock.getShape())) {
+        Block north = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (north != null && ShapeIds.SQUARE_NORTH.equals(north.getShape())) {
             updatedChunks.addAll(removeBlock(aroundLocation));
         }
 
         // SOUTH
         aroundLocation = blockLocation.add(0, 0, 1);
-        aroundBlock = chunkManager.getBlock(aroundLocation).orElse(null);
-        if (aroundBlock != null && ShapeIds.SQUARE_SOUTH.equals(aroundBlock.getShape())) {
+        Block south = chunkManager.getBlock(aroundLocation).orElse(null);
+        if (south != null && ShapeIds.SQUARE_SOUTH.equals(south.getShape())) {
             updatedChunks.addAll(removeBlock(aroundLocation));
+        }
+
+        if ((south != null && south.isLiquidSource() && north != null && north.isLiquidSource())
+                || (west != null && west.isLiquidSource() && east != null && east.isLiquidSource())) {
+            updatedChunks.addAll(addBlock(blockLocation, BlocksConfig.getInstance().getBlockRegistry().get(WATER_SOURCE)));
         }
 
         return updatedChunks;
