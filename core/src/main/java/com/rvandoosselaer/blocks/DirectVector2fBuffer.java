@@ -28,8 +28,11 @@ public class DirectVector2fBuffer {
     }
 
     public FloatBuffer getBuffer() {
+        FloatBuffer newbuffer = BufferUtils.createFloatBuffer(buff.position());
         buff.flip();
-        return buff;
+        newbuffer.put(buff);
+        newbuffer.flip();
+        return newbuffer;
     }
 
     public int size() {

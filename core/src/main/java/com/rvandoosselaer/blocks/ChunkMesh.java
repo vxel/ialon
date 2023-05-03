@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor
 public class ChunkMesh {
 
-    private static final int INITIAL_CAPACITY = 1000;
+    private static final int INITIAL_CAPACITY = 2000;
 
     private boolean collisionMesh = false;
     private final DirectVector3fBuffer positions = new DirectVector3fBuffer(INITIAL_CAPACITY);

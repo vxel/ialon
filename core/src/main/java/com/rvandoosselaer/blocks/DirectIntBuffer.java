@@ -27,8 +27,11 @@ public class DirectIntBuffer {
     }
 
     public IntBuffer getBuffer() {
+        IntBuffer newbuffer = BufferUtils.createIntBuffer(buff.position());
         buff.flip();
-        return buff;
+        newbuffer.put(buff);
+        newbuffer.flip();
+        return newbuffer;
     }
 
     public int size() {
