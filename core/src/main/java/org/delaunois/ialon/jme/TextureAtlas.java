@@ -718,6 +718,18 @@ public class TextureAtlas {
             transformTextureCoords(inBuf, offset, outBuf, 0);
         }
 
+        public void transformTextureCoords(FloatBuffer inBuf, FloatBuffer outBuf, int position, int len) {
+            Vector2f tex = new Vector2f();
+
+            for (int i = position / 2; i < (position + len) / 2; i++) {
+                tex.x = inBuf.get(i * 2);
+                tex.y = inBuf.get(i * 2 + 1);
+                Vector2f location = getLocation(tex, 0);
+                outBuf.put(i * 2, location.x);
+                outBuf.put(i * 2 + 1, location.y);
+            }
+        }
+
         /**
          * Transforms a whole texture coordinates buffer.
          * @param inBuf The input texture buffer.

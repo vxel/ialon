@@ -435,9 +435,13 @@ public class Chunk {
             return true;
         }
 
-        if (neighbour.isTransparent() || block.isTransparent()) {
-            return !(block.getType().equals(neighbour.getType()));
+        if (neighbour.isTransparent() && !block.isTransparent()) {
+            return true;
         }
+
+        //if (neighbour.isTransparent() || block.isTransparent()) {
+        //    return !(block.getType().equals(neighbour.getType()));
+        //}
 
         return ShapeIds.LIQUID.equals(neighbour.getShape());
     }

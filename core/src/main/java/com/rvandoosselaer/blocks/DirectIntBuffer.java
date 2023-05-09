@@ -34,6 +34,10 @@ public class DirectIntBuffer {
         return newbuffer;
     }
 
+    public IntBuffer getInternalBuffer() {
+        return buff;
+    }
+
     public int size() {
         return size;
     }

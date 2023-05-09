@@ -5,9 +5,11 @@ import com.jme3.asset.AssetNotFoundException;
 import com.jme3.asset.TextureKey;
 import com.jme3.material.MatParamTexture;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
+import com.jme3.shader.VarType;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
@@ -53,14 +55,19 @@ public class TypeRegistry {
 
     private final ConcurrentMap<String, Material> registry = new ConcurrentHashMap<>();
     private final AssetManager assetManager;
+
     @Getter
     private BlocksTheme theme;
+
     @Getter
     private BlocksTheme defaultTheme = new BlocksTheme("Soartex Fanver", "Blocks/Themes/default/");
 
     @Getter
     @Setter
-    TextureAtlasManager atlasRepository;
+    private TextureAtlasManager atlasRepository;
+
+    private Material genericMaterial;
+    private Material transparentMaterial;
 
     /**
      * Will register default materials
@@ -110,9 +117,6 @@ public class TypeRegistry {
     }
 
     public void applyMaterial(@NonNull Geometry geom, @NonNull String name) {
-        Mesh inMesh = geom.getMesh();
-        Mesh outMesh = geom.getMesh();
-        geom.computeWorldMatrix();
         Material mat = get(name);
 
         MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
@@ -122,11 +126,72 @@ public class TypeRegistry {
             if (mat.getTextureParam("OverlayMap") != null) {
                 mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
             }
-            geom.setMaterial(mat);
-        } else {
-            geom.setMaterial(mat);
-            return;
         }
+        geom.setMaterial(mat);
+    }
+
+    public void applyGenericMaterial(@NonNull Geometry geom) {
+        geom.setMaterial(getGenericMaterial());
+    }
+
+    public void applyTransparentMaterial(@NonNull Geometry geom) {
+        geom.setMaterial(getTransparentMaterial());
+    }
+
+    public Material getGenericMaterial() {
+        if (this.genericMaterial != null) {
+            return this.genericMaterial;
+        }
+
+        Material mat = assetManager.loadMaterial(DEFAULT_BLOCK_MATERIAL);
+        mat.setParam("AlphaDiscardThreshold", VarType.Float, 0.1f);
+        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
+        if (matParamTexture != null) {
+            Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
+            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            if (mat.getTextureParam("OverlayMap") != null) {
+                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+            }
+        }
+        mat.getTextureParam("DiffuseMap").getTextureValue()
+                .setMagFilter(Texture.MagFilter.Nearest);
+        mat.getTextureParam("DiffuseMap").getTextureValue()
+                .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
+
+        this.genericMaterial = mat;
+        return mat;
+    }
+
+    public Material getTransparentMaterial() {
+        if (this.transparentMaterial != null) {
+            return this.transparentMaterial;
+        }
+        Material mat = assetManager.loadMaterial(DEFAULT_BLOCK_MATERIAL);
+        mat.setParam("AlphaDiscardThreshold", VarType.Float, 0.1f);
+        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        mat.getAdditionalRenderState().setPolyOffset(1.0f, 1.0f);
+        MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
+        if (matParamTexture != null) {
+            Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
+            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            if (mat.getTextureParam("OverlayMap") != null) {
+                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+            }
+        }
+        mat.getTextureParam("DiffuseMap").getTextureValue()
+                .setMagFilter(Texture.MagFilter.Nearest);
+        mat.getTextureParam("DiffuseMap").getTextureValue()
+                .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
+
+        this.transparentMaterial = mat;
+        return mat;
+    }
+
+    public void transformTextureCoords(@NonNull Geometry geom, @NonNull String name) {
+        Mesh inMesh = geom.getMesh();
+        Mesh outMesh = geom.getMesh();
+        geom.computeWorldMatrix();
 
         VertexBuffer inBuf = inMesh.getBuffer(VertexBuffer.Type.TexCoord);
         VertexBuffer outBuf = outMesh.getBuffer(VertexBuffer.Type.TexCoord);
@@ -141,6 +206,18 @@ public class TypeRegistry {
             FloatBuffer inPos = (FloatBuffer) inBuf.getData();
             FloatBuffer outPos = (FloatBuffer) outBuf.getData();
             tile.transformTextureCoords(inPos, 0, outPos);
+        }
+    }
+
+    public void transformTextureCoords(@NonNull String name, FloatBuffer inBuf, FloatBuffer outBuf, int position, int len) {
+        if (inBuf == null || outBuf == null) {
+            throw new IllegalStateException("Geometry mesh has no texture coordinate buffer.");
+        }
+        Texture2D dummy = new Texture2D();
+        dummy.setKey(new TextureKey(name));
+        TextureAtlas.TextureAtlasTile tile = this.atlasRepository.getAtlas().getAtlasTile(dummy);
+        if (tile != null) {
+            tile.transformTextureCoords(inBuf, outBuf, position, len);
         }
     }
 

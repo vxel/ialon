@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ChunkPagerTest {
 
@@ -106,14 +107,14 @@ public class ChunkPagerTest {
         double var = varsum / (double)durations.length;
         double stddev = Math.sqrt(var);
         System.out.println("Mean: " + (int)(mean / 1000000f) + "µs, Stddev: " + (int)(stddev / 1000000) + "µs");
-
+        assertTrue(mean > 0);
     }
 
     private long performGeneration(IalonConfig config, ChunkMeshGenerator meshGenerator) {
         Chunk[] chunks = new Chunk[1000];
-        Vec3i location = new Vec3i(0, 0, 0);
+        Vec3i location = new Vec3i(0, 3, 0);
         for (int i = 0; i < 1000; i++) {
-            location.set(i, 0, i);
+            location.set(i, 3, i);
             chunks[i] = config.getTerrainGenerator().generate(location);
         }
 

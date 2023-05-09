@@ -38,6 +38,10 @@ public class DirectVector3fBuffer {
         return newbuffer;
     }
 
+    public FloatBuffer getInternalBuffer() {
+        return buff;
+    }
+
     public int size() {
         return size;
     }

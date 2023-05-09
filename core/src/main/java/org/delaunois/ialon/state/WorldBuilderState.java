@@ -60,7 +60,8 @@ public class WorldBuilderState extends BaseAppState {
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
         }
-        if (numPagesAttached >= total && physicsChunkPager.isReady()) {
+        if (numPagesAttached >= total && physicsChunkPager.isReady()
+                || (System.currentTimeMillis() - startTime > 10000)) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);

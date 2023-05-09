@@ -35,6 +35,10 @@ public class DirectVector2fBuffer {
         return newbuffer;
     }
 
+    public FloatBuffer getInternalBuffer() {
+        return buff;
+    }
+
     public int size() {
         return size;
     }

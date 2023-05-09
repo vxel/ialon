@@ -8,7 +8,6 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.WireBox;
-import com.jme3.texture.Texture;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -44,6 +43,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @ToString(onlyExplicitlyIncluded = true)
 public class FacesMeshGenerator implements ChunkMeshGenerator {
+
+    private static final String CHUNK_MESH_TYPE_GENERIC = "generic";
+    private static final String CHUNK_MESH_TYPE_TRANSPARENT = "transparent";
+    private static final String CHUNK_MESH_TYPE_WATER = "water";
 
     private final IalonConfig config;
 
@@ -95,7 +98,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // create a geometry for each type of block
         meshMap.forEach((type, chunkMesh) -> {
             Geometry geometry = createGeometry(type, chunkMesh);
-            node.attachChild(geometry);
+            if (geometry != null) {
+                BlocksConfig.getInstance().getTypeRegistry().transformTextureCoords(geometry, type);
+                node.attachChild(geometry);
+            }
         });
 
         // position the node
@@ -218,33 +224,59 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                             Map<String, ChunkMesh> meshMap,
                             ChunkMesh collisionMesh
     ) {
-        if (block != null) {
-            // create a mesh for each different block type
-            ChunkMesh mesh = meshMap.computeIfAbsent(block.getType(), function -> new ChunkMesh());
-
-            // add the block mesh to the chunk mesh
-            Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
-            neighborhood.setLocation(blockLocation);
-            shape.add(neighborhood, mesh);
-
-            // add the block to the collision mesh
-            if (block.isSolid()) {
-                shape.add(neighborhood, collisionMesh);
-            }
-
-            // add water if any
-            if (!Objects.equals(block.getType(), TypeIds.WATER) && block.getLiquidLevel() > 0) {
-                mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
-                if (block.isLiquidSource()) {
-                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID5);
-                } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
-                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID);
-                } else {
-                    shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
-                }
-                shape.add(neighborhood, mesh);
-            }
+        if (block == null) {
+            return;
         }
+
+        // create a mesh for each different block type
+        ChunkMesh mesh = meshMap.computeIfAbsent(
+                getChunkMeshType(block),
+                function -> new ChunkMesh());
+
+        // add the block mesh to the chunk mesh
+        Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
+        neighborhood.setLocation(blockLocation);
+        addShapeToMesh(block.getType(), shape, mesh, neighborhood);
+
+        // add the block to the collision mesh
+        if (block.isSolid()) {
+            shape.add(neighborhood, collisionMesh);
+        }
+
+        // add water if any
+        if (block.getLiquidLevel() > 0 && !Objects.equals(block.getType(), TypeIds.WATER)) {
+            mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
+            if (block.isLiquidSource()) {
+                shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID5);
+            } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
+                shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID);
+            } else {
+                shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
+            }
+            addShapeToMesh(TypeIds.WATER, shape, mesh, neighborhood);
+        }
+    }
+
+    private String getChunkMeshType(Block block) {
+        if (block.getType().equals(TypeIds.WATER)) {
+            return CHUNK_MESH_TYPE_WATER;
+        }
+        if (block.isTransparent()) {
+            return CHUNK_MESH_TYPE_TRANSPARENT;
+        }
+        return CHUNK_MESH_TYPE_GENERIC;
+    }
+
+    private void addShapeToMesh(String textureName, Shape shape, ChunkMesh mesh, BlockNeighborhood neighborhood) {
+        int position = mesh.getUvs().getInternalBuffer().position();
+        shape.add(neighborhood, mesh);
+        int length = mesh.getUvs().getInternalBuffer().position() - position;
+        BlocksConfig.getInstance().getTypeRegistry().transformTextureCoords(textureName,
+                mesh.getUvs().getInternalBuffer(),
+                mesh.getUvs().getInternalBuffer(),
+                position,
+                length
+        );
     }
 
     private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {
@@ -301,16 +333,21 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Geometry geometry = new Geometry(type, mesh);
         chunkMesh.clear();
         TypeRegistry typeRegistry = BlocksConfig.getInstance().getTypeRegistry();
-        typeRegistry.applyMaterial(geometry, type);
-
-        if (geometry.getMaterial().getAdditionalRenderState().getBlendMode() == RenderState.BlendMode.Alpha) {
-            if (TypeIds.WATER.equals(type)) {
+        switch (type) {
+            case CHUNK_MESH_TYPE_WATER:
+                typeRegistry.applyMaterial(geometry, type);
                 geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
-            }
-        } else {
-            geometry.getMaterial().getTextureParam("DiffuseMap").getTextureValue()
-                    .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
+                break;
+            case CHUNK_MESH_TYPE_TRANSPARENT:
+                typeRegistry.applyTransparentMaterial(geometry);
+                break;
+            case CHUNK_MESH_TYPE_GENERIC:
+                typeRegistry.applyGenericMaterial(geometry);
+                break;
+            default:
+                typeRegistry.applyMaterial(geometry, type);
         }
+
         return geometry;
     }
 

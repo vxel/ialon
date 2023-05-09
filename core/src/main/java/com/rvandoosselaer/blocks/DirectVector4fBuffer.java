@@ -35,6 +35,10 @@ public class DirectVector4fBuffer {
         return newbuffer;
     }
 
+    public FloatBuffer getInternalBuffer() {
+        return buff;
+    }
+
     public int size() {
         return size;
     }
