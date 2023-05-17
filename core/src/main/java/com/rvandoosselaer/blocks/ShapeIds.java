@@ -95,6 +95,10 @@ public interface ShapeIds {
     String SQUARE_EAST = "square_east";
     String SQUARE_SOUTH = "square_south";
     String SQUARE_WEST = "square_west";
+    String SQUARE_HE = "square_he";
+    String SQUARE_HW = "square_hw";
+    String SQUARE_HS = "square_hs";
+    String SQUARE_HN = "square_hn";
     String[] ALL_SQUARES = {SQUARE, SQUARE_DOWN, SQUARE_NORTH, SQUARE_EAST, SQUARE_SOUTH, SQUARE_WEST};
 
     String STAIRS_NORTH = "stairs_north";

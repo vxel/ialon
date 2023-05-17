@@ -76,6 +76,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.SHORT_POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.SQUARE;
 import static com.rvandoosselaer.blocks.ShapeIds.SQUARE_NORTH;
+import static com.rvandoosselaer.blocks.ShapeIds.SQUARE_HS;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_EAST;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
@@ -104,6 +105,7 @@ import static org.delaunois.ialon.IalonBlock.OAK_PLANKS;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LEAVES;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LOG;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_PLANKS;
+import static org.delaunois.ialon.IalonBlock.RAIL;
 import static org.delaunois.ialon.IalonBlock.ROCK;
 import static org.delaunois.ialon.IalonBlock.SAND;
 import static org.delaunois.ialon.IalonBlock.SCALE;
@@ -134,7 +136,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             WATER_SOURCE,
             getName(WHITE_LIGHT, SHORT_POLE),
             getName(SCALE, SQUARE_NORTH),
-            SPACER,
+            getName(RAIL, SQUARE_HS),
 
             getName(DIRT, CUBE),
             getName(DIRT, DOUBLE_SLAB),
@@ -656,8 +658,14 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
     }
 
     private Node updateBlockNode(Node nodeToRemove, int blockIndexToAdd) {
-        Node nodeToAdd = (Node)blocks[blockIndexToAdd].clone();
-        updateBlockNode(nodeToRemove, nodeToAdd);
+        Node node = blocks[blockIndexToAdd];
+        Node nodeToAdd;
+        if (node != null) {
+            nodeToAdd = (Node)node.clone();
+        } else {
+            nodeToAdd = (Node)blocks[0].clone();
+        }
+        updateBlockNode(nodeToRemove, (Node)nodeToAdd.clone());
         return nodeToAdd;
     }
 

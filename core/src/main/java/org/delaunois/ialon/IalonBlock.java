@@ -47,6 +47,8 @@ public enum IalonBlock {
     ITEM_SEAWEED("item_seaweed", false, false, false, ShapeIds.CROSS_PLANE),
     ITEM_GRASS(TypeIds.ITEM_GRASS, false, false, false, ShapeIds.CROSS_PLANE),
     SCALE(TypeIds.SCALE, false, false, false, ShapeIds.SQUARE_NORTH, ShapeIds.SQUARE_SOUTH, ShapeIds.SQUARE_WEST, ShapeIds.SQUARE_EAST),
+    RAIL(TypeIds.RAIL, false, false, false, ShapeIds.SQUARE_HE, ShapeIds.SQUARE_HS),
+    RAIL_CURVED(TypeIds.RAIL_CURVED, false, false, false, ShapeIds.SQUARE_HE, ShapeIds.SQUARE_HW, ShapeIds.SQUARE_HS, ShapeIds.SQUARE_HN),
     SAND(TypeIds.SAND, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
     OAK_LOG(TypeIds.OAK_LOG, true, false, true, IalonShapeSet.STANDARD_SHAPES_NO_STAIRS.getShapes()),

@@ -1,5 +1,8 @@
 package com.rvandoosselaer.blocks;
 
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.shapes.CrossPlane;
 import com.rvandoosselaer.blocks.shapes.Cube;
 import com.rvandoosselaer.blocks.shapes.Fence;
@@ -169,6 +172,10 @@ public class ShapeRegistry {
         register(ShapeIds.SQUARE_EAST, new Square(Direction.EAST));
         register(ShapeIds.SQUARE_SOUTH, new Square(Direction.SOUTH));
         register(ShapeIds.SQUARE_WEST, new Square(Direction.WEST));
+        register(ShapeIds.SQUARE_HS, new Square(new Quaternion()));
+        register(ShapeIds.SQUARE_HN, new Square(new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y)));
+        register(ShapeIds.SQUARE_HE, new Square(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_Y)));
+        register(ShapeIds.SQUARE_HW, new Square(new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y)));
     }
 
     private void registerSlabs() {

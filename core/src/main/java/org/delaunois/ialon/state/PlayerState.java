@@ -73,11 +73,16 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import static com.rvandoosselaer.blocks.TypeIds.RAIL;
+import static com.rvandoosselaer.blocks.TypeIds.RAIL_CURVED;
+
 @Slf4j
 public class PlayerState extends BaseAppState {
 
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
+    private static final Vector3f NORTH = new Vector3f(0, 0, -1);
+    private static final Vector3f WEST = new Vector3f(-1, 0, 0);
 
     private SimpleApplication app;
     private Label crossHair;
@@ -132,6 +137,8 @@ public class PlayerState extends BaseAppState {
     private final Vector3f camDir = new Vector3f();
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
+    private final Vector3f railDirection = new Vector3f();
+    private final Vector3f tmpDirection = new Vector3f();
     private long lastCollisionTest = System.currentTimeMillis();
     private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
 
@@ -205,7 +212,9 @@ public class PlayerState extends BaseAppState {
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
         updatePlaceholders();
-        updateMove(move);
+
+        Block block = worldManager.getBlock(camera.getLocation().subtract(0, 1, 0));
+        updateMove(move, block);
 
         if (move.length() > 0) {
             move.normalizeLocal().multLocal(fly ? config.getPlayerFlySpeed() : config.getPlayerMoveSpeed());
@@ -215,13 +224,24 @@ public class PlayerState extends BaseAppState {
         player.setWalkDirection(walkDirection);
 
         updatePlayerPosition();
-        updateFallSpeed();
+        updateFallSpeed(block);
     }
 
-    private void updateMove(Vector3f move) {
+    private void updateMove(Vector3f move, Block block) {
         if (fly) {
             updateFlyMove(move);
         } else {
+            if (block != null) {
+                if (RAIL.equals(block.getType())) {
+                    updateRailStraightMove(move, block);
+                } else if (RAIL_CURVED.equals(block.getType())) {
+                    updateRailCurvedMove(move, block);
+                } else {
+                    railDirection.set(0, 0, 0);
+                }
+            } else {
+                railDirection.set(0, 0, 0);
+            }
             updateWalkMove(move);
         }
 
@@ -231,6 +251,115 @@ public class PlayerState extends BaseAppState {
         if (down) {
             move.addLocal(0, -1, 0);
         }
+    }
+
+    private void updateRailStraightMove(Vector3f move, Block block) {
+        tmpDirection.set(railDirection);
+        if (railDirection.x == 0 && railDirection.y == 0 && railDirection.z == 0) {
+            // No current raildirection, infer from camera direction
+            if (ShapeIds.SQUARE_HS.equals(block.getShape())) {
+                if (camDir.setY(0).normalizeLocal().dot(NORTH) > 0) {
+                    railDirection.set(0, 0, -1);
+                } else {
+                    railDirection.set(0, 0, 1);
+                }
+            } else if (ShapeIds.SQUARE_HE.equals(block.getShape())) {
+                if (camDir.setY(0).normalizeLocal().dot(WEST) > 0) {
+                    railDirection.set(-1, 0, 0);
+                } else {
+                    railDirection.set(1, 0, 0);
+                }
+            }
+        } else {
+            // Existing raildirection, keep direction
+            if (ShapeIds.SQUARE_HS.equals(block.getShape())) {
+                if (railDirection.z < 0) {
+                    railDirection.set(0, 0, -1);
+                } else {
+                    railDirection.set(0, 0, 1);
+                }
+            } else if (ShapeIds.SQUARE_HE.equals(block.getShape())) {
+                if (railDirection.x < 0) {
+                    railDirection.set(-1, 0, 0);
+                } else {
+                    railDirection.set(1, 0, 0);
+                }
+            }
+        }
+
+        // Align player on the rail
+        alignLocation(playerLocation, railDirection);
+        player.setPhysicsLocation(playerLocation);
+
+        move.addLocal(railDirection);
+    }
+
+    private static void alignLocation(Vector3f location, Vector3f direction) {
+        if (direction.x != 0) {
+            // Align on Z
+            if (location.z < 0) {
+                location.setZ(((int) location.z) - 0.5f);
+            } else {
+                location.setZ(((int) location.z) + 0.5f);
+            }
+        }
+        if (direction.z != 0) {
+            // Align on X
+            if (location.x < 0) {
+                location.setX(((int) location.x) - 0.5f);
+            } else {
+                location.setX(((int) location.x) + 0.5f);
+            }
+        }
+    }
+
+    private void updateRailCurvedMove(Vector3f move, Block block) {
+        if (railDirection.x == 0 && railDirection.y == 0 && railDirection.z == 0) {
+            // No current raildirection, infer from camera direction
+            float nsdot = camDir.setY(0).normalizeLocal().dot(NORTH);
+            float ewdot = camDir.setY(0).normalizeLocal().dot(WEST);
+            if (Math.abs(nsdot) > Math.abs(ewdot)) {
+                if (nsdot > 0) {
+                    railDirection.set(0, 0, -1);
+                } else {
+                    railDirection.set(0, 0, 1);
+                }
+            } else {
+                if (ewdot > 0) {
+                    railDirection.set(-1, 0, 0);
+                } else {
+                    railDirection.set(1, 0, 0);
+                }
+            }
+            alignLocation(playerLocation, railDirection);
+        }
+
+        switch (block.getShape()) {
+            case ShapeIds.SQUARE_HW:
+                // |_
+            case ShapeIds.SQUARE_HE:
+                // -|
+                if (railDirection.z > 0) {
+                    railDirection.set(1, 0, 1);
+                } else {
+                    railDirection.set(-1, 0, -1);
+                }
+                break;
+            case ShapeIds.SQUARE_HS:
+                // |-
+            case ShapeIds.SQUARE_HN:
+                // _|
+                if (railDirection.x > 0) {
+                    railDirection.set(1, 0, -1);
+                } else {
+                    railDirection.set(-1, 0, 1);
+                }
+                break;
+            default:
+                // Illegal curved shape
+                break;
+        }
+        move.addLocal(railDirection);
     }
 
     private void updateWalkMove(Vector3f move) {
@@ -504,6 +633,7 @@ public class PlayerState extends BaseAppState {
     private void addBlockTask(Vector3f location, Block block) {
         // Orientate the selected block
         Block orientatedBlock = worldManager.orientateBlock(block, location,
+                camDir,
                 Direction.fromVector(addPlaceholder.getWorldTranslation()
                         .subtract(removePlaceholder.getWorldTranslation())));
 
@@ -606,8 +736,7 @@ public class PlayerState extends BaseAppState {
         addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
     }
 
-    private void updateFallSpeed() {
-        Block block = worldManager.getBlock(camera.getLocation().subtract(0, 1, 0));
+    private void updateFallSpeed(Block block) {
         if (block != null) {
             if (block.getName().contains("water")) {
                 updateFallSpeedWaterIn();

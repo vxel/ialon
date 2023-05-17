@@ -261,6 +261,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (block.getType().equals(TypeIds.WATER)) {
             return CHUNK_MESH_TYPE_WATER;
         }
+        if (TypeIds.RAIL.equals(block.getType())) {
+            return block.getType();
+        }
         if (block.isTransparent()) {
             return CHUNK_MESH_TYPE_TRANSPARENT;
         }

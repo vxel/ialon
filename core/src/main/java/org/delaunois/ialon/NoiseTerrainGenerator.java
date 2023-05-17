@@ -34,7 +34,8 @@ import org.delaunois.ialon.fastnoise.NoiseLayer;
 import java.util.Arrays;
 import java.util.Random;
 
-import static com.rvandoosselaer.blocks.TypeIds.WATER;
+import static com.rvandoosselaer.blocks.BlockIds.WATER;
+import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 
 public class NoiseTerrainGenerator implements TerrainGenerator {
 
@@ -158,7 +159,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
             block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
         } else {
-            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID5));
+            block = BlocksConfig.getInstance().getBlockRegistry().get(WATER_SOURCE);
             chunk.setSunlight(x, y, z, 14);
         }
         return block;

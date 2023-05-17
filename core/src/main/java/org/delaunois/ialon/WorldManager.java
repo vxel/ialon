@@ -21,6 +21,8 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import static com.rvandoosselaer.blocks.BlockIds.RAIL;
+import static com.rvandoosselaer.blocks.BlockIds.RAIL_CURVED;
 import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
 
@@ -41,6 +43,8 @@ public class WorldManager {
     @Getter
     private final ChunkLiquidManager chunkLiquidManager;
 
+    private static final Vector3f NORTH = new Vector3f(0, 0, -1);
+
     public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager) {
         this.chunkManager = chunkManager;
         this.chunkLightManager = chunkLightManager;
@@ -58,8 +62,6 @@ public class WorldManager {
     }
 
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
-        log.info("Adding block {}", block.getName());
-
         // Preserves the order of the location to generate
         Set<Vec3i> chunks = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
@@ -69,6 +71,15 @@ public class WorldManager {
         }
 
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(ChunkManager.getBlockLocation(location));
+
+        if (TypeIds.RAIL.equals(block.getType())) {
+            block = selectRailBlock(block, location);
+            if (block == null) {
+                return chunks;
+            }
+        }
+
+        log.info("Adding block {}", block.getName());
 
         Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
         if (Objects.equals(previousBlock, block)) {
@@ -127,7 +138,7 @@ public class WorldManager {
         return chunks;
     }
 
-    public Block orientateBlock(Block block, Vector3f blockLocation, Direction direction) {
+    public Block orientateBlock(Block block, Vector3f blockLocation, Vector3f camDirection, Direction direction) {
         String type = block.getType();
         String[] shapeProperties = block.getShape().split("_");
         String shape = shapeProperties[0];
@@ -143,6 +154,15 @@ public class WorldManager {
             if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
                 log.info("No cube block behind scale");
                 return null;
+            }
+        }
+
+        // Turn the rail in the direction of the cam
+        if (TypeIds.RAIL.equals(block.getType())) {
+            if (Math.abs(camDirection.setY(0).normalizeLocal().dot(NORTH)) > 0.5f) {
+                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
+            } else {
+                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
             }
         }
 
@@ -249,6 +269,55 @@ public class WorldManager {
             Vec3i loc = chunk.toLocalLocation(ChunkManager.getBlockLocation(location));
             return chunk.getTorchlight(loc.x, loc.y, loc.z);
         }).orElse(0);
+    }
+
+    private Block selectRailBlock(Block block, Vector3f location) {
+        Block below = chunkManager.getBlock(location.add(0, -1, 0)).orElse(null);
+        if (below == null || !ShapeIds.CUBE.equals(below.getShape())) {
+            log.info("No cube block below rail");
+            return null;
+        }
+
+        Block north = chunkManager.getBlock(location.subtract(0, 0, -1)).orElse(null);
+        Block south = chunkManager.getBlock(location.subtract(0, 0, 1)).orElse(null);
+        Block west = chunkManager.getBlock(location.subtract(-1, 0, 0)).orElse(null);
+        Block east = chunkManager.getBlock(location.subtract(1, 0, 0)).orElse(null);
+        boolean n = north != null && north.getType().startsWith(RAIL);
+        boolean s = south != null && south.getType().startsWith(RAIL);
+        boolean w = west != null && west.getType().startsWith(RAIL);
+        boolean e = east != null && east.getType().startsWith(RAIL);
+
+        if ((n || s) && (!e && !w)) {
+            // |
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
+        }
+
+        if ((e || w) && (!n && !s)) {
+            // _
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
+        }
+
+        if (n && e) {
+            // |_
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HW, 0));
+        }
+
+        if (s && w) {
+            // -|
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HE, 0));
+        }
+
+        if (s) {
+            // |-
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HS, 0));
+        }
+
+        if (n) {
+            // _|
+            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HN, 0));
+        }
+
+        return block;
     }
 
     private void addBlockInEmptyNonWaterLocation(Block block, Vector3f location, Chunk chunk, Vec3i blockLocationInsideChunk) {

@@ -37,4 +37,6 @@ public interface TypeIds {
     String WHITE_LIGHT = "white_light";
     String WINDOW = "window";
     String SCALE = "scale";
+    String RAIL = "rail";
+    String RAIL_CURVED = "rail_curved";
 }

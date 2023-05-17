@@ -11,7 +11,6 @@ import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
 import com.simsilica.mathd.Vec3i;
 
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
 /**
@@ -20,13 +19,23 @@ import lombok.ToString;
  * @author rvandoosselaer
  */
 @ToString
-@RequiredArgsConstructor
 public class Square implements Shape {
 
     private final Direction direction;
+    private final Quaternion yaw;
 
     public Square() {
         this(Direction.UP);
+    }
+
+    public Square(Direction direction) {
+        this.direction = direction;
+        yaw = new Quaternion();
+    }
+
+    public Square(Quaternion yaw) {
+        this.direction = null;
+        this.yaw = yaw;
     }
 
     @Override
@@ -34,7 +43,7 @@ public class Square implements Shape {
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         // get the rotation of the shape based on the direction
-        Quaternion rotation = Shape.getRotationFromDirection(direction);
+        Quaternion rotation = direction != null ? Shape.getRotationFromDirection(direction) : yaw;
 
         createFace(location, rotation, chunkMesh, blockScale);
         enlightFace(location, chunk, chunkMesh);

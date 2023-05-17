@@ -30,6 +30,7 @@ import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SkyState;
+import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WireframeState;
@@ -70,7 +71,7 @@ public class Ialon extends SimpleApplication {
     public void simpleInitApp() {
         log.info("Initializing Ialon");
 
-        //stateManager.attach(new SplashscreenState(config));
+        stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();
         IalonInitializer.setupCamera(this, config);

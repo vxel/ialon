@@ -34,7 +34,7 @@ public interface Shape {
     Quaternion ROTATION_SOUTH = new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_X);
     Quaternion ROTATION_UP = new Quaternion();
 
-    Quaternion YAW_NORTH = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
+    Quaternion YAW_NORTH = new Quaternion().fromAngleAxis(-FastMath.PI, Vector3f.UNIT_Y);
     Quaternion YAW_EAST = new Quaternion().fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
     Quaternion YAW_WEST = new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_Y);
     Quaternion YAW_UP = new Quaternion();

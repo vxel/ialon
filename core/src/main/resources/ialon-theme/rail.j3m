@@ -1,0 +1,20 @@
+Material grass-block : Blocks/MatDefs/Ialon.j3md {
+
+    MaterialParameters {
+        Shininess: 0
+        UseVertexColor: true
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
+        Specular: 0 0 0 1.0
+        VertexLighting: true
+        DiffuseMap: Flip MagNearest MinNearestNoMipMaps ialon-theme/rail.png
+        AlphaDiscardThreshold : 0.1
+    }
+
+    AdditionalRenderState {
+        FaceCull Off
+        PolyOffset -2.0 -2.0
+    }
+
+}
