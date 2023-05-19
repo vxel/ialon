@@ -31,6 +31,7 @@ import com.jme3.collision.CollisionResults;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
@@ -75,14 +76,21 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.TypeIds.RAIL;
 import static com.rvandoosselaer.blocks.TypeIds.RAIL_CURVED;
+import static com.rvandoosselaer.blocks.TypeIds.RAIL_SLOPE;
 
 @Slf4j
 public class PlayerState extends BaseAppState {
 
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
-    private static final Vector3f NORTH = new Vector3f(0, 0, -1);
-    private static final Vector3f WEST = new Vector3f(-1, 0, 0);
+    private static final Vector3f SOUTH = new Vector3f(0, 0, 1);
+    private static final Vector3f EAST = new Vector3f(1, 0, 0);
+    private static final Vector3f SE = new Vector3f(1, 0, 1);
+    private static final Vector3f NE = new Vector3f(1, 0, -1);
+    private static final Vector3f WP_NORTH = new Vector3f(0, 0, -0.5f);
+    private static final Vector3f WP_SOUTH = new Vector3f(0, 0, 0.5f);
+    private static final Vector3f WP_WEST = new Vector3f(-0.5f, 0, 0);
+    private static final Vector3f WP_EAST = new Vector3f(0.5f, 0, 0);
 
     private SimpleApplication app;
     private Label crossHair;
@@ -138,7 +146,12 @@ public class PlayerState extends BaseAppState {
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
     private final Vector3f railDirection = new Vector3f();
-    private final Vector3f tmpDirection = new Vector3f();
+    private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
+    private final Vector3f playerBlockCenterLocation = new Vector3f();
+    private final Vector3f playerBlockBelowCenterLocation = new Vector3f();
+    private final Vector3f waypoint = new Vector3f();
+    private final Quaternion tmp = new Quaternion();
+    private final float[] angles = new float[3];
     private long lastCollisionTest = System.currentTimeMillis();
     private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
 
@@ -213,8 +226,14 @@ public class PlayerState extends BaseAppState {
         playerLocation.set(player.getPhysicsLocation());
         updatePlaceholders();
 
-        Block block = worldManager.getBlock(camera.getLocation().subtract(0, 1, 0));
-        updateMove(move, block);
+        oldPlayerBlockCenterLocation.set(playerBlockCenterLocation);
+        playerBlockCenterLocation.set(
+                (int)playerLocation.x + 0.5f * Math.signum(playerLocation.x),
+                (int)playerLocation.y,
+                (int)playerLocation.z + 0.5f * Math.signum(playerLocation.z));
+
+        Block block = worldManager.getBlock(playerBlockCenterLocation);
+        updateMove(move, block, tpf);
 
         if (move.length() > 0) {
             move.normalizeLocal().multLocal(fly ? config.getPlayerFlySpeed() : config.getPlayerMoveSpeed());
@@ -227,22 +246,12 @@ public class PlayerState extends BaseAppState {
         updateFallSpeed(block);
     }
 
-    private void updateMove(Vector3f move, Block block) {
+    private void updateMove(Vector3f move, Block block, float tpf) {
         if (fly) {
             updateFlyMove(move);
         } else {
-            if (block != null) {
-                if (RAIL.equals(block.getType())) {
-                    updateRailStraightMove(move, block);
-                } else if (RAIL_CURVED.equals(block.getType())) {
-                    updateRailCurvedMove(move, block);
-                } else {
-                    railDirection.set(0, 0, 0);
-                }
-            } else {
-                railDirection.set(0, 0, 0);
-            }
             updateWalkMove(move);
+            updateRailMove(move, block, tpf);
         }
 
         if (up && playerLocation.y <= config.getMaxy()) {
@@ -253,113 +262,142 @@ public class PlayerState extends BaseAppState {
         }
     }
 
-    private void updateRailStraightMove(Vector3f move, Block block) {
-        tmpDirection.set(railDirection);
-        if (railDirection.x == 0 && railDirection.y == 0 && railDirection.z == 0) {
-            // No current raildirection, infer from camera direction
-            if (ShapeIds.SQUARE_HS.equals(block.getShape())) {
-                if (camDir.setY(0).normalizeLocal().dot(NORTH) > 0) {
-                    railDirection.set(0, 0, -1);
-                } else {
-                    railDirection.set(0, 0, 1);
-                }
-            } else if (ShapeIds.SQUARE_HE.equals(block.getShape())) {
-                if (camDir.setY(0).normalizeLocal().dot(WEST) > 0) {
-                    railDirection.set(-1, 0, 0);
-                } else {
-                    railDirection.set(1, 0, 0);
-                }
+    private void updateRailMove(Vector3f move, Block block, float tpf) {
+        if (block != null) {
+            if (RAIL_CURVED.equals(block.getType())) {
+                updateRailCurvedMove(move, block, tpf);
+                return;
+            } else if (block.getType().startsWith(RAIL)) {
+                // RAIL or RAIL_SLOPE
+                updateRailStraightMove(move, block, tpf);
+                return;
             }
-        } else {
-            // Existing raildirection, keep direction
-            if (ShapeIds.SQUARE_HS.equals(block.getShape())) {
-                if (railDirection.z < 0) {
-                    railDirection.set(0, 0, -1);
-                } else {
-                    railDirection.set(0, 0, 1);
-                }
-            } else if (ShapeIds.SQUARE_HE.equals(block.getShape())) {
-                if (railDirection.x < 0) {
-                    railDirection.set(-1, 0, 0);
-                } else {
-                    railDirection.set(1, 0, 0);
-                }
+
+        } else if (!Vector3f.ZERO.equals(railDirection)) {
+            // Not inside a rail block but moving on a rail :
+            // check if the block below is a rail slope
+            playerBlockBelowCenterLocation.set(playerBlockCenterLocation).addLocal(0, -1, 0);
+            Block blockBelow = worldManager.getBlock(playerBlockBelowCenterLocation);
+            if (blockBelow != null && RAIL_SLOPE.equals(blockBelow.getType())) {
+                updateRailStraightMove(move, blockBelow, tpf);
+                return;
             }
         }
 
-        // Align player on the rail
-        alignLocation(playerLocation, railDirection);
-        player.setPhysicsLocation(playerLocation);
-
-        move.addLocal(railDirection);
+        // Other cases : stop rail move
+        waypoint.set(0, 0, 0);
+        railDirection.set(0, 0, 0);
     }
 
-    private static void alignLocation(Vector3f location, Vector3f direction) {
-        if (direction.x != 0) {
-            // Align on Z
-            if (location.z < 0) {
-                location.setZ(((int) location.z) - 0.5f);
-            } else {
-                location.setZ(((int) location.z) + 0.5f);
-            }
+    private void updateRailStraightMove(Vector3f move, Block block, float tpf) {
+        if (railDirection.equals(Vector3f.ZERO)) {
+            // No current direction, infer from current move
+            computeRailStraightWaypoint(block, move);
+            railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
+
+        } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
+            // Compute new way point
+            computeRailStraightWaypoint(block, railDirection);
+            railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
         }
-        if (direction.z != 0) {
-            // Align on X
-            if (location.x < 0) {
-                location.setX(((int) location.x) - 0.5f);
-            } else {
-                location.setX(((int) location.x) + 0.5f);
-            }
+
+        updateRailMoveDirection(railDirection, tpf);
+    }
+
+    private void updateRailCurvedMove(Vector3f move, Block block, float tpf) {
+        if (railDirection.equals(Vector3f.ZERO)) {
+            // No current direction, infer from current move
+            computeRailCurvedWaypoint(block, move);
+            railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
+
+        } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
+            // Compute new way point
+            computeRailCurvedWaypoint(block, railDirection);
+            railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
+        }
+
+        updateRailMoveDirection(railDirection, tpf);
+    }
+
+    /**
+     * Update the rail move and camera direction.
+     * The camera direction is interpolated to smoothly align to the the rail direction,
+     * keeping the pitch.
+     *
+     * @param direction the target rail direction
+     * @param tpf the time per frame
+     */
+    private void updateRailMoveDirection(Vector3f direction, float tpf) {
+        // noinspection SuspiciousNameCombination
+        float yaw = FastMath.atan2(railDirection.x, railDirection.z);
+
+        // Get existing roll, yaw, pitch
+        camera.getRotation().toAngles(angles);
+
+        // Keep existing pitch, no roll (never!), specify target yaw
+        Quaternion targetRotation = tmp.fromAngles(angles[0], yaw, 0);
+
+        // Interpolate to the target rotation
+        camera.getRotation().slerp(targetRotation, config.getRotationSpeedRail() * tpf);
+        move.addLocal(direction);
+    }
+
+    private void computeRailStraightWaypoint(Block block, Vector3f direction) {
+        switch (block.getShape()) {
+            case ShapeIds.WEDGE_NORTH:
+            case ShapeIds.WEDGE_SOUTH:
+            case ShapeIds.SQUARE_HS:
+                float dotSouth = direction.dot(SOUTH);
+                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
+                break;
+            case ShapeIds.WEDGE_WEST:
+            case ShapeIds.WEDGE_EAST:
+            case ShapeIds.SQUARE_HE:
+                float dotEast = direction.dot(EAST);
+                waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                break;
         }
     }
 
-    private void updateRailCurvedMove(Vector3f move, Block block) {
-        if (railDirection.x == 0 && railDirection.y == 0 && railDirection.z == 0) {
-            // No current raildirection, infer from camera direction
-            float nsdot = camDir.setY(0).normalizeLocal().dot(NORTH);
-            float ewdot = camDir.setY(0).normalizeLocal().dot(WEST);
-            if (Math.abs(nsdot) > Math.abs(ewdot)) {
-                if (nsdot > 0) {
-                    railDirection.set(0, 0, -1);
-                } else {
-                    railDirection.set(0, 0, 1);
-                }
-            } else {
-                if (ewdot > 0) {
-                    railDirection.set(-1, 0, 0);
-                } else {
-                    railDirection.set(1, 0, 0);
-                }
-            }
-            alignLocation(playerLocation, railDirection);
-        }
-
+    private void computeRailCurvedWaypoint(Block block, Vector3f direction) {
+        waypoint.set(playerBlockCenterLocation);
         switch (block.getShape()) {
             case ShapeIds.SQUARE_HW:
-                // |_
-            case ShapeIds.SQUARE_HE:
-                // -|
-                if (railDirection.z > 0) {
-                    railDirection.set(1, 0, 1);
+                // case \ HW:¨|, possible waypoints : S or W
+                if (direction.dot(SE) > 0) {
+                    waypoint.addLocal(WP_SOUTH);
                 } else {
-                    railDirection.set(-1, 0, -1);
+                    waypoint.addLocal(WP_WEST);
                 }
                 break;
-            case ShapeIds.SQUARE_HS:
-                // |-
-            case ShapeIds.SQUARE_HN:
-                // _|
-                if (railDirection.x > 0) {
-                    railDirection.set(1, 0, -1);
+            case ShapeIds.SQUARE_HE: // ok
+                // case \ HE:|_, possible waypoints : N or E
+                if (direction.dot(SE) > 0) {
+                    waypoint.addLocal(WP_EAST);
                 } else {
-                    railDirection.set(-1, 0, 1);
+                    waypoint.addLocal(WP_NORTH);
+                }
+                break;
+            case ShapeIds.SQUARE_HS: // ok
+                // case / HS:_|,  possible waypoints : W or N
+                if (direction.dot(NE) > 0) {
+                    waypoint.addLocal(WP_NORTH);
+                } else {
+                    waypoint.addLocal(WP_WEST);
+                }
+                break;
+            case ShapeIds.SQUARE_HN: // ok
+                // case / HN:|¨, possible waypoints : S or E
+                if (direction.dot(NE) > 0) {
+                    waypoint.addLocal(WP_EAST);
+                } else {
+                    waypoint.addLocal(WP_SOUTH);
                 }
                 break;
             default:
-                // Illegal curved shape
+                // Illegal curve shape
                 break;
         }
-        move.addLocal(railDirection);
     }
 
     private void updateWalkMove(Vector3f move) {

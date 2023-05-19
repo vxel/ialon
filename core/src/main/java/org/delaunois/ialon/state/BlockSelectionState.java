@@ -665,7 +665,7 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
         } else {
             nodeToAdd = (Node)blocks[0].clone();
         }
-        updateBlockNode(nodeToRemove, (Node)nodeToAdd.clone());
+        updateBlockNode(nodeToRemove, nodeToAdd);
         return nodeToAdd;
     }
 

@@ -70,6 +70,7 @@ public interface BlockIds {
     String SCALE = TypeIds.SCALE;
     String RAIL = TypeIds.RAIL;
     String RAIL_CURVED = TypeIds.RAIL_CURVED;
+    String RAIL_SLOPE = TypeIds.RAIL_SLOPE;
 
     static String getName(String type, String shape) {
         return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape;

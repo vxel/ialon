@@ -39,4 +39,5 @@ public interface TypeIds {
     String SCALE = "scale";
     String RAIL = "rail";
     String RAIL_CURVED = "rail_curved";
+    String RAIL_SLOPE = "rail_slope";
 }

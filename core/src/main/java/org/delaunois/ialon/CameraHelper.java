@@ -24,20 +24,15 @@ import com.jme3.renderer.Camera;
 
 public class CameraHelper {
 
-    private static final Vector3f UP = new Vector3f(0, 1, 0);
-    private final IalonConfig config;
-
-    public CameraHelper(IalonConfig config) {
-        this.config = config;
-    }
+    private final Matrix3f mat = new Matrix3f();
+    private final Quaternion q = new Quaternion();
 
     public void rotate(Camera cam, float value) {
-        rotate(cam, value, UP);
+        rotate(cam, value, Vector3f.UNIT_Y);
     }
 
     public void rotate(Camera cam, float value, Vector3f axis) {
-        Matrix3f mat = new Matrix3f();
-        mat.fromAngleNormalAxis(config.getRotationSpeed() * value, axis);
+        mat.fromAngleNormalAxis(value, axis);
 
         Vector3f up = cam.getUp();
         Vector3f left = cam.getLeft();
@@ -51,7 +46,6 @@ public class CameraHelper {
             return;
         }
 
-        Quaternion q = new Quaternion();
         q.fromAxes(left, up, dir);
         q.normalizeLocal();
 

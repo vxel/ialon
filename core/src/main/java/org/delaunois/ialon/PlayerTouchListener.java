@@ -33,17 +33,20 @@ public class PlayerTouchListener implements TouchListener {
     private final CameraHelper cameraHelper;
     private final PlayerState playerState;
     private final InputManager inputManager;
+    private final Vector3f point = new Vector3f();
+    private final float rotationSpeed;
 
     public PlayerTouchListener(PlayerState playerState, IalonConfig config) {
         this.playerState = playerState;
         this.inputManager = playerState.getApplication().getInputManager();
-        this.cameraHelper = new CameraHelper(config);
+        this.cameraHelper = new CameraHelper();
+        this.rotationSpeed = config.getRotationSpeed();
     }
 
     @Override
     public void onTouch(String name, TouchEvent event, float tpf) {
         if (playerState.isTouchEnabled() && event.getType() == TouchEvent.Type.MOVE) {
-            Vector3f point = new Vector3f(event.getX(), event.getY(), 1);
+            point.set(event.getX(), event.getY(), 1);
             if (!playerState.getPlayerActionButtons().getDirectionButtons().getWorldBound()
                     .intersects(point)
 
@@ -57,8 +60,8 @@ public class PlayerTouchListener implements TouchListener {
 
                     && event.getY() > 130
             ) {
-                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaX() / 400);
-                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaY() / 400, playerState.getCamera().getLeft());
+                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaX() * rotationSpeed / 400);
+                cameraHelper.rotate(playerState.getCamera(), -event.getDeltaY() * rotationSpeed / 400, playerState.getCamera().getLeft());
             }
             event.setConsumed();
         }

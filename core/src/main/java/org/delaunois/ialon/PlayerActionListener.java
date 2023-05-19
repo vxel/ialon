@@ -18,8 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PlayerActionListener implements ActionListener, AnalogListener {
 
-    private static final Vector3f DIRECTION_UP = new Vector3f(0, 1, 0);
-
     private static final String ACTION_LEFT = "left";
     private static final String ACTION_RIGHT = "right";
     private static final String ACTION_FORWARD = "forward";
@@ -72,7 +70,7 @@ public class PlayerActionListener implements ActionListener, AnalogListener {
         this.playerState = playerState;
         this.inputManager = playerState.getApplication().getInputManager();
         this.camera = playerState.getCamera();
-        this.cameraHelper = new CameraHelper(config);
+        this.cameraHelper = new CameraHelper();
     }
 
     @Override
@@ -147,16 +145,16 @@ public class PlayerActionListener implements ActionListener, AnalogListener {
     public void onAnalog(String name, float value, float tpf) {
         if (isMouselocked) {
             if (ACTION_LOOK_LEFT.equals(name)) {
-                cameraHelper.rotate(camera, value, DIRECTION_UP);
+                cameraHelper.rotate(camera, config.getRotationSpeed() * value, Vector3f.UNIT_Y);
 
             } else if (ACTION_LOOK_RIGHT.equals(name)) {
-                cameraHelper.rotate(camera, -value, DIRECTION_UP);
+                cameraHelper.rotate(camera, -config.getRotationSpeed() * value, Vector3f.UNIT_Y);
 
             } else if (ACTION_LOOK_UP.equals(name)) {
-                cameraHelper.rotate(camera, -value, camera.getLeft());
+                cameraHelper.rotate(camera, -config.getRotationSpeed() * value, camera.getLeft());
 
             } else if (ACTION_LOOK_DOWN.equals(name)) {
-                cameraHelper.rotate(camera, value, camera.getLeft());
+                cameraHelper.rotate(camera, config.getRotationSpeed() * value, camera.getLeft());
             }
         }
     }

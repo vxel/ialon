@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import static com.rvandoosselaer.blocks.BlockIds.RAIL;
 import static com.rvandoosselaer.blocks.BlockIds.RAIL_CURVED;
 import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
+import static com.rvandoosselaer.blocks.TypeIds.RAIL_SLOPE;
 import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
 
 /**
@@ -271,6 +272,14 @@ public class WorldManager {
         }).orElse(0);
     }
 
+    /**
+     * Change the current selected rail block to the appropriate variant,
+     * according to the neighbour rail blocks
+     *
+     * @param block the selected rail block
+     * @param location the location of the block
+     * @return the rail block
+     */
     private Block selectRailBlock(Block block, Vector3f location) {
         Block below = chunkManager.getBlock(location.add(0, -1, 0)).orElse(null);
         if (below == null || !ShapeIds.CUBE.equals(below.getShape())) {
@@ -282,18 +291,34 @@ public class WorldManager {
         Block south = chunkManager.getBlock(location.subtract(0, 0, 1)).orElse(null);
         Block west = chunkManager.getBlock(location.subtract(-1, 0, 0)).orElse(null);
         Block east = chunkManager.getBlock(location.subtract(1, 0, 0)).orElse(null);
-        boolean n = north != null && north.getType().startsWith(RAIL);
-        boolean s = south != null && south.getType().startsWith(RAIL);
-        boolean w = west != null && west.getType().startsWith(RAIL);
-        boolean e = east != null && east.getType().startsWith(RAIL);
+        Block northb = chunkManager.getBlock(location.subtract(0, 1, -1)).orElse(null);
+        Block southb = chunkManager.getBlock(location.subtract(0, 1, 1)).orElse(null);
+        Block westb = chunkManager.getBlock(location.subtract(-1, 1, 0)).orElse(null);
+        Block eastb = chunkManager.getBlock(location.subtract(1, 1, 0)).orElse(null);
+        boolean n = (north != null && north.getType().startsWith(RAIL)) || (northb != null && northb.getShape().equals(ShapeIds.WEDGE_SOUTH));
+        boolean s = (south != null && south.getType().startsWith(RAIL)) || (southb != null && southb.getShape().equals(ShapeIds.WEDGE_NORTH));
+        boolean w = (west != null && west.getType().startsWith(RAIL)) || (westb != null && westb.getShape().equals(ShapeIds.WEDGE_EAST));
+        boolean e = (east != null && east.getType().startsWith(RAIL)) || (eastb != null && eastb.getShape().equals(ShapeIds.WEDGE_WEST));
 
         if ((n || s) && (!e && !w)) {
             // |
+            if (north != null && north.isSolid() && !north.getType().startsWith(RAIL)) {
+                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_NORTH, 0));
+            }
+            if (south != null && south.isSolid() && !south.getType().startsWith(RAIL)) {
+                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_SOUTH, 0));
+            }
             return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
         }
 
         if ((e || w) && (!n && !s)) {
             // _
+            if (east != null && east.isSolid() && !east.getType().startsWith(RAIL)) {
+                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_EAST, 0));
+            }
+            if (west != null && west.isSolid() && !west.getType().startsWith(RAIL)) {
+                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_WEST, 0));
+            }
             return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
         }
 
