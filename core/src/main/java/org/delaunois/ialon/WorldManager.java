@@ -282,7 +282,7 @@ public class WorldManager {
      */
     private Block selectRailBlock(Block block, Vector3f location) {
         Block below = chunkManager.getBlock(location.add(0, -1, 0)).orElse(null);
-        if (below == null || !ShapeIds.CUBE.equals(below.getShape())) {
+        if (!isCubeBlock(below)) {
             log.info("No cube block below rail");
             return null;
         }
@@ -295,17 +295,17 @@ public class WorldManager {
         Block southb = chunkManager.getBlock(location.subtract(0, 1, 1)).orElse(null);
         Block westb = chunkManager.getBlock(location.subtract(-1, 1, 0)).orElse(null);
         Block eastb = chunkManager.getBlock(location.subtract(1, 1, 0)).orElse(null);
-        boolean n = (north != null && north.getType().startsWith(RAIL)) || (northb != null && northb.getShape().equals(ShapeIds.WEDGE_SOUTH));
-        boolean s = (south != null && south.getType().startsWith(RAIL)) || (southb != null && southb.getShape().equals(ShapeIds.WEDGE_NORTH));
-        boolean w = (west != null && west.getType().startsWith(RAIL)) || (westb != null && westb.getShape().equals(ShapeIds.WEDGE_EAST));
-        boolean e = (east != null && east.getType().startsWith(RAIL)) || (eastb != null && eastb.getShape().equals(ShapeIds.WEDGE_WEST));
+        boolean n = isRail(north, northb, ShapeIds.WEDGE_SOUTH);
+        boolean s = isRail(south, southb, ShapeIds.WEDGE_NORTH);
+        boolean w = isRail(west, westb, ShapeIds.WEDGE_EAST);
+        boolean e = isRail(east, eastb, ShapeIds.WEDGE_WEST);
 
         if ((n || s) && (!e && !w)) {
             // |
-            if (north != null && north.isSolid() && !north.getType().startsWith(RAIL)) {
+            if (isBlockNoRail(north)) {
                 return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_NORTH, 0));
             }
-            if (south != null && south.isSolid() && !south.getType().startsWith(RAIL)) {
+            if (isBlockNoRail(south)) {
                 return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_SOUTH, 0));
             }
             return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
@@ -313,10 +313,10 @@ public class WorldManager {
 
         if ((e || w) && (!n && !s)) {
             // _
-            if (east != null && east.isSolid() && !east.getType().startsWith(RAIL)) {
+            if (isBlockNoRail(east)) {
                 return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_EAST, 0));
             }
-            if (west != null && west.isSolid() && !west.getType().startsWith(RAIL)) {
+            if (isBlockNoRail(west)) {
                 return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_WEST, 0));
             }
             return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
@@ -343,6 +343,19 @@ public class WorldManager {
         }
 
         return block;
+    }
+
+    private boolean isRail(Block block, Block bottomBlock, String bottomBlockShapeId) {
+        return (block != null && block.getType().startsWith(RAIL))
+                || (bottomBlock != null && bottomBlock.getShape().equals(bottomBlockShapeId));
+    }
+
+    private boolean isBlockNoRail(Block block) {
+        return isCubeBlock(block) && !block.getType().startsWith(RAIL);
+    }
+
+    private boolean isCubeBlock(Block block) {
+        return block != null && block.isSolid() && ShapeIds.CUBE.equals(block.getShape());
     }
 
     private void addBlockInEmptyNonWaterLocation(Block block, Vector3f location, Chunk chunk, Vec3i blockLocationInsideChunk) {

@@ -91,6 +91,7 @@ public class PlayerState extends BaseAppState {
     private static final Vector3f WP_SOUTH = new Vector3f(0, 0, 0.5f);
     private static final Vector3f WP_WEST = new Vector3f(-0.5f, 0, 0);
     private static final Vector3f WP_EAST = new Vector3f(0.5f, 0, 0);
+    private static final float SPEED_FACTOR_SLOPE = FastMath.sqrt(0.5f);
 
     private SimpleApplication app;
     private Label crossHair;
@@ -301,15 +302,15 @@ public class PlayerState extends BaseAppState {
         if (railDirection.equals(Vector3f.ZERO)) {
             // No current direction, infer from current move or camera direction
             if (move.lengthSquared() > 0.1f) {
-                computeRailStraightMove(block, move, tpf);
+                computeRailStraightMove(block, move);
             } else {
-                computeRailStraightMove(block, camDir, tpf);
+                computeRailStraightMove(block, camDir);
             }
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailStraightMove(block, railDirection, tpf);
+            computeRailStraightMove(block, railDirection);
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
         }
 
@@ -360,17 +361,17 @@ public class PlayerState extends BaseAppState {
         move.addLocal(direction);
     }
 
-    private void computeRailStraightMove(Block block, Vector3f direction, float tpf) {
+    private void computeRailStraightMove(Block block, Vector3f direction) {
         float dotSouth = direction.dot(SOUTH);
         float dotEast = direction.dot(EAST);
         switch (block.getShape()) {
             case ShapeIds.WEDGE_NORTH:
-                speedFactor = 0.7071f;
+                speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotSouth > 0 ? -1f : 1f;
                 waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
                 break;
             case ShapeIds.WEDGE_SOUTH:
-                speedFactor = 0.7071f;
+                speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotSouth < 0 ? -1f : 1f;
                 waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
                 break;
@@ -380,12 +381,12 @@ public class PlayerState extends BaseAppState {
                 waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
                 break;
             case ShapeIds.WEDGE_WEST:
-                speedFactor = 0.7071f;
+                speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotEast > 0 ? -1f : 1f;
                 waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
                 break;
             case ShapeIds.WEDGE_EAST:
-                speedFactor = 0.7071f;
+                speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotEast < 0 ? -1f : 1f;
                 waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
                 break;
