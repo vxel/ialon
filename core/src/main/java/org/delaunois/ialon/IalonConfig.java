@@ -81,6 +81,8 @@ public class IalonConfig {
     private float playerStartHeight = 10;
     private float playerMoveSpeed = 0.05f;
     private float playerFlySpeed = 0.1f;
+    private float playerRailSpeed = 0.04f;
+    private float playerRailFriction = 0.2f;
     private float playerHeight = 1.6f;
     private float playerRadius = 0.3f;
     private float playerStepHeight = 0.3f;

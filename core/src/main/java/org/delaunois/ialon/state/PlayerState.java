@@ -114,6 +114,10 @@ public class PlayerState extends BaseAppState {
     @Setter
     private Vector3f playerLocation;
 
+    private float speed = 0;
+    private float speedFactor = 1f;
+    private float acceleration = 0;
+
     private boolean left = false;
     private boolean right = false;
     private boolean forward = false;
@@ -150,10 +154,12 @@ public class PlayerState extends BaseAppState {
     private final Vector3f playerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockBelowCenterLocation = new Vector3f();
     private final Vector3f waypoint = new Vector3f();
-    private final Quaternion tmp = new Quaternion();
+    private final Quaternion tmpQuaternion = new Quaternion();
     private final float[] angles = new float[3];
     private long lastCollisionTest = System.currentTimeMillis();
     private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
+    private final CollisionResults collisionResults = new CollisionResults();
+    private final Ray ray = new Ray();
 
     private Material ballMaterial;
     private final IalonConfig config;
@@ -236,7 +242,6 @@ public class PlayerState extends BaseAppState {
         updateMove(move, block, tpf);
 
         if (move.length() > 0) {
-            move.normalizeLocal().multLocal(fly ? config.getPlayerFlySpeed() : config.getPlayerMoveSpeed());
             walkDirection.set(move);
         }
 
@@ -253,23 +258,18 @@ public class PlayerState extends BaseAppState {
             updateWalkMove(move);
             updateRailMove(move, block, tpf);
         }
-
-        if (up && playerLocation.y <= config.getMaxy()) {
-            move.addLocal(0, 1, 0);
-        }
-        if (down) {
-            move.addLocal(0, -1, 0);
-        }
     }
 
     private void updateRailMove(Vector3f move, Block block, float tpf) {
         if (block != null) {
             if (RAIL_CURVED.equals(block.getType())) {
                 updateRailCurvedMove(move, block, tpf);
+                move.normalizeLocal().multLocal(speed * speedFactor);
                 return;
             } else if (block.getType().startsWith(RAIL)) {
                 // RAIL or RAIL_SLOPE
                 updateRailStraightMove(move, block, tpf);
+                move.normalizeLocal().multLocal(speed * speedFactor);
                 return;
             }
 
@@ -280,39 +280,57 @@ public class PlayerState extends BaseAppState {
             Block blockBelow = worldManager.getBlock(playerBlockBelowCenterLocation);
             if (blockBelow != null && RAIL_SLOPE.equals(blockBelow.getType())) {
                 updateRailStraightMove(move, blockBelow, tpf);
+                move.normalizeLocal().multLocal(speed * speedFactor);
                 return;
             }
         }
 
         // Other cases : stop rail move
+        stopRailMove();
+    }
+
+    private void stopRailMove() {
+        speed = config.getPlayerRailSpeed();
+        speedFactor = 1;
+        acceleration = 0;
         waypoint.set(0, 0, 0);
         railDirection.set(0, 0, 0);
     }
 
     private void updateRailStraightMove(Vector3f move, Block block, float tpf) {
         if (railDirection.equals(Vector3f.ZERO)) {
-            // No current direction, infer from current move
-            computeRailStraightWaypoint(block, move);
+            // No current direction, infer from current move or camera direction
+            if (move.lengthSquared() > 0.1f) {
+                computeRailStraightMove(block, move, tpf);
+            } else {
+                computeRailStraightMove(block, camDir, tpf);
+            }
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailStraightWaypoint(block, railDirection);
+            computeRailStraightMove(block, railDirection, tpf);
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
         }
 
+        // All cases : update speed and direction
+        updateSpeed(tpf);
         updateRailMoveDirection(railDirection, tpf);
     }
 
     private void updateRailCurvedMove(Vector3f move, Block block, float tpf) {
         if (railDirection.equals(Vector3f.ZERO)) {
-            // No current direction, infer from current move
-            computeRailCurvedWaypoint(block, move);
+            // No current direction, infer from current move or camera direction
+            if (move.lengthSquared() > 0.1f) {
+                computeRailCurvedMove(block, move);
+            } else {
+                computeRailCurvedMove(block, camDir);
+            }
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailCurvedWaypoint(block, railDirection);
+            computeRailCurvedMove(block, railDirection);
             railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
         }
 
@@ -335,31 +353,73 @@ public class PlayerState extends BaseAppState {
         camera.getRotation().toAngles(angles);
 
         // Keep existing pitch, no roll (never!), specify target yaw
-        Quaternion targetRotation = tmp.fromAngles(angles[0], yaw, 0);
+        Quaternion targetRotation = tmpQuaternion.fromAngles(angles[0], yaw, 0);
 
         // Interpolate to the target rotation
         camera.getRotation().slerp(targetRotation, config.getRotationSpeedRail() * tpf);
         move.addLocal(direction);
     }
 
-    private void computeRailStraightWaypoint(Block block, Vector3f direction) {
+    private void computeRailStraightMove(Block block, Vector3f direction, float tpf) {
+        float dotSouth = direction.dot(SOUTH);
+        float dotEast = direction.dot(EAST);
         switch (block.getShape()) {
             case ShapeIds.WEDGE_NORTH:
+                speedFactor = 0.7071f;
+                acceleration = dotSouth > 0 ? -1f : 1f;
+                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
+                break;
             case ShapeIds.WEDGE_SOUTH:
+                speedFactor = 0.7071f;
+                acceleration = dotSouth < 0 ? -1f : 1f;
+                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
+                break;
             case ShapeIds.SQUARE_HS:
-                float dotSouth = direction.dot(SOUTH);
+                speedFactor = 1;
+                acceleration = 0;
                 waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * Math.signum(dotSouth));
                 break;
             case ShapeIds.WEDGE_WEST:
-            case ShapeIds.WEDGE_EAST:
-            case ShapeIds.SQUARE_HE:
-                float dotEast = direction.dot(EAST);
+                speedFactor = 0.7071f;
+                acceleration = dotEast > 0 ? -1f : 1f;
                 waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                break;
+            case ShapeIds.WEDGE_EAST:
+                speedFactor = 0.7071f;
+                acceleration = dotEast < 0 ? -1f : 1f;
+                waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                break;
+            case ShapeIds.SQUARE_HE:
+                speedFactor = 1;
+                acceleration = 0;
+                waypoint.set(playerBlockCenterLocation.x + 0.5f * Math.signum(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                break;
+            default:
+                // Illegal block
                 break;
         }
     }
 
-    private void computeRailCurvedWaypoint(Block block, Vector3f direction) {
+    private void updateSpeed(float tpf) {
+        if (acceleration == 0 && speed < config.getPlayerRailSpeed()) {
+            acceleration = config.getPlayerRailFriction() + 0.1f;
+        }
+
+        speed *= (1 + (acceleration - config.getPlayerRailFriction()) * tpf);
+        if (speed < config.getPlayerRailSpeed() * 0.5f) {
+            // Min speed = rail speed / 2
+            speed = config.getPlayerRailSpeed() * 0.5f;
+        } else if (speed > config.getPlayerRailSpeed() * 4f) {
+            // Max speed = rail speed * 4
+            speed = config.getPlayerRailSpeed() * 4f;
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Speed:" + speed + " accel:" + acceleration + " factor:" + speedFactor);
+        }
+    }
+
+    private void computeRailCurvedMove(Block block, Vector3f direction) {
         waypoint.set(playerBlockCenterLocation);
         switch (block.getShape()) {
             case ShapeIds.SQUARE_HW:
@@ -413,6 +473,7 @@ public class PlayerState extends BaseAppState {
         if (backward) {
             move.addLocal(-camDir.x, -camDir.y, -camDir.z);
         }
+        move.normalizeLocal().multLocal(config.getPlayerMoveSpeed());
     }
 
     private void updateFlyMove(Vector3f move) {
@@ -433,6 +494,13 @@ public class PlayerState extends BaseAppState {
                 move.addLocal(-camDir.x, 0, -camDir.z);
             }
         }
+        if (up && playerLocation.y <= config.getMaxy()) {
+            move.addLocal(0, 1, 0);
+        }
+        if (down) {
+            move.addLocal(0, -1, 0);
+        }
+        move.normalizeLocal().multLocal(config.getPlayerFlySpeed());
     }
 
     public void resize() {
@@ -633,6 +701,7 @@ public class PlayerState extends BaseAppState {
         if (fly) {
             log.info("Flying");
             player.setFallSpeed(0);
+            stopRailMove();
         } else {
             log.info("Not Flying");
             if (underWater) {
@@ -713,9 +782,9 @@ public class PlayerState extends BaseAppState {
     }
 
     private CollisionResult getCollisionResult() {
-        CollisionResults collisionResults = new CollisionResults();
-        Ray ray = new Ray(camera.getLocation(), camera.getDirection());
-
+        ray.setOrigin(camera.getLocation());
+        ray.setDirection(camera.getDirection().normalizeLocal());
+        collisionResults.clear();
         chunkNode.collideWith(ray, collisionResults);
 
         for (CollisionResult collisionResult : collisionResults) {
@@ -749,7 +818,6 @@ public class PlayerState extends BaseAppState {
             app.getRootNode().attachChild(removePlaceholder);
         }
 
-        Vec3i placingLocation;
         Block b = worldManager.getBlock(localTranslation);
         Shape shape = b == null ? null : BlocksConfig.getInstance().getShapeRegistry().get(b.getShape());
 
@@ -760,8 +828,9 @@ public class PlayerState extends BaseAppState {
             // These shapes have slew faces, it is better to define the "add location"
             // based on the face of the enclosing cube where the user points to.
             addPlaceholder.setLocalTranslation(localTranslation);
-            CollisionResults collisionResults = new CollisionResults();
-            Ray ray = new Ray(camera.getLocation(), camera.getDirection());
+            ray.setOrigin(camera.getLocation());
+            ray.setDirection(camera.getDirection().normalizeLocal());
+            collisionResults.clear();
             addPlaceholder.collideWith(ray, collisionResults);
             result = collisionResults.getClosestCollision();
             if (result == null || result.getDistance() >= 20) {
@@ -770,7 +839,7 @@ public class PlayerState extends BaseAppState {
             }
         }
 
-        placingLocation = ChunkManager.getNeighbourBlockLocation(result);
+        Vec3i placingLocation = ChunkManager.getNeighbourBlockLocation(result);
         addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
     }
 
