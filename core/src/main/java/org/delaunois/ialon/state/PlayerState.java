@@ -231,18 +231,18 @@ public class PlayerState extends BaseAppState {
 
         move.zero();
         playerLocation.set(player.getPhysicsLocation());
-        updatePlaceholders();
 
         oldPlayerBlockCenterLocation.set(playerBlockCenterLocation);
         playerBlockCenterLocation.set(
                 (int)playerLocation.x + 0.5f * Math.signum(playerLocation.x),
-                (int)playerLocation.y,
+                (int)playerLocation.y + 0.5f,
                 (int)playerLocation.z + 0.5f * Math.signum(playerLocation.z));
 
         Block block = worldManager.getBlock(playerBlockCenterLocation);
         updateMove(move, block, tpf);
+        updatePlaceholders();
 
-        if (move.length() > 0) {
+        if (move.lengthSquared() > 0) {
             walkDirection.set(move);
         }
 
@@ -273,8 +273,9 @@ public class PlayerState extends BaseAppState {
                 move.normalizeLocal().multLocal(speed * speedFactor);
                 return;
             }
+        }
 
-        } else if (!Vector3f.ZERO.equals(railDirection)) {
+        if (!Vector3f.ZERO.equals(railDirection)) {
             // Not inside a rail block but moving on a rail :
             // check if the block below is a rail slope
             playerBlockBelowCenterLocation.set(playerBlockCenterLocation).addLocal(0, -1, 0);
@@ -283,16 +284,18 @@ public class PlayerState extends BaseAppState {
                 updateRailStraightMove(move, blockBelow, tpf);
                 move.normalizeLocal().multLocal(speed * speedFactor);
                 return;
+            } else {
+                log.info("No more rail block below");
             }
+            // Other cases : stop rail move
+            stopRailMove();
         }
 
-        // Other cases : stop rail move
-        stopRailMove();
     }
 
     private void stopRailMove() {
         speed = config.getPlayerRailSpeed();
-        speedFactor = 1;
+        speedFactor = -1;
         acceleration = 0;
         waypoint.set(0, 0, 0);
         railDirection.set(0, 0, 0);
@@ -845,7 +848,7 @@ public class PlayerState extends BaseAppState {
     }
 
     private void updateFallSpeed(Block block) {
-        if (block != null) {
+        if (block != null && Vector3f.ZERO.equals(railDirection)) {
             if (block.getName().contains("water")) {
                 updateFallSpeedWaterIn();
 
