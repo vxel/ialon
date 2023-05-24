@@ -63,58 +63,59 @@ public class WorldManager {
     }
 
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
-        // Preserves the order of the location to generate
-        Set<Vec3i> chunks = new LinkedHashSet<>();
+        Set<Vec3i> emptyChunkSet = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
         if (chunk == null) {
-            return chunks;
+            return emptyChunkSet;
         }
 
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(ChunkManager.getBlockLocation(location));
+        Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
 
         if (TypeIds.RAIL.equals(block.getType())) {
+            // Select rail block according to the neighbour blocks
             block = selectRailBlock(block, location);
             if (block == null) {
-                return chunks;
+                return emptyChunkSet;
+            }
+
+        } else if (ShapeIds.SLAB.equals(block.getShape())) {
+            // Select slab block according to to below block
+            BlockWithLocation blockWithLocation = selectSlabBlock(block, location);
+            if (blockWithLocation != null) {
+                block = blockWithLocation.block;
+                blockLocationInsideChunk = blockWithLocation.blockLocationInsideChunk;
+                chunk = blockWithLocation.chunk;
+                previousBlock = null;
             }
         }
 
         log.info("Adding block {}", block.getName());
 
-        Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
         if (Objects.equals(previousBlock, block)) {
             // 1. Adding the same block : nothing to do
             log.info("Previous block at location {} was already {}", location, previousBlock);
-            return chunks;
+            return emptyChunkSet;
         }
 
         if (previousBlock == null) {
             // 2. Adding a block on empty non-water location : add the block
-            addBlockInEmptyNonWaterLocation(block, location, chunk, blockLocationInsideChunk);
-
-        } else if (previousBlock.getLiquidLevel() > 0) {
-            // 3. Adding block in water
-            if (WATER_SOURCE.equals(block.getName())) {
-                addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
-
-            } else if (WATER_SOURCE.equals(previousBlock.getName())) {
-                addBlockInSourceWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
-
-            } else if (TypeIds.WATER.equals(previousBlock.getType())) {
-                addBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk, location);
-
-            } else {
-                // There is already a block at this location
-                log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
-                return chunks;
-            }
-
-        } else {
-            // 4. Adding block on an existing non-water block is not allowed
-            log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
-            return chunks;
+            return addBlockInEmptyNonWaterLocation(block, chunk, blockLocationInsideChunk);
         }
+
+        if (previousBlock.getLiquidLevel() > 0) {
+            // 3. Adding block in water
+            return addBlockInWater(block, previousBlock, chunk, blockLocationInsideChunk, location);
+        }
+
+        // 4. Adding block on an existing non-water block is not allowed
+        log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
+        return emptyChunkSet;
+    }
+
+    private Set<Vec3i> updateChunksAfterAddBlock(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
+        Set<Vec3i> chunks = new LinkedHashSet<>();
 
         // When adding a block, redraw chunk of added block first to avoid
         // seeing holes in adjacent chunks when the chunks are added to the world in different
@@ -140,32 +141,48 @@ public class WorldManager {
     }
 
     public Block orientateBlock(Block block, Vector3f blockLocation, Vector3f camDirection, Direction direction) {
+        if (TypeIds.SCALE.equals(block.getType())) {
+            // Turn the block according to where the user clicked
+            return orientateBlockScale(block, blockLocation, direction);
+
+        } else if (TypeIds.RAIL.equals(block.getType())) {
+            // Turn the rail in the direction of the cam
+            return orientateBlockRail(camDirection);
+
+        } else {
+            return orientateBlockDefault(block, blockLocation, direction);
+        }
+    }
+
+    public Block orientateBlockScale(Block block, Vector3f blockLocation, Direction direction) {
+        // A scale can only be added if a block exists behind it
+        if (Direction.UP.equals(direction) || Direction.DOWN.equals(direction)) {
+            log.info("Can't add an horizontal scale");
+            return null;
+        }
+        Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
+        if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
+            log.info("No cube block behind scale");
+            return null;
+        }
+        return orientateBlockDefault(block, blockLocation, direction);
+    }
+
+    public Block orientateBlockRail(Vector3f camDirection) {
+        return BlocksConfig
+                .getInstance()
+                .getBlockRegistry()
+                .get(BlockIds.getName(
+                        RAIL,
+                        Math.abs(camDirection.setY(0).normalizeLocal().dot(NORTH)) > 0.5f ? ShapeIds.SQUARE_HS : ShapeIds.SQUARE_HE,
+                        0)
+                );
+    }
+
+    public Block orientateBlockDefault(Block block, Vector3f blockLocation, Direction direction) {
         String type = block.getType();
         String[] shapeProperties = block.getShape().split("_");
         String shape = shapeProperties[0];
-
-        // Turn the block according to where the user clicked
-        if (TypeIds.SCALE.equals(block.getType())) {
-            // A scale can only be added if a block exists behind it
-            if (Direction.UP.equals(direction) || Direction.DOWN.equals(direction)) {
-                log.info("Can't add an horizontal scale");
-                return null;
-            }
-            Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
-            if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
-                log.info("No cube block behind scale");
-                return null;
-            }
-        }
-
-        // Turn the rail in the direction of the cam
-        if (TypeIds.RAIL.equals(block.getType())) {
-            if (Math.abs(camDirection.setY(0).normalizeLocal().dot(NORTH)) > 0.5f) {
-                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
-            } else {
-                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
-            }
-        }
 
         String subShape = shapeProperties.length <= 2 ? "" : String.join("_", Arrays.copyOfRange(shapeProperties, 1, shapeProperties.length - 1));
         Block above = chunkManager.getBlock(blockLocation.add(0, 1, 0)).orElse(null);
@@ -272,6 +289,36 @@ public class WorldManager {
         }).orElse(0);
     }
 
+    private BlockWithLocation selectSlabBlock(Block block, Vector3f location) {
+        BlockWithLocation blockWithLocation = new BlockWithLocation();
+        blockWithLocation.blockLocation = location.add(0, -1, 0);
+        blockWithLocation.chunkLocation = ChunkManager.getChunkLocation(blockWithLocation.blockLocation);
+        blockWithLocation.chunk = chunkManager.getChunk(blockWithLocation.chunkLocation).orElse(null);
+
+        if (blockWithLocation.chunk != null) {
+            blockWithLocation.blockLocationInsideChunk = blockWithLocation.chunk.toLocalLocation(ChunkManager.getBlockLocation(blockWithLocation.blockLocation));
+            blockWithLocation.block = blockWithLocation.chunk.getBlock(blockWithLocation.blockLocationInsideChunk);
+        }
+
+        if (blockWithLocation.block != null) {
+            if (ShapeIds.SLAB.equals(blockWithLocation.block.getShape())) {
+                blockWithLocation.block = BlocksConfig.getInstance()
+                        .getBlockRegistry()
+                        .get(BlockIds.getName(block.getType(), ShapeIds.DOUBLE_SLAB, 0));
+                return blockWithLocation;
+
+            } else if (ShapeIds.DOUBLE_SLAB.equals(blockWithLocation.block.getShape())) {
+                blockWithLocation.block = BlocksConfig.getInstance()
+                        .getBlockRegistry()
+                        .get(BlockIds.getName(block.getType(), ShapeIds.CUBE, 0));
+                return blockWithLocation;
+            }
+        }
+
+        // No change
+        return null;
+    }
+
     /**
      * Change the current selected rail block to the appropriate variant,
      * according to the neighbour rail blocks
@@ -358,44 +405,33 @@ public class WorldManager {
         return block != null && block.isSolid() && ShapeIds.CUBE.equals(block.getShape());
     }
 
-    private void addBlockInEmptyNonWaterLocation(Block block, Vector3f location, Chunk chunk, Vec3i blockLocationInsideChunk) {
-        if (ShapeIds.SLAB.equals(block.getShape())) {
-            Vector3f belowLocation = location.add(0, -1, 0);
-            Block below = null;
-            Vec3i belowBlockLocationInsideChunk = null;
-            Vec3i belowBlockChunkLocation = ChunkManager.getChunkLocation(belowLocation);
-            Chunk belowBlockChunk = chunkManager.getChunk(belowBlockChunkLocation).orElse(null);
-            if (belowBlockChunk != null) {
-                belowBlockLocationInsideChunk = belowBlockChunk.toLocalLocation(ChunkManager.getBlockLocation(belowLocation));
-                below = belowBlockChunk.getBlock(belowBlockLocationInsideChunk);
-            }
-
-            if (below != null) {
-                if (ShapeIds.SLAB.equals(below.getShape())) {
-                    block = BlocksConfig.getInstance()
-                            .getBlockRegistry()
-                            .get(BlockIds.getName(block.getType(), ShapeIds.DOUBLE_SLAB, 0));
-                    blockLocationInsideChunk = belowBlockLocationInsideChunk;
-                    chunk = belowBlockChunk;
-
-                } else if (ShapeIds.DOUBLE_SLAB.equals(below.getShape())) {
-                    block = BlocksConfig.getInstance()
-                            .getBlockRegistry()
-                            .get(BlockIds.getName(block.getType(), ShapeIds.CUBE, 0));
-
-                    blockLocationInsideChunk = belowBlockLocationInsideChunk;
-                    chunk = belowBlockChunk;
-                }
-            }
-        }
-
+    private Set<Vec3i> addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
         chunk.addBlock(blockLocationInsideChunk, block);
         if (WATER_SOURCE.equals(block.getName()) && chunkLiquidManager != null) {
             chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
         }
+
+        return updateChunksAfterAddBlock(block, chunk, blockLocationInsideChunk);
     }
 
-    private void addSourceBlockInWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
+    private Set<Vec3i> addBlockInWater(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk, Vector3f location) {
+        if (WATER_SOURCE.equals(block.getName())) {
+            return addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
+
+        } else if (WATER_SOURCE.equals(previousBlock.getName())) {
+            return addBlockInSourceWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
+
+        } else if (TypeIds.WATER.equals(previousBlock.getType())) {
+            return addBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk, location);
+
+        } else {
+            // There is already a block at this location
+            log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
+            return new LinkedHashSet<>();
+        }
+    }
+
+    private Set<Vec3i> addSourceBlockInWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
         // 3.1 Adding a source where there is already non-source water
         if (!TypeIds.WATER.equals(previousBlock.getType())) {
             // 3.1.1 If a non water block exists there, add source water to it
@@ -409,9 +445,10 @@ public class WorldManager {
         if (chunkLiquidManager != null) {
             chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
         }
+        return updateChunksAfterAddBlock(block, chunk, blockLocationInsideChunk);
     }
 
-    private void addBlockInSourceWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
+    private Set<Vec3i> addBlockInSourceWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
         // 3.2 Adding a block on a water source removes the source if the block is a cube
         if (ShapeIds.CUBE.equals(block.getShape())) {
             chunk.addBlock(blockLocationInsideChunk, block);
@@ -427,9 +464,10 @@ public class WorldManager {
                 chunk.addBlock(blockLocationInsideChunk, block);
             }
         }
+        return updateChunksAfterAddBlock(block, chunk, blockLocationInsideChunk);
     }
 
-    private void addBlockInWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk, Vector3f location) {
+    private Set<Vec3i> addBlockInWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk, Vector3f location) {
         // 3.3 Adding a regular block where there is already some water
         // Optimisation : if adding a block in water, apply directly the water level
         // of the block location if the block does not cover any of its faces
@@ -450,6 +488,7 @@ public class WorldManager {
                 chunkLiquidManager.flowLiquid(location);
             }
         }
+        return updateChunksAfterAddBlock(block, chunk, blockLocationInsideChunk);
     }
 
     private Set<Vec3i> getAdjacentChunks(Chunk chunk, Vec3i blockLocationInsideChunk, Vec3i chunkSize) {
@@ -513,6 +552,14 @@ public class WorldManager {
         }
 
         return updatedChunks;
+    }
+
+    private static class BlockWithLocation {
+        private Chunk chunk;
+        private Vec3i chunkLocation;
+        private Block block;
+        private Vector3f blockLocation;
+        private Vec3i blockLocationInsideChunk;
     }
 
 }
