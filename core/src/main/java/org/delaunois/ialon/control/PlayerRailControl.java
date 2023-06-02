@@ -122,7 +122,7 @@ public class PlayerRailControl extends AbstractControl {
     public void stop() {
         log.info("Stop rail move");
         speed = config.getPlayerRailSpeed();
-        speedFactor = -1;
+        speedFactor = 1;
         acceleration = 0;
         waypoint.set(0, 0, 0);
         railDirection.set(0, 0, 0);
@@ -154,7 +154,7 @@ public class PlayerRailControl extends AbstractControl {
     private void updateRailCurvedMove(Vector3f move, Block block, float tpf) {
         if (railDirection.equals(Vector3f.ZERO)) {
             // No current direction, infer from current move or camera direction
-            if (move.lengthSquared() > 0.1f) {
+            if (move.lengthSquared() > 0.0f) {
                 log.info("Getting rail direction from move {}", move);
                 computeRailCurvedWaypoint(block, move);
             } else {
