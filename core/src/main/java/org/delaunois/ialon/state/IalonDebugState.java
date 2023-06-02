@@ -39,6 +39,7 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.ChunkPager;
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.control.PlaceholderControl;
 
 import java.util.List;
 import java.util.Locale;
@@ -64,6 +65,7 @@ public class IalonDebugState extends BaseAppState {
     private Label timeLabel;
     private ChunkPager chunkPager;
     private PlayerState playerState;
+    private PlaceholderControl placeholderControl;
     private SunState sunState;
     private long lastUpdate = System.currentTimeMillis();
     private final IalonConfig config;
@@ -223,7 +225,7 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getWorldLocationString() {
-        Vector3f loc = chunkPager.getLocation();
+        Vector3f loc = config.getPlayerLocation();
         if (loc == null) {
             return "?";
         }
@@ -239,7 +241,7 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getCursorLocationString() {
-        Vector3f loc = playerState.getRemovePlaceholderPosition();
+        Vector3f loc = getRemovePlaceholderPosition();
         String blockLocation = "?";
         if (loc == null) {
             return "?";
@@ -253,8 +255,8 @@ public class IalonDebugState extends BaseAppState {
     }
 
     private String getBlockLabelString() {
-        Block block = chunkPager.getChunkManager().getBlock(playerState.getRemovePlaceholderPosition()).orElse(null);
-        Block block2 = chunkPager.getChunkManager().getBlock(playerState.getAddPlaceholderPosition()).orElse(null);
+        Block block = chunkPager.getChunkManager().getBlock(getRemovePlaceholderPosition()).orElse(null);
+        Block block2 = chunkPager.getChunkManager().getBlock(getAddPlaceholderPosition()).orElse(null);
         return String.format(Locale.ENGLISH,"%s (%s)",
                 block == null ? "-" : block.getName(),
                 block2 == null ? "-" : block2.getName());
@@ -262,14 +264,14 @@ public class IalonDebugState extends BaseAppState {
 
     private String getSunlightLevelString() {
         return String.format(Locale.ENGLISH,"%d (%d)",
-                playerState.getWorldManager().getSunlightLevel(playerState.getAddPlaceholderPosition()),
-                playerState.getWorldManager().getSunlightLevel(playerState.getRemovePlaceholderPosition()));
+                playerState.getWorldManager().getSunlightLevel(getAddPlaceholderPosition()),
+                playerState.getWorldManager().getSunlightLevel(getRemovePlaceholderPosition()));
     }
 
     private String getTorchlightLevelString() {
         return String.format(Locale.ENGLISH,"%d (%d)",
-                playerState.getWorldManager().getTorchlightLevel(playerState.getAddPlaceholderPosition()),
-                playerState.getWorldManager().getTorchlightLevel(playerState.getRemovePlaceholderPosition()));
+                playerState.getWorldManager().getTorchlightLevel(getAddPlaceholderPosition()),
+                playerState.getWorldManager().getTorchlightLevel(getRemovePlaceholderPosition()));
     }
 
     private String getCacheSizeString() {
@@ -298,4 +300,25 @@ public class IalonDebugState extends BaseAppState {
         return Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
     }
 
+    private Vector3f getRemovePlaceholderPosition() {
+        if (placeholderControl == null && playerState.getPlayerNode() != null) {
+            placeholderControl = playerState.getPlayerNode().getControl(PlaceholderControl.class);
+        }
+
+        if (placeholderControl != null) {
+            return placeholderControl.getRemovePlaceholderPosition();
+        }
+        return Vector3f.NAN;
+    }
+
+    private Vector3f getAddPlaceholderPosition() {
+        if (placeholderControl == null && playerState.getPlayerNode() != null) {
+            placeholderControl = playerState.getPlayerNode().getControl(PlaceholderControl.class);
+        }
+
+        if (placeholderControl != null) {
+            return placeholderControl.getAddPlaceholderPosition();
+        }
+        return Vector3f.NAN;
+    }
 }

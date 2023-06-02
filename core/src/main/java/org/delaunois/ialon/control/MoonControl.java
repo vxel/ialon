@@ -38,7 +38,7 @@ public class MoonControl extends AbstractControl {
     private Vector3f position = new Vector3f();
 
     @Setter
-    private SunControl sun;
+    private SunControl sunControl;
 
     @Setter
     private Camera cam;
@@ -52,12 +52,12 @@ public class MoonControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
-        if (!sun.isRun()) {
+        if (!sunControl.isEnabled()) {
             return;
         }
 
         long now = System.currentTimeMillis();
-        if (lastUpdate == 0 || now - lastUpdate > sun.getUpdateThreshold()) {
+        if (lastUpdate == 0 || now - lastUpdate > sunControl.getUpdateThreshold()) {
             lastUpdate = now;
             float time = config.getTime() + FastMath.PI;
             float height = FastMath.sin(time);

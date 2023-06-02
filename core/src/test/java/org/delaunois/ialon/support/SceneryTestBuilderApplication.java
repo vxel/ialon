@@ -32,14 +32,14 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
         stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();
-        IalonInitializer.setupCamera(this, config);
+        IalonInitializer.setupCamera(this);
         IalonInitializer.setupViewPort(this);
         IalonInitializer.setupAtlasManager(this, config);
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
         stateManager.attach(IalonInitializer.setupChunkSaverState(config));
-        stateManager.attach(IalonInitializer.setupPlayerState(config));
+        stateManager.attach(IalonInitializer.setupPlayerState(this, config));
         stateManager.attach(IalonInitializer.setupStatsAppState(config));
         stateManager.attach(IalonInitializer.setupChunkManager(config));
         stateManager.attach(IalonInitializer.setupChunkPager(this, config)); // Depends on PlayerState

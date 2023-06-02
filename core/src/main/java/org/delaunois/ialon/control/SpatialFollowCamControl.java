@@ -23,25 +23,32 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.control.AbstractControl;
 
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Makes a spatial follow the translation of the camera, with an optional local translation.
+ */
 @Slf4j
-@RequiredArgsConstructor
-public class FollowCamControl extends AbstractControl {
+public class SpatialFollowCamControl extends AbstractControl {
 
     private final Camera cam;
+    private final Vector3f tmp = new Vector3f();
 
     @Setter
     private Vector3f translation;
 
+    public SpatialFollowCamControl(Camera cam) {
+        this.cam = cam;
+    }
+
     @Override
     protected void controlUpdate(float tpf) {
         if (translation != null) {
-            spatial.setLocalTranslation((cam.getLocation().add(translation)));
+            tmp.set(cam.getLocation()).addLocal(translation);
+            spatial.setLocalTranslation(tmp);
         } else {
-            spatial.setLocalTranslation((cam.getLocation()));
+            spatial.setLocalTranslation(cam.getLocation());
         }
     }
 

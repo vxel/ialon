@@ -63,7 +63,7 @@ public class IalonConfigRepository {
                 config.setPlayerLocation(playerStateDTO.getLocation());
             }
             if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
-                config.setCamRotation(playerStateDTO.getRotation());
+                config.setPlayerRotation(playerStateDTO.getRotation());
             }
             if (playerStateDTO.getSelectedBlockIndex() != null) {
                 config.setSelectedBlockIndex(playerStateDTO.getSelectedBlockIndex());
@@ -77,7 +77,7 @@ public class IalonConfigRepository {
 
     public static void saveConfig(SimpleApplication app, IalonConfig config) {
         if (app.getCamera() != null) {
-            config.setCamRotation(app.getCamera().getRotation());
+            config.setPlayerRotation(app.getCamera().getRotation());
         }
         saveConfig(config);
     }

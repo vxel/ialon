@@ -75,7 +75,7 @@ public class IalonConfig {
 
     // Player
     private Vector3f playerLocation = new Vector3f();
-    private Quaternion camRotation = new Quaternion();
+    private Quaternion playerRotation = new Quaternion();
     private float rotationSpeed = 1.5f;
     private float rotationSpeedRail = 5f;
     private float playerStartHeight = 10;
@@ -88,6 +88,7 @@ public class IalonConfig {
     private float playerStepHeight = 0.3f;
     private boolean playerStartFly = false;
     private boolean saveUserSettingsOnStop = true;
+    private final InputActionManager inputActionManager = new InputActionManager();
     private Path savePath = FileSystems.getDefault().getPath(SAVEDIR);
 
     private Block selectedBlock = null;
@@ -95,7 +96,7 @@ public class IalonConfig {
     private ChunkManager chunkManager;
     private ChunkRepository chunkRepository;
     private TerrainGenerator terrainGenerator;
-    private TextureAtlasManager textureAtlasManager = new TextureAtlasManager();
+    private final TextureAtlasManager textureAtlasManager = new TextureAtlasManager();
     private BitmapFont font;
 
     // Debug

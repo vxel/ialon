@@ -3,9 +3,7 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
-import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
-import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
@@ -21,10 +19,10 @@ import org.delaunois.ialon.control.SunControl;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import static org.delaunois.ialon.IalonKeyMapping.ACTION_TOGGLE_TIME_RUN;
+
 @Slf4j
 public class SunState extends BaseAppState implements ActionListener {
-
-    private static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
 
     private SimpleApplication app;
     private Geometry sun;
@@ -59,9 +57,6 @@ public class SunState extends BaseAppState implements ActionListener {
 
         sunControl = new SunControl(this.app.getCamera(), config);
         sun.addControl(sunControl);
-
-        app.getInputManager().addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));
-        app.getInputManager().addListener(this, ACTION_TOGGLE_TIME_RUN);
     }
 
     @Override
@@ -71,6 +66,8 @@ public class SunState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onEnable() {
+        app.getInputManager().addListener(this, ACTION_TOGGLE_TIME_RUN);
+
         LightingState lightingState = app.getStateManager().getState(LightingState.class);
         if (lightingState == null) {
             log.error("Sunstate requires LightingState");
@@ -85,6 +82,8 @@ public class SunState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onDisable() {
+        app.getInputManager().removeListener(this);
+
         if (sun.getParent() != null) {
             this.app.getRootNode().detachChild(sun);
         }

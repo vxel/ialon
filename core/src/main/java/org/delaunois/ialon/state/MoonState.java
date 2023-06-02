@@ -65,7 +65,7 @@ public class MoonState extends BaseAppState {
             log.error("MoonState requires SunState");
             return;
         }
-        moonControl.setSun(sunState.getSunControl());
+        moonControl.setSunControl(sunState.getSunControl());
         if (moon.getParent() == null) {
             this.app.getRootNode().attachChild(moon);
         }

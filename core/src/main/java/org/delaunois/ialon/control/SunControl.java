@@ -51,9 +51,6 @@ public class SunControl extends AbstractControl {
     private AmbientLight ambientLight;
 
     @Getter
-    private boolean run = true;
-
-    @Getter
     private float sunHeight;
 
     private final Camera cam;
@@ -70,10 +67,6 @@ public class SunControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
-        if (!run) {
-            return;
-        }
-
         long now = System.currentTimeMillis();
         if (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold()) {
             updateSunPosition();
@@ -127,7 +120,7 @@ public class SunControl extends AbstractControl {
     }
 
     public void toggleTimeRun() {
-        run = !run;
+        this.setEnabled(!this.isEnabled());
     }
 
     public LocalTime getLocalTime() {

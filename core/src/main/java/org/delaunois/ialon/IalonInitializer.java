@@ -54,11 +54,10 @@ public class IalonInitializer {
         SLF4JBridgeHandler.install();
     }
 
-    public static void setupCamera(SimpleApplication app, IalonConfig config) {
+    public static void setupCamera(SimpleApplication app) {
         app.getCamera().setFrustumNear(0.1f);
         app.getCamera().setFrustumFar(400f);
         app.getCamera().setFov(50);
-        app.getCamera().setRotation(config.getCamRotation());
     }
 
     public static void setupViewPort(SimpleApplication app) {
@@ -77,7 +76,9 @@ public class IalonInitializer {
         return chunkSaverState;
     }
 
-    public static PlayerState setupPlayerState(IalonConfig config) {
+    public static PlayerState setupPlayerState(SimpleApplication app, IalonConfig config) {
+        IalonKeyMapping.setup(app.getInputManager());
+
         PlayerState playerState = new PlayerState(config);
         playerState.setEnabled(false);
         return playerState;
@@ -168,7 +169,7 @@ public class IalonInitializer {
         }
 
         ChunkPager chunkPager = new ChunkPager(chunkNode, config.getChunkManager());
-        chunkPager.setLocation(playerState.getPlayerLocation());
+        chunkPager.setLocation(config.getPlayerLocation());
         chunkPager.setGridLowerBounds(config.getGridLowerBound());
         chunkPager.setGridUpperBounds(config.getGridUpperBound());
         chunkPager.setMaxUpdatePerFrame(100);
@@ -183,7 +184,7 @@ public class IalonInitializer {
 
         PhysicsSpace physicsSpace = bulletAppState.getPhysicsSpace();
         PhysicsChunkPager physicsChunkPager = new PhysicsChunkPager(physicsSpace, config.getChunkManager());
-        physicsChunkPager.setLocation(playerState.getPlayerLocation());
+        physicsChunkPager.setLocation(config.getPlayerLocation());
         physicsChunkPager.setGridLowerBounds(config.getGridLowerBound());
         physicsChunkPager.setGridUpperBounds(config.getGridUpperBound());
         playerState.addListener(physicsChunkPager::setLocation);

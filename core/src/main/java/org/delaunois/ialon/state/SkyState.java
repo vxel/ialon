@@ -20,7 +20,7 @@ import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.Ground;
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.control.FollowCamControl;
+import org.delaunois.ialon.control.SpatialFollowCamControl;
 import org.delaunois.ialon.control.SkyControl;
 
 import java.nio.FloatBuffer;
@@ -118,7 +118,7 @@ public class SkyState extends BaseAppState {
         sky.setMaterial(skyMat);
 
         skyControl = new SkyControl(config);
-        FollowCamControl followCamControl = new FollowCamControl(app.getCamera());
+        SpatialFollowCamControl followCamControl = new SpatialFollowCamControl(app.getCamera());
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
 
@@ -137,7 +137,7 @@ public class SkyState extends BaseAppState {
         config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
         groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
 
-        ground.addControl(new FollowCamControl(app.getCamera()));
+        ground.addControl(new SpatialFollowCamControl(app.getCamera()));
     }
 
     @Override

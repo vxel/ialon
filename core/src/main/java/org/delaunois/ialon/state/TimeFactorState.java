@@ -21,9 +21,7 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
-import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
-import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -40,12 +38,13 @@ import org.delaunois.ialon.IalonConfig;
 
 import lombok.extern.slf4j.Slf4j;
 
+import static org.delaunois.ialon.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
+
 @Slf4j
 public class TimeFactorState extends BaseAppState implements ActionListener {
 
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
-    private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
@@ -56,7 +55,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     private Container buttonTimeFactor;
     private int buttonSize;
     private Label timeFactorLabel;
-    private boolean isMouseLocked = false;
 
     private final IalonConfig config;
 
@@ -89,9 +87,6 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
                     }
                 });
 
-        if (!app.getInputManager().hasMapping(ACTION_SWITCH_MOUSELOCK)) {
-            app.getInputManager().addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
-        }
         app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
     }
 
@@ -131,7 +126,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        app.getInputManager().removeListener(this);
     }
 
     @Override
@@ -162,8 +157,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
         if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
-            setEnabled(isMouseLocked);
-            isMouseLocked = !isMouseLocked;
+            setEnabled(!this.isEnabled());
         }
     }
 

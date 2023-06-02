@@ -26,21 +26,16 @@ public class CameraHelper {
 
     private final Matrix3f mat = new Matrix3f();
     private final Quaternion q = new Quaternion();
+    private final Vector3f up = new Vector3f();
+    private final Vector3f left = new Vector3f();
+    private final Vector3f dir = new Vector3f();
 
-    public void rotate(Camera cam, float value) {
-        rotate(cam, value, Vector3f.UNIT_Y);
-    }
-
-    public void rotate(Camera cam, float value, Vector3f axis) {
+    public void rotate(Camera cam, float value, Vector3f axis, Vector3f camUp, Vector3f camLeft, Vector3f camDir) {
         mat.fromAngleNormalAxis(value, axis);
 
-        Vector3f up = cam.getUp();
-        Vector3f left = cam.getLeft();
-        Vector3f dir = cam.getDirection();
-
-        mat.mult(up, up);
-        mat.mult(left, left);
-        mat.mult(dir, dir);
+        mat.mult(camUp, up);
+        mat.mult(camLeft, left);
+        mat.mult(camDir, dir);
 
         if (up.getY() < 0) {
             return;

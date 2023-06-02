@@ -59,11 +59,11 @@ public class PlayerStateDTO {
         this.posx = config.getPlayerLocation().x;
         this.posy = config.getPlayerLocation().y;
         this.posz = config.getPlayerLocation().z;
-        if (config.getCamRotation() != null) {
-            this.rotx = config.getCamRotation().getX();
-            this.roty = config.getCamRotation().getY();
-            this.rotz = config.getCamRotation().getZ();
-            this.rotw = config.getCamRotation().getW();
+        if (config.getPlayerRotation() != null) {
+            this.rotx = config.getPlayerRotation().getX();
+            this.roty = config.getPlayerRotation().getY();
+            this.rotz = config.getPlayerRotation().getZ();
+            this.rotw = config.getPlayerRotation().getW();
         }
         this.time = config.getTime();
         this.timeFactorIndex = config.getTimeFactorIndex();

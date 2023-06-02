@@ -24,6 +24,7 @@ import com.rvandoosselaer.blocks.BlocksConfig;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.BlockSelectionState;
+import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
@@ -70,18 +71,19 @@ public class Ialon extends SimpleApplication {
     @Override
     public void simpleInitApp() {
         log.info("Initializing Ialon");
+        config.getInputActionManager().setInputManager(inputManager);
 
         stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();
-        IalonInitializer.setupCamera(this, config);
+        IalonInitializer.setupCamera(this);
         IalonInitializer.setupViewPort(this);
         IalonInitializer.setupAtlasManager(this, config);
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
         stateManager.attach(IalonInitializer.setupChunkSaverState(config));
-        stateManager.attach(IalonInitializer.setupPlayerState(config));
+        stateManager.attach(IalonInitializer.setupPlayerState(this, config));
         stateManager.attach(IalonInitializer.setupStatsAppState(config));
         stateManager.attach(IalonInitializer.setupChunkManager(config));
         stateManager.attach(IalonInitializer.setupChunkPager(this, config)); // Depends on PlayerState
@@ -93,6 +95,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
+        stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new WorldBuilderState(config));
