@@ -57,21 +57,23 @@ public class PlaceholderControl extends AbstractControl {
         this.removePlaceholder = createRemovePlaceholder();
     }
 
+    @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        this.worldManager = spatial.getControl(PlayerControl.class).getWorldManager();
+        this.worldManager = spatial.getControl(PlayerCharacterControl.class).getWorldManager();
         this.playerCamDirectionControl = spatial.getControl(PlayerCamDirectionControl.class);
         assert(playerCamDirectionControl != null);
     }
 
     @Override
     protected void controlUpdate(float tpf) {
-        if (chunkNode != null && worldManager != null && playerCamDirectionControl != null) {
-            if (System.currentTimeMillis() - lastCollisionTest > 100) {
-                lastCollisionTest = System.currentTimeMillis();
-                CollisionResult result = getCollisionResult();
-                updatePlaceholders(result);
-            }
+        if (chunkNode != null
+                && worldManager != null
+                && playerCamDirectionControl != null
+                && System.currentTimeMillis() - lastCollisionTest > 100) {
+            lastCollisionTest = System.currentTimeMillis();
+            CollisionResult result = getCollisionResult();
+            updatePlaceholders(result);
         }
     }
 

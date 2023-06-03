@@ -22,7 +22,7 @@ import static org.delaunois.ialon.IalonKeyMapping.ACTION_RIGHT;
 @Slf4j
 public class PlayerWalkControl extends AbstractControl implements ActionListener {
 
-    private PlayerControl playerControl = null;
+    private PlayerCharacterControl playerCharacterControl = null;
     private final IalonConfig config;
 
     private boolean left = false;
@@ -35,7 +35,7 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
 
-    public static final String[] ACTIONS = new String[]{
+    private static final String[] ACTIONS = new String[]{
             ACTION_LEFT,
             ACTION_RIGHT,
             ACTION_FORWARD,
@@ -48,10 +48,11 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
         this.camera = camera;
     }
 
+    @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        playerControl = spatial.getControl(PlayerControl.class);
-        assert(playerControl != null);
+        playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
+        assert(playerCharacterControl != null);
         this.setEnabled(!config.isPlayerStartFly());
     }
 
@@ -61,23 +62,23 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
             camera.getDirection(camDir);
             camera.getLeft(camLeft);
 
-            if (playerControl.isOnScale()) {
-                playerControl.setFallSpeed(0);
+            if (playerCharacterControl.isOnScale()) {
+                playerCharacterControl.setFallSpeed(0);
             }
 
-            if (playerControl.isUnderWater()) {
+            if (playerCharacterControl.isUnderWater()) {
                 // In water, we don't need to climb stairs, just swim ;-)
                 // Setting step height to a low value prevents a bug in bullet
                 // that makes the character fall with a different speed below
                 // the stepHeight. This bug is noticeable especially under water.
-                playerControl.getCharacter().setStepHeight(0.03f);
-                playerControl.setFallSpeed(config.getWaterGravity());
-                playerControl.setJumpSpeed(config.getWaterJumpSpeed());
+                playerCharacterControl.getCharacter().setStepHeight(0.03f);
+                playerCharacterControl.setFallSpeed(config.getWaterGravity());
+                playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
             }
 
-            move.set(playerControl.getWalkDirection());
+            move.set(playerCharacterControl.getWalkDirection());
             updateWalkMove(move);
-            playerControl.setWalkDirection(move);
+            playerCharacterControl.setWalkDirection(move);
         }
     }
 
@@ -102,19 +103,20 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
         move.normalizeLocal().multLocal(config.getPlayerMoveSpeed());
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
         move.zero();
-        if (playerControl == null) {
+        if (playerCharacterControl == null) {
             return;
         }
 
         if (enabled) {
             log.info("Walking");
             config.getInputActionManager().addListener(this, ACTIONS);
-            playerControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
-            playerControl.setFallSpeed(config.getGroundGravity());
-            playerControl.setJumpSpeed(config.getJumpSpeed());
+            playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
+            playerCharacterControl.setFallSpeed(config.getGroundGravity());
+            playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
 
         } else {
             log.info("Not Walking");
@@ -153,28 +155,28 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
      */
     public void jump() {
         // Do not jump if there is a block above the player, unless it is water
-        Block above = playerControl.getWorldManager().getBlock(camera.getLocation().add(0, 1, 0));
+        Block above = playerCharacterControl.getWorldManager().getBlock(camera.getLocation().add(0, 1, 0));
         if (above != null && above.getLiquidLevel() < 0) {
             return;
         }
 
         // Do not jump if the player is not on the ground, unless he is in water
-        Block block = playerControl.getBlock();
-        if (!playerControl.onGround() && (block == null || block.getLiquidLevel() != Block.LIQUID_FULL)) {
+        Block block = playerCharacterControl.getBlock();
+        if (!playerCharacterControl.onGround() && (block == null || block.getLiquidLevel() != Block.LIQUID_FULL)) {
             return;
         }
 
         // Adjust jump strength according to space available above the player
-        Block aboveAbove = playerControl.getWorldManager().getBlock(camera.getLocation().add(0, 2, 0));
+        Block aboveAbove = playerCharacterControl.getWorldManager().getBlock(camera.getLocation().add(0, 2, 0));
         if (aboveAbove == null) {
-            playerControl.jump();
+            playerCharacterControl.jump();
         } else {
             float availableJumpSpace = ((int)camera.getLocation().y) + 2 - camera.getLocation().y;
             // Hack to avoid bug when jumping and touching a block above
             // Still does not work when being on half-blocks
-            playerControl.setJumpSpeed(config.getJumpSpeed() * availableJumpSpace * 0.4f);
-            playerControl.jump();
-            playerControl.setJumpSpeed(config.getJumpSpeed());
+            playerCharacterControl.setJumpSpeed(config.getJumpSpeed() * availableJumpSpace * 0.4f);
+            playerCharacterControl.jump();
+            playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
         }
     }
 

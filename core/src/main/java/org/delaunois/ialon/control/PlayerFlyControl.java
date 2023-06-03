@@ -23,7 +23,7 @@ import static org.delaunois.ialon.IalonKeyMapping.ACTION_RIGHT;
 @Slf4j
 public class PlayerFlyControl extends AbstractControl implements ActionListener {
 
-    private PlayerControl playerControl = null;
+    private PlayerCharacterControl playerCharacterControl = null;
     private final IalonConfig config;
 
     private boolean left = false;
@@ -40,7 +40,7 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
 
-    public static final String[] ACTIONS = new String[]{
+    private static final String[] ACTIONS = new String[]{
             ACTION_LEFT,
             ACTION_RIGHT,
             ACTION_FORWARD,
@@ -55,10 +55,11 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
         this.camera = camera;
     }
 
+    @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        playerControl = spatial.getControl(PlayerControl.class);
-        assert (playerControl != null);
+        playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
+        assert (playerCharacterControl != null);
         this.setEnabled(config.isPlayerStartFly());
     }
 
@@ -67,9 +68,9 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
         if (spatial != null) {
             camera.getDirection(camDir);
             camera.getLeft(camLeft);
-            move.set(playerControl.getWalkDirection());
+            move.set(playerCharacterControl.getWalkDirection());
             updateFlyMove(move);
-            playerControl.setWalkDirection(move);
+            playerCharacterControl.setWalkDirection(move);
         }
     }
 
@@ -100,11 +101,12 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
         move.normalizeLocal().multLocal(config.getPlayerFlySpeed());
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
 
         config.setPlayerStartFly(enabled);
-        if (playerControl == null) {
+        if (playerCharacterControl == null) {
             return;
         }
 
@@ -112,14 +114,14 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
         if (enabled) {
             log.info("Flying");
             config.getInputActionManager().addListener(this, ACTIONS);
-            playerControl.setFallSpeed(0);
+            playerCharacterControl.setFallSpeed(0);
         } else {
             log.info("Not Flying");
             config.getInputActionManager().removeListener(this);
-            if (playerControl.isUnderWater()) {
-                playerControl.setFallSpeed(config.getWaterGravity());
+            if (playerCharacterControl.isUnderWater()) {
+                playerCharacterControl.setFallSpeed(config.getWaterGravity());
             } else {
-                playerControl.setFallSpeed(config.getGroundGravity());
+                playerCharacterControl.setFallSpeed(config.getGroundGravity());
             }
         }
     }

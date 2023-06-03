@@ -57,9 +57,9 @@ public class PlayerCamDirectionControl extends AbstractControl implements Action
         this.cameraHelper = new CameraHelper();
         config.getInputActionManager().addListener(this, ACTIONS);
         this.miny = 130;
-        this.maxy = camera.getHeight() - 250;
+        this.maxy = camera.getHeight() - 250f;
         this.minx = 0;
-        this.maxx = camera.getWidth() - 200;
+        this.maxx = camera.getWidth() - 200f;
     }
 
     @Override
@@ -81,6 +81,7 @@ public class PlayerCamDirectionControl extends AbstractControl implements Action
         return camDir;
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
 

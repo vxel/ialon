@@ -39,7 +39,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     private boolean fly;
 
     private WorldManager worldManager;
-    private PlayerControl playerControl;
+    private PlayerCharacterControl playerCharacterControl;
     private PlaceholderControl placeholderControl;
     private PlayerFlyControl playerFlyControl;
     private PlayerWalkControl playerWalkControl;
@@ -56,11 +56,12 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         config.getInputActionManager().addListener(this, ACTIONS);
     }
 
+    @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        this.playerControl = spatial.getControl(PlayerControl.class);
-        assert(playerControl != null);
-        this.worldManager = playerControl.getWorldManager();
+        this.playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
+        assert(playerCharacterControl != null);
+        this.worldManager = playerCharacterControl.getWorldManager();
         loadControls();
     }
 
@@ -175,7 +176,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         }
 
         final Vector3f worldBlockLocation = placeholderControl.getAddPlaceholder().getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-        Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerControl.getPlayerLocation());
+        Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerCharacterControl.getPlayerLocation());
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
         final Block selectedBlock = config.getSelectedBlock();
 

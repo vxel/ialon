@@ -52,7 +52,7 @@ public class PlayerRailControl extends AbstractControl {
     private final WorldManager worldManager;
     private final Camera camera;
 
-    private PlayerControl playerControl = null;
+    private PlayerCharacterControl playerCharacterControl = null;
 
     public PlayerRailControl(IalonConfig config, WorldManager worldManager, Camera camera) {
         this.config = config;
@@ -61,10 +61,11 @@ public class PlayerRailControl extends AbstractControl {
 
     }
 
+    @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        playerControl = spatial.getControl(PlayerControl.class);
-        assert(playerControl != null);
+        playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
+        assert(playerCharacterControl != null);
     }
 
     @Override
@@ -72,13 +73,14 @@ public class PlayerRailControl extends AbstractControl {
         if (spatial != null) {
             camera.getDirection(camDir);
             playerLocation.set(spatial.getWorldTranslation());
-            move.set(playerControl.getWalkDirection());
-            playerBlockCenterLocation.set(playerControl.getPlayerBlockCenterLocation());
-            oldPlayerBlockCenterLocation.set(playerControl.getOldPlayerBlockCenterLocation());
+            playerBlockCenterLocation.set(playerCharacterControl.getPlayerBlockCenterLocation());
+            oldPlayerBlockCenterLocation.set(playerCharacterControl.getOldPlayerBlockCenterLocation());
 
-            updateRailMove(move, playerControl.getBlock(), tpf);
+            move.zero();
+            updateRailMove(move, playerCharacterControl.getBlock(), tpf);
 
-            playerControl.setWalkDirection(move);
+            move.addLocal(playerCharacterControl.getWalkDirection());
+            playerCharacterControl.setWalkDirection(move);
         }
     }
 

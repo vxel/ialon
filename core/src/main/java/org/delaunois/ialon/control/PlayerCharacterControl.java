@@ -12,7 +12,7 @@ import org.delaunois.ialon.WorldManager;
 import lombok.Getter;
 
 @Getter
-public class PlayerControl extends CharacterControl {
+public class PlayerCharacterControl extends CharacterControl {
 
     @Getter
     private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
@@ -31,13 +31,14 @@ public class PlayerControl extends CharacterControl {
     private boolean underWater = false;
     private boolean onScale = false;
 
-    public PlayerControl(ConvexShape shape, float stepHeight, WorldManager worldManager, IalonConfig config) {
+    public PlayerCharacterControl(ConvexShape shape, float stepHeight, WorldManager worldManager, IalonConfig config) {
         super(shape, stepHeight);
         this.worldManager = worldManager;
         this.config = config;
         setGravity(config.getGroundGravity());
     }
 
+    @Override
     public void update(float tpf) {
         super.update(tpf);
         walkDirection.zero();

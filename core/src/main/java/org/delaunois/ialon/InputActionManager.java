@@ -39,11 +39,7 @@ public class InputActionManager {
         }
 
         for (String mappingName : mappingNames) {
-            Mapping mapping = mappings.get(mappingName);
-            if (mapping == null) {
-                mapping = new Mapping(mappingName);
-                mappings.put(mappingName, mapping);
-            }
+            Mapping mapping = mappings.computeIfAbsent(mappingName, k -> new Mapping(mappingName));
             if (!mapping.listeners.contains(listener)) {
                 mapping.listeners.add(listener);
             }

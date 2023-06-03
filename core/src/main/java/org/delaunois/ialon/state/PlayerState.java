@@ -38,7 +38,7 @@ import org.delaunois.ialon.control.CamFollowSpatialControl;
 import org.delaunois.ialon.control.PlaceholderControl;
 import org.delaunois.ialon.control.PlayerActionControl;
 import org.delaunois.ialon.control.PlayerCamDirectionControl;
-import org.delaunois.ialon.control.PlayerControl;
+import org.delaunois.ialon.control.PlayerCharacterControl;
 import org.delaunois.ialon.control.PlayerFlyControl;
 import org.delaunois.ialon.control.PlayerRailControl;
 import org.delaunois.ialon.control.PlayerWalkControl;
@@ -76,7 +76,7 @@ public class PlayerState extends BaseAppState {
     private PlayerActionControl playerActionControl;
     private PlayerWalkControl playerWalkControl;
     private PlayerFlyControl playerFlyControl;
-    private PlayerControl playerControl;
+    private PlayerCharacterControl playerCharacterControl;
     private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
     private final IalonConfig config;
 
@@ -97,7 +97,7 @@ public class PlayerState extends BaseAppState {
         );
 
         playerNode = createPlayer(app, config, worldManager);
-        playerControl = playerNode.getControl(PlayerControl.class);
+        playerCharacterControl = playerNode.getControl(PlayerCharacterControl.class);
         playerActionControl = playerNode.getControl(PlayerActionControl.class);
         playerWalkControl = playerNode.getControl(PlayerWalkControl.class);
         playerFlyControl = playerNode.getControl(PlayerFlyControl.class);
@@ -129,7 +129,7 @@ public class PlayerState extends BaseAppState {
         app.getRootNode().attachChild(playerNode);
         BulletAppState bulletAppState = app.getStateManager().getState(BulletAppState.class);
         ButtonManagerState buttonManagerState = app.getStateManager().getState(ButtonManagerState.class);
-        bulletAppState.getPhysicsSpace().add(playerControl);
+        bulletAppState.getPhysicsSpace().add(playerCharacterControl);
         config.getInputActionManager().addListener(playerActionControl);
         config.getInputActionManager().addListener(playerWalkControl);
         config.getInputActionManager().addListener(playerFlyControl);
@@ -151,7 +151,7 @@ public class PlayerState extends BaseAppState {
             playerNode.getParent().detachChild(playerNode);
             BulletAppState bulletAppState = app.getStateManager().getState(BulletAppState.class);
             if (bulletAppState != null && bulletAppState.getPhysicsSpace() != null) {
-                bulletAppState.getPhysicsSpace().remove(playerControl);
+                bulletAppState.getPhysicsSpace().remove(playerCharacterControl);
             }
         }
     }
@@ -174,11 +174,11 @@ public class PlayerState extends BaseAppState {
                 config.getPlayerRadius(),
                 config.getPlayerHeight() - 2 * config.getPlayerRadius(),
                 1);
-        PlayerControl playerControl = new PlayerControl(capsuleShape, config.getPlayerStepHeight(), worldManager, config);
-        playerControl.setJumpSpeed(config.getJumpSpeed());
-        playerControl.setFallSpeed(config.getGroundGravity());
-        playerControl.setGravity(config.getGroundGravity());
-        playerControl.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
+        PlayerCharacterControl characterControl = new PlayerCharacterControl(capsuleShape, config.getPlayerStepHeight(), worldManager, config);
+        characterControl.setJumpSpeed(config.getJumpSpeed());
+        characterControl.setFallSpeed(config.getGroundGravity());
+        characterControl.setGravity(config.getGroundGravity());
+        characterControl.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
 
         if (config.getPlayerLocation() == null) {
             config.setPlayerLocation(new Vector3f(
@@ -194,10 +194,10 @@ public class PlayerState extends BaseAppState {
             app.getCamera().setRotation(config.getPlayerRotation().fromAngles(angles[0], angles[1], 0));
         }
 
-        PlayerWalkControl playerWalkControl = new PlayerWalkControl(config, app.getCamera());
-        PlayerRailControl playerRailControl = new PlayerRailControl(config, worldManager, app.getCamera());
-        PlayerFlyControl playerFlyControl = new PlayerFlyControl(config, app.getCamera());
-        PlayerCamDirectionControl playerCamDirectionControl = new PlayerCamDirectionControl(config, app.getInputManager(), app.getCamera());
+        PlayerWalkControl walkControl = new PlayerWalkControl(config, app.getCamera());
+        PlayerRailControl railControl = new PlayerRailControl(config, worldManager, app.getCamera());
+        PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
+        PlayerCamDirectionControl camDirectionControl = new PlayerCamDirectionControl(config, app.getInputManager(), app.getCamera());
         CamFollowSpatialControl camFollowSpatialControl = new CamFollowSpatialControl(app.getCamera());
         if (config.isDebugCollisions()) {
             camFollowSpatialControl.setLocalTranslation(new Vector3f(-2, config.getPlayerHeight() / 2 - 0.15f, 0));
@@ -207,21 +207,21 @@ public class PlayerState extends BaseAppState {
             camFollowSpatialControl.setLocalTranslation(new Vector3f(0, config.getPlayerHeight() / 2 - 0.15f, 0));
         }
 
-        PlayerActionControl playerActionControl = new PlayerActionControl(app, config);
+        PlayerActionControl actionControl = new PlayerActionControl(app, config);
 
-        Node playerNode = new Node("Player");
-        playerNode.setLocalTranslation(config.getPlayerLocation());
-        playerNode.setLocalRotation(config.getPlayerRotation());
+        Node node = new Node("Player");
+        node.setLocalTranslation(config.getPlayerLocation());
+        node.setLocalRotation(config.getPlayerRotation());
 
-        playerNode.addControl(playerControl);
-        playerNode.addControl(camFollowSpatialControl);
-        playerNode.addControl(playerCamDirectionControl);
-        playerNode.addControl(playerFlyControl);
-        playerNode.addControl(playerWalkControl);
-        playerNode.addControl(playerRailControl);
-        playerNode.addControl(playerActionControl);
+        node.addControl(characterControl);
+        node.addControl(camFollowSpatialControl);
+        node.addControl(camDirectionControl);
+        node.addControl(flyControl);
+        node.addControl(walkControl);
+        node.addControl(railControl);
+        node.addControl(actionControl);
 
-        return playerNode;
+        return node;
     }
 
     private Label createCrossHair() {
