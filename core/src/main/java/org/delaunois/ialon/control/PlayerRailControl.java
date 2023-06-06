@@ -42,7 +42,7 @@ public class PlayerRailControl extends AbstractControl {
     private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockBelowCenterLocation = new Vector3f();
-    private final Vector3f waypoint = new Vector3f();
+    private final Vector3f newRailDirection = new Vector3f();
     private final Quaternion tmpQuaternion = new Quaternion();
     private final float[] angles = new float[3];
     private final Vector3f move = new Vector3f();
@@ -97,12 +97,10 @@ public class PlayerRailControl extends AbstractControl {
     private void updateRailMove(Vector3f currentDirection, Block block, float tpf) {
         if (block != null) {
             if (RAIL_CURVED.equals(block.getType())) {
-                updateRailCurvedMove(currentDirection, block);
-                updateMoveAndRotation(tpf);
+                updateRailCurvedMove(currentDirection, block, tpf);
             } else if (block.getType().startsWith(RAIL)) {
                 // RAIL or RAIL_SLOPE
                 updateRailStraightMove(currentDirection, block, tpf);
-                updateMoveAndRotation(tpf);
             }
 
         } else {
@@ -112,7 +110,6 @@ public class PlayerRailControl extends AbstractControl {
             Block blockBelow = worldManager.getBlock(playerBlockBelowCenterLocation);
             if (blockBelow != null && RAIL_SLOPE.equals(blockBelow.getType())) {
                 updateRailStraightMove(currentDirection, blockBelow, tpf);
-                updateMoveAndRotation(tpf);
             } else {
                 log.info("No more rail block below");
                 stop();
@@ -126,121 +123,133 @@ public class PlayerRailControl extends AbstractControl {
             // No current direction, infer from current move or head direction
             if (currentDirection.lengthSquared() > 0.0f) {
                 log.info("Infer new direction from move {}", currentDirection);
-                computeRailStraightWaypoint(block, playerLocation, currentDirection);
+                railDirection.set(computeRailStraightDirection(block, playerLocation, currentDirection));
+                railDirection.subtractLocal(playerLocation).normalizeLocal();
             } else {
                 head.getLocalRotation().getRotationColumn(2, headDir).setY(0).normalizeLocal();
                 log.info("Infer new direction from head direction {}", headDir);
-                computeRailStraightWaypoint(block, playerLocation, headDir);
+                railDirection.set(computeRailStraightDirection(block, playerLocation, headDir));
+                railDirection.subtractLocal(playerLocation).normalizeLocal();
             }
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailStraightWaypoint(block, playerLocation, railDirection);
+            railDirection.set(computeRailStraightDirection(block, playerLocation, railDirection));
+            railDirection.subtractLocal(playerLocation).normalizeLocal();
         }
 
+        updateMoveAndRotation(tpf);
         updateSpeed(tpf);
     }
 
-    private void updateRailCurvedMove(Vector3f currentDirection, Block block) {
+    private void updateRailCurvedMove(Vector3f currentDirection, Block block, float tpf) {
         if (railDirection.equals(Vector3f.ZERO)) {
             alignBodyToHead();
             // No current direction, infer from current move or head direction
             if (currentDirection.lengthSquared() > 0.0f) {
                 log.info("Infer new direction from move {}", currentDirection);
-                computeRailCurvedWaypoint(block, playerLocation, currentDirection);
+                railDirection.set(computeRailCurvedDirection(block, playerLocation, currentDirection));
+                railDirection.subtractLocal(playerLocation).normalizeLocal();
             } else {
                 head.getLocalRotation().getRotationColumn(2, headDir).setY(0).normalizeLocal();
                 log.info("Infer new direction from head direction {}", headDir);
-                computeRailCurvedWaypoint(block, playerLocation, headDir);
+                railDirection.set(computeRailCurvedDirection(block, playerLocation, headDir));
+                railDirection.subtractLocal(playerLocation).normalizeLocal();
             }
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailCurvedWaypoint(block, playerLocation, railDirection);
+            railDirection.set(computeRailCurvedDirection(block, playerLocation, railDirection));
+            railDirection.subtractLocal(playerLocation).normalizeLocal();
         }
+
+        updateMoveAndRotation(tpf);
     }
 
-    private void computeRailStraightWaypoint(Block block, Vector3f currentLocation, Vector3f currentDirection) {
+    private Vector3f computeRailStraightDirection(Block block, Vector3f currentLocation, Vector3f currentDirection) {
+        newRailDirection.set(playerBlockCenterLocation).setY(currentLocation.y);
         float dotSouth = currentDirection.dot(SOUTH);
         float dotEast = currentDirection.dot(EAST);
         switch (block.getShape()) {
             case ShapeIds.WEDGE_NORTH:
                 speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotSouth > 0 ? -1f : 1f;
-                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * sign(dotSouth));
+                newRailDirection.addLocal(0, 0, 0.5f * sign(dotSouth));
                 break;
             case ShapeIds.WEDGE_SOUTH:
                 speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotSouth < 0 ? -1f : 1f;
-                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * sign(dotSouth));
+                newRailDirection.addLocal(0, 0, 0.5f * sign(dotSouth));
                 break;
             case ShapeIds.SQUARE_HS:
                 speedFactor = 1;
                 acceleration = 0;
-                waypoint.set(playerBlockCenterLocation.x, playerLocation.y, playerBlockCenterLocation.z + 0.5f * sign(dotSouth));
+                newRailDirection.addLocal(0, 0, 0.5f * sign(dotSouth));
                 break;
             case ShapeIds.WEDGE_WEST:
                 speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotEast > 0 ? -1f : 1f;
-                waypoint.set(playerBlockCenterLocation.x + 0.5f * sign(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                newRailDirection.addLocal(0.5f * sign(dotEast), 0, 0);
                 break;
             case ShapeIds.WEDGE_EAST:
                 speedFactor = SPEED_FACTOR_SLOPE;
                 acceleration = dotEast < 0 ? -1f : 1f;
-                waypoint.set(playerBlockCenterLocation.x + 0.5f * sign(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                newRailDirection.addLocal(0.5f * sign(dotEast), 0, 0);
                 break;
             case ShapeIds.SQUARE_HE:
                 speedFactor = 1;
                 acceleration = 0;
-                waypoint.set(playerBlockCenterLocation.x + 0.5f * sign(dotEast), playerLocation.y, playerBlockCenterLocation.z);
+                newRailDirection.addLocal(0.5f * sign(dotEast), 0, 0);
                 break;
             default:
                 // Illegal block
                 break;
         }
-        log.info("Computed new rail straight waypoint {}", waypoint);
+        log.info("Computed new rail direction {}", newRailDirection);
+        return newRailDirection;
     }
 
-    private void computeRailCurvedWaypoint(Block block, Vector3f currentLocation, Vector3f currentDirection) {
-        waypoint.set(playerBlockCenterLocation);
+    private Vector3f computeRailCurvedDirection(Block block, Vector3f currentLocation, Vector3f currentDirection) {
+        newRailDirection.set(playerBlockCenterLocation).setY(currentLocation.y);
         switch (block.getShape()) {
             case ShapeIds.SQUARE_HW:
                 // case \ HW:¨|, possible waypoints : S or W
                 if (currentDirection.dot(SE) > 0) {
-                    waypoint.addLocal(WP_SOUTH);
+                    newRailDirection.addLocal(WP_SOUTH);
                 } else {
-                    waypoint.addLocal(WP_WEST);
+                    newRailDirection.addLocal(WP_WEST);
                 }
                 break;
             case ShapeIds.SQUARE_HE: // ok
                 // case \ HE:|_, possible waypoints : N or E
                 if (currentDirection.dot(SE) > 0) {
-                    waypoint.addLocal(WP_EAST);
+                    newRailDirection.addLocal(WP_EAST);
                 } else {
-                    waypoint.addLocal(WP_NORTH);
+                    newRailDirection.addLocal(WP_NORTH);
                 }
                 break;
             case ShapeIds.SQUARE_HS: // ok
                 // case / HS:_|,  possible waypoints : W or N
                 if (currentDirection.dot(NE) > 0) {
-                    waypoint.addLocal(WP_NORTH);
+                    newRailDirection.addLocal(WP_NORTH);
                 } else {
-                    waypoint.addLocal(WP_WEST);
+                    newRailDirection.addLocal(WP_WEST);
                 }
                 break;
             case ShapeIds.SQUARE_HN: // ok
                 // case / HN:|¨, possible waypoints : S or E
                 if (currentDirection.dot(NE) > 0) {
-                    waypoint.addLocal(WP_EAST);
+                    newRailDirection.addLocal(WP_EAST);
                 } else {
-                    waypoint.addLocal(WP_SOUTH);
+                    newRailDirection.addLocal(WP_SOUTH);
                 }
                 break;
             default:
                 // Illegal curve shape
                 break;
         }
-        log.info("Computed new rail curve waypoint {}", waypoint);
+        log.info("Computed new rail direction {}", newRailDirection);
+        return newRailDirection;
     }
 
     private int sign(Float f) {
@@ -252,7 +261,6 @@ public class PlayerRailControl extends AbstractControl {
     }
 
     private void updateMoveAndRotation(float tpf) {
-        railDirection.set(waypoint).subtractLocal(playerLocation).setY(0).normalizeLocal();
         updateRotation(railDirection, tpf);
         move.set(railDirection).normalizeLocal().multLocal(speed * speedFactor);
     }
@@ -285,7 +293,7 @@ public class PlayerRailControl extends AbstractControl {
         speed = config.getPlayerRailSpeed();
         speedFactor = 1;
         acceleration = 0;
-        waypoint.set(0, 0, 0);
+        newRailDirection.set(0, 0, 0);
         railDirection.set(0, 0, 0);
         alignBodyToHead();
     }
