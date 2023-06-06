@@ -21,8 +21,9 @@ import com.jme3.math.Matrix3f;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
+import com.jme3.scene.Spatial;
 
-public class CameraHelper {
+public class RotationHelper {
 
     private final Matrix3f mat = new Matrix3f();
     private final Quaternion q = new Quaternion();
@@ -31,6 +32,16 @@ public class CameraHelper {
     private final Vector3f dir = new Vector3f();
 
     public void rotate(Camera cam, float value, Vector3f axis, Vector3f camUp, Vector3f camLeft, Vector3f camDir) {
+        rotate(value, axis, camUp, camLeft, camDir, q);
+        cam.setAxes(q);
+    }
+
+    public void rotate(Spatial spatial, float value, Vector3f axis, Vector3f up, Vector3f left, Vector3f dir) {
+        rotate(value, axis, up, left, dir, q);
+        spatial.getLocalRotation().set(q);
+    }
+
+    public void rotate(float value, Vector3f axis, Vector3f camUp, Vector3f camLeft, Vector3f camDir, Quaternion store) {
         mat.fromAngleNormalAxis(value, axis);
 
         mat.mult(camUp, up);
@@ -41,10 +52,8 @@ public class CameraHelper {
             return;
         }
 
-        q.fromAxes(left, up, dir);
-        q.normalizeLocal();
-
-        cam.setAxes(q);
+        store.fromAxes(left, up, dir);
+        store.normalizeLocal();
     }
 
 }

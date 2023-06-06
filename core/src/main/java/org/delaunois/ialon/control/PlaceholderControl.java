@@ -42,34 +42,35 @@ public class PlaceholderControl extends AbstractControl {
     @Setter
     private Node chunkNode;
 
-    private WorldManager worldManager;
-    private PlayerCamDirectionControl playerCamDirectionControl = null;
     private long lastCollisionTest = System.currentTimeMillis();
     private final Geometry addPlaceholder;
     private final Geometry removePlaceholder;
     private final Vector3f addPlaceholderLocation = new Vector3f();
     private final Vector3f removePlaceholderLocation = new Vector3f();
+    private final WorldManager worldManager;
 
-    public PlaceholderControl(Node chunkNode, SimpleApplication app) {
+    private PlayerHeadDirectionControl playerHeadDirectionControl = null;
+
+    public PlaceholderControl(Node chunkNode, WorldManager worldManager, SimpleApplication app) {
         this.app = app;
         this.chunkNode = chunkNode;
         this.addPlaceholder = createAddPlaceholder();
         this.removePlaceholder = createRemovePlaceholder();
+        this.worldManager = worldManager;
     }
 
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        this.worldManager = spatial.getControl(PlayerCharacterControl.class).getWorldManager();
-        this.playerCamDirectionControl = spatial.getControl(PlayerCamDirectionControl.class);
-        assert(playerCamDirectionControl != null);
+        this.playerHeadDirectionControl = spatial.getControl(PlayerHeadDirectionControl.class);
+        assert playerHeadDirectionControl != null;
     }
 
     @Override
     protected void controlUpdate(float tpf) {
         if (chunkNode != null
                 && worldManager != null
-                && playerCamDirectionControl != null
+                && playerHeadDirectionControl != null
                 && System.currentTimeMillis() - lastCollisionTest > 100) {
             lastCollisionTest = System.currentTimeMillis();
             CollisionResult result = getCollisionResult();
@@ -139,8 +140,8 @@ public class PlaceholderControl extends AbstractControl {
             // These shapes have slew faces, it is better to define the "add location"
             // based on the face of the enclosing cube where the user points to.
             addPlaceholder.setLocalTranslation(localTranslation);
-            ray.setOrigin(playerCamDirectionControl.getCamera().getLocation());
-            ray.setDirection(playerCamDirectionControl.getCamDir());
+            ray.setOrigin(playerHeadDirectionControl.getCamera().getLocation());
+            ray.setDirection(playerHeadDirectionControl.getCamDir());
             collisionResults.clear();
             addPlaceholder.collideWith(ray, collisionResults);
             result = collisionResults.getClosestCollision();
@@ -156,8 +157,8 @@ public class PlaceholderControl extends AbstractControl {
     }
 
     private CollisionResult getCollisionResult() {
-        ray.setOrigin(playerCamDirectionControl.getCamera().getLocation());
-        ray.setDirection(playerCamDirectionControl.getCamDir());
+        ray.setOrigin(playerHeadDirectionControl.getCamera().getLocation());
+        ray.setDirection(playerHeadDirectionControl.getCamDir());
         collisionResults.clear();
         chunkNode.collideWith(ray, collisionResults);
 

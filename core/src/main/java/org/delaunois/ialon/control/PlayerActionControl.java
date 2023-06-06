@@ -44,7 +44,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     private PlayerFlyControl playerFlyControl;
     private PlayerWalkControl playerWalkControl;
     private PlayerRailControl playerRailControl;
-    private PlayerCamDirectionControl playerCamDirectionControl;
+    private PlayerHeadDirectionControl playerHeadDirectionControl;
 
     private final SimpleApplication app;
     private final IalonConfig config;
@@ -69,8 +69,8 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         if (placeholderControl == null) {
             placeholderControl = spatial.getControl(PlaceholderControl.class);
         }
-        if (playerCamDirectionControl == null) {
-            playerCamDirectionControl = spatial.getControl(PlayerCamDirectionControl.class);
+        if (playerHeadDirectionControl == null) {
+            playerHeadDirectionControl = spatial.getControl(PlayerHeadDirectionControl.class);
         }
         if (playerFlyControl == null) {
             playerFlyControl = spatial.getControl(PlayerFlyControl.class);
@@ -195,7 +195,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     private void addBlockTask(Vector3f location, Block block) {
         // Orientate the selected block
         Block orientatedBlock = worldManager.orientateBlock(block, location,
-                playerCamDirectionControl.getCamDir(),
+                playerHeadDirectionControl.getCamDir(),
                 Direction.fromVector(placeholderControl.getAddPlaceholder().getWorldTranslation()
                         .subtract(placeholderControl.getRemovePlaceholder().getWorldTranslation())));
 

@@ -5,6 +5,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.CameraNode;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
@@ -75,6 +76,7 @@ public class IalonConfig {
 
     // Player
     private Vector3f playerLocation = new Vector3f();
+    private CameraNode cameraNode;
     private Quaternion playerRotation = new Quaternion();
     private float rotationSpeed = 1.5f;
     private float rotationSpeedRail = 5f;

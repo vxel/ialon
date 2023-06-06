@@ -23,6 +23,7 @@ import com.jme3.app.state.AppState;
 import com.rvandoosselaer.blocks.BlocksConfig;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
+import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.state.GridSettingsState;
@@ -103,6 +104,7 @@ public class Ialon extends SimpleApplication {
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized
 
         if (config.isDevMode()) {
+            stateManager.attach(new AxesDebugState());
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());

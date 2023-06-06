@@ -302,7 +302,7 @@ public class IalonDebugState extends BaseAppState {
 
     private Vector3f getRemovePlaceholderPosition() {
         if (placeholderControl == null && playerState.getPlayerNode() != null) {
-            placeholderControl = playerState.getPlayerNode().getControl(PlaceholderControl.class);
+            placeholderControl = playerState.getHeadNode().getControl(PlaceholderControl.class);
         }
 
         if (placeholderControl != null) {

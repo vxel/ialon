@@ -26,7 +26,9 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
+import com.jme3.scene.CameraNode;
 import com.jme3.scene.Node;
+import com.jme3.scene.control.CameraControl;
 import com.simsilica.lemur.Label;
 
 import org.delaunois.ialon.ChunkLightManager;
@@ -34,12 +36,11 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.PlayerListener;
 import org.delaunois.ialon.WorldManager;
 import org.delaunois.ialon.control.ButtonHighlightControl;
-import org.delaunois.ialon.control.CamFollowSpatialControl;
 import org.delaunois.ialon.control.PlaceholderControl;
 import org.delaunois.ialon.control.PlayerActionControl;
-import org.delaunois.ialon.control.PlayerCamDirectionControl;
 import org.delaunois.ialon.control.PlayerCharacterControl;
 import org.delaunois.ialon.control.PlayerFlyControl;
+import org.delaunois.ialon.control.PlayerHeadDirectionControl;
 import org.delaunois.ialon.control.PlayerRailControl;
 import org.delaunois.ialon.control.PlayerWalkControl;
 
@@ -59,6 +60,12 @@ public class PlayerState extends BaseAppState {
 
     @Getter
     private Node playerNode;
+
+    @Getter
+    private Node headNode;
+
+    @Getter
+    private Node bodyNode;
 
     @Getter
     private WorldManager worldManager;
@@ -97,6 +104,8 @@ public class PlayerState extends BaseAppState {
         );
 
         playerNode = createPlayer(app, config, worldManager);
+        bodyNode = (Node) playerNode.getChild("Body");
+        headNode = (Node) bodyNode.getChild("Head");
         playerCharacterControl = playerNode.getControl(PlayerCharacterControl.class);
         playerActionControl = playerNode.getControl(PlayerActionControl.class);
         playerWalkControl = playerNode.getControl(PlayerWalkControl.class);
@@ -120,8 +129,8 @@ public class PlayerState extends BaseAppState {
         }
 
         if (placeholderControl == null) {
-            placeholderControl = new PlaceholderControl(chunkNode, app);
-            playerNode.addControl(placeholderControl);
+            placeholderControl = new PlaceholderControl(chunkNode, worldManager, app);
+            headNode.addControl(placeholderControl);
         } else {
             placeholderControl.setChunkNode(chunkNode);
         }
@@ -185,7 +194,7 @@ public class PlayerState extends BaseAppState {
                     config.getChunkSize() / 2f,
                     config.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + config.getPlayerStartHeight(),
                     config.getChunkSize() / 2f
-                    ));
+            ));
         }
 
         if (config.getPlayerRotation() != null) {
@@ -194,34 +203,40 @@ public class PlayerState extends BaseAppState {
             app.getCamera().setRotation(config.getPlayerRotation().fromAngles(angles[0], angles[1], 0));
         }
 
-        PlayerWalkControl walkControl = new PlayerWalkControl(config, app.getCamera());
-        PlayerRailControl railControl = new PlayerRailControl(config, worldManager, app.getCamera());
+        PlayerWalkControl walkControl = new PlayerWalkControl(config);
+        PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
-        PlayerCamDirectionControl camDirectionControl = new PlayerCamDirectionControl(config, app.getInputManager(), app.getCamera());
-        CamFollowSpatialControl camFollowSpatialControl = new CamFollowSpatialControl(app.getCamera());
-        if (config.isDebugCollisions()) {
-            camFollowSpatialControl.setLocalTranslation(new Vector3f(-2, config.getPlayerHeight() / 2 - 0.15f, 0));
-        } else {
-            // The player location is at the center of the capsule shape. So we need to level the camera
-            // up to set it near the top of the shape (its eyes).
-            camFollowSpatialControl.setLocalTranslation(new Vector3f(0, config.getPlayerHeight() / 2 - 0.15f, 0));
-        }
-
+        PlayerHeadDirectionControl camDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);
 
-        Node node = new Node("Player");
-        node.setLocalTranslation(config.getPlayerLocation());
-        node.setLocalRotation(config.getPlayerRotation());
+        Node player = new Node("Player");
+        Node head = new Node("Head");
+        Node body = new Node("Body");
+        player.attachChild(body);
+        body.attachChild(head);
 
-        node.addControl(characterControl);
-        node.addControl(camFollowSpatialControl);
-        node.addControl(camDirectionControl);
-        node.addControl(flyControl);
-        node.addControl(walkControl);
-        node.addControl(railControl);
-        node.addControl(actionControl);
+        if (config.isDebugCollisions()) {
+            head.setLocalTranslation(new Vector3f(-2, config.getPlayerHeight() / 2 - 0.15f, 0));
+        } else {
+            // The player location is at the center of the capsule shape.
+            // The head is near the top of the shape (its eyes).
+            head.setLocalTranslation(new Vector3f(0, config.getPlayerHeight() / 2 - 0.15f, 0));
+        }
 
-        return node;
+        CameraNode cameraNode = new CameraNode("Camera", app.getCamera());
+        cameraNode.setControlDir(CameraControl.ControlDirection.SpatialToCamera);
+        head.attachChild(cameraNode);
+        head.addControl(camDirectionControl);
+
+        player.setLocalTranslation(config.getPlayerLocation());
+        player.setLocalRotation(config.getPlayerRotation());
+        player.addControl(characterControl);
+        player.addControl(flyControl);
+        player.addControl(walkControl);
+        player.addControl(railControl);
+        player.addControl(actionControl);
+
+        return player;
     }
 
     private Label createCrossHair() {
