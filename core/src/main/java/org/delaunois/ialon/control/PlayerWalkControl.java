@@ -2,9 +2,9 @@ package org.delaunois.ialon.control;
 
 import com.jme3.input.controls.ActionListener;
 import com.jme3.math.Vector3f;
-import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.rvandoosselaer.blocks.Block;
@@ -29,8 +29,8 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     private boolean right = false;
     private boolean forward = false;
     private boolean backward = false;
+    private Spatial head;
 
-    private final Camera camera;
     private final Vector3f camDir = new Vector3f();
     private final Vector3f camLeft = new Vector3f();
     private final Vector3f move = new Vector3f();
@@ -43,24 +43,26 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
             ACTION_JUMP
     };
 
-    public PlayerWalkControl(IalonConfig config, Camera camera) {
+    public PlayerWalkControl(IalonConfig config) {
         this.config = config;
-        this.camera = camera;
     }
 
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
         playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
-        assert(playerCharacterControl != null);
+        Spatial body = ((Node) spatial).getChild(0);
+        head = ((Node) body).getChild(0);
+        assert playerCharacterControl != null;
+        assert head != null;
         this.setEnabled(!config.isPlayerStartFly());
     }
 
     @Override
     protected void controlUpdate(float tpf) {
         if (spatial != null) {
-            camera.getDirection(camDir);
-            camera.getLeft(camLeft);
+            head.getWorldRotation().getRotationColumn(2, camDir);
+            head.getWorldRotation().getRotationColumn(0, camLeft);
 
             if (playerCharacterControl.isOnScale()) {
                 playerCharacterControl.setFallSpeed(0);
@@ -155,7 +157,7 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
      */
     public void jump() {
         // Do not jump if there is a block above the player, unless it is water
-        Block above = playerCharacterControl.getWorldManager().getBlock(camera.getLocation().add(0, 1, 0));
+        Block above = playerCharacterControl.getWorldManager().getBlock(head.getWorldTranslation().add(0, 1, 0));
         if (above != null && above.getLiquidLevel() < 0) {
             return;
         }
@@ -167,11 +169,11 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
         }
 
         // Adjust jump strength according to space available above the player
-        Block aboveAbove = playerCharacterControl.getWorldManager().getBlock(camera.getLocation().add(0, 2, 0));
+        Block aboveAbove = playerCharacterControl.getWorldManager().getBlock(head.getWorldTranslation().add(0, 2, 0));
         if (aboveAbove == null) {
             playerCharacterControl.jump();
         } else {
-            float availableJumpSpace = ((int)camera.getLocation().y) + 2 - camera.getLocation().y;
+            float availableJumpSpace = ((int)head.getWorldTranslation().y) + 2 - head.getWorldTranslation().y;
             // Hack to avoid bug when jumping and touching a block above
             // Still does not work when being on half-blocks
             playerCharacterControl.setJumpSpeed(config.getJumpSpeed() * availableJumpSpace * 0.4f);

@@ -329,7 +329,7 @@ public class WorldManager {
      */
     private Block selectRailBlock(Block block, Vector3f location) {
         Block below = chunkManager.getBlock(location.add(0, -1, 0)).orElse(null);
-        if (!isCubeBlock(below)) {
+        if (!isSolidBlock(below)) {
             log.info("No cube block below rail");
             return null;
         }
@@ -347,49 +347,60 @@ public class WorldManager {
         boolean w = isRail(west, westb, ShapeIds.WEDGE_EAST);
         boolean e = isRail(east, eastb, ShapeIds.WEDGE_WEST);
 
-        if ((n || s) && (!e && !w)) {
-            // |
-            if (isBlockNoRail(north)) {
-                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_NORTH, 0));
-            }
-            if (isBlockNoRail(south)) {
-                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_SOUTH, 0));
-            }
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HS, 0));
+        byte bits = booleanToByte(n, s, w, e);
+        switch (bits) {
+            case 0b1100:
+            case 0b0100:
+            case 0b1000:
+                // |
+                if (isBlockNoRail(north)) {
+                    return getRailBlock(RAIL_SLOPE, ShapeIds.WEDGE_NORTH);
+                }
+                if (isBlockNoRail(south)) {
+                    return getRailBlock(RAIL_SLOPE, ShapeIds.WEDGE_SOUTH);
+                }
+                return getRailBlock(RAIL, ShapeIds.SQUARE_HS);
+            case 0b0011:
+            case 0b0010:
+            case 0b0001:
+                // _
+                if (isBlockNoRail(east)) {
+                    return getRailBlock(RAIL_SLOPE, ShapeIds.WEDGE_EAST);
+                }
+                if (isBlockNoRail(west)) {
+                    return getRailBlock(RAIL_SLOPE, ShapeIds.WEDGE_WEST);
+                }
+                return getRailBlock(RAIL, ShapeIds.SQUARE_HE);
+            case 0b1001:
+                // |_
+                return getRailBlock(RAIL_CURVED, ShapeIds.SQUARE_HW);
+            case 0b0110:
+                // "|
+                return getRailBlock(RAIL_CURVED, ShapeIds.SQUARE_HE);
+            case 0b0101:
+                // |"
+                return getRailBlock(RAIL_CURVED, ShapeIds.SQUARE_HS);
+            case 0b1010:
+                // _|
+                return getRailBlock(RAIL_CURVED, ShapeIds.SQUARE_HN);
+            default:
+                // Not determined
+                return block;
+        }
+    }
+
+    private byte booleanToByte(boolean... booleans) {
+        byte bits = 0; // 8-bits
+        int length = Math.min(booleans.length, 8); // Limit to 8 booleans
+        for (int i = 0; i < length; i++) {
+            bits = (byte) (bits << 1 | (booleans[i] ? 1 : 0));
         }
 
-        if ((e || w) && (!n && !s)) {
-            // _
-            if (isBlockNoRail(east)) {
-                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_EAST, 0));
-            }
-            if (isBlockNoRail(west)) {
-                return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_SLOPE, ShapeIds.WEDGE_WEST, 0));
-            }
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL, ShapeIds.SQUARE_HE, 0));
-        }
+        return bits;
+    }
 
-        if (n && e) {
-            // |_
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HW, 0));
-        }
-
-        if (s && w) {
-            // -|
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HE, 0));
-        }
-
-        if (s) {
-            // |-
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HS, 0));
-        }
-
-        if (n) {
-            // _|
-            return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(RAIL_CURVED, ShapeIds.SQUARE_HN, 0));
-        }
-
-        return block;
+    private Block getRailBlock(String railType, String shapeId) {
+        return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(railType, shapeId, 0));
     }
 
     private boolean isRail(Block block, Block bottomBlock, String bottomBlockShapeId) {
@@ -398,11 +409,11 @@ public class WorldManager {
     }
 
     private boolean isBlockNoRail(Block block) {
-        return isCubeBlock(block) && !block.getType().startsWith(RAIL);
+        return isSolidBlock(block) && !block.getType().startsWith(RAIL);
     }
 
-    private boolean isCubeBlock(Block block) {
-        return block != null && block.isSolid() && ShapeIds.CUBE.equals(block.getShape());
+    private boolean isSolidBlock(Block block) {
+        return block != null && block.isSolid();
     }
 
     private Set<Vec3i> addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {

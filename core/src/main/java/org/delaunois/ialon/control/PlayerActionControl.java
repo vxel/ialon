@@ -5,6 +5,7 @@ import com.jme3.input.controls.ActionListener;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.rvandoosselaer.blocks.Block;
@@ -38,13 +39,14 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     @Getter
     private boolean fly;
 
+    private Spatial head;
     private WorldManager worldManager;
     private PlayerCharacterControl playerCharacterControl;
     private PlaceholderControl placeholderControl;
     private PlayerFlyControl playerFlyControl;
     private PlayerWalkControl playerWalkControl;
     private PlayerRailControl playerRailControl;
-    private PlayerCamDirectionControl playerCamDirectionControl;
+    private PlayerHeadDirectionControl playerHeadDirectionControl;
 
     private final SimpleApplication app;
     private final IalonConfig config;
@@ -59,6 +61,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
+        this.head = ((Node)spatial).getChild("Head");
         this.playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
         assert(playerCharacterControl != null);
         this.worldManager = playerCharacterControl.getWorldManager();
@@ -67,10 +70,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
 
     private void loadControls() {
         if (placeholderControl == null) {
-            placeholderControl = spatial.getControl(PlaceholderControl.class);
+            placeholderControl = head.getControl(PlaceholderControl.class);
         }
-        if (playerCamDirectionControl == null) {
-            playerCamDirectionControl = spatial.getControl(PlayerCamDirectionControl.class);
+        if (playerHeadDirectionControl == null) {
+            playerHeadDirectionControl = head.getControl(PlayerHeadDirectionControl.class);
         }
         if (playerFlyControl == null) {
             playerFlyControl = spatial.getControl(PlayerFlyControl.class);
@@ -195,7 +198,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     private void addBlockTask(Vector3f location, Block block) {
         // Orientate the selected block
         Block orientatedBlock = worldManager.orientateBlock(block, location,
-                playerCamDirectionControl.getCamDir(),
+                playerHeadDirectionControl.getCamDir(),
                 Direction.fromVector(placeholderControl.getAddPlaceholder().getWorldTranslation()
                         .subtract(placeholderControl.getRemovePlaceholder().getWorldTranslation())));
 

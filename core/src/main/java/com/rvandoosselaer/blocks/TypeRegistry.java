@@ -157,7 +157,7 @@ public class TypeRegistry {
         mat.getTextureParam("DiffuseMap").getTextureValue()
                 .setMagFilter(Texture.MagFilter.Nearest);
         mat.getTextureParam("DiffuseMap").getTextureValue()
-                .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
+                .setMinFilter(Texture.MinFilter.Trilinear);
 
         this.genericMaterial = mat;
         return mat;
@@ -182,7 +182,7 @@ public class TypeRegistry {
         mat.getTextureParam("DiffuseMap").getTextureValue()
                 .setMagFilter(Texture.MagFilter.Nearest);
         mat.getTextureParam("DiffuseMap").getTextureValue()
-                .setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
+                .setMinFilter(Texture.MinFilter.Trilinear);
 
         this.transparentMaterial = mat;
         return mat;

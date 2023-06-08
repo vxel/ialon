@@ -24,6 +24,7 @@ public class IalonKeyMapping {
     public static final String ACTION_LOOK_RIGHT = "look-right";
     public static final String ACTION_LOOK_UP = "look-up";
     public static final String ACTION_LOOK_DOWN = "look-down";
+    public static final String ACTION_RESET_CAM = "reset-cam";
 
     public static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
     public static final String ACTION_ADD_BLOCK = "add-block";
@@ -43,6 +44,7 @@ public class IalonKeyMapping {
         inputManager.addMapping(ACTION_LOOK_UP, new MouseAxisTrigger(MouseInput.AXIS_Y, false));
         inputManager.addMapping(ACTION_LOOK_DOWN, new MouseAxisTrigger(MouseInput.AXIS_Y, true));
 
+        inputManager.addMapping(ACTION_RESET_CAM, new KeyTrigger(KeyInput.KEY_R));
         inputManager.addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping(ACTION_ADD_BLOCK, new KeyTrigger(KeyInput.KEY_RETURN));
         inputManager.addMapping(ACTION_REMOVE_BLOCK, new KeyTrigger(KeyInput.KEY_DELETE));
