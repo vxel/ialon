@@ -7,6 +7,7 @@ import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -21,6 +22,7 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.ButtonHighlightControl;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_ADD_BLOCK;
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_BACKWARD;
@@ -32,6 +34,7 @@ import static org.delaunois.ialon.IalonKeyMapping.ACTION_REMOVE_BLOCK;
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_RIGHT;
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 
+@Slf4j
 public class ButtonManagerState extends BaseAppState implements ActionListener {
 
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
@@ -204,5 +207,14 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
                 config.getInputActionManager().triggerAction(button.getUserData(UDK_ACTION), event.isPressed());
             }
         }
+
+        @Override
+        public void mouseExited( MouseMotionEvent event, Spatial button, Spatial capture ) {
+            if (button != null) {
+                event.setConsumed();
+                config.getInputActionManager().triggerAction(button.getUserData(UDK_ACTION), false);
+            }
+        }
+
     }
 }

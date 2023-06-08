@@ -400,7 +400,8 @@ public class WorldManager {
     }
 
     private Block getRailBlock(String railType, String shapeId) {
-        return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(railType, shapeId, 0));
+        return BlocksConfig.getInstance().getBlockRegistry()
+                .get(BlockIds.getName(railType, shapeId, 0));
     }
 
     private boolean isRail(Block block, Block bottomBlock, String bottomBlockShapeId) {

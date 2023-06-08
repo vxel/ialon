@@ -1,5 +1,6 @@
 package org.delaunois.ialon.control;
 
+import com.jme3.input.controls.ActionListener;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
@@ -19,9 +20,11 @@ import lombok.extern.slf4j.Slf4j;
 import static com.rvandoosselaer.blocks.TypeIds.RAIL;
 import static com.rvandoosselaer.blocks.TypeIds.RAIL_CURVED;
 import static com.rvandoosselaer.blocks.TypeIds.RAIL_SLOPE;
+import static org.delaunois.ialon.IalonKeyMapping.ACTION_BACKWARD;
+import static org.delaunois.ialon.IalonKeyMapping.ACTION_FORWARD;
 
 @Slf4j
-public class PlayerRailControl extends AbstractControl {
+public class PlayerRailControl extends AbstractControl implements ActionListener {
 
     private static final Vector3f SOUTH = new Vector3f(0, 0, 1);
     private static final Vector3f EAST = new Vector3f(1, 0, 0);
@@ -32,6 +35,13 @@ public class PlayerRailControl extends AbstractControl {
     private static final Vector3f WP_WEST = new Vector3f(-1f, 0, 0);
     private static final Vector3f WP_EAST = new Vector3f(1f, 0, 0);
 
+    private static final String[] ACTIONS = new String[]{
+            ACTION_FORWARD,
+            ACTION_BACKWARD
+    };
+
+    private boolean forward;
+    private boolean backward;
     private float speed = 0;
     private float acceleration = 0;
     private Spatial body;
@@ -71,6 +81,30 @@ public class PlayerRailControl extends AbstractControl {
         assert body != null;
         assert head != null;
         assert feet != null;
+        setEnabled(enabled);
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+        if (enabled) {
+            config.getInputActionManager().addListener(this, ACTIONS);
+        } else {
+            config.getInputActionManager().removeListener(this);
+        }
+    }
+
+    @Override
+    public void onAction(String name, boolean isPressed, float tpf) {
+        if (log.isDebugEnabled()) {
+            log.debug("Action {} isPressed {}", name, isPressed);
+        }
+
+        if (ACTION_FORWARD.equals(name)) {
+            forward = isPressed;
+        } else if (ACTION_BACKWARD.equals(name)) {
+            backward = isPressed;
+        }
     }
 
     @Override
@@ -154,27 +188,46 @@ public class PlayerRailControl extends AbstractControl {
     }
 
     private void updateRailMove(Vector3f currentDirection, Block block) {
-        if (railDirection.equals(Vector3f.ZERO)) {
-            // No current direction, infer from current move or head direction
-            if (currentDirection.lengthSquared() > 0.0f) {
-                alignBodyToDirection(currentDirection);
-                log.info("Infer new direction from move {}", currentDirection);
-                computeRailWaypoint(block, currentDirection, waypoint);
-            } else {
-                head.getLocalRotation().getRotationColumn(2, headDir).setY(0).normalizeLocal();
-                alignBodyToDirection(headDir);
-                log.info("Infer new direction from head direction {}", headDir);
-                computeRailWaypoint(block, headDir, waypoint);
+        Vector3f dir = null;
+        boolean onRail = !railDirection.equals(Vector3f.ZERO);
+        if (onRail && forward) {
+            updateHeadDirection();
+            currentDirection.set(railDirection).setY(0).normalizeLocal();
+            if (headDir.setY(0).normalizeLocal().dot(currentDirection) < -0.75f) {
+                log.info("Reverse rail direction");
+                stop();
+                forward = false;
             }
-            acceleration = computeAcceleration(waypoint);
-            waypointToDirection(playerLocation, waypoint, railDirection);
+
+        } else if (onRail && backward) {
+            updateHeadDirection();
+            currentDirection.set(railDirection).setY(0).normalizeLocal();
+            if (headDir.setY(0).normalizeLocal().dot(currentDirection) > 0.75f) {
+                log.info("Reverse rail direction");
+                stop();
+                backward = false;
+            }
+
+        } else if (!onRail) {
+            // No current direction, infer from current move or head direction
+            updateHeadDirection();
+            dir = currentDirection.lengthSquared() > 0.0f ? currentDirection : headDir;
+            alignBodyToDirection(dir);
 
         } else if (!oldPlayerBlockCenterLocation.equals(playerBlockCenterLocation)) {
             // Compute new way point
-            computeRailWaypoint(block, railDirection, waypoint);
+            dir = railDirection;
+        }
+
+        if (dir != null) {
+            computeRailWaypoint(block, dir, waypoint);
             acceleration = computeAcceleration(waypoint);
             waypointToDirection(playerLocation, waypoint, railDirection);
         }
+    }
+
+    private void updateHeadDirection() {
+        head.getWorldRotation().getRotationColumn(2, headDir);
     }
 
     private float computeAcceleration(Vector3f direction) {
@@ -309,15 +362,27 @@ public class PlayerRailControl extends AbstractControl {
         log.info("Stop rail move");
         speed = config.getPlayerRailSpeed();
         acceleration = 0;
+
+        float pitchCorrection = 0;
+        if (Math.abs(railDirection.y) > 0f) {
+            log.info("Stop rail move on a slope");
+            pitchCorrection = FastMath.asin((railDirection.dot(Vector3f.UNIT_Y)));
+        }
         railDirection.set(0, 0, 0);
-        resetBodyRotation();
+        resetBodyRotation(pitchCorrection);
     }
 
     /**
      * Sets the body rotation to identity
      * while keeping the head world view direction
      */
-    private void resetBodyRotation() {
+    private void resetBodyRotation(float pitchCorrection) {
+        if (pitchCorrection != 0) {
+            body.getLocalRotation().toAngles(angles);
+            angles[0] = angles[0] + pitchCorrection;
+            body.setLocalRotation(tmpQuaternion.fromAngles(angles));
+        }
+
         head.getWorldRotation().toAngles(angles);
         body.setLocalRotation(Quaternion.IDENTITY);
         head.setLocalRotation(tmpQuaternion.fromAngles(angles));
