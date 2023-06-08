@@ -42,7 +42,6 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
 
     private final IalonConfig config;
     private final InputManager inputManager;
-    //private final Camera camera;
     private final RotationHelper rotationHelper;
     private final Vector3f camDir = new Vector3f();
     private final Vector3f up = new Vector3f();
@@ -57,7 +56,6 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
     public PlayerHeadDirectionControl(IalonConfig config, InputManager inputManager, Camera camera) {
         this.config = config;
         this.inputManager = inputManager;
-        //this.camera = camera;
         this.rotationHelper = new RotationHelper();
         config.getInputActionManager().addListener(this, ACTIONS);
         this.miny = 130;

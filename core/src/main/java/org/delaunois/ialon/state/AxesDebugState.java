@@ -51,6 +51,7 @@ public class AxesDebugState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
+        // Nothing to do
     }
 
     public void setPosition(Vector3f position) {
