@@ -104,7 +104,7 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
             isMouselocked = !isMouselocked;
         } else if (ACTION_RESET_CAM.equals(name) && !isPressed) {
             getSpatial().getLocalRotation().loadIdentity();
-            config.getCameraNode().getCamera().getRotation().loadIdentity();
+            camera.getRotation().loadIdentity();
         }
     }
 

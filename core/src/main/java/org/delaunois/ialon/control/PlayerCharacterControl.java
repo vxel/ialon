@@ -54,7 +54,7 @@ public class PlayerCharacterControl extends CharacterControl {
         oldPlayerBlockCenterLocation.set(playerBlockCenterLocation);
         playerBlockCenterLocation.set(
                 (int)playerLocation.x + 0.5f * Math.signum(playerLocation.x),
-                (int)playerLocation.y,
+                (int)playerLocation.y + 0.5f * Math.signum(playerLocation.y),
                 (int)playerLocation.z + 0.5f * Math.signum(playerLocation.z));
 
         block = worldManager.getBlock(playerBlockCenterLocation);

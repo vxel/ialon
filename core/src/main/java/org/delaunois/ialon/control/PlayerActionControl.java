@@ -5,6 +5,7 @@ import com.jme3.input.controls.ActionListener;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.rvandoosselaer.blocks.Block;
@@ -38,6 +39,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     @Getter
     private boolean fly;
 
+    private Spatial head;
     private WorldManager worldManager;
     private PlayerCharacterControl playerCharacterControl;
     private PlaceholderControl placeholderControl;
@@ -59,6 +61,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
+        this.head = ((Node)spatial).getChild("Head");
         this.playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
         assert(playerCharacterControl != null);
         this.worldManager = playerCharacterControl.getWorldManager();
@@ -67,10 +70,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
 
     private void loadControls() {
         if (placeholderControl == null) {
-            placeholderControl = spatial.getControl(PlaceholderControl.class);
+            placeholderControl = head.getControl(PlaceholderControl.class);
         }
         if (playerHeadDirectionControl == null) {
-            playerHeadDirectionControl = spatial.getControl(PlayerHeadDirectionControl.class);
+            playerHeadDirectionControl = head.getControl(PlayerHeadDirectionControl.class);
         }
         if (playerFlyControl == null) {
             playerFlyControl = spatial.getControl(PlayerFlyControl.class);

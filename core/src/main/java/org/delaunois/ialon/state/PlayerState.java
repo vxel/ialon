@@ -197,12 +197,6 @@ public class PlayerState extends BaseAppState {
             ));
         }
 
-        if (config.getPlayerRotation() != null) {
-            float[] angles = new float[3];
-            config.getPlayerRotation().toAngles(angles);
-            app.getCamera().setRotation(config.getPlayerRotation().fromAngles(angles[0], angles[1], 0));
-        }
-
         PlayerWalkControl walkControl = new PlayerWalkControl(config);
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
@@ -212,14 +206,18 @@ public class PlayerState extends BaseAppState {
         Node player = new Node("Player");
         Node head = new Node("Head");
         Node body = new Node("Body");
+        Node feet = new Node("Feet");
         player.attachChild(body);
         body.attachChild(head);
+        body.attachChild(feet);
 
+        // The player location is at the center of the capsule shape.
+        // The head is near the top of the shape (its eyes).
+        // The feet are at the bottom of the shape.
+        feet.setLocalTranslation(new Vector3f(0, -config.getPlayerHeight() / 2f, 0));
         if (config.isDebugCollisions()) {
             head.setLocalTranslation(new Vector3f(-2, config.getPlayerHeight() / 2 - 0.15f, 0));
         } else {
-            // The player location is at the center of the capsule shape.
-            // The head is near the top of the shape (its eyes).
             head.setLocalTranslation(new Vector3f(0, config.getPlayerHeight() / 2 - 0.15f, 0));
         }
 
@@ -227,6 +225,12 @@ public class PlayerState extends BaseAppState {
         cameraNode.setControlDir(CameraControl.ControlDirection.SpatialToCamera);
         head.attachChild(cameraNode);
         head.addControl(camDirectionControl);
+
+        if (config.getPlayerRotation() != null) {
+            float[] angles = new float[3];
+            config.getPlayerRotation().toAngles(angles);
+            camDirectionControl.getSpatial().setLocalRotation(config.getPlayerRotation().fromAngles(angles[0], angles[1], 0));
+        }
 
         player.setLocalTranslation(config.getPlayerLocation());
         player.setLocalRotation(config.getPlayerRotation());
