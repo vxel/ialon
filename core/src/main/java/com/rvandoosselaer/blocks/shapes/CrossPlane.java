@@ -9,7 +9,9 @@ import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.Shape;
 import com.simsilica.mathd.Vec3i;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 
 /**
@@ -20,6 +22,10 @@ import lombok.ToString;
 @ToString
 @RequiredArgsConstructor
 public class CrossPlane implements Shape {
+
+    @Getter
+    @Setter
+    private boolean doubleFace = false;
 
     @Override
     public void add(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
@@ -41,7 +47,7 @@ public class CrossPlane implements Shape {
         chunkMesh.getColors().add(color);
     }
 
-    private static void createFirst(Vec3i location, ChunkMesh chunkMesh, float blockScale) {
+    private void createFirst(Vec3i location, ChunkMesh chunkMesh, float blockScale) {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
@@ -57,6 +63,15 @@ public class CrossPlane implements Shape {
         chunkMesh.getIndices().add(offset + 3);
         chunkMesh.getIndices().add(offset + 2);
 
+        if (doubleFace) {
+            chunkMesh.getIndices().add(offset + 2);
+            chunkMesh.getIndices().add(offset + 1);
+            chunkMesh.getIndices().add(offset);
+            chunkMesh.getIndices().add(offset + 1);
+            chunkMesh.getIndices().add(offset + 2);
+            chunkMesh.getIndices().add(offset + 3);
+        }
+
         if (!chunkMesh.isCollisionMesh()) {
             for (int i = 0; i < 4; i++) {
                 chunkMesh.getNormals().add(new Vector3f(-1.0f, 0.0f, -1.0f).normalize());
@@ -69,7 +84,7 @@ public class CrossPlane implements Shape {
         }
     }
 
-    private static void createSecond(Vec3i location, ChunkMesh chunkMesh, float blockScale) {
+    private void createSecond(Vec3i location, ChunkMesh chunkMesh, float blockScale) {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();
         // vertices
@@ -84,6 +99,15 @@ public class CrossPlane implements Shape {
         chunkMesh.getIndices().add(offset + 1);
         chunkMesh.getIndices().add(offset + 3);
         chunkMesh.getIndices().add(offset + 2);
+
+        if (doubleFace) {
+            chunkMesh.getIndices().add(offset + 2);
+            chunkMesh.getIndices().add(offset + 1);
+            chunkMesh.getIndices().add(offset);
+            chunkMesh.getIndices().add(offset + 1);
+            chunkMesh.getIndices().add(offset + 2);
+            chunkMesh.getIndices().add(offset + 3);
+        }
 
         if (!chunkMesh.isCollisionMesh()) {
             for (int i = 0; i < 4; i++) {

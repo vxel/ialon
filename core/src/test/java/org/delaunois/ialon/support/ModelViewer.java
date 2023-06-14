@@ -115,25 +115,17 @@ public class ModelViewer extends SimpleApplication {
             stateManager.attach(new WireframeState());
         }
 
-        loadModel("Models/Wagon/wagon.j3o", new Vector3f(8.5f, 11f, 10.5f));
+        Spatial model = loadModel("Models/Wagon/wagon.j3o", new Vector3f(8.5f, 11f, 10.5f));
+        getRootNode().attachChild(model);
+
+        config.getTextureAtlasManager().dump();
     }
 
     private Spatial loadModel(String path, Vector3f location) {
         Geometry model = (Geometry) getAssetManager().loadModel(path);
-        model.setLocalTranslation(location);
-
-        /*
-        Texture modelTexture = getAssetManager().loadTexture("Models/Wagon/wagon.png");
-        Material modelMaterial = new Material(getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        modelMaterial.setTexture("ColorMap", modelTexture);
-        modelMaterial.setColor("Color", ColorRGBA.White);
-        model.setMaterial(modelMaterial);
-*/
         Material modelMaterial = model.getMaterial();
-        config.getTextureAtlasManager().getAtlas().applyCoords(model, 0f);
         modelMaterial.setTexture("DiffuseMap", config.getTextureAtlasManager().getDiffuseMap());
-
-        getRootNode().attachChild(model);
+        model.setLocalTranslation(location);
         return model;
     }
 

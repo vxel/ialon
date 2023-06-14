@@ -83,7 +83,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         body = ((Node) spatial).getChild("Body");
         head = ((Node) body).getChild("Head");
         feet = ((Node) body).getChild("Feet");
-        if (playerCharacterControl == null || body == null || head == null || feet == null) {
+        if (playerCharacterControl == null || head == null || feet == null) {
             throw new IllegalStateException("PlayerRailControl needs a PlayerCharacterControl attached on the spatial");
         }
         setEnabled(enabled);

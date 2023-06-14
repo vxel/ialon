@@ -77,8 +77,13 @@ public class TextureAtlasManager {
         ByteBuffer sourceData = img.getData(0);
         ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
         try (OutputStream out = new FileOutputStream(filename)) {
-            for (int i = 0; i < sourceData.limit(); i++) {
-                outData.put(i, sourceData.get(i));
+            int size = sourceData.limit() / 4;
+            for (int i = 0; i < size; i += 4) {
+                // ABGR8 to RGBA8
+                outData.put(i, sourceData.get(i + 3));
+                outData.put(i + 1, sourceData.get(i + 2));
+                outData.put(i + 2, sourceData.get(i + 1));
+                outData.put(i + 3, sourceData.get(i));
             }
             JmeSystem.writeImageFile(out, "png", outData, img.getWidth(), img.getHeight());
         } catch (IOException e) {
