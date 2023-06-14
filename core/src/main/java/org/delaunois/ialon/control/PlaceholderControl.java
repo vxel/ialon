@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PlaceholderControl extends AbstractControl {
 
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
+    private static final float UPDATE_TIME = 0.1f;
 
     private final CollisionResults collisionResults = new CollisionResults();
     private final Ray ray = new Ray();
@@ -42,7 +43,7 @@ public class PlaceholderControl extends AbstractControl {
     @Setter
     private Node chunkNode;
 
-    private long lastCollisionTest = System.currentTimeMillis();
+    private float curTime = 1;
     private final Geometry addPlaceholder;
     private final Geometry removePlaceholder;
     private final Vector3f addPlaceholderLocation = new Vector3f();
@@ -68,11 +69,13 @@ public class PlaceholderControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
+        curTime += tpf;
+
         if (chunkNode != null
                 && worldManager != null
                 && playerHeadDirectionControl != null
-                && System.currentTimeMillis() - lastCollisionTest > 100) {
-            lastCollisionTest = System.currentTimeMillis();
+                && curTime > UPDATE_TIME) {
+            curTime = 0;
             CollisionResult result = getCollisionResult();
             updatePlaceholders(result);
         }

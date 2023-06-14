@@ -43,8 +43,8 @@ public class MoonControl extends AbstractControl {
     @Setter
     private Camera cam;
 
-    private long lastUpdate = 0;
     private final IalonConfig config;
+    private float curTime = 1;
 
     public MoonControl(IalonConfig config) {
         this.config = config;
@@ -56,9 +56,9 @@ public class MoonControl extends AbstractControl {
             return;
         }
 
-        long now = System.currentTimeMillis();
-        if (lastUpdate == 0 || now - lastUpdate > sunControl.getUpdateThreshold()) {
-            lastUpdate = now;
+        curTime += tpf;
+        if (curTime > sunControl.getUpdateThreshold()) {
+            curTime = 0;
             float time = config.getTime() + FastMath.PI;
             float height = FastMath.sin(time);
             float x = FastMath.cos(time) * 100f;

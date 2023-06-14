@@ -55,7 +55,7 @@ public class SunControl extends AbstractControl {
 
     private final Camera cam;
     private final ColorRGBA sunColor = new ColorRGBA(1f, 1f, 1f, 1f);
-    private long lastUpdate = 0;
+    private float curTime = 1;
 
     private final IalonConfig config;
 
@@ -67,11 +67,12 @@ public class SunControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
-        long now = System.currentTimeMillis();
-        if (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold()) {
+        curTime += tpf;
+
+        if (curTime > getUpdateThreshold()) {
+            curTime = 0;
             updateSunPosition();
             updateSunLight();
-            lastUpdate = now;
         }
 
         spatial.setLocalTranslation((cam.getLocation().add(position)));

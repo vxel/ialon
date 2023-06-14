@@ -15,6 +15,8 @@ import com.rvandoosselaer.blocks.ShapeIds;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.WorldManager;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.rvandoosselaer.blocks.TypeIds.RAIL;
@@ -48,6 +50,10 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
     private Spatial head;
     private Spatial feet;
 
+    @Getter
+    @Setter
+    private Spatial wagon;
+
     private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockBelowCenterLocation = new Vector3f();
@@ -77,10 +83,9 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         body = ((Node) spatial).getChild("Body");
         head = ((Node) body).getChild("Head");
         feet = ((Node) body).getChild("Feet");
-        assert playerCharacterControl != null;
-        assert body != null;
-        assert head != null;
-        assert feet != null;
+        if (playerCharacterControl == null || body == null || head == null || feet == null) {
+            throw new IllegalStateException("PlayerRailControl needs a PlayerCharacterControl attached on the spatial");
+        }
         setEnabled(enabled);
     }
 
@@ -91,6 +96,9 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
             config.getInputActionManager().addListener(this, ACTIONS);
         } else {
             config.getInputActionManager().removeListener(this);
+            if (wagon != null && wagon.getParent() != null) {
+                ((Node) body).detachChild(wagon);
+            }
         }
     }
 
@@ -115,6 +123,10 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
         if (!isRailBlock(playerCharacterControl.getBlock()) && Vector3f.ZERO.equals(railDirection)) {
             // Neither on a rail block nor in a rail move
+            if (wagon != null && wagon.getParent() != null) {
+                ((Node) body).detachChild(wagon);
+                head.getLocalTranslation().subtractLocal(0, 0.1f, 0);
+            }
             return;
         }
 
@@ -133,6 +145,10 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
         // Apply move
         if (railDirection.lengthSquared() > 0) {
+            if (wagon != null && wagon.getParent() == null) {
+                ((Node)body).attachChild(wagon);
+                head.getLocalTranslation().addLocal(0, 0.1f, 0);
+            }
             move.set(railDirection).setY(0).normalizeLocal().multLocal(speed);
             playerCharacterControl.setWalkDirection(move);
         }
@@ -401,4 +417,5 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         tmpQuaternion.fromAngles(angles[0], angles[1] - yaw, 0);
         head.setLocalRotation(tmpQuaternion);
     }
+
 }

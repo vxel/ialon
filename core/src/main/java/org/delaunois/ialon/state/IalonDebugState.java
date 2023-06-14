@@ -67,7 +67,8 @@ public class IalonDebugState extends BaseAppState {
     private PlayerState playerState;
     private PlaceholderControl placeholderControl;
     private SunState sunState;
-    private long lastUpdate = System.currentTimeMillis();
+    private float updateTime = 0.25f;
+    private float curTime = 1;
     private final IalonConfig config;
 
     public IalonDebugState(IalonConfig config) {
@@ -141,11 +142,13 @@ public class IalonDebugState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
-        if (System.currentTimeMillis() - lastUpdate < 100) {
+        curTime += tpf;
+
+        if (curTime < updateTime) {
             return;
         }
-        lastUpdate = System.currentTimeMillis();
 
+        curTime = 0;
         heapLabel.setText(getHeapString());
         worldPositionLabel.setText(getWorldLocationString());
         positionLabel.setText(getChunkLocationString());

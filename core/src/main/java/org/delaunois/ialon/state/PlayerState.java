@@ -22,12 +22,15 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.scene.CameraNode;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.control.CameraControl;
 import com.simsilica.lemur.Label;
 
@@ -68,6 +71,9 @@ public class PlayerState extends BaseAppState {
     private Node bodyNode;
 
     @Getter
+    private Spatial wagon;
+
+    @Getter
     private WorldManager worldManager;
 
     @Getter
@@ -96,6 +102,7 @@ public class PlayerState extends BaseAppState {
         app = (SimpleApplication) simpleApp;
         camera = app.getCamera();
         crossHair = createCrossHair();
+        wagon = createWagon();
         worldManager = new WorldManager(
                 config.getChunkManager(),
                 new ChunkLightManager(config),
@@ -199,6 +206,7 @@ public class PlayerState extends BaseAppState {
 
         PlayerWalkControl walkControl = new PlayerWalkControl(config);
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
+        railControl.setWagon(wagon);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
         PlayerHeadDirectionControl camDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);
@@ -253,6 +261,15 @@ public class PlayerState extends BaseAppState {
         int height = camera.getHeight();
         crossHairLabel.setLocalTranslation((width / 2f) - (crossHairLabel.getPreferredSize().getX() / 2), (height / 2f) + (crossHairLabel.getPreferredSize().getY() / 2), crossHairLabel.getLocalTranslation().getZ());
         return crossHairLabel;
+    }
+
+    private Spatial createWagon() {
+        Geometry model = (Geometry) app.getAssetManager().loadModel("Models/Wagon/wagon.j3o");
+        Material modelMaterial = model.getMaterial();
+        config.getTextureAtlasManager().getAtlas().applyCoords(model, 0f);
+        modelMaterial.setTexture("DiffuseMap", config.getTextureAtlasManager().getDiffuseMap());
+        model.setLocalTranslation(0, 0, 0);
+        return model;
     }
 
     public void addListener(@NonNull PlayerListener listener) {

@@ -7,6 +7,7 @@ import com.jme3.app.state.AppState;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.state.BlockSelectionState;
+import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
@@ -29,6 +30,7 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        config.getInputActionManager().setInputManager(inputManager);
         stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();
@@ -50,6 +52,7 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
+        stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new WorldBuilderState(config));

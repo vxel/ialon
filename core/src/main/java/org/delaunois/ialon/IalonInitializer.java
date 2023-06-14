@@ -92,6 +92,7 @@ public class IalonInitializer {
         atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
         atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
         atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
+        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
         atlas.getAtlas().addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
     }
 
