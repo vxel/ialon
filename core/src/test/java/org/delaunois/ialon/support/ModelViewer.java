@@ -5,7 +5,6 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.export.binary.BinaryExporter;
-import com.jme3.material.Material;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
@@ -115,28 +114,29 @@ public class ModelViewer extends SimpleApplication {
             stateManager.attach(new WireframeState());
         }
 
-        Spatial model = loadModel("Models/Wagon/wagon.j3o", new Vector3f(8.5f, 11f, 10.5f));
+        String dir = "Models/Wagon";
+        Spatial model = loadModel(dir, "wagon.obj", new Vector3f(8.5f, 11f, 10.5f));
+        export(model, "export", "wagon.j3o");
         getRootNode().attachChild(model);
 
         config.getTextureAtlasManager().dump();
     }
 
-    private Spatial loadModel(String path, Vector3f location) {
-        Geometry model = (Geometry) getAssetManager().loadModel(path);
-        Material modelMaterial = model.getMaterial();
-        modelMaterial.setTexture("DiffuseMap", config.getTextureAtlasManager().getDiffuseMap());
+    private Spatial loadModel(String dir, String filename, Vector3f location) {
+        Geometry model = (Geometry) getAssetManager().loadModel(dir + "/" + filename);
         model.setLocalTranslation(location);
         return model;
     }
 
     @SuppressWarnings("unused")
-    private void export(Spatial model, String filepath) {
-        File file = new File(filepath);
+    private void export(Spatial model, String dir, String filename) {
+        File file = new File(dir + "/" + filename);
         try {
             BinaryExporter.getInstance().save(model, file);
         } catch (IOException ex) {
             Logger.getLogger(ModelViewer.class.getName()).log(Level.SEVERE, "Error: Failed to export model", ex);
         }
+        Logger.getLogger(ModelViewer.class.getName()).log(Level.INFO, "Model exported to " + file.getAbsolutePath());
     }
 
 }

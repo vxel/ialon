@@ -35,6 +35,7 @@ import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
+import org.delaunois.ialon.state.WagonState;
 import org.delaunois.ialon.state.WireframeState;
 import org.delaunois.ialon.state.WorldBuilderState;
 
@@ -108,6 +109,7 @@ public class Ialon extends SimpleApplication {
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
+            stateManager.attach(new WagonState());
         }
 
         int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();

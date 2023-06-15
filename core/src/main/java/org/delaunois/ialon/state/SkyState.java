@@ -45,6 +45,72 @@ public class SkyState extends BaseAppState {
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
 
+        sky = createSkyGeometry();
+        Quaternion pitch90 = new Quaternion();
+        pitch90.fromAngleAxis(FastMath.HALF_PI, new Vector3f(1, 0, 0));
+        sky.setLocalRotation(pitch90);
+
+        sky.setQueueBucket(RenderQueue.Bucket.Sky);
+        sky.setCullHint(Spatial.CullHint.Never);
+        sky.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Material skyMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        skyMat.setParam("VertexColor", VarType.Boolean, true );
+        sky.setMaterial(skyMat);
+
+        skyControl = new SkyControl(config);
+        SpatialFollowCamControl followCamControl = new SpatialFollowCamControl(app.getCamera());
+        sky.addControl(skyControl);
+        sky.addControl(followCamControl);
+
+        Ground groundPlate = new Ground(100, 100);
+        ground = new Geometry("ground", groundPlate);
+        ground.setQueueBucket(RenderQueue.Bucket.Sky);
+        ground.setCullHint(Spatial.CullHint.Never);
+        ground.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Texture groundTexture = app.getAssetManager().loadTexture("Textures/ground.png");
+        Material groundMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        groundMat.setTexture("ColorMap", groundTexture);
+        groundMat.setColor("Color", skyControl.getGroundColor());
+        ground.setMaterial(groundMat);
+        config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
+        groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
+
+        SpatialFollowCamControl spatialFollowCamControl = new SpatialFollowCamControl(app.getCamera());
+        spatialFollowCamControl.setTranslation(new Vector3f(0f, -0.5f, 0f));
+        ground.addControl(spatialFollowCamControl);
+    }
+
+    @Override
+    protected void cleanup(Application app) {
+        // Nothing to do
+    }
+
+    @Override
+    protected void onEnable() {
+        SunState sunState = app.getStateManager().getState(SunState.class);
+        if (sunState == null) {
+            log.error("SkyState requires SunState");
+            return;
+        }
+        skyControl.setSunControl(sunState.getSunControl());
+        if (ground.getParent() == null) {
+            this.app.getRootNode().attachChild(ground);
+            this.app.getRootNode().attachChildAt(sky, 0);
+        }
+    }
+
+    @Override
+    protected void onDisable() {
+        if (ground.getParent() != null) {
+            this.app.getRootNode().detachChild(ground);
+            this.app.getRootNode().detachChild(sky);
+        }
+    }
+
+    private Geometry createSkyGeometry() {
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
         FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
         final ColorRGBA skyColor = config.getSkyColor();
@@ -103,69 +169,7 @@ public class SkyState extends BaseAppState {
                 skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a
         });
         skyCylinder.setBuffer(VertexBuffer.Type.Color, 4, fpb);
-        sky = new Geometry("sky", skyCylinder);
-
-        Quaternion pitch90 = new Quaternion();
-        pitch90.fromAngleAxis(FastMath.HALF_PI, new Vector3f(1, 0, 0));
-        sky.setLocalRotation(pitch90);
-
-        sky.setQueueBucket(RenderQueue.Bucket.Sky);
-        sky.setCullHint(Spatial.CullHint.Never);
-        sky.setShadowMode(RenderQueue.ShadowMode.Off);
-
-        Material skyMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        skyMat.setParam("VertexColor", VarType.Boolean, true );
-        sky.setMaterial(skyMat);
-
-        skyControl = new SkyControl(config);
-        SpatialFollowCamControl followCamControl = new SpatialFollowCamControl(app.getCamera());
-        sky.addControl(skyControl);
-        sky.addControl(followCamControl);
-
-        Ground groundPlate = new Ground(20, 20);
-        ground = new Geometry("ground", groundPlate);
-        ground.setQueueBucket(RenderQueue.Bucket.Sky);
-        ground.setCullHint(Spatial.CullHint.Never);
-        ground.setShadowMode(RenderQueue.ShadowMode.Off);
-
-        Texture groundTexture = app.getAssetManager().loadTexture("Textures/ground.png");
-        Material groundMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-        groundMat.setTexture("ColorMap", groundTexture);
-        groundMat.setColor("Color", skyControl.getGroundColor());
-        ground.setMaterial(groundMat);
-        config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
-        groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
-
-        ground.addControl(new SpatialFollowCamControl(app.getCamera()));
+        return new Geometry("sky", skyCylinder);
     }
-
-    @Override
-    protected void cleanup(Application app) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void onEnable() {
-        SunState sunState = app.getStateManager().getState(SunState.class);
-        if (sunState == null) {
-            log.error("SkyState requires SunState");
-            return;
-        }
-        skyControl.setSunControl(sunState.getSunControl());
-        if (ground.getParent() == null) {
-            this.app.getRootNode().attachChild(ground);
-            this.app.getRootNode().attachChildAt(sky, 0);
-        }
-    }
-
-    @Override
-    protected void onDisable() {
-        if (ground.getParent() != null) {
-            this.app.getRootNode().detachChild(ground);
-            this.app.getRootNode().detachChild(sky);
-        }
-    }
-
 
 }

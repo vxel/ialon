@@ -29,6 +29,7 @@ public class IalonConfig {
     public static final int FPS_LIMIT = 120;
 
     // Screen - Rendering
+    private float gammaCorrection = -1f; // Disabled. Used only for Android.
     private int screenWidth = 1520;
     private int screenHeight = 720;
     private int maxUpdatePerFrame = 8;
@@ -102,7 +103,7 @@ public class IalonConfig {
     private BitmapFont font;
 
     // Debug
-    private boolean devMode = true;
+    private boolean devMode = false;
     private boolean debugCollisions = false;
     private boolean debugGrid = false;
     private boolean debugChunks = false;

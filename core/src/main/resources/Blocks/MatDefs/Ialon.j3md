@@ -135,6 +135,9 @@ MaterialDef Ialon {
         // texture scroll speed
         Float TextureScrollSpeedX
         Float TextureScrollSpeedY
+
+        // Gamma Correction on Android, if > 0
+        Float GammaCorrection
     }
 
     Technique {

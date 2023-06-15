@@ -8,6 +8,7 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.WireBox;
+import com.jme3.shader.VarType;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -45,7 +46,6 @@ import lombok.extern.slf4j.Slf4j;
 public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private static final String CHUNK_MESH_TYPE_GENERIC = "generic";
-    private static final String CHUNK_MESH_TYPE_TRANSPARENT = "transparent";
     private static final String CHUNK_MESH_TYPE_WATER = "water";
 
     private final IalonConfig config;
@@ -335,11 +335,11 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 typeRegistry.applyMaterial(geometry, type);
                 geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
                 break;
-            case CHUNK_MESH_TYPE_TRANSPARENT:
-                typeRegistry.applyTransparentMaterial(geometry);
-                break;
             case CHUNK_MESH_TYPE_GENERIC:
                 typeRegistry.applyGenericMaterial(geometry);
+                if (config.getGammaCorrection() > 0) {
+                    geometry.getMaterial().setParam("GammaCorrection", VarType.Float, 1.0f / config.getGammaCorrection());
+                }
                 break;
             default:
                 typeRegistry.applyMaterial(geometry, type);

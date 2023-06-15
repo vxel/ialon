@@ -39,8 +39,8 @@ public class SkyControl extends AbstractControl {
     @Getter
     private final ColorRGBA groundColor = new ColorRGBA();
 
-    private float curTime = 1;
     private final ColorRGBA color = new ColorRGBA();
+    private long lastUpdate = 0;
     private final IalonConfig config;
 
     public SkyControl(IalonConfig config) {
@@ -49,9 +49,9 @@ public class SkyControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
-        curTime += tpf;
-        if (this.sunControl != null && (curTime > getUpdateThreshold())) {
-            curTime = 0;
+        long now = System.currentTimeMillis();
+        if (this.sunControl != null && (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold())) {
+            lastUpdate = now;
 
             float sunHeight = sunControl.getSunHeight();
             float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);

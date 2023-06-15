@@ -7,6 +7,7 @@
 /desktop/build
 /save
 /local
+/export
 
 /*.so
 /core/*.so
@@ -17,3 +18,4 @@
 /.idea
 /.gradle
 local.properties
+/core/src/main/resources/Models/Wagon/wagon.blend1

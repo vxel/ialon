@@ -207,6 +207,7 @@ public class PlayerState extends BaseAppState {
         PlayerWalkControl walkControl = new PlayerWalkControl(config);
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         railControl.setWagon(wagon);
+        railControl.setEnabled(false);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
         PlayerHeadDirectionControl camDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);

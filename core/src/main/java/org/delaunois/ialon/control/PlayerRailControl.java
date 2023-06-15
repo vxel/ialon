@@ -125,7 +125,6 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
             // Neither on a rail block nor in a rail move
             if (wagon != null && wagon.getParent() != null) {
                 ((Node) body).detachChild(wagon);
-                head.getLocalTranslation().subtractLocal(0, 0.1f, 0);
             }
             return;
         }
@@ -147,7 +146,6 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         if (railDirection.lengthSquared() > 0) {
             if (wagon != null && wagon.getParent() == null) {
                 ((Node)body).attachChild(wagon);
-                head.getLocalTranslation().addLocal(0, 0.1f, 0);
             }
             move.set(railDirection).setY(0).normalizeLocal().multLocal(speed);
             playerCharacterControl.setWalkDirection(move);
