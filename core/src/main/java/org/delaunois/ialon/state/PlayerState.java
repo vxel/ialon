@@ -207,7 +207,6 @@ public class PlayerState extends BaseAppState {
         PlayerWalkControl walkControl = new PlayerWalkControl(config);
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         railControl.setWagon(wagon);
-        railControl.setEnabled(false);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
         PlayerHeadDirectionControl camDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);
@@ -219,6 +218,14 @@ public class PlayerState extends BaseAppState {
         player.attachChild(body);
         body.attachChild(head);
         body.attachChild(feet);
+
+        /*
+        if (config.getPlayerRotation() != null) {
+            float[] angles = new float[3];
+            config.getPlayerRotation().toAngles(angles);
+            head.setLocalRotation(config.getPlayerRotation().fromAngles(angles[0], 0, 0));
+            body.setLocalRotation(config.getPlayerRotation().fromAngles(0, angles[1], 0));
+        }*/
 
         // The player location is at the center of the capsule shape.
         // The head is near the top of the shape (its eyes).
@@ -234,12 +241,8 @@ public class PlayerState extends BaseAppState {
         cameraNode.setControlDir(CameraControl.ControlDirection.SpatialToCamera);
         head.attachChild(cameraNode);
         head.addControl(camDirectionControl);
-
-        if (config.getPlayerRotation() != null) {
-            float[] angles = new float[3];
-            config.getPlayerRotation().toAngles(angles);
-            camDirectionControl.getSpatial().setLocalRotation(config.getPlayerRotation().fromAngles(angles[0], angles[1], 0));
-        }
+        head.getLocalRotation().fromAngleAxis(config.getPlayerPitch(), Vector3f.UNIT_X);
+        body.getLocalRotation().fromAngleAxis(config.getPlayerYaw(), Vector3f.UNIT_Y);
 
         player.setLocalTranslation(config.getPlayerLocation());
         player.setLocalRotation(config.getPlayerRotation());

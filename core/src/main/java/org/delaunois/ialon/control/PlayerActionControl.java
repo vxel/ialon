@@ -54,7 +54,6 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     public PlayerActionControl(SimpleApplication app, IalonConfig config) {
         this.config = config;
         this.app = app;
-        setFly(config.isPlayerStartFly());
         config.getInputActionManager().addListener(this, ACTIONS);
     }
 
@@ -66,6 +65,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         assert(playerCharacterControl != null);
         this.worldManager = playerCharacterControl.getWorldManager();
         loadControls();
+        setFly(config.isPlayerStartFly());
     }
 
     private void loadControls() {

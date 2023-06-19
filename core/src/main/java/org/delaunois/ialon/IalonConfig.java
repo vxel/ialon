@@ -79,6 +79,8 @@ public class IalonConfig {
     private Vector3f playerLocation = new Vector3f();
     private CameraNode cameraNode;
     private Quaternion playerRotation = new Quaternion();
+    private float playerYaw = 0;
+    private float playerPitch = 0;
     private float rotationSpeed = 1.5f;
     private float rotationSpeedRail = 5f;
     private float playerStartHeight = 10;

@@ -35,12 +35,13 @@ public class DesktopLauncher {
         IalonConfigRepository.loadConfig(config);
         config.setGridRadiusMin(2);
         config.setGridRadiusMax(11);
-        config.setDevMode(true);
+        config.setDevMode(false);
+        config.setGammaCorrection(1.1f);
         Ialon app = new Ialon(config);
 
         AppSettings settings = new AppSettings(false);
         settings.setFrameRate(IalonConfig.FPS_LIMIT);
-        settings.setGammaCorrection(true);
+        settings.setGammaCorrection(false);
         settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);
         settings.setUseInput(true);

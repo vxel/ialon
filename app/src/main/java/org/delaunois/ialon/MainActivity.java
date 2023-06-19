@@ -73,7 +73,7 @@ public class MainActivity extends AndroidHarness {
         config.setGridRadiusMax(7);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
-        config.setGammaCorrection(1.2f);
+        config.setGammaCorrection(1.1f);
         ((Ialon) app).setConfig(config);
 
         super.onStart();

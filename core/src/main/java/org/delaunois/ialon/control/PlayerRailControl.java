@@ -132,7 +132,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         // Either on a rail block or in a rail move
 
         // Update variable cache
-        playerLocation.set(feet.getWorldTranslation());
+        playerLocation.set(playerCharacterControl.getPlayerLocation()).addLocal(feet.getLocalTranslation());
         currentDirection.set(playerCharacterControl.getWalkDirection());
         playerBlockCenterLocation.set(playerCharacterControl.getPlayerBlockCenterLocation());
         oldPlayerBlockCenterLocation.set(playerCharacterControl.getOldPlayerBlockCenterLocation());

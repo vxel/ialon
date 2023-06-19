@@ -49,6 +49,9 @@ public class PlayerStateDTO {
     private float rotz;
     private float rotw;
 
+    private float yaw;
+    private float pitch;
+
     private float time = FastMath.HALF_PI;
     private int timeFactorIndex = 1;
     private int gridRadius;
@@ -65,10 +68,12 @@ public class PlayerStateDTO {
             this.rotz = config.getPlayerRotation().getZ();
             this.rotw = config.getPlayerRotation().getW();
         }
+        this.yaw = config.getPlayerYaw();
+        this.pitch = config.getPlayerPitch();
         this.time = config.getTime();
         this.timeFactorIndex = config.getTimeFactorIndex();
         this.fly = config.isPlayerStartFly();
-        this.gridRadius = config.getGridRadius();
+        this.gridRadius = Math.max(5, config.getGridRadius());
         this.selectedBlockIndex = config.getSelectedBlockIndex();
     }
 

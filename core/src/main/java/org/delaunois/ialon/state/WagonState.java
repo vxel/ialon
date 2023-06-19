@@ -46,7 +46,6 @@ public class WagonState extends BaseAppState {
     public void update(float tpf) {
         // Nothing to do
         angle += tpf;
-        //wagonNode.getLocalTranslation().addLocal(0, tpf * 0.1f, 0);
         wagonNode.setLocalRotation(rotation.fromAngleNormalAxis(angle, Vector3f.UNIT_Y));
     }
 
@@ -60,7 +59,6 @@ public class WagonState extends BaseAppState {
         if (wagonNode.getParent() == null) {
             BulletAppState bulletAppState = app.getStateManager().getState(BulletAppState.class);
             bulletAppState.getPhysicsSpace().add(wagonNode);
-            //bulletAppState.setDebugEnabled(true);
             rootNode.attachChild(wagonNode);
         }
     }

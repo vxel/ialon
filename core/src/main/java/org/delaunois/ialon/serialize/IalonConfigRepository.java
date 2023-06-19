@@ -69,15 +69,20 @@ public class IalonConfigRepository {
                 config.setSelectedBlockIndex(playerStateDTO.getSelectedBlockIndex());
             }
             config.setPlayerStartFly(playerStateDTO.isFly());
-            config.setGridRadius(playerStateDTO.getGridRadius());
+            config.setGridRadius(Math.max(5, playerStateDTO.getGridRadius()));
             config.setTime(playerStateDTO.getTime());
             config.setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
+            config.setPlayerYaw(playerStateDTO.getYaw());
+            config.setPlayerPitch(playerStateDTO.getPitch());
         }
     }
 
     public static void saveConfig(SimpleApplication app, IalonConfig config) {
         if (app.getCamera() != null) {
             config.setPlayerRotation(app.getCamera().getRotation());
+            float[] angles = app.getCamera().getRotation().toAngles(null);
+            config.setPlayerPitch(angles[0]);
+            config.setPlayerYaw(angles[1]);
         }
         saveConfig(config);
     }

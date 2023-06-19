@@ -161,6 +161,8 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
                 getLeft(spatial, left);
                 getDirection(spatial, dir);
                 rotationHelper.rotate(spatial, -event.getDeltaY() * config.getRotationSpeed() / 400, left, up, left, dir);
+
+                config.setPlayerRotation(spatial.getLocalRotation());
             }
             event.setConsumed();
         }
