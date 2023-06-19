@@ -219,14 +219,6 @@ public class PlayerState extends BaseAppState {
         body.attachChild(head);
         body.attachChild(feet);
 
-        /*
-        if (config.getPlayerRotation() != null) {
-            float[] angles = new float[3];
-            config.getPlayerRotation().toAngles(angles);
-            head.setLocalRotation(config.getPlayerRotation().fromAngles(angles[0], 0, 0));
-            body.setLocalRotation(config.getPlayerRotation().fromAngles(0, angles[1], 0));
-        }*/
-
         // The player location is at the center of the capsule shape.
         // The head is near the top of the shape (its eyes).
         // The feet are at the bottom of the shape.
