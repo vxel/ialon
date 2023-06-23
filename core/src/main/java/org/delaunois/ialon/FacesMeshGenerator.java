@@ -74,17 +74,19 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
 
+        BlockNeighborhood neighborhood = new BlockNeighborhood(blockLocation, chunk);
         for (short blockId : chunk.getBlocks()) {
             Block block = blockRegistry.get(blockId);
 
             // check if there is a block
             if (block != null) {
                 // create a mesh for each different block type
-                ChunkMesh mesh = meshMap.computeIfAbsent(block.getType(), function -> new ChunkMesh());
+                ChunkMesh mesh = meshMap.computeIfAbsent(getChunkMeshType(block), function -> new ChunkMesh());
 
                 // add the block mesh to the chunk mesh
                 Shape shape = shapeRegistry.get(block.getShape());
-                shape.add(blockLocation, chunk, mesh);
+                neighborhood.setLocation(blockLocation);
+                addShapeToMesh(block.getType(), shape, mesh, neighborhood);
             }
 
             // increment the block location
