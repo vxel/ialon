@@ -70,6 +70,7 @@ public class MainActivity extends AndroidHarness {
         config.setSavePath(getApplicationContext().getFilesDir().toPath());
         config.setSaveUserSettingsOnStop(false);
         IalonConfigRepository.loadConfig(config);
+        config.setDevMode(false);
         config.setGridRadiusMax(7);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);

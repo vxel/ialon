@@ -3,6 +3,7 @@ package org.delaunois.ialon.control;
 import com.jme3.bullet.collision.shapes.ConvexShape;
 import com.jme3.bullet.control.CharacterControl;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Spatial;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.TypeIds;
 
@@ -30,6 +31,7 @@ public class PlayerCharacterControl extends CharacterControl {
     private Block block;
     private boolean underWater = false;
     private boolean onScale = false;
+    private CharacterControl characterControl;
 
     public PlayerCharacterControl(ConvexShape shape, float stepHeight, WorldManager worldManager, IalonConfig config) {
         super(shape, stepHeight);
@@ -39,16 +41,25 @@ public class PlayerCharacterControl extends CharacterControl {
     }
 
     @Override
+    public void setSpatial(Spatial newSpatial) {
+        super.setSpatial(newSpatial);
+        characterControl = newSpatial.getControl(CharacterControl.class);
+        if (characterControl == null) {
+            throw new IllegalStateException("PlayerCharacterControl needs a spatial with a CharacterControl");
+        }
+    }
+
+    @Override
     public void update(float tpf) {
         super.update(tpf);
         walkDirection.zero();
 
-        playerLocation.set(getSpatial().getWorldTranslation());
+        playerLocation.set(getSpatial().getLocalTranslation());
         config.setPlayerLocation(playerLocation);
 
         if (playerLocation.y < 1) {
             playerLocation.setY(config.getMaxy());
-            getSpatial().setLocalTranslation(playerLocation);
+            characterControl.setPhysicsLocation(playerLocation);
         }
 
         oldPlayerBlockCenterLocation.set(playerBlockCenterLocation);

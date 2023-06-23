@@ -49,6 +49,14 @@ public class TextureAtlasManager {
         atlas = new TextureAtlas(2048, 2048);
     }
 
+    public void addTexture(Texture texture, String mapName) {
+        atlas.addTexture(texture, mapName);
+    }
+
+    public void addTexture(Texture texture, String mapName, String sourceTextureName) {
+        atlas.addTexture(texture, mapName, sourceTextureName);
+    }
+
     public Texture getDiffuseMap() {
         if (diffuseMap == null) {
             diffuseMap = atlas.getAtlasTexture(DIFFUSE);
@@ -77,7 +85,7 @@ public class TextureAtlasManager {
         ByteBuffer sourceData = img.getData(0);
         ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
         try (OutputStream out = new FileOutputStream(filename)) {
-            int size = sourceData.limit() / 4;
+            int size = sourceData.limit();
             for (int i = 0; i < size; i += 4) {
                 // ABGR8 to RGBA8
                 outData.put(i, sourceData.get(i + 3));

@@ -89,11 +89,11 @@ public class IalonInitializer {
         Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
 
         TextureAtlasManager atlas = config.getTextureAtlasManager();
-        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
-        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
-        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
-        atlas.getAtlas().addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
-        atlas.getAtlas().addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(app.getAssetManager().loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(app.getAssetManager().loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(app.getAssetManager().loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
     }
 
     public static void setupAtlasFont(SimpleApplication app, IalonConfig config) {
@@ -210,7 +210,7 @@ public class IalonInitializer {
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
-        typeRegistry.setAtlasRepository(ialonConfig.getTextureAtlasManager());
+        typeRegistry.setAtlasManager(ialonConfig.getTextureAtlasManager());
         typeRegistry.registerDefaultMaterials();
 
         registerIalonBlocks();

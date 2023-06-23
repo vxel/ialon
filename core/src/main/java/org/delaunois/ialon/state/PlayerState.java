@@ -237,7 +237,6 @@ public class PlayerState extends BaseAppState {
         body.getLocalRotation().fromAngleAxis(config.getPlayerYaw(), Vector3f.UNIT_Y);
 
         player.setLocalTranslation(config.getPlayerLocation());
-        player.setLocalRotation(config.getPlayerRotation());
         player.addControl(characterControl);
         player.addControl(flyControl);
         player.addControl(walkControl);

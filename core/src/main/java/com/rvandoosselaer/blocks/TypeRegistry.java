@@ -64,7 +64,7 @@ public class TypeRegistry {
 
     @Getter
     @Setter
-    private TextureAtlasManager atlasRepository;
+    private TextureAtlasManager atlasManager;
 
     private Material genericMaterial;
     private Material transparentMaterial;
@@ -86,7 +86,7 @@ public class TypeRegistry {
     public TypeRegistry(@NonNull AssetManager assetManager, BlocksTheme theme, boolean registerDefaultMaterials) {
         this.assetManager = assetManager;
         this.theme = theme;
-        this.atlasRepository = new TextureAtlasManager();
+        this.atlasManager = new TextureAtlasManager();
 
         if (registerDefaultMaterials) {
             registerDefaultMaterials();
@@ -107,10 +107,10 @@ public class TypeRegistry {
             if (texture != null) {
                 if (TextureAtlasManager.DIFFUSE.equals(atlasMapName)) {
                     texture.setKey(new TextureKey(name));
-                    atlasRepository.getAtlas().addTexture(texture, atlasMapName);
+                    atlasManager.addTexture(texture, atlasMapName);
                 } else {
                     texture.setKey(new TextureKey(name + "-overlay"));
-                    atlasRepository.getAtlas().addTexture(texture, atlasMapName, new TextureKey(name).toString());
+                    atlasManager.addTexture(texture, atlasMapName, new TextureKey(name).toString());
                 }
             }
         }
@@ -122,9 +122,9 @@ public class TypeRegistry {
         MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
-            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            texture.setImage(atlasManager.getDiffuseMap().getImage());
             if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
             }
         }
         geom.setMaterial(mat);
@@ -149,9 +149,9 @@ public class TypeRegistry {
         MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
-            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            texture.setImage(atlasManager.getDiffuseMap().getImage());
             if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
             }
         }
         mat.getTextureParam("DiffuseMap").getTextureValue()
@@ -174,9 +174,9 @@ public class TypeRegistry {
         MatParamTexture matParamTexture = mat.getTextureParam("DiffuseMap");
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
-            texture.setImage(atlasRepository.getDiffuseMap().getImage());
+            texture.setImage(atlasManager.getDiffuseMap().getImage());
             if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasRepository.getOverlayMap());
+                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
             }
         }
         mat.getTextureParam("DiffuseMap").getTextureValue()
@@ -201,7 +201,7 @@ public class TypeRegistry {
         }
         Texture2D dummy = new Texture2D();
         dummy.setKey(new TextureKey(name));
-        TextureAtlas.TextureAtlasTile tile = this.atlasRepository.getAtlas().getAtlasTile(dummy);
+        TextureAtlas.TextureAtlasTile tile = this.atlasManager.getAtlas().getAtlasTile(dummy);
         if (tile != null) {
             FloatBuffer inPos = (FloatBuffer) inBuf.getData();
             FloatBuffer outPos = (FloatBuffer) outBuf.getData();
@@ -215,7 +215,7 @@ public class TypeRegistry {
         }
         Texture2D dummy = new Texture2D();
         dummy.setKey(new TextureKey(name));
-        TextureAtlas.TextureAtlasTile tile = this.atlasRepository.getAtlas().getAtlasTile(dummy);
+        TextureAtlas.TextureAtlasTile tile = this.atlasManager.getAtlas().getAtlasTile(dummy);
         if (tile != null) {
             tile.transformTextureCoords(inBuf, outBuf, position, len);
         }

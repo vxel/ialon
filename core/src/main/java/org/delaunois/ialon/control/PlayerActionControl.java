@@ -167,7 +167,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     }
 
     public void addBlock(boolean isPressed) {
-        if (!isPressed) {
+        if (!isPressed || config.getSelectedBlock() == null) {
             return;
         }
 
@@ -181,10 +181,9 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         final Vector3f worldBlockLocation = placeholderControl.getAddPlaceholder().getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
         Vec3i playerBlockLocation = ChunkManager.getBlockLocation(playerCharacterControl.getPlayerLocation());
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
-        final Block selectedBlock = config.getSelectedBlock();
 
         // Prevents adding a solid block where the player stands
-        if (selectedBlock.isSolid()
+        if (config.getSelectedBlock().isSolid()
                 && blockLocation.x == playerBlockLocation.x
                 && blockLocation.z == playerBlockLocation.z
                 && (blockLocation.y == playerBlockLocation.y || blockLocation.y == playerBlockLocation.y + 1)) {
@@ -192,7 +191,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        app.enqueue(() -> addBlockTask(worldBlockLocation, selectedBlock));
+        app.enqueue(() -> addBlockTask(worldBlockLocation, config.getSelectedBlock()));
     }
 
     private void addBlockTask(Vector3f location, Block block) {
