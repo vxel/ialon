@@ -388,6 +388,32 @@ public class Chunk {
         return 3 - (side1 + side2 + corner);
     }
 
+    public Vector4f vertexColor(Vector4f sideLight1, Vector4f sideLight2, Vector4f cornerLight, Vector4f blockLight, Vector4f store) {
+        store
+                .zero()
+                .addLocal(sideLight1)
+                .addLocal(sideLight2)
+                .addLocal(cornerLight)
+                .addLocal(blockLight)
+                .divideLocal(4.0f);
+
+        // w : Sunlight|TorchLight
+        int sunlight = 0;
+        sunlight += ((int)sideLight1.w >> 4) & 0xF;
+        sunlight += ((int)sideLight2.w >> 4) & 0xF;
+        sunlight += ((int)cornerLight.w >> 4) & 0xF;
+        sunlight += ((int)blockLight.w >> 4) & 0xF;
+        sunlight = Math.min((int)(sunlight / 3.2f), 15);
+        int torchlight = 0;
+        torchlight += ((int)sideLight1.w) & 0xF;
+        torchlight += ((int)sideLight2.w) & 0xF;
+        torchlight += ((int)cornerLight.w) & 0xF;
+        torchlight += ((int)blockLight.w) & 0xF;
+        torchlight /= 4;
+        store.w = (sunlight << 4 | torchlight);
+        return store;
+    }
+
     public int getAOIndex(Block block) {
         if (block != null && block.getShape().equals(ShapeIds.CUBE)) {
             return 1;
@@ -475,10 +501,14 @@ public class Chunk {
      * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
      */
     public Vector4f getLightLevel(Vec3i blockLocation, Direction direction) {
+        return getLightLevel(blockLocation.x, blockLocation.y, blockLocation.z, direction);
+    }
+
+    public Vector4f getLightLevel(int locx, int locy, int locz, Direction direction) {
         // Beware of CPU optimization : method heavily used
-        int x = blockLocation.x;
-        int y = blockLocation.y;
-        int z = blockLocation.z;
+        int x = locx;
+        int y = locy;
+        int z = locz;
 
         if (direction != null) {
             x += direction.getVector().x;
@@ -501,10 +531,6 @@ public class Chunk {
         }
 
         return Vector4f.ZERO;
-    }
-
-    public Vector4f applyColorFilter(Vector4f color) {
-        return color;
     }
 
     int[] computeNeighbourCoordinates(int clx, int cly, int clz, int blx, int bly, int blz) {

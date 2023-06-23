@@ -178,6 +178,11 @@ public class ChunkManager {
         Collection<Chunk> fullChunks = new LinkedList<>();
         locations.forEach(location -> {
             Chunk chunk = cache.unsafeFastGet(location);
+            if (chunk == null) {
+                // Border chunk...
+                return;
+            }
+
             // All chunks should be loaded into cache, chunk is never null here
             if (chunk.isEmpty()) {
                 saved[0]++;
