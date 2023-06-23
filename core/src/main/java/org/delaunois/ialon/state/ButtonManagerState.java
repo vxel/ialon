@@ -12,7 +12,6 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.texture.Texture;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
@@ -86,13 +85,6 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         this.app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
         buttonSize = app.getCamera().getHeight() / 6;
         directionButtons = new Node();
-        /*
-                buttonLeft = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
-        buttonBackward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-        buttonForward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-        buttonRight = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
-
-         */
         buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
         buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
         buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
@@ -177,7 +169,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
 
     private Container createButton(String text, float size, float posx, float posy, String actionName) {
         Container buttonContainer = new Container();
-        buttonContainer.setName(actionName);
+        buttonContainer.setName(text);
         buttonContainer.setUserData(UDK_ACTION, actionName);
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
         QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
@@ -194,25 +186,6 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         label.setColor(ColorRGBA.White);
         buttonContainer.setLocalTranslation(posx, posy, 1);
 
-        buttonContainer.addMouseListener(screenButtonMouseListener);
-        buttonContainer.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
-
-        return buttonContainer;
-    }
-
-    private Container createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
-        Container buttonContainer = new Container();
-        buttonContainer.setName(actionName);
-        buttonContainer.setUserData(UDK_ACTION, actionName);
-        buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
-
-        Texture texture = app.getAssetManager().loadTexture("Textures/" + textureName);
-        QuadBackgroundComponent background = new QuadBackgroundComponent(texture);
-
-        // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
-        buttonContainer.setBackground(background);
-        buttonContainer.setLocalTranslation(posx, posy, 1);
         buttonContainer.addMouseListener(screenButtonMouseListener);
         buttonContainer.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
 
