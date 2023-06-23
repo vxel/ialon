@@ -3,8 +3,11 @@ package org.delaunois.ialon.state;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
+import com.rvandoosselaer.blocks.BlockRegistry;
+import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkManagerListener;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
@@ -51,6 +54,21 @@ public class ChunkSaverState extends BaseAppState implements ChunkManagerListene
                         log.error("Failed to save chunk", e);
                     }
                 }));
+    }
+
+    public void fixLighting(Chunk chunk) {
+        short[] blocks = chunk.getBlocks();
+        byte[] lightmap = chunk.getLightMap();
+        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
+        for (int i = 0; i < blocks.length; i++) {
+            short block = blocks[i];
+            byte lightLevel = lightmap[i];
+            if (block != 0) {
+                if (ShapeIds.CUBE.equals(registry.get(block).getShape()) && lightLevel != 0) {
+                    lightmap[i] = 0;
+                }
+            }
+        }
     }
 
     @Override

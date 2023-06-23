@@ -87,6 +87,40 @@ public class Cube implements Shape {
     }
 
     private boolean enlightFace(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
+        return softShadow(n, location, face, chunk, chunkMesh);
+    }
+
+    private boolean softShadow(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
+        Vector4f color = chunk.getLightLevel(location, face);
+
+        //  Bottom     Middle      Top            Y ---> X
+        // 00 01 02   09 10 11   18 19 20         |
+        // 03 04 05   12 13 14   21 22 23         v
+        // 06 07 08   15 16 17   24 25 26         Z
+
+        Vector4f[] nb = n.getNeighbourLights(face); // UP: 20, 19 18, 21, 24, 25, 26, 23
+
+        // a01  a11
+        // a00  a10
+        Vector4f store = new Vector4f();
+        float a11 = chunk.vertexColor(nb[7], nb[1], nb[0], color, store).w; // UP:20 DO:00 NO:00 SO:08 WE:06 EA:02
+        chunkMesh.getColors().add(store);
+
+        float a01 = chunk.vertexColor(nb[1], nb[3], nb[2], color, store).w; // UP:18 DO:02 NO:18 SO:26 WE:24 EA:20
+        chunkMesh.getColors().add(store);
+
+        float a10 = chunk.vertexColor(nb[5], nb[7], nb[6], color, store).w; // UP:26 DO:06 NO:02 SO:06 WE:00 EA:08
+        chunkMesh.getColors().add(store);
+
+        float a00 = chunk.vertexColor(nb[3], nb[5], nb[4], color, store).w; // UP:24 DO:08 NO:20 SO:24 WE:18 EA:26
+        chunkMesh.getColors().add(store);
+
+        float grad1 = Math.abs(a00 - a11);
+        float grad2 = Math.abs(a01 - a10);
+        return grad1 < grad2;
+    }
+
+    private boolean hardShadow(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
         Vector4f color = chunk.getLightLevel(location, face);
 
         // 2 3 4    a01  a11

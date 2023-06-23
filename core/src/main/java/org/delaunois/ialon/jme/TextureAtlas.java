@@ -47,6 +47,7 @@ import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
+import com.jme3.util.MipMapGenerator;
 
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
@@ -139,6 +140,7 @@ public class TextureAtlas {
     private final Node root;
     private final Map<String, TextureAtlasTile> locationMap;
     private final Map<String, String> mapNameMap;
+    private final Map<Integer, byte[]> mipmap;
     private String rootMapName;
 
     public TextureAtlas(int width, int height) {
@@ -147,6 +149,7 @@ public class TextureAtlas {
         root = new Node(0, 0, width, height);
         locationMap = new TreeMap<>();
         mapNameMap = new HashMap<>();
+        mipmap = new HashMap<>();
     }
 
     /**
@@ -256,6 +259,7 @@ public class TextureAtlas {
             if (!mapName.equals(mapNameMap.get(name))) {
                 logger.log(Level.WARNING, "Same texture " + name + " is used in different maps! (" + mapName + " and " + mapNameMap.get(name) + "). Location will be based on location in " + mapNameMap.get(name) + "!");
                 drawImage(image, location.getX(), location.getY(), mapName);
+                //addMipMap(image, location.getX(), location.getY());
             }
             return true;
         } else if (sourceTextureName == null) {
@@ -277,7 +281,76 @@ public class TextureAtlas {
         mapNameMap.put(name, mapName);
         locationMap.put(name, location);
         drawImage(image, location.getX(), location.getY(), mapName);
+        //addMipMap(image, location.getX(), location.getY());
         return true;
+    }
+
+    private void addMipMap(Image image, int x, int y) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        Image current = image;
+        ArrayList<Image> output = new ArrayList<>();
+
+        while (height > 1 && width > 1) {
+            height /= 2;
+            width  /= 2;
+            current = MipMapGenerator.scaleImage(current, width, height);
+            output.add(current);
+        }
+
+        int scale = 2;
+        for (int i = 0; i < output.size(); i++) {
+            byte[] img = mipmap.get(i);
+            if (img == null) {
+                img = new byte[(atlasWidth / scale) * (atlasHeight / scale) * 4];
+                mipmap.put(i, img);
+            }
+            drawMipMap(output.get(i), atlasWidth / scale, x / scale, y / scale, img);
+            scale *= 2;
+        }
+    }
+
+    private void drawMipMap(Image source, int aWidth, int x, int y, byte[] output) {
+        ByteBuffer sourceData = source.getData(0);
+        int height = source.getHeight();
+        int width = source.getWidth();
+
+        PixelConverter converter;
+        switch (source.getFormat()) {
+            case ABGR8:
+                converter = this::abgr8Converter;
+                break;
+            case BGR8:
+                converter = this::bgr8Converter;
+                break;
+            case RGB8:
+                converter = this::rgb8Converter;
+                break;
+            case RGBA8:
+                converter = this::rgba8Converter;
+                break;
+            case Luminance8:
+                converter = this::luminance8Converter;
+                break;
+            case Luminance8Alpha8:
+                converter = this::luminance8Aplha8Converter;
+                break;
+            default:
+                Image newImage = convertImageToAwt(source);
+                if (newImage == null) {
+                    throw new UnsupportedOperationException("Cannot draw or convert textures with format " + source.getFormat());
+                }
+                sourceData = newImage.getData(0);
+                converter = this::awtConverter;
+        }
+
+        for (int yPos = 0; yPos < height; yPos++) {
+            for (int xPos = 0; xPos < width; xPos++) {
+                int i = ((xPos + x) + (yPos + y) * aWidth) * 4;
+                converter.convert(output, sourceData, i, xPos, yPos, width);
+            }
+        }
     }
 
     private void drawImage(Image source, int x, int y, String mapName) {
@@ -439,14 +512,55 @@ public class TextureAtlas {
         }
         byte[] image = images.get(mapName);
         if (image != null) {
-            //TODO check if color space shouldn't be sRGB
-            Texture2D tex = new Texture2D(new Image(format, atlasWidth, atlasHeight, BufferUtils.createByteBuffer(image), null, ColorSpace.Linear));
+            Image img;
+
+            if (DIFFUSE_MAP.equals(mapName) && mipmap.size() > 0) {
+                // Generate atlas image with mipmaps
+                completeMipMap(atlasWidth, atlasHeight);
+                ByteBuffer bb = BufferUtils.createByteBuffer(image.length * 4);
+                bb.put(image);
+                int[] mipmapSizes = new int[mipmap.size() + 1];
+                mipmapSizes[0] = image.length;
+                for (int i = 0; i < mipmap.size(); i++) {
+                    byte[] mm = mipmap.get(i);
+                    mipmapSizes[i + 1] = mm.length;
+                    bb.put(mm);
+                }
+                img = new Image(format, atlasWidth, atlasHeight, bb, mipmapSizes, ColorSpace.Linear);
+
+            } else {
+                //TODO check if color space shouldn't be sRGB
+                img = new Image(format, atlasWidth, atlasHeight, BufferUtils.createByteBuffer(image), null, ColorSpace.Linear);
+            }
+
+            Texture2D tex = new Texture2D(img);
             tex.setMagFilter(Texture.MagFilter.Bilinear);
             tex.setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
             tex.setWrap(Texture.WrapMode.EdgeClamp);
             return tex;
         }
         return null;
+    }
+
+    private void completeMipMap(int atlasWidth, int atlasHeight) {
+        if (mipmap.size() > 0) {
+            int i = mipmap.size() - 1;
+            byte[] lastMipMap = mipmap.get(i);
+            int scale = ((int)Math.pow(2, i + 1));
+            int width = atlasWidth / scale;
+            int height = atlasHeight / scale;
+
+            Image current = new Image(format, width, height, BufferUtils.createByteBuffer(lastMipMap), null, ColorSpace.Linear);
+            while (height > 1 && width > 1) {
+                height /= 2;
+                width /= 2;
+                i++;
+                byte[] img = new byte[width * height * 4];
+                current = MipMapGenerator.scaleImage(current, width, height);
+                current.getData(0).rewind().get(img);
+                mipmap.put(i, img);
+            }
+        }
     }
 
     /**
