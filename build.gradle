@@ -39,7 +39,7 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-def jme3 = [v: '3.6.0-stable', g: 'org.jmonkeyengine']
+def jme3 = [v: '3.6.1-stable', g: 'org.jmonkeyengine']
 def sio2 = [v: '1.7.0', g: 'com.simsilica']
 
 project(":core") {
@@ -49,6 +49,7 @@ project(":core") {
         implementation "${jme3.g}:jme3-effects:${jme3.v}"
         implementation "${jme3.g}:jme3-jogg:${jme3.v}"
         implementation "${jme3.g}:jme3-plugins:${jme3.v}"
+        implementation "${jme3.g}:jme3-awt-dialogs:${jme3.v}"
         implementation "${sio2.g}:sio2:${sio2.v}"
         testImplementation "${jme3.g}:jme3-desktop:${jme3.v}"
         testImplementation "${jme3.g}:jme3-lwjgl:${jme3.v}"
