@@ -132,7 +132,9 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
                 backward = isPressed;
                 break;
             case ACTION_JUMP:
-                jump();
+                if (isPressed) {
+                    jump();
+                }
                 break;
             default:
         }

@@ -92,14 +92,15 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
             buttonBackward = createTextureButton("arrowdown-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize, ACTION_BACKWARD);
             buttonForward = createTextureButton("arrowup-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize * 2 + SPACING, ACTION_FORWARD);
             buttonRight = createTextureButton("arrowright-full.png", buttonSize, SCREEN_MARGIN + (buttonSize) * 2, 1.5f * buttonSize, ACTION_RIGHT);
+            buttonJump = createTextureButton("arrowjump-full.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + 1.25f * buttonSize, ACTION_JUMP);
         } else {
             buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
             buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
             buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
             buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
+            buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
         }
 
-        buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
         buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
         buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
