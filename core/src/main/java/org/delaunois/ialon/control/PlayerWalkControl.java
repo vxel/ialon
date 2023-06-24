@@ -64,20 +64,6 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
             head.getWorldRotation().getRotationColumn(2, camDir);
             head.getWorldRotation().getRotationColumn(0, camLeft);
 
-            if (playerCharacterControl.isOnScale()) {
-                playerCharacterControl.setFallSpeed(0);
-            }
-
-            if (playerCharacterControl.isUnderWater()) {
-                // In water, we don't need to climb stairs, just swim ;-)
-                // Setting step height to a low value prevents a bug in bullet
-                // that makes the character fall with a different speed below
-                // the stepHeight. This bug is noticeable especially under water.
-                playerCharacterControl.getCharacter().setStepHeight(0.03f);
-                playerCharacterControl.setFallSpeed(config.getWaterGravity());
-                playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
-            }
-
             move.set(playerCharacterControl.getWalkDirection());
             updateWalkMove(move);
             playerCharacterControl.setWalkDirection(move);

@@ -60,12 +60,20 @@ public class ButtonHighlightControl extends AbstractControl implements ActionLis
 
     public void highlight(boolean enable) {
         if (getSpatial() instanceof Container) {
+            Container container = (Container) getSpatial();
+            QuadBackgroundComponent background = (QuadBackgroundComponent) container.getBackground();
             if (enable) {
-                ((QuadBackgroundComponent) ((Container) getSpatial()).getBackground())
-                        .getColor().set(0.5f, 0.5f, 0.5f, 0.5f);
+                if (background.getTexture() == null) {
+                    background.getColor().set(0.5f, 0.5f, 0.5f, 0.5f);
+                } else {
+                    background.getColor().set(1f, 1f, 1f, 1f);
+                }
             } else {
-                ((QuadBackgroundComponent) ((Container) getSpatial()).getBackground())
-                        .getColor().set(0, 0, 0, 0.5f);
+                if (background.getTexture() == null) {
+                    background.getColor().set(0, 0, 0, 0.5f);
+                } else {
+                    background.getColor().set(1f, 1f, 1f, 0.6f);
+                }
             }
         }
     }

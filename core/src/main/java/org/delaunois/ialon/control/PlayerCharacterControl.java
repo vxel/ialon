@@ -11,17 +11,14 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.WorldManager;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Getter
 public class PlayerCharacterControl extends CharacterControl {
 
-    @Getter
     private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
-
-    @Getter
     private final Vector3f playerBlockCenterLocation = new Vector3f();
-
-    @Getter
     private final Vector3f walkDirection = new Vector3f();
 
     private final WorldManager worldManager;
@@ -71,18 +68,34 @@ public class PlayerCharacterControl extends CharacterControl {
         block = worldManager.getBlock(playerBlockCenterLocation);
 
         if (block != null) {
-            if (block.getName().contains("water")) {
+            if (!underWater && block.getName().contains("water")) {
+                log.info("In water");
                 underWater = true;
+                // In water, we don't need to climb stairs, just swim ;-)
+                // Setting step height to a low value prevents a bug in bullet
+                // that makes the character fall with a different speed below
+                // the stepHeight. This bug is noticeable especially under water.
+                getCharacter().setStepHeight(0.03f);
+                setFallSpeed(config.getWaterGravity());
+                setJumpSpeed(config.getWaterJumpSpeed());
 
-            } else if (TypeIds.SCALE.equals(block.getType())) {
+            } else if (!onScale && TypeIds.SCALE.equals(block.getType())) {
+                log.info("On scale");
                 onScale = true;
+                setFallSpeed(0);
             }
 
         } else if (underWater) {
+            log.info("Out of water");
             underWater = false;
+            setFallSpeed(config.getGroundGravity());
+            setJumpSpeed(config.getJumpSpeed());
+            getCharacter().setStepHeight(config.getPlayerStepHeight());
 
         } else if (onScale) {
+            log.info("Out of scale");
             onScale = false;
+            setFallSpeed(config.getGroundGravity());
         }
     }
 
