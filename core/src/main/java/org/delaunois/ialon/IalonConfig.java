@@ -34,6 +34,7 @@ public class IalonConfig {
     private int screenHeight = 720;
     private int maxUpdatePerFrame = 8;
     private int chunkPoolsize = 4;
+    private boolean graphicButtons = true;
 
     // Grid
     private int gridRadius = 4;

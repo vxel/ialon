@@ -58,9 +58,9 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
         this.inputManager = inputManager;
         this.rotationHelper = new RotationHelper();
         config.getInputActionManager().addListener(this, ACTIONS);
-        this.miny = 130;
+        this.miny = 150;
         this.maxy = camera.getHeight() - 250f;
-        this.minx = 0;
+        this.minx = 150;
         this.maxx = camera.getWidth() - 200f;
         this.camera = camera;
     }
@@ -151,7 +151,8 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
     public void onTouch(String name, TouchEvent event, float tpf) {
         if (event.getType() == TouchEvent.Type.MOVE) {
             if (event.getY() > miny && event.getY() < maxy
-                    && event.getX() > minx && event.getX() < maxx) {
+                    && event.getX() > minx && event.getX() < maxx
+                    && (event.getX() > 500 || event.getY() > 350)) {
                 getUp(spatial, up);
                 getLeft(spatial, left);
                 getDirection(spatial, dir);

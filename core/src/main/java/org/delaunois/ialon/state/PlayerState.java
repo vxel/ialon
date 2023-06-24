@@ -121,7 +121,6 @@ public class PlayerState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
-        // Nothing to do
         listeners.forEach(listener -> listener.onMove(config.getPlayerLocation()));
     }
 

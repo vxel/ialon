@@ -87,17 +87,17 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         buttonSize = app.getCamera().getHeight() / 6;
         directionButtons = new Node();
 
-        /*
-        buttonLeft = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + 1.5f * buttonSize, ACTION_LEFT);
-        buttonBackward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-        buttonForward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-        buttonRight = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + 1.5f * buttonSize, ACTION_RIGHT);
-        */
-
-        buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
-        buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-        buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-        buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
+        if (config.isGraphicButtons()) {
+            buttonLeft = createTextureButton("arrowleft-full.png", buttonSize, SCREEN_MARGIN, 1.5f * buttonSize, ACTION_LEFT);
+            buttonBackward = createTextureButton("arrowdown-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize, ACTION_BACKWARD);
+            buttonForward = createTextureButton("arrowup-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize * 2 + SPACING, ACTION_FORWARD);
+            buttonRight = createTextureButton("arrowright-full.png", buttonSize, SCREEN_MARGIN + (buttonSize) * 2, 1.5f * buttonSize, ACTION_RIGHT);
+        } else {
+            buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
+            buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
+            buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
+            buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
+        }
 
         buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
         buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
