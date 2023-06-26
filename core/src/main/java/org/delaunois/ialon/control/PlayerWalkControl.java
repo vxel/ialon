@@ -25,6 +25,8 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     private PlayerCharacterControl playerCharacterControl = null;
     private final IalonConfig config;
 
+    private boolean underWater = false;
+    private boolean onScale = false;
     private boolean left = false;
     private boolean right = false;
     private boolean forward = false;
@@ -63,6 +65,33 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
         if (spatial != null) {
             head.getWorldRotation().getRotationColumn(2, camDir);
             head.getWorldRotation().getRotationColumn(0, camLeft);
+
+            if (!onScale && playerCharacterControl.isOnScale()) {
+                // On scale
+                onScale = true;
+                playerCharacterControl.setFallSpeed(0);
+
+            } else if (onScale && !playerCharacterControl.isOnScale()) {
+                // Leaving scale
+                onScale = false;
+                playerCharacterControl.setFallSpeed(config.getGroundGravity());
+            }
+
+            if (!underWater && playerCharacterControl.isUnderWater()) {
+                // In water, we don't need to climb stairs, just swim ;-)
+                // Setting step height to a low value prevents a bug in bullet
+                // that makes the character fall with a different speed below
+                // the stepHeight. This bug is noticeable especially under water.
+                playerCharacterControl.getCharacter().setStepHeight(0.03f);
+                playerCharacterControl.setFallSpeed(config.getWaterGravity());
+                playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
+
+            } else if (underWater && !playerCharacterControl.isUnderWater()) {
+                // Leaving water
+                playerCharacterControl.setFallSpeed(config.getGroundGravity());
+                playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
+                playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
+            }
 
             move.set(playerCharacterControl.getWalkDirection());
             updateWalkMove(move);

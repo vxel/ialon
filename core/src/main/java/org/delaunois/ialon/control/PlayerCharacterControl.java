@@ -67,35 +67,28 @@ public class PlayerCharacterControl extends CharacterControl {
 
         block = worldManager.getBlock(playerBlockCenterLocation);
 
+        // Note : this just traces the type of location where the player stands
+        // The modification of physical properties of the environnement (gravity, fall speed...)
+        // must be handled by the specific control because those properties depends on the
+        // navigation control. Example : if the player is flying, entering water does not
+        // have the same effect as if the player is walking
         if (block != null) {
             if (!underWater && block.getName().contains("water")) {
                 log.info("In water");
                 underWater = true;
-                // In water, we don't need to climb stairs, just swim ;-)
-                // Setting step height to a low value prevents a bug in bullet
-                // that makes the character fall with a different speed below
-                // the stepHeight. This bug is noticeable especially under water.
-                getCharacter().setStepHeight(0.03f);
-                setFallSpeed(config.getWaterGravity());
-                setJumpSpeed(config.getWaterJumpSpeed());
 
             } else if (!onScale && TypeIds.SCALE.equals(block.getType())) {
                 log.info("On scale");
                 onScale = true;
-                setFallSpeed(0);
             }
 
         } else if (underWater) {
             log.info("Out of water");
             underWater = false;
-            setFallSpeed(config.getGroundGravity());
-            setJumpSpeed(config.getJumpSpeed());
-            getCharacter().setStepHeight(config.getPlayerStepHeight());
 
         } else if (onScale) {
             log.info("Out of scale");
             onScale = false;
-            setFallSpeed(config.getGroundGravity());
         }
     }
 
