@@ -24,6 +24,7 @@ public class StairsOuterCorner implements Shape {
 
     private static final Quaternion PI_X = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);
     private static final Quaternion PI_Y = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
+    private static final Quaternion INVERSE = PI_X.mult(PI_Y);
 
     private final Direction direction;
     private final boolean upsideDown;
@@ -41,8 +42,7 @@ public class StairsOuterCorner implements Shape {
         // for the direction.
         rotation = Shape.getYawFromDirection(direction);
         if (upsideDown) {
-            Quaternion inverse = PI_X.mult(PI_Y);
-            rotation = inverse.multLocal(rotation.inverse());
+            rotation = INVERSE.mult(rotation.inverse());
         }
     }
 
