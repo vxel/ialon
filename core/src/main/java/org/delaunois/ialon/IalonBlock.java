@@ -82,6 +82,17 @@ public enum IalonBlock {
     METAL4("metal4", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     METAL5("metal5", true, true, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
+    COLOR_BLACK("color_black", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_BLUE("color_blue", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_CYAN("color_cyan", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_GREEN("color_green", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_MAGENTA("color_magenta", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_ORANGE("color_orange", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_RED("color_red", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_RED2("color_red2", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_ROSE("color_rose", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    COLOR_YELLOW("color_yellow", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
 

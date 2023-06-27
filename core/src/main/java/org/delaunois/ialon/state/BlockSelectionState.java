@@ -86,6 +86,16 @@ import static org.delaunois.ialon.IalonBlock.BIRCH_LOG;
 import static org.delaunois.ialon.IalonBlock.BIRCH_PLANKS;
 import static org.delaunois.ialon.IalonBlock.BRICKS;
 import static org.delaunois.ialon.IalonBlock.COBBLESTONE;
+import static org.delaunois.ialon.IalonBlock.COLOR_BLACK;
+import static org.delaunois.ialon.IalonBlock.COLOR_BLUE;
+import static org.delaunois.ialon.IalonBlock.COLOR_CYAN;
+import static org.delaunois.ialon.IalonBlock.COLOR_GREEN;
+import static org.delaunois.ialon.IalonBlock.COLOR_MAGENTA;
+import static org.delaunois.ialon.IalonBlock.COLOR_ORANGE;
+import static org.delaunois.ialon.IalonBlock.COLOR_RED;
+import static org.delaunois.ialon.IalonBlock.COLOR_RED2;
+import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
+import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
 import static org.delaunois.ialon.IalonBlock.DIRT;
 import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
@@ -442,6 +452,118 @@ public class BlockSelectionState extends BaseAppState implements ActionListener,
             SPACER,
 
             // Page 8
+            getName(COLOR_BLACK, CUBE),
+            getName(COLOR_BLACK, DOUBLE_SLAB),
+            getName(COLOR_BLACK, SLAB),
+            getName(COLOR_BLACK, PLATE),
+            getName(COLOR_BLACK, WEDGE_SOUTH),
+            getName(COLOR_BLACK, PYRAMID),
+            getName(COLOR_BLACK, POLE),
+            getName(COLOR_BLACK, STAIRS_EAST),
+            getName(COLOR_BLACK, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_BLACK, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_BLUE, CUBE),
+            getName(COLOR_BLUE, DOUBLE_SLAB),
+            getName(COLOR_BLUE, SLAB),
+            getName(COLOR_BLUE, PLATE),
+            getName(COLOR_BLUE, WEDGE_SOUTH),
+            getName(COLOR_BLUE, PYRAMID),
+            getName(COLOR_BLUE, POLE),
+            getName(COLOR_BLUE, STAIRS_EAST),
+            getName(COLOR_BLUE, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_BLUE, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_CYAN, CUBE),
+            getName(COLOR_CYAN, DOUBLE_SLAB),
+            getName(COLOR_CYAN, SLAB),
+            getName(COLOR_CYAN, PLATE),
+            getName(COLOR_CYAN, WEDGE_SOUTH),
+            getName(COLOR_CYAN, PYRAMID),
+            getName(COLOR_CYAN, POLE),
+            getName(COLOR_CYAN, STAIRS_EAST),
+            getName(COLOR_CYAN, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_CYAN, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_GREEN, CUBE),
+            getName(COLOR_GREEN, DOUBLE_SLAB),
+            getName(COLOR_GREEN, SLAB),
+            getName(COLOR_GREEN, PLATE),
+            getName(COLOR_GREEN, WEDGE_SOUTH),
+            getName(COLOR_GREEN, PYRAMID),
+            getName(COLOR_GREEN, POLE),
+            getName(COLOR_GREEN, STAIRS_EAST),
+            getName(COLOR_GREEN, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_GREEN, STAIRS_OUTER_CORNER_SOUTH),
+
+            // Page 9
+            getName(COLOR_MAGENTA, CUBE),
+            getName(COLOR_MAGENTA, DOUBLE_SLAB),
+            getName(COLOR_MAGENTA, SLAB),
+            getName(COLOR_MAGENTA, PLATE),
+            getName(COLOR_MAGENTA, WEDGE_SOUTH),
+            getName(COLOR_MAGENTA, PYRAMID),
+            getName(COLOR_MAGENTA, POLE),
+            getName(COLOR_MAGENTA, STAIRS_EAST),
+            getName(COLOR_MAGENTA, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_MAGENTA, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_ORANGE, CUBE),
+            getName(COLOR_ORANGE, DOUBLE_SLAB),
+            getName(COLOR_ORANGE, SLAB),
+            getName(COLOR_ORANGE, PLATE),
+            getName(COLOR_ORANGE, WEDGE_SOUTH),
+            getName(COLOR_ORANGE, PYRAMID),
+            getName(COLOR_ORANGE, POLE),
+            getName(COLOR_ORANGE, STAIRS_EAST),
+            getName(COLOR_ORANGE, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_ORANGE, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_RED, CUBE),
+            getName(COLOR_RED, DOUBLE_SLAB),
+            getName(COLOR_RED, SLAB),
+            getName(COLOR_RED, PLATE),
+            getName(COLOR_RED, WEDGE_SOUTH),
+            getName(COLOR_RED, PYRAMID),
+            getName(COLOR_RED, POLE),
+            getName(COLOR_RED, STAIRS_EAST),
+            getName(COLOR_RED, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_RED, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_RED2, CUBE),
+            getName(COLOR_RED2, DOUBLE_SLAB),
+            getName(COLOR_RED2, SLAB),
+            getName(COLOR_RED2, PLATE),
+            getName(COLOR_RED2, WEDGE_SOUTH),
+            getName(COLOR_RED2, PYRAMID),
+            getName(COLOR_RED2, POLE),
+            getName(COLOR_RED2, STAIRS_EAST),
+            getName(COLOR_RED2, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_RED2, STAIRS_OUTER_CORNER_SOUTH),
+
+            // Page 10
+            getName(COLOR_ROSE, CUBE),
+            getName(COLOR_ROSE, DOUBLE_SLAB),
+            getName(COLOR_ROSE, SLAB),
+            getName(COLOR_ROSE, PLATE),
+            getName(COLOR_ROSE, WEDGE_SOUTH),
+            getName(COLOR_ROSE, PYRAMID),
+            getName(COLOR_ROSE, POLE),
+            getName(COLOR_ROSE, STAIRS_EAST),
+            getName(COLOR_ROSE, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_ROSE, STAIRS_OUTER_CORNER_SOUTH),
+
+            getName(COLOR_YELLOW, CUBE),
+            getName(COLOR_YELLOW, DOUBLE_SLAB),
+            getName(COLOR_YELLOW, SLAB),
+            getName(COLOR_YELLOW, PLATE),
+            getName(COLOR_YELLOW, WEDGE_SOUTH),
+            getName(COLOR_YELLOW, PYRAMID),
+            getName(COLOR_YELLOW, POLE),
+            getName(COLOR_YELLOW, STAIRS_EAST),
+            getName(COLOR_YELLOW, STAIRS_INNER_CORNER_SOUTH),
+            getName(COLOR_YELLOW, STAIRS_OUTER_CORNER_SOUTH),
+
             getName(OAK_LOG, FENCE),
             getName(STONE_BRICKS, FENCE),
             getName(STONE_BRICKS2, FENCE),
