@@ -52,6 +52,12 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 
 # Screenshots
 
+## Version Beta 2
+
+![Screenshot Ialon 4](https://user-images.githubusercontent.com/28866693/249278557-8a9ee388-2e61-4eeb-8c6c-b24d0ee17f75.jpg)
+
+## Version Beta 1
+
 Water simulation and Minecraft-like lightning :
 
 ![Screenshot Ialon 1](https://user-images.githubusercontent.com/28866693/201869015-77123bbf-38dd-4d5c-b481-cc0be6395673.jpg)
