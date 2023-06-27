@@ -25,6 +25,7 @@ public class Wedge implements Shape {
 
     private static final Quaternion PI_X = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_X);
     private static final Quaternion PI_Y = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
+    private static final Quaternion INVERSE = PI_X.mult(PI_Y);
 
     private final Direction direction;
     private final boolean upsideDown;
@@ -42,20 +43,12 @@ public class Wedge implements Shape {
         // for the direction.
         rotation = Shape.getYawFromDirection(direction);
         if (upsideDown) {
-            Quaternion inverse = PI_X.mult(PI_Y);
-            rotation = inverse.multLocal(rotation.inverse());
+            rotation = INVERSE.mult(rotation.inverse());
         }
     }
 
     @Override
     public void add(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
-        // when the shape is upside down (inverted), we need to perform 3 rotations. Two to invert the shape and one
-        // for the direction.
-        Quaternion rotation = Shape.getYawFromDirection(direction);
-        if (upsideDown) {
-            Quaternion inverse = PI_X.mult(PI_Y);
-            rotation = inverse.multLocal(rotation.inverse());
-        }
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         // check if we have 3 textures or only one
