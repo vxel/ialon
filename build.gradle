@@ -39,7 +39,7 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-def jme3 = [v: '3.6.0-stable', g: 'org.jmonkeyengine']
+def jme3 = [v: '3.6.1-stable', g: 'org.jmonkeyengine']
 def sio2 = [v: '1.7.0', g: 'com.simsilica']
 
 project(":core") {

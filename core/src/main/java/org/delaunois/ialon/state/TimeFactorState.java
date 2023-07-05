@@ -72,7 +72,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonTimeFactor = createButton(buttonSize, SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN,
+        buttonTimeFactor = createButton(buttonSize, (app.getCamera().getWidth() - buttonSize - SPACING) / 2f, app.getCamera().getHeight() - SCREEN_MARGIN,
                 new DefaultMouseListener() {
                     @Override
                     public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {

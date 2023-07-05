@@ -21,6 +21,8 @@ import android.os.Build;
 import android.view.View;
 
 import com.jme3.system.AppSettings;
+import com.jme3.util.BufferAllocatorFactory;
+import com.jme3.util.PrimitiveAllocator;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.jme.AndroidHarness;
@@ -31,6 +33,10 @@ import java.util.logging.Logger;
 public class MainActivity extends AndroidHarness {
 
     protected static final Logger logger = Logger.getLogger(MainActivity.class.getName());
+
+    static {
+        System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
+    }
 
     public MainActivity() {
         appClass = Ialon.class.getCanonicalName();

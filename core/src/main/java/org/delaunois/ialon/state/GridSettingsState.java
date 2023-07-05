@@ -74,7 +74,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
         }
 
         buttonSettings = createButton(buttonSize,
-                SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize,
+                (app.getCamera().getWidth() + buttonSize + SPACING) / 2f,
                 app.getCamera().getHeight() - SCREEN_MARGIN,
                 new DefaultMouseListener() {
                     @Override

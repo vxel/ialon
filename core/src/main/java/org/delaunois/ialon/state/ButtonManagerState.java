@@ -10,17 +10,21 @@ import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.BatchNode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.texture.Texture;
 import com.simsilica.lemur.Container;
+import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.Label;
+import com.simsilica.lemur.Panel;
+import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.ButtonHighlightControl;
+import org.delaunois.ialon.ui.AtlasIconComponent;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -44,31 +48,31 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
     private static final String UDK_ACTION = "ACTION";
 
     @Getter
-    private Node directionButtons;
+    private Node buttonParentNode;
 
     @Getter
-    private Container buttonLeft;
+    private Panel buttonLeft;
 
     @Getter
-    private Container buttonRight;
+    private Panel buttonRight;
 
     @Getter
-    private Container buttonBackward;
+    private Panel buttonBackward;
 
     @Getter
-    private Container buttonForward;
+    private Panel buttonForward;
 
     @Getter
-    private Container buttonJump;
+    private Panel buttonJump;
 
     @Getter
-    private Container buttonAddBlock;
+    private Panel buttonAddBlock;
 
     @Getter
-    private Container buttonRemoveBlock;
+    private Panel buttonRemoveBlock;
 
     @Getter
-    private Container buttonFly;
+    private Panel buttonFly;
 
     private int buttonSize;
     private SimpleApplication app;
@@ -85,30 +89,58 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         this.app = (SimpleApplication) app;
         this.app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
         buttonSize = app.getCamera().getHeight() / 6;
-        directionButtons = new Node();
+        buttonParentNode = new Node();
 
         if (config.isGraphicButtons()) {
-            buttonLeft = createTextureButton("arrowleft-full.png", buttonSize, SCREEN_MARGIN, 1.5f * buttonSize, ACTION_LEFT);
-            buttonBackward = createTextureButton("arrowdown-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize, ACTION_BACKWARD);
-            buttonForward = createTextureButton("arrowup-full.png", buttonSize, SCREEN_MARGIN + buttonSize, buttonSize * 2 + SPACING, ACTION_FORWARD);
-            buttonRight = createTextureButton("arrowright-full.png", buttonSize, SCREEN_MARGIN + (buttonSize) * 2, 1.5f * buttonSize, ACTION_RIGHT);
-            buttonJump = createTextureButton("arrowjump-full.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + 1.25f * buttonSize, ACTION_JUMP);
+            IconButton left = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
+            IconButton backward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
+            IconButton forward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
+            IconButton right = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
+            IconButton jump = createTextureButton("arrowjump.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
+            IconButton fly = createTextureButton("flight.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
+            IconButton remove = createTextureButton("minus.png", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
+            IconButton add = createTextureButton("plus.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
+            buttonRemoveBlock = remove.background;
+            buttonLeft = left.background;
+            buttonBackward = backward.background;
+            buttonForward = forward.background;
+            buttonRight = right.background;
+            buttonJump = jump.background;
+            buttonFly = fly.background;
+            buttonAddBlock = add.background;
+
+            BatchNode batchNode = new BatchNode("ButtonBatch");
+            batchNode.attachChild(left.icon);
+            batchNode.attachChild(backward.icon);
+            batchNode.attachChild(forward.icon);
+            batchNode.attachChild(right.icon);
+            batchNode.attachChild(jump.icon);
+            batchNode.attachChild(fly.icon);
+            batchNode.attachChild(remove.icon);
+            batchNode.attachChild(add.icon);
+            batchNode.batch();
+            buttonParentNode.attachChild(batchNode);
+
         } else {
             buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
             buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
             buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
             buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
             buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
+            buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
+            buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
+            buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
         }
 
-        buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
-        buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
-        buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
+        buttonParentNode.attachChild(buttonLeft);
+        buttonParentNode.attachChild(buttonBackward);
+        buttonParentNode.attachChild(buttonForward);
+        buttonParentNode.attachChild(buttonRight);
+        buttonParentNode.attachChild(buttonJump);
+        buttonParentNode.attachChild(buttonAddBlock);
+        buttonParentNode.attachChild(buttonRemoveBlock);
+        buttonParentNode.attachChild(buttonFly);
 
-        directionButtons.attachChild(buttonLeft);
-        directionButtons.attachChild(buttonBackward);
-        directionButtons.attachChild(buttonForward);
-        directionButtons.attachChild(buttonRight);
     }
 
     @Override
@@ -119,7 +151,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
         if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
-            if (directionButtons.getParent() == null) {
+            if (buttonParentNode.getParent() == null) {
                 showControlButtons();
             } else {
                 hideControlButtons();
@@ -129,45 +161,31 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
 
     @Override
     protected void onEnable() {
-        if (directionButtons.getParent() == null) {
-            app.getGuiNode().attachChild(directionButtons);
-            app.getGuiNode().attachChild(buttonJump);
-            app.getGuiNode().attachChild(buttonAddBlock);
-            app.getGuiNode().attachChild(buttonRemoveBlock);
-            app.getGuiNode().attachChild(buttonFly);
+        if (buttonParentNode.getParent() == null) {
+            app.getGuiNode().attachChild(buttonParentNode);
         }
     }
 
     @Override
     protected void onDisable() {
-        if (directionButtons.getParent() != null) {
-            directionButtons.removeFromParent();
-            buttonJump.removeFromParent();
-            buttonAddBlock.removeFromParent();
-            buttonRemoveBlock.removeFromParent();
-            buttonFly.removeFromParent();
+        if (buttonParentNode.getParent() != null) {
+            buttonParentNode.removeFromParent();
         }
     }
 
     public void showControlButtons() {
         this.app.getInputManager().deleteTrigger(ACTION_ADD_BLOCK, new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         this.app.getInputManager().deleteTrigger(ACTION_REMOVE_BLOCK, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-        if (directionButtons.getParent() == null) {
-            app.getGuiNode().attachChild(directionButtons);
-            app.getGuiNode().attachChild(buttonJump);
-            app.getGuiNode().attachChild(buttonAddBlock);
-            app.getGuiNode().attachChild(buttonRemoveBlock);
+        if (buttonParentNode.getParent() == null) {
+            app.getGuiNode().attachChild(buttonParentNode);
         }
     }
 
     public void hideControlButtons() {
         this.app.getInputManager().addMapping(ACTION_ADD_BLOCK, new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         this.app.getInputManager().addMapping(ACTION_REMOVE_BLOCK, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-        if (directionButtons.getParent() != null) {
-            directionButtons.removeFromParent();
-            buttonJump.removeFromParent();
-            buttonAddBlock.removeFromParent();
-            buttonRemoveBlock.removeFromParent();
+        if (buttonParentNode.getParent() != null) {
+            buttonParentNode.removeFromParent();
         }
     }
 
@@ -203,25 +221,41 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         return buttonContainer;
     }
 
-    private Container createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
-        Container buttonContainer = new Container();
-        buttonContainer.setName(actionName);
-        buttonContainer.setUserData(UDK_ACTION, actionName);
-        buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
+    private IconButton createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
+        IconButton iconButton = new IconButton();
 
-        Texture texture = app.getAssetManager().loadTexture("Textures/" + textureName);
-        QuadBackgroundComponent background = new QuadBackgroundComponent();
-        background.setColor(new ColorRGBA(1, 1, 1, 0.6f));
-        background.setTexture(texture);
+        // Icon
+        iconButton.icon = new Panel();
+        iconButton.icon.setPreferredSize(new Vector3f(size, size, 0));
 
+        AtlasIconComponent icon = new AtlasIconComponent("Textures/" + textureName);
+        icon.setVAlignment(VAlignment.Center);
+        icon.setHAlignment(HAlignment.Center);
+        config.getTextureAtlasManager().getAtlas().applyCoords(icon.getIconGeometry(), 0.1f);
+        icon.getMaterial().setTexture(config.getTextureAtlasManager().getDiffuseMap());
+
+        iconButton.icon.setBackground(icon);
+        iconButton.icon.setLocalTranslation(posx, posy, 0);
+
+        // Background
+        iconButton.background = new Panel();
+        iconButton.background.setName(actionName);
+        iconButton.background.setUserData(UDK_ACTION, actionName);
+        iconButton.background.setPreferredSize(new Vector3f(size, size, 0));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
-        buttonContainer.setBackground(background);
-        buttonContainer.setLocalTranslation(posx, posy, 1);
-        buttonContainer.addMouseListener(screenButtonMouseListener);
-        buttonContainer.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
+        iconButton.background.setBackground(background);
+        iconButton.background.setLocalTranslation(posx, posy, -1);
+        iconButton.background.addMouseListener(screenButtonMouseListener);
+        iconButton.background.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
 
-        return buttonContainer;
+        return iconButton;
+    }
+
+    private static class IconButton {
+        private Panel icon;
+        private Panel background;
     }
 
     private static class ScreenButtonMouseListener extends DefaultMouseListener {

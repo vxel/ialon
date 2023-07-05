@@ -1,10 +1,11 @@
 package org.delaunois.ialon.control;
 
 import com.jme3.input.controls.ActionListener;
+import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.control.AbstractControl;
-import com.simsilica.lemur.Container;
+import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 
 import org.delaunois.ialon.InputActionManager;
@@ -16,6 +17,8 @@ import lombok.Setter;
 
 public class ButtonHighlightControl extends AbstractControl implements ActionListener {
 
+    private static final ColorRGBA HALF_WHITE = new ColorRGBA(0.5f, 0.5f, 0.5f, 0.5f);
+    private static final ColorRGBA HALF_BLACK = new ColorRGBA(0f, 0f, 0f, 0.5f);
     private final InputActionManager inputActionManager;
     private final String actionName;
 
@@ -59,21 +62,26 @@ public class ButtonHighlightControl extends AbstractControl implements ActionLis
     }
 
     public void highlight(boolean enable) {
-        if (getSpatial() instanceof Container) {
-            Container container = (Container) getSpatial();
-            QuadBackgroundComponent background = (QuadBackgroundComponent) container.getBackground();
-            if (enable) {
-                if (background.getTexture() == null) {
-                    background.getColor().set(0.5f, 0.5f, 0.5f, 0.5f);
-                } else {
-                    background.getColor().set(1f, 1f, 1f, 1f);
-                }
+        if (getSpatial() instanceof Panel) {
+            Panel panel = (Panel) getSpatial();
+            if (panel.getBackground() instanceof QuadBackgroundComponent) {
+                highlightQuad(enable, (QuadBackgroundComponent) panel.getBackground());
+            }
+        }
+    }
+
+    private void highlightQuad(boolean enable, QuadBackgroundComponent quad) {
+        if (enable) {
+            if (quad.getTexture() == null) {
+                quad.setColor(HALF_WHITE);
             } else {
-                if (background.getTexture() == null) {
-                    background.getColor().set(0, 0, 0, 0.5f);
-                } else {
-                    background.getColor().set(1f, 1f, 1f, 0.6f);
-                }
+                quad.setColor(ColorRGBA.White);
+            }
+        } else {
+            if (quad.getTexture() == null) {
+                quad.setColor(HALF_BLACK);
+            } else {
+                quad.setColor(HALF_WHITE);
             }
         }
     }

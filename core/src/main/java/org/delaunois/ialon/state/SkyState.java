@@ -3,6 +3,7 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.asset.TextureKey;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
@@ -69,7 +70,9 @@ public class SkyState extends BaseAppState {
         ground.setCullHint(Spatial.CullHint.Never);
         ground.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        Texture groundTexture = app.getAssetManager().loadTexture("Textures/ground.png");
+        TextureKey tex = new TextureKey("Textures/ground.png");
+        tex.setGenerateMips(false);
+        Texture groundTexture = app.getAssetManager().loadTexture(tex);
         Material groundMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         groundMat.setTexture("ColorMap", groundTexture);

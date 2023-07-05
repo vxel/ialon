@@ -35,7 +35,7 @@ public class DesktopLauncher {
         IalonConfigRepository.loadConfig(config);
         config.setGridRadiusMin(2);
         config.setGridRadiusMax(11);
-        config.setGammaCorrection(1.1f);
+        config.setDevMode(true);
         Ialon app = new Ialon(config);
 
         AppSettings settings = new AppSettings(false);

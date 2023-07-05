@@ -148,10 +148,12 @@ public class PlayerState extends BaseAppState {
         config.getInputActionManager().addListener(playerActionControl);
         config.getInputActionManager().addListener(playerWalkControl);
         config.getInputActionManager().addListener(playerFlyControl);
-        ButtonHighlightControl buttonHighlightControl = buttonManagerState.getButtonFly().getControl(ButtonHighlightControl.class);
-        if (buttonHighlightControl != null) {
-            buttonHighlightControl.setStatusSupplier(playerActionControl::isFly);
-            buttonHighlightControl.highlight(playerActionControl.isFly());
+        if (buttonManagerState != null) {
+            ButtonHighlightControl buttonHighlightControl = buttonManagerState.getButtonFly().getControl(ButtonHighlightControl.class);
+            if (buttonHighlightControl != null) {
+                buttonHighlightControl.setStatusSupplier(playerActionControl::isFly);
+                buttonHighlightControl.highlight(playerActionControl.isFly());
+            }
         }
     }
 

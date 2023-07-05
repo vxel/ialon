@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg:svg
+   id="svg2905"
+   sodipodi:docname="flight.svg"
+   viewBox="0 0 79.999998 79.999999"
+   sodipodi:version="0.32"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   version="1.1"
+   width="80"
+   height="80"
+   inkscape:export-filename="flight.png"
+   inkscape:export-xdpi="76.800003"
+   inkscape:export-ydpi="76.800003"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <svg:defs
+     id="defs6" />
+  <script />
+  <sodipodi:namedview
+     id="base"
+     bordercolor="#666666"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1876"
+     pagecolor="#808080"
+     inkscape:zoom="3.4380208"
+     inkscape:window-x="44"
+     borderopacity="1.0"
+     inkscape:current-layer="svg2905"
+     inkscape:cx="-17.451901"
+     inkscape:cy="54.973489"
+     inkscape:window-y="25"
+     inkscape:window-height="1018"
+     inkscape:pageopacity="0"
+     inkscape:showpageshadow="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:window-maximized="1" />
+  <svg:path
+     id="path2917"
+     style="fill:none;stroke:#ffffff;stroke-width:3;stroke-dasharray:none;stroke-opacity:1"
+     d="m 63.829149,20.66087 c 3.247842,-3.248184 -1.244544,-7.49478 -4.452283,-4.287271 L 47.5331,28.217373 20.400499,21.045148 l -4.522471,4.523027 22.362781,11.778039 -9.044942,9.043822 -7.030941,-0.863486 -3.577203,3.577643 7.977003,4.193787 4.194336,7.977551 3.576532,-3.577643 -0.822264,-6.990389 9.044942,-9.043822 11.523997,22.215704 4.523582,-4.52359 -6.866706,-26.582193 12.090004,-12.112287 z" />
+</svg:svg>

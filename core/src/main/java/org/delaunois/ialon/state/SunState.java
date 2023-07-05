@@ -3,6 +3,7 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.asset.TextureKey;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
@@ -45,7 +46,9 @@ public class SunState extends BaseAppState implements ActionListener {
         sun.setCullHint(Spatial.CullHint.Never);
         sun.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        Texture sunTexture = app.getAssetManager().loadTexture("Textures/sun.png");
+        TextureKey tex = new TextureKey("Textures/sun.png");
+        tex.setGenerateMips(false);
+        Texture sunTexture = app.getAssetManager().loadTexture(tex);
         Material sunMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         sunMat.setTexture("ColorMap", sunTexture);

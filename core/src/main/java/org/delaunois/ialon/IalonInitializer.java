@@ -5,6 +5,7 @@ import com.jme3.app.state.AppState;
 import com.jme3.asset.AssetInfo;
 import com.jme3.asset.AssetKey;
 import com.jme3.asset.AssetManager;
+import com.jme3.asset.TextureKey;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
@@ -85,15 +86,32 @@ public class IalonInitializer {
     }
 
     public static void setupAtlasManager(SimpleApplication app, IalonConfig config) {
+        TextureAtlasManager atlas = config.getTextureAtlasManager();
+
         BitmapFont font = app.getAssetManager().loadFont(IalonConfig.FONT_PATH);
         Texture fontTexture = font.getPage(0).getTextureParam("ColorMap").getTextureValue();
-
-        TextureAtlasManager atlas = config.getTextureAtlasManager();
-        atlas.addTexture(app.getAssetManager().loadTexture("Textures/ground.png"), TextureAtlasManager.DIFFUSE);
-        atlas.addTexture(app.getAssetManager().loadTexture("Textures/sun.png"), TextureAtlasManager.DIFFUSE);
-        atlas.addTexture(app.getAssetManager().loadTexture("Textures/moon.png"), TextureAtlasManager.DIFFUSE);
-        atlas.addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
         atlas.addTexture(fontTexture, TextureAtlasManager.DIFFUSE);
+        atlas.addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
+
+        String[] noMiptexPaths = new String[] {
+                "Textures/ground.png",
+                "Textures/sun.png",
+                "Textures/moon.png",
+                "Textures/arrowleft.png",
+                "Textures/arrowdown.png",
+                "Textures/arrowup.png",
+                "Textures/arrowright.png",
+                "Textures/arrowjump.png",
+                "Textures/flight.png",
+                "Textures/minus.png",
+                "Textures/plus.png"
+        };
+
+        for (String texPath : noMiptexPaths) {
+            TextureKey key = new TextureKey(texPath);
+            key.setGenerateMips(false);
+            atlas.addTexture(app.getAssetManager().loadTexture(key), TextureAtlasManager.DIFFUSE);
+        }
     }
 
     public static void setupAtlasFont(SimpleApplication app, IalonConfig config) {
