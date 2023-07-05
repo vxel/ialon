@@ -119,6 +119,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
             batchNode.attachChild(remove.icon);
             batchNode.attachChild(add.icon);
             batchNode.batch();
+            batchNode.getMaterial().setColor("Color", ColorRGBA.White);
             buttonParentNode.attachChild(batchNode);
 
         } else {
@@ -233,6 +234,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         icon.setHAlignment(HAlignment.Center);
         config.getTextureAtlasManager().getAtlas().applyCoords(icon.getIconGeometry(), 0.1f);
         icon.getMaterial().setTexture(config.getTextureAtlasManager().getDiffuseMap());
+        icon.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
 
         iconButton.icon.setBackground(icon);
         iconButton.icon.setLocalTranslation(posx, posy, 0);

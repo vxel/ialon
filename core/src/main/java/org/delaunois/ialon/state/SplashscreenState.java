@@ -35,6 +35,7 @@ import org.delaunois.ialon.IalonConfig;
 public class SplashscreenState extends BaseAppState {
 
     private static final ColorRGBA BAR_COLOR = new ColorRGBA(.137f, .693f, .145f, 1f);
+    private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
     private SimpleApplication app;
     private Node splashScreen;
@@ -56,13 +57,17 @@ public class SplashscreenState extends BaseAppState {
 
         Container splashContainer = new Container();
         splashContainer.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
-        splashContainer.setBackground(new QuadBackgroundComponent(ColorRGBA.Black));
+        QuadBackgroundComponent qbc = new QuadBackgroundComponent(ColorRGBA.Black);
+        qbc.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
+        splashContainer.setBackground(qbc);
         splashContainer.setLocalTranslation(0, getApplication().getCamera().getHeight(), 10);
         splashContainer.setName("SplashScreen");
         splashContainer.addChild(buildTitle());
 
+        qbc = new QuadBackgroundComponent(BAR_COLOR);
+        qbc.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         pbContainer = new Container();
-        pbContainer.setBackground(new QuadBackgroundComponent(BAR_COLOR));
+        pbContainer.setBackground(qbc);
         pbContainer.setPreferredSize(new Vector3f(getApplication().getCamera().getWidth() * 0.5f, 3, 0));
         pbContainer.setName("ProgressBar");
         pbContainer.setLocalTranslation(getApplication().getCamera().getWidth() * 0.25f, getApplication().getCamera().getHeight() / 4f, 20);
@@ -105,6 +110,8 @@ public class SplashscreenState extends BaseAppState {
         icon.setIconScale(scale);
         icon.setHAlignment(HAlignment.Center);
         icon.setVAlignment(VAlignment.Center);
+        icon.getMaterial().getMaterial().setColor("Color", ColorRGBA.White);
+        icon.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
 
         Label label = new Label("");
         label.setIcon(icon);
