@@ -72,7 +72,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonTimeFactor = createButton(buttonSize, (app.getCamera().getWidth() - buttonSize - SPACING) / 2f, app.getCamera().getHeight() - SCREEN_MARGIN,
+        buttonTimeFactor = createButton(buttonSize, app.getCamera().getWidth() / 2f - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN,
                 new DefaultMouseListener() {
                     @Override
                     public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
@@ -151,7 +151,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     public void resize() {
         log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonTimeFactor.setLocalTranslation(SCREEN_MARGIN + SPACING + 2 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonTimeFactor.setLocalTranslation(app.getCamera().getWidth() / 2f - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
     }
 
     @Override

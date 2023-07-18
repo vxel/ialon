@@ -68,6 +68,9 @@ public class IalonConfigRepository {
             if (playerStateDTO.getSelectedBlockIndex() != null) {
                 config.setSelectedBlockIndex(playerStateDTO.getSelectedBlockIndex());
             }
+            if (playerStateDTO.getSelectedBlockName() != null) {
+                config.setSelectedBlockName(playerStateDTO.getSelectedBlockName());
+            }
             config.setPlayerStartFly(playerStateDTO.isFly());
             config.setGridRadius(Math.max(5, playerStateDTO.getGridRadius()));
             config.setTime(playerStateDTO.getTime());

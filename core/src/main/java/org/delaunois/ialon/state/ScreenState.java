@@ -55,10 +55,27 @@ public class ScreenState extends BaseAppState implements ActionListener {
     @Override
     public void update(float tpf) {
         if (checkResize && (app.getCamera().getWidth() != camWidth || app.getCamera().getHeight() != camHeight)) {
-            app.getStateManager().getState(TimeFactorState.class).resize();
-            app.getStateManager().getState(GridSettingsState.class).resize();
-            app.getStateManager().getState(BlockSelectionState.class).resize();
-            app.getStateManager().getState(PlayerState.class).resize();
+
+            TimeFactorState timeFactorState = app.getStateManager().getState(TimeFactorState.class);
+            if (timeFactorState != null) {
+                timeFactorState.resize();
+            }
+            GridSettingsState gridSettingsState = app.getStateManager().getState(GridSettingsState.class);
+            if (gridSettingsState != null) {
+                gridSettingsState.resize();
+            }
+            BlockSelectionState blockSelectionState = app.getStateManager().getState(BlockSelectionState.class);
+            if (blockSelectionState != null) {
+                blockSelectionState.resize();
+            }
+            BlockSliderSelectionState blockSliderSelectionState = app.getStateManager().getState(BlockSliderSelectionState.class);
+            if (blockSliderSelectionState != null) {
+                blockSliderSelectionState.resize();
+            }
+            PlayerState playerState = app.getStateManager().getState(PlayerState.class);
+            if (playerState != null) {
+                playerState.resize();
+            }
 
             checkResize = false;
             camWidth = app.getCamera().getWidth();

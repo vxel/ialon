@@ -21,10 +21,11 @@ import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
 import com.rvandoosselaer.blocks.BlocksConfig;
+import com.simsilica.lemur.anim.AnimationState;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.AxesDebugState;
-import org.delaunois.ialon.state.BlockSelectionState;
+import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
@@ -83,6 +84,7 @@ public class Ialon extends SimpleApplication {
         IalonInitializer.setupAtlasManager(this, config);
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
+        stateManager.attach(new AnimationState());
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
         stateManager.attach(IalonInitializer.setupChunkSaverState(config));
         stateManager.attach(IalonInitializer.setupPlayerState(this, config));
@@ -98,9 +100,10 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
         stateManager.attach(new ButtonManagerState(config));
-        stateManager.attach(new BlockSelectionState(config));
+        stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new WorldBuilderState(config));
+        stateManager.attach(new AnimationState());
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized
 

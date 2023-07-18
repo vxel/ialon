@@ -57,6 +57,7 @@ public class PlayerStateDTO {
     private int gridRadius;
     private boolean fly;
     private Integer selectedBlockIndex;
+    private String selectedBlockName;
 
     public PlayerStateDTO(IalonConfig config) {
         this.posx = config.getPlayerLocation().x;
@@ -75,6 +76,7 @@ public class PlayerStateDTO {
         this.fly = config.isPlayerStartFly();
         this.gridRadius = Math.max(5, config.getGridRadius());
         this.selectedBlockIndex = config.getSelectedBlockIndex();
+        this.selectedBlockName = config.getSelectedBlockName();
     }
 
     @JsonIgnore

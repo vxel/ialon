@@ -12,8 +12,8 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 
-import org.delaunois.ialon.RotationHelper;
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.RotationHelper;
 
 import lombok.extern.slf4j.Slf4j;
 

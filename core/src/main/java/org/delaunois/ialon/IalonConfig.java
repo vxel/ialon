@@ -33,8 +33,7 @@ public class IalonConfig {
     private int screenWidth = 1520;
     private int screenHeight = 720;
     private int maxUpdatePerFrame = 8;
-    private int chunkPoolsize = 4;
-    private boolean graphicButtons = true;
+    private int chunkPoolsize = 2;
 
     // Grid
     private int gridRadius = 4;
@@ -99,6 +98,7 @@ public class IalonConfig {
 
     private Block selectedBlock = null;
     private int selectedBlockIndex = 0;
+    private String selectedBlockName = null;
     private ChunkManager chunkManager;
     private ChunkRepository chunkRepository;
     private TerrainGenerator terrainGenerator;

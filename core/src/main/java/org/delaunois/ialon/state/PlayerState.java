@@ -53,7 +53,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -77,7 +76,6 @@ public class PlayerState extends BaseAppState {
     private WorldManager worldManager;
 
     @Getter
-    @Setter
     private boolean touchEnabled = true;
 
     @Getter
@@ -90,6 +88,8 @@ public class PlayerState extends BaseAppState {
     private PlayerWalkControl playerWalkControl;
     private PlayerFlyControl playerFlyControl;
     private PlayerCharacterControl playerCharacterControl;
+    private PlayerHeadDirectionControl playerHeadDirectionControl;
+
     private final List<PlayerListener> listeners = new CopyOnWriteArrayList<>();
     private final IalonConfig config;
 
@@ -149,7 +149,7 @@ public class PlayerState extends BaseAppState {
         config.getInputActionManager().addListener(playerWalkControl);
         config.getInputActionManager().addListener(playerFlyControl);
         if (buttonManagerState != null) {
-            ButtonHighlightControl buttonHighlightControl = buttonManagerState.getButtonFly().getControl(ButtonHighlightControl.class);
+            ButtonHighlightControl buttonHighlightControl = buttonManagerState.getButtonFly().getBackground().getControl(ButtonHighlightControl.class);
             if (buttonHighlightControl != null) {
                 buttonHighlightControl.setStatusSupplier(playerActionControl::isFly);
                 buttonHighlightControl.highlight(playerActionControl.isFly());
@@ -171,6 +171,11 @@ public class PlayerState extends BaseAppState {
                 bulletAppState.getPhysicsSpace().remove(playerCharacterControl);
             }
         }
+    }
+
+    public void setTouchEnabled(boolean touchEnabled) {
+        this.touchEnabled = touchEnabled;
+        playerHeadDirectionControl.setEnabled(touchEnabled);
     }
 
     public void resize() {
@@ -209,7 +214,7 @@ public class PlayerState extends BaseAppState {
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         railControl.setWagon(wagon);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
-        PlayerHeadDirectionControl camDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
+        playerHeadDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);
 
         Node player = new Node("Player");
@@ -233,7 +238,7 @@ public class PlayerState extends BaseAppState {
         CameraNode cameraNode = new CameraNode("Camera", app.getCamera());
         cameraNode.setControlDir(CameraControl.ControlDirection.SpatialToCamera);
         head.attachChild(cameraNode);
-        head.addControl(camDirectionControl);
+        head.addControl(playerHeadDirectionControl);
         head.getLocalRotation().fromAngleAxis(config.getPlayerPitch(), Vector3f.UNIT_X);
         body.getLocalRotation().fromAngleAxis(config.getPlayerYaw(), Vector3f.UNIT_Y);
 

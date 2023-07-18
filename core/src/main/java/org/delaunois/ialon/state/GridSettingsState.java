@@ -74,7 +74,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
         }
 
         buttonSettings = createButton(buttonSize,
-                (app.getCamera().getWidth() + buttonSize + SPACING) / 2f,
+                app.getCamera().getWidth() / 2f + buttonSize + SPACING,
                 app.getCamera().getHeight() - SCREEN_MARGIN,
                 new DefaultMouseListener() {
                     @Override
@@ -158,7 +158,7 @@ public class GridSettingsState extends BaseAppState implements ActionListener {
 
     public void resize() {
         log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonSettings.setLocalTranslation(SCREEN_MARGIN + 2 * SPACING + 3 * buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonSettings.setLocalTranslation(app.getCamera().getWidth() / 2f + buttonSize + SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
     }
 
     @Override

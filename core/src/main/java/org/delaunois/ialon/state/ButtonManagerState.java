@@ -51,28 +51,28 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
     private Node buttonParentNode;
 
     @Getter
-    private Panel buttonLeft;
+    private IconButton buttonLeft;
 
     @Getter
-    private Panel buttonRight;
+    private IconButton buttonRight;
 
     @Getter
-    private Panel buttonBackward;
+    private IconButton buttonBackward;
 
     @Getter
-    private Panel buttonForward;
+    private IconButton buttonForward;
 
     @Getter
-    private Panel buttonJump;
+    private IconButton buttonJump;
 
     @Getter
-    private Panel buttonAddBlock;
+    private IconButton buttonAddBlock;
 
     @Getter
-    private Panel buttonRemoveBlock;
+    private IconButton buttonRemoveBlock;
 
     @Getter
-    private Panel buttonFly;
+    private IconButton buttonFly;
 
     private int buttonSize;
     private SimpleApplication app;
@@ -91,57 +91,36 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         buttonSize = app.getCamera().getHeight() / 6;
         buttonParentNode = new Node();
 
-        if (config.isGraphicButtons()) {
-            IconButton left = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
-            IconButton backward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-            IconButton forward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-            IconButton right = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
-            IconButton jump = createTextureButton("arrowjump.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
-            IconButton fly = createTextureButton("flight.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
-            IconButton remove = createTextureButton("minus.png", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
-            IconButton add = createTextureButton("plus.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
-            buttonRemoveBlock = remove.background;
-            buttonLeft = left.background;
-            buttonBackward = backward.background;
-            buttonForward = forward.background;
-            buttonRight = right.background;
-            buttonJump = jump.background;
-            buttonFly = fly.background;
-            buttonAddBlock = add.background;
+        buttonLeft = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
+        buttonBackward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
+        buttonForward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
+        buttonRight = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
+        buttonJump = createTextureButton("arrowjump.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
+        buttonFly = createTextureButton("flight.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
+        buttonRemoveBlock = createTextureButton("minus.png", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
+        buttonAddBlock = createTextureButton("plus.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
 
-            BatchNode batchNode = new BatchNode("ButtonBatch");
-            batchNode.attachChild(left.icon);
-            batchNode.attachChild(backward.icon);
-            batchNode.attachChild(forward.icon);
-            batchNode.attachChild(right.icon);
-            batchNode.attachChild(jump.icon);
-            batchNode.attachChild(fly.icon);
-            batchNode.attachChild(remove.icon);
-            batchNode.attachChild(add.icon);
-            batchNode.batch();
-            batchNode.getMaterial().setColor("Color", ColorRGBA.White);
-            buttonParentNode.attachChild(batchNode);
+        BatchNode batchNode = new BatchNode("ButtonBatch");
+        batchNode.attachChild(buttonLeft.icon);
+        batchNode.attachChild(buttonBackward.icon);
+        batchNode.attachChild(buttonForward.icon);
+        batchNode.attachChild(buttonRight.icon);
+        batchNode.attachChild(buttonJump.icon);
+        batchNode.attachChild(buttonFly.icon);
+        batchNode.attachChild(buttonRemoveBlock.icon);
+        batchNode.attachChild(buttonAddBlock.icon);
+        batchNode.batch();
+        batchNode.getMaterial().setColor("Color", ColorRGBA.White);
+        buttonParentNode.attachChild(batchNode);
 
-        } else {
-            buttonLeft = createButton("Left", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
-            buttonBackward = createButton("Backward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-            buttonForward = createButton("Forward", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-            buttonRight = createButton("Right", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
-            buttonJump = createButton("Jump", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
-            buttonFly = createButton("Fly", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
-            buttonRemoveBlock = createButton("Remove", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
-            buttonAddBlock = createButton("Add", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
-        }
-
-        buttonParentNode.attachChild(buttonLeft);
-        buttonParentNode.attachChild(buttonBackward);
-        buttonParentNode.attachChild(buttonForward);
-        buttonParentNode.attachChild(buttonRight);
-        buttonParentNode.attachChild(buttonJump);
-        buttonParentNode.attachChild(buttonAddBlock);
-        buttonParentNode.attachChild(buttonRemoveBlock);
-        buttonParentNode.attachChild(buttonFly);
-
+        buttonParentNode.attachChild(buttonLeft.background);
+        buttonParentNode.attachChild(buttonBackward.background);
+        buttonParentNode.attachChild(buttonForward.background);
+        buttonParentNode.attachChild(buttonRight.background);
+        buttonParentNode.attachChild(buttonJump.background);
+        buttonParentNode.attachChild(buttonAddBlock.background);
+        buttonParentNode.attachChild(buttonRemoveBlock.background);
+        buttonParentNode.attachChild(buttonFly.background);
     }
 
     @Override
@@ -191,10 +170,14 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
     }
 
     public void resize() {
-        buttonJump.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, 1);
-        buttonAddBlock.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
-        buttonRemoveBlock.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
-        buttonFly.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        buttonJump.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, -1);
+        buttonJump.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, 0);
+        buttonAddBlock.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
+        buttonAddBlock.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
+        buttonRemoveBlock.background.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
+        buttonRemoveBlock.icon.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
+        buttonFly.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
+        buttonFly.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
     }
 
     private Container createButton(String text, float size, float posx, float posy, String actionName) {
@@ -255,8 +238,11 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         return iconButton;
     }
 
-    private static class IconButton {
+    public static class IconButton {
+        @Getter
         private Panel icon;
+
+        @Getter
         private Panel background;
     }
 
