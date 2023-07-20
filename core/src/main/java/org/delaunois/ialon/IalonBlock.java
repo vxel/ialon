@@ -93,7 +93,11 @@ public enum IalonBlock {
     COLOR_ROSE("color_rose", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     COLOR_YELLOW("color_yellow", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
-    BOOKS(TypeIds.BOOKS, true, false, false, ShapeIds.CUBE),
+    BOOKS("books", true, false, true, ShapeIds.CUBE),
+    OVEN("oven", true, false, true, ShapeIds.CUBE),
+    DRAWERS("drawers", true, false, true, ShapeIds.CUBE),
+    BED("bed", true, false, true, ShapeIds.SLAB),
+    BEDPILLOW("bedpillow", true, false, true, ShapeIds.SLAB),
 
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);

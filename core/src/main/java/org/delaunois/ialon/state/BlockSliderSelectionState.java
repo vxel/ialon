@@ -90,6 +90,8 @@ import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_EAST;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
+import static org.delaunois.ialon.IalonBlock.BED;
+import static org.delaunois.ialon.IalonBlock.BEDPILLOW;
 import static org.delaunois.ialon.IalonBlock.BIRCH_LEAVES;
 import static org.delaunois.ialon.IalonBlock.BIRCH_LOG;
 import static org.delaunois.ialon.IalonBlock.BIRCH_PLANKS;
@@ -107,6 +109,7 @@ import static org.delaunois.ialon.IalonBlock.COLOR_RED2;
 import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
 import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
 import static org.delaunois.ialon.IalonBlock.DIRT;
+import static org.delaunois.ialon.IalonBlock.DRAWERS;
 import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
 import static org.delaunois.ialon.IalonBlock.GRAVEL;
@@ -122,6 +125,7 @@ import static org.delaunois.ialon.IalonBlock.MOSSY_STONE_BRICKS;
 import static org.delaunois.ialon.IalonBlock.OAK_LEAVES;
 import static org.delaunois.ialon.IalonBlock.OAK_LOG;
 import static org.delaunois.ialon.IalonBlock.OAK_PLANKS;
+import static org.delaunois.ialon.IalonBlock.OVEN;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LEAVES;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LOG;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_PLANKS;
@@ -200,6 +204,10 @@ public class BlockSliderSelectionState extends BaseAppState {
             getName(COLOR_ROSE, CUBE),
             getName(COLOR_YELLOW, CUBE),
             getName(BOOKS, CUBE),
+            getName(DRAWERS, CUBE),
+            getName(OVEN, CUBE),
+            getName(BED, SLAB),
+            getName(BEDPILLOW, SLAB),
     };
 
     private static final String[] SHAPES = {
