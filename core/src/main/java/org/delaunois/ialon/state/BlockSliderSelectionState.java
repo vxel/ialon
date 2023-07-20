@@ -144,6 +144,7 @@ import static org.delaunois.ialon.IalonKeyMapping.TOUCH;
 @Slf4j
 public class BlockSliderSelectionState extends BaseAppState {
 
+    private static final String BLOCK_NAME = "blockName";
     private static final ColorRGBA BLOCK_AMBIENT_LIGHT = ColorRGBA.White.mult(.7f);
     private static final String SPACER = null;
     private static final String[] BLOCK_IDS = {
@@ -301,7 +302,11 @@ public class BlockSliderSelectionState extends BaseAppState {
                 highlight(event.isPressed(), blockSelectionButton);
             }
         }, true);
-        blockSelectionButton.setLocalTranslation((app.getCamera().getWidth() - buttonSize) / 2.0f, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+        blockSelectionButton.setLocalTranslation(
+                (app.getCamera().getWidth() - buttonSize) / 2.0f,
+                (float)app.getCamera().getHeight() - SCREEN_MARGIN,
+                1
+        );
         blockSelectionButton.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         blockSelectionButton.addLight(new AmbientLight(BLOCK_AMBIENT_LIGHT));
     }
@@ -325,7 +330,7 @@ public class BlockSliderSelectionState extends BaseAppState {
         setSelectedBlockName(selectedBlockName);
         blockSelectionButton.setLocalTranslation(
                 (app.getCamera().getWidth() - buttonSize) / 2.0f,
-                app.getCamera().getHeight() - SCREEN_MARGIN,
+                (float)app.getCamera().getHeight() - SCREEN_MARGIN,
                 1);
         historyButtons.setLocalTranslation(
                 app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING,
@@ -535,12 +540,12 @@ public class BlockSliderSelectionState extends BaseAppState {
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 log.info("Click event={} target={}", event, target);
                 if (event.isReleased()) {
-                    String blockName = target.getUserData("blockName");
+                    String blockName = target.getUserData(BLOCK_NAME);
                     if (blockName == null) {
                         log.warn("Wrong Click Target {}", target.getName());
 
                     } else {
-                        setSelectedBlockName(target.getUserData("blockName"));
+                        setSelectedBlockName(target.getUserData(BLOCK_NAME));
                         hideBlockMenu();
                         event.setConsumed();
                     }
@@ -559,40 +564,45 @@ public class BlockSliderSelectionState extends BaseAppState {
                 // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
                 buttonBackground.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
                 blockButton.setBackground(buttonBackground);
-                blockButton.setUserData("blockName", name);
+                blockButton.setUserData(BLOCK_NAME, name);
                 blockList.addChild(blockButton, index, 1);
             }
         }
 
         int numBlockTypes = blockList.getChildren().size();
+
+        BatchNode batchNode;
         if (numBlockTypes == 1) {
-            setSelectedBlockName(blockList.getChild(0).getUserData("blockName"));
+            // Only one possible block : select it
+            setSelectedBlockName(blockList.getChild(0).getUserData(BLOCK_NAME));
             hideBlockMenu();
-            return null;
+            batchNode = null;
+
+        } else {
+            // Multiple possible blocks : show shape selection popup
+            final float posx = (app.getCamera().getWidth() - numBlockTypes * blockButtonSize) / 2f;
+            final float posy = app.getCamera().getHeight() - blockButtonSize - SCREEN_MARGIN * 3f - blockButtonSize * BLOCK_ROWS;
+
+            Container blockListParent = new Container();
+            blockListParent.setName("SubBlockListParent");
+            blockListParent.setLocalTranslation(posx, posy, -1f);
+            blockListParent.addChild(blockList);
+
+            Panel background = new Panel();
+            background.setName("SubBlockButtonBackground");
+            background.setPreferredSize(new Vector3f(app.getCamera().getWidth(), blockButtonSize, 0));
+            QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(new ColorRGBA(0f, 0, 0, 0.5f));
+            quadBackgroundComponent.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
+            background.setBackground(quadBackgroundComponent);
+            background.setLocalTranslation(0, posy, -1f);
+
+            batchNode = new BatchNode();
+            batchNode.attachChild(blockListParent);
+            batchNode.attachChild(background);
+            batchNode.batch();
+            batchNode.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
+            batchNode.addLight(new AmbientLight(BLOCK_AMBIENT_LIGHT));
         }
-
-        final float posx = (app.getCamera().getWidth() - numBlockTypes * blockButtonSize) / 2f;
-        final float posy = app.getCamera().getHeight() - blockButtonSize - SCREEN_MARGIN * 3f - blockButtonSize * BLOCK_ROWS;
-
-        Container blockListParent = new Container();
-        blockListParent.setName("SubBlockListParent");
-        blockListParent.setLocalTranslation(posx, posy, -1f);
-        blockListParent.addChild(blockList);
-
-        Panel background = new Panel();
-        background.setName("SubBlockButtonBackground");
-        background.setPreferredSize(new Vector3f(app.getCamera().getWidth(), blockButtonSize, 0));
-        QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(new ColorRGBA(0f, 0, 0, 0.5f));
-        quadBackgroundComponent.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
-        background.setBackground(quadBackgroundComponent);
-        background.setLocalTranslation(0, posy, -1f);
-
-        BatchNode batchNode = new BatchNode();
-        batchNode.attachChild(blockListParent);
-        batchNode.attachChild(background);
-        batchNode.batch();
-        batchNode.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
-        batchNode.addLight(new AmbientLight(BLOCK_AMBIENT_LIGHT));
 
         return batchNode;
     }

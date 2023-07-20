@@ -13,12 +13,9 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.BatchNode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.simsilica.lemur.Container;
 import com.simsilica.lemur.HAlignment;
-import com.simsilica.lemur.Label;
 import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.VAlignment;
-import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
@@ -178,31 +175,6 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         buttonRemoveBlock.icon.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
         buttonFly.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
         buttonFly.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
-    }
-
-    private Container createButton(String text, float size, float posx, float posy, String actionName) {
-        Container buttonContainer = new Container();
-        buttonContainer.setName(actionName);
-        buttonContainer.setUserData(UDK_ACTION, actionName);
-        buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
-        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
-        // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
-        buttonContainer.setBackground(background);
-
-        Label label = buttonContainer.addChild(new Label(text));
-        label.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
-        label.getFont().getPage(0).clearParam("VertexColor");
-
-        // Center the text in the box.
-        label.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
-        label.setColor(ColorRGBA.White);
-        buttonContainer.setLocalTranslation(posx, posy, 1);
-
-        buttonContainer.addMouseListener(screenButtonMouseListener);
-        buttonContainer.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
-
-        return buttonContainer;
     }
 
     private IconButton createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
