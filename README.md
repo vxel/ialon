@@ -52,7 +52,21 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 
 # Screenshots
 
+## Version Beta 4
+
+New block selection popup and new blocks (bed, drawers, oven, books...)
+
+![Screenshot Ialon 6](https://user-images.githubusercontent.com/28866693/254984090-0d28e49b-0e87-4d23-a0b4-d3db6dadf6e4.jpg)
+
+## Version Beta 3
+
+Rail system 
+
+![Screenshot Ialon 5](https://user-images.githubusercontent.com/28866693/254984107-282fff7a-4b6f-4cda-9d68-f82e60bf4580.jpg)
+
 ## Version Beta 2
+
+Soft shadows
 
 ![Screenshot Ialon 4](https://user-images.githubusercontent.com/28866693/249278557-8a9ee388-2e61-4eeb-8c6c-b24d0ee17f75.jpg)
 
