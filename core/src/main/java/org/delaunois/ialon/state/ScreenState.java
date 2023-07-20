@@ -64,10 +64,6 @@ public class ScreenState extends BaseAppState implements ActionListener {
             if (gridSettingsState != null) {
                 gridSettingsState.resize();
             }
-            BlockSelectionState blockSelectionState = app.getStateManager().getState(BlockSelectionState.class);
-            if (blockSelectionState != null) {
-                blockSelectionState.resize();
-            }
             BlockSliderSelectionState blockSliderSelectionState = app.getStateManager().getState(BlockSliderSelectionState.class);
             if (blockSliderSelectionState != null) {
                 blockSliderSelectionState.resize();

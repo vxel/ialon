@@ -93,6 +93,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.WEDGE_SOUTH;
 import static org.delaunois.ialon.IalonBlock.BIRCH_LEAVES;
 import static org.delaunois.ialon.IalonBlock.BIRCH_LOG;
 import static org.delaunois.ialon.IalonBlock.BIRCH_PLANKS;
+import static org.delaunois.ialon.IalonBlock.BOOKS;
 import static org.delaunois.ialon.IalonBlock.BRICKS;
 import static org.delaunois.ialon.IalonBlock.COBBLESTONE;
 import static org.delaunois.ialon.IalonBlock.COLOR_BLACK;
@@ -198,6 +199,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             getName(COLOR_RED2, CUBE),
             getName(COLOR_ROSE, CUBE),
             getName(COLOR_YELLOW, CUBE),
+            getName(BOOKS, CUBE),
     };
 
     private static final String[] SHAPES = {
