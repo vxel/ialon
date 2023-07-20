@@ -376,28 +376,17 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         log.info("Stop rail move");
         speed = config.getPlayerRailSpeed();
         acceleration = 0;
-
-        float pitchCorrection = 0;
-        if (Math.abs(railDirection.y) > 0f) {
-            log.info("Stop rail move on a slope");
-            pitchCorrection = FastMath.asin((railDirection.dot(Vector3f.UNIT_Y)));
-        }
         railDirection.set(0, 0, 0);
-        resetBodyRotation(pitchCorrection);
+        resetBodyRotation();
     }
 
     /**
      * Sets the body rotation to identity
      * while keeping the head world view direction
      */
-    private void resetBodyRotation(float pitchCorrection) {
-        if (pitchCorrection != 0) {
-            body.getLocalRotation().toAngles(angles);
-            angles[0] = angles[0] + pitchCorrection;
-            body.setLocalRotation(tmpQuaternion.fromAngles(angles));
-        }
-
+    private void resetBodyRotation() {
         head.getWorldRotation().toAngles(angles);
+        angles[2] = 0; // Reset roll if any
         body.setLocalRotation(Quaternion.IDENTITY);
         head.setLocalRotation(tmpQuaternion.fromAngles(angles));
     }
