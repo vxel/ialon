@@ -69,6 +69,7 @@ public enum IalonBlock {
     COBBLESTONE(TypeIds.COBBLESTONE, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     MOSSY_COBBLESTONE(TypeIds.MOSSY_COBBLESTONE, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     BRICKS(TypeIds.BRICKS, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
+    PAVING("paving", true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
     BIRCH_LOG(TypeIds.BIRCH_LOG, true, false, true, IalonShapeSet.STANDARD_SHAPES_NO_STAIRS.getShapes()),
     BIRCH_PLANKS(TypeIds.BIRCH_PLANKS, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
