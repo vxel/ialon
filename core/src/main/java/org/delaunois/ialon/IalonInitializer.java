@@ -51,6 +51,8 @@ import static org.delaunois.ialon.Ialon.IALON_STYLE;
 @Slf4j
 public class IalonInitializer {
 
+    private static final String BACKGROUND = "background";
+
     private IalonInitializer() {
         // Prevent instanciation
     }
@@ -158,15 +160,15 @@ public class IalonInitializer {
         float vh = app.getCamera().getHeight() / 100f;
 
         float buttonSize = 8 * vh;
-        styles.getSelector(Slider.VALUE_ID, IALON_STYLE).set("background",
+        styles.getSelector(Slider.VALUE_ID, IALON_STYLE).set(BACKGROUND,
                 new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range-filled.png")));
-        styles.getSelector(Slider.RANGE_ID, IALON_STYLE).set("background",
+        styles.getSelector(Slider.RANGE_ID, IALON_STYLE).set(BACKGROUND,
                 new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range.png")));
 
         styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("text", "", false);
         styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("preferredSize",
                 new Vector3f(buttonSize, buttonSize, 0), false);
-        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("background",
+        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set(BACKGROUND,
                 new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/cursor.png")));
 
         styles.getSelector(Slider.LEFT_ID, IALON_STYLE).set("text", "", false);

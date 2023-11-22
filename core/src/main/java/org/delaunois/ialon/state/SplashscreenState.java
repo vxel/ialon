@@ -42,7 +42,6 @@ public class SplashscreenState extends BaseAppState {
     private Container pbContainer;
     private Label percentLabel;
     private ChunkPagerState chunkPagerState = null;
-    private GridSettingsState gridSettingsState = null;
 
     private final IalonConfig config;
 

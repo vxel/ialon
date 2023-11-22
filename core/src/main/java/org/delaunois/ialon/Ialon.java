@@ -96,7 +96,6 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
         stateManager.attach(new LightingState(config));
         stateManager.attach(new SettingsState(config));
-        //stateManager.attach(new GridSettingsState(config));
         stateManager.attach(new ScreenState(settings, config));
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
