@@ -176,8 +176,8 @@ public class StatsAppState extends AbstractAppState {
             fpsText = new BitmapText(guiFont);
         }
 
-        fpsText.setLocalTranslation(0, fpsText.getLineHeight(), 0);
-        fpsText.setText("Frames per second");
+        fpsText.setText("FPS: 000");
+        fpsText.setLocalTranslation((app.getCamera().getWidth()  - fpsText.getLineWidth()) / 2f, app.getCamera().getHeight(), 0);
         fpsText.setCullHint(showFps ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(fpsText);
 
@@ -243,7 +243,7 @@ public class StatsAppState extends AbstractAppState {
             frameCounter ++;
             if (secondCounter >= 1.0f) {
                 int fps = (int) (frameCounter / secondCounter);
-                fpsText.setText("Frames per second: " + fps);
+                fpsText.setText("FPS: " + fps);
                 secondCounter = 0.0f;
                 frameCounter = 0;
             }

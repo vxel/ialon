@@ -90,6 +90,7 @@ public class StatsView extends Node implements Control, JmeCloneable {
             font = manager.loadFont("Interface/Fonts/Default.fnt");
         }
         statText = new BitmapText(font);
+        statText.setSize(20);
         statText.setLocalTranslation(0, statText.getLineHeight() * statLabels.length * SCALE, 0);
         statText.scale(SCALE);
         attachChild(statText);

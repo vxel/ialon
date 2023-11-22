@@ -33,8 +33,8 @@ public class DesktopLauncher {
     public static void main(String[] args) {
         IalonConfig config = new IalonConfig();
         IalonConfigRepository.loadConfig(config);
-        config.setGridRadiusMin(2);
-        config.setGridRadiusMax(11);
+        config.setGridRadiusMin(3);
+        config.setGridRadiusMax(20);
         config.setDevMode(true);
         Ialon app = new Ialon(config);
 

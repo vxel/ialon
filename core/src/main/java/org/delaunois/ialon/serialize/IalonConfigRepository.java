@@ -71,8 +71,14 @@ public class IalonConfigRepository {
             if (playerStateDTO.getSelectedBlockName() != null) {
                 config.setSelectedBlockName(playerStateDTO.getSelectedBlockName());
             }
+            if (playerStateDTO.getAmbiantIntensity() != null) {
+                config.setAmbiantIntensity(playerStateDTO.getAmbiantIntensity());
+            }
+            if (playerStateDTO.getSunIntensity() != null) {
+                config.setSunIntensity(playerStateDTO.getSunIntensity());
+            }
             config.setPlayerStartFly(playerStateDTO.isFly());
-            config.setGridRadius(Math.max(5, playerStateDTO.getGridRadius()));
+            config.setGridRadius(Math.max(3, playerStateDTO.getGridRadius()));
             config.setTime(playerStateDTO.getTime());
             config.setTimeFactorIndex(playerStateDTO.getTimeFactorIndex());
             config.setPlayerYaw(playerStateDTO.getYaw());

@@ -58,6 +58,8 @@ public class PlayerStateDTO {
     private boolean fly;
     private Integer selectedBlockIndex;
     private String selectedBlockName;
+    private Float ambiantIntensity;
+    private Float sunIntensity;
 
     public PlayerStateDTO(IalonConfig config) {
         this.posx = config.getPlayerLocation().x;
@@ -74,9 +76,11 @@ public class PlayerStateDTO {
         this.time = config.getTime();
         this.timeFactorIndex = config.getTimeFactorIndex();
         this.fly = config.isPlayerStartFly();
-        this.gridRadius = Math.max(5, config.getGridRadius());
+        this.gridRadius = config.getGridRadius();
         this.selectedBlockIndex = config.getSelectedBlockIndex();
         this.selectedBlockName = config.getSelectedBlockName();
+        this.ambiantIntensity = config.getAmbiantIntensity();
+        this.sunIntensity = config.getSunIntensity();
     }
 
     @JsonIgnore

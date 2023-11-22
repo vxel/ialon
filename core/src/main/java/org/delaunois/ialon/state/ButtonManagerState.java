@@ -9,19 +9,15 @@ import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector3f;
 import com.jme3.scene.BatchNode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.simsilica.lemur.HAlignment;
-import com.simsilica.lemur.Panel;
-import com.simsilica.lemur.VAlignment;
-import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.ButtonHighlightControl;
-import org.delaunois.ialon.ui.AtlasIconComponent;
+import org.delaunois.ialon.ui.UiHelper;
+import org.delaunois.ialon.ui.UiHelper.IconButton;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +35,6 @@ import static org.delaunois.ialon.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 @Slf4j
 public class ButtonManagerState extends BaseAppState implements ActionListener {
 
-    private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
     private static final String UDK_ACTION = "ACTION";
@@ -127,7 +122,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
+        if (isEnabled() && ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
             if (buttonParentNode.getParent() == null) {
                 showControlButtons();
             } else {
@@ -178,44 +173,12 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
     }
 
     private IconButton createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
-        IconButton iconButton = new IconButton();
-
-        // Icon
-        iconButton.icon = new Panel();
-        iconButton.icon.setPreferredSize(new Vector3f(size, size, 0));
-
-        AtlasIconComponent icon = new AtlasIconComponent("Textures/" + textureName);
-        icon.setVAlignment(VAlignment.Center);
-        icon.setHAlignment(HAlignment.Center);
-        config.getTextureAtlasManager().getAtlas().applyCoords(icon.getIconGeometry(), 0.1f);
-        icon.getMaterial().setTexture(config.getTextureAtlasManager().getDiffuseMap());
-        icon.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
-
-        iconButton.icon.setBackground(icon);
-        iconButton.icon.setLocalTranslation(posx, posy, 0);
-
-        // Background
-        iconButton.background = new Panel();
+        IconButton iconButton = UiHelper.createTextureButton(config, textureName, size, posx, posy);
         iconButton.background.setName(actionName);
         iconButton.background.setUserData(UDK_ACTION, actionName);
-        iconButton.background.setPreferredSize(new Vector3f(size, size, 0));
-        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
-        // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
-        background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
-        iconButton.background.setBackground(background);
-        iconButton.background.setLocalTranslation(posx, posy, -1);
         iconButton.background.addMouseListener(screenButtonMouseListener);
         iconButton.background.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
-
         return iconButton;
-    }
-
-    public static class IconButton {
-        @Getter
-        private Panel icon;
-
-        @Getter
-        private Panel background;
     }
 
     private static class ScreenButtonMouseListener extends DefaultMouseListener {

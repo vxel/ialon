@@ -25,7 +25,7 @@ public class IalonConfig {
 
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
-    public static final String FONT_PATH = "Textures/font-default.fnt";
+    public static final String FONT_PATH = "Textures/font-apex.fnt";
     public static final int FPS_LIMIT = 120;
 
     // Screen - Rendering

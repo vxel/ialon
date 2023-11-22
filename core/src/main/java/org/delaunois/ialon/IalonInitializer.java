@@ -11,6 +11,7 @@ import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 import com.jme3.texture.Texture;
@@ -22,6 +23,7 @@ import com.rvandoosselaer.blocks.BlocksTheme;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.lemur.GuiGlobals;
+import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
@@ -35,6 +37,7 @@ import org.delaunois.ialon.state.ChunkSaverState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
+import org.delaunois.ialon.ui.Slider;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
@@ -42,6 +45,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
+
+import static org.delaunois.ialon.Ialon.IALON_STYLE;
 
 @Slf4j
 public class IalonInitializer {
@@ -104,7 +109,8 @@ public class IalonInitializer {
                 "Textures/arrowjump.png",
                 "Textures/flight.png",
                 "Textures/minus.png",
-                "Textures/plus.png"
+                "Textures/plus.png",
+                "Textures/gear.png"
         };
 
         for (String texPath : noMiptexPaths) {
@@ -145,21 +151,35 @@ public class IalonInitializer {
         fontMaterial.getTextureParam("ColorMap").setTextureValue(tex);
         fontMaterial.setColor("Color", ColorRGBA.White);
 
-        // Set the remapped font int the default style
+        // Set the remapped font in the default style
         Styles styles = GuiGlobals.getInstance().getStyles();
         styles.setDefault(font);
+
+        float vh = app.getCamera().getHeight() / 100f;
+
+        float buttonSize = 8 * vh;
+        styles.getSelector(Slider.VALUE_ID, IALON_STYLE).set("background",
+                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range-filled.png")));
+        styles.getSelector(Slider.RANGE_ID, IALON_STYLE).set("background",
+                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range.png")));
+
+        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("text", "", false);
+        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("preferredSize",
+                new Vector3f(buttonSize, buttonSize, 0), false);
+        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("background",
+                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/cursor.png")));
+
+        styles.getSelector(Slider.LEFT_ID, IALON_STYLE).set("text", "", false);
+        styles.getSelector(Slider.RIGHT_ID, IALON_STYLE).set("text", "", false);
+
     }
 
     public static StatsAppState setupStatsAppState(IalonConfig config) {
         StatsAppState statsAppState = new StatsAppState();
-        if (config.isDevMode()) {
-            statsAppState.setDisplayStatView(true);
-            if (config.getFont() != null) {
-                statsAppState.setFont(config.getFont());
-            }
-        } else {
-            statsAppState.setDisplayStatView(false);
+        if (config.getFont() != null) {
+            statsAppState.setFont(config.getFont());
         }
+        statsAppState.setDisplayStatView(config.isDevMode());
         return statsAppState;
     }
 

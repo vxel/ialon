@@ -27,11 +27,11 @@ import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
-import org.delaunois.ialon.state.GridSettingsState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.ScreenState;
+import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
@@ -55,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Ialon extends SimpleApplication {
 
+    public static final String IALON_STYLE = "ialon";
     @Getter
     @Setter
     private IalonConfig config;
@@ -94,7 +95,8 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(IalonInitializer.setupPhysicsChunkPager(this, config)); // Depends on PlayerState and BulletAppState
         stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
         stateManager.attach(new LightingState(config));
-        stateManager.attach(new GridSettingsState(config));
+        stateManager.attach(new SettingsState(config));
+        //stateManager.attach(new GridSettingsState(config));
         stateManager.attach(new ScreenState(settings, config));
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));

@@ -129,6 +129,7 @@ import static org.delaunois.ialon.IalonBlock.OVEN;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LEAVES;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_LOG;
 import static org.delaunois.ialon.IalonBlock.PALM_TREE_PLANKS;
+import static org.delaunois.ialon.IalonBlock.PAVING;
 import static org.delaunois.ialon.IalonBlock.RAIL;
 import static org.delaunois.ialon.IalonBlock.ROCK;
 import static org.delaunois.ialon.IalonBlock.SAND;
@@ -181,6 +182,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             getName(STONE_BRICKS2, CUBE),
             getName(STONE_BRICKS3, CUBE),
             getName(MOSSY_STONE_BRICKS, CUBE),
+            getName(PAVING, CUBE),
             getName(METAL1, CUBE),
             getName(METAL2, CUBE),
             getName(METAL3, CUBE),
@@ -356,6 +358,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             }
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(true);
             app.getStateManager().getState(ButtonManagerState.class).setEnabled(true);
+            app.getStateManager().getState(SettingsState.class).setEnabled(true);
         }
         app.getInputManager().removeListener(scrollListener);
     }
@@ -365,6 +368,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             app.getGuiNode().attachChild(menuBlock);
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
             app.getStateManager().getState(ButtonManagerState.class).setEnabled(false);
+            app.getStateManager().getState(SettingsState.class).setEnabled(false);
             app.getInputManager().addListener(scrollListener, TOUCH);
         }
     }

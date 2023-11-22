@@ -129,9 +129,9 @@ public class SunControl extends AbstractControl {
 
     public float getUpdateThreshold() {
         if (config.getTimeFactor() > 0) {
-            return  1 / (config.getTimeFactor() * 2);
+            return  Math.min(1000, 1 / (config.getTimeFactor() * 2));
         } else {
-            return Float.MAX_VALUE;
+            return 1000;
         }
     }
 

@@ -48,7 +48,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
-    private static final String[] TIME_FACTORS_LABELS = {"Pause", "1x", "2x", "3x", "4x", "5x"};
+    private static final String[] TIME_FACTORS_LABELS = {"Pause", "1 x", "2 x", "3 x", "4 x", "5 x"};
 
     private SimpleApplication app;
     private BitmapFont guiFont;
@@ -111,6 +111,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
         buttonContainer.setBackground(background);
         timeFactorLabel = new Label("");
+        timeFactorLabel.setFontSize(buttonSize / 4f);
         Label label = buttonContainer.addChild(timeFactorLabel);
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
         label.getFont().getPage(0).clearParam("VertexColor");

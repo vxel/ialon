@@ -55,12 +55,15 @@ public class SplashscreenState extends BaseAppState {
         this.app = (SimpleApplication) app;
         splashScreen = new Node("SplashScreen");
 
+        float vh = app.getCamera().getHeight() / 100.0f;
+        float vw = app.getCamera().getWidth() / 100.0f;
+
         Container splashContainer = new Container();
-        splashContainer.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
+        splashContainer.setPreferredSize(new Vector3f(100 * vw, 100 * vh, 0));
         QuadBackgroundComponent qbc = new QuadBackgroundComponent(ColorRGBA.Black);
         qbc.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         splashContainer.setBackground(qbc);
-        splashContainer.setLocalTranslation(0, getApplication().getCamera().getHeight(), 10);
+        splashContainer.setLocalTranslation(0, 100 * vh, 10);
         splashContainer.setName("SplashScreen");
         splashContainer.addChild(buildTitle());
 
@@ -68,15 +71,14 @@ public class SplashscreenState extends BaseAppState {
         qbc.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         pbContainer = new Container();
         pbContainer.setBackground(qbc);
-        pbContainer.setPreferredSize(new Vector3f(getApplication().getCamera().getWidth() * 0.5f, 3, 0));
+        pbContainer.setPreferredSize(new Vector3f(50 * vw, 3, 0));
         pbContainer.setName("ProgressBar");
-        pbContainer.setLocalTranslation(getApplication().getCamera().getWidth() * 0.25f, getApplication().getCamera().getHeight() / 4f, 20);
+        pbContainer.setLocalTranslation(25 * vw, 25 * vh, 20);
 
         percentLabel = new Label("");
-        percentLabel.setFontSize(getApplication().getCamera().getHeight() / 50f);
+        percentLabel.setFontSize(4 * vh);
         percentLabel.setTextHAlignment(HAlignment.Center);
-        percentLabel.setPreferredSize(new Vector3f(100, 10, 0));
-        percentLabel.setLocalTranslation(getApplication().getCamera().getWidth() / 2f - 50f, getApplication().getCamera().getHeight() / 3.5f, 20);
+        percentLabel.setLocalTranslation(50 * vw - 50f, 30 * vh, 20);
 
         splashScreen.attachChild(splashContainer);
         splashScreen.attachChild(pbContainer);
@@ -89,10 +91,7 @@ public class SplashscreenState extends BaseAppState {
         if (chunkPagerState == null) {
             chunkPagerState = getStateManager().getState(ChunkPagerState.class);
         }
-        if (gridSettingsState == null) {
-            gridSettingsState = getStateManager().getState(GridSettingsState.class);
-        }
-        if (chunkPagerState != null && chunkPagerState.getChunkPager() != null && gridSettingsState != null) {
+        if (chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
             int gridSize = config.getGridRadius() * 2 + 1;
             float total = gridSize * gridSize * (float) config.getGridHeight();
             int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
