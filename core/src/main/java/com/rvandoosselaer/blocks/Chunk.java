@@ -403,7 +403,7 @@ public class Chunk {
         sunlight += ((int)sideLight2.w >> 4) & 0xF;
         sunlight += ((int)cornerLight.w >> 4) & 0xF;
         sunlight += ((int)blockLight.w >> 4) & 0xF;
-        sunlight = Math.min((int)(sunlight / 3.2f), 15);
+        sunlight = Math.min((sunlight >> 2) + 1, 15);
         int torchlight = 0;
         torchlight += ((int)sideLight1.w) & 0xF;
         torchlight += ((int)sideLight2.w) & 0xF;
