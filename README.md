@@ -52,6 +52,13 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 
 # Screenshots
 
+## Version Beta 5
+
+- New font for the User Interface
+- New Setup menu
+- Soft Shadows for wedge blocks (see the roof in the following screenshot) :
+![Screenshot Ialon 6](https://github.com/vxel/ialon/assets/28866693/8a9fb54d-3a46-46c7-b3fd-27ee34e49bdf)
+
 ## Version Beta 4
 
 New block selection popup and new blocks (bed, drawers, oven, books...)
