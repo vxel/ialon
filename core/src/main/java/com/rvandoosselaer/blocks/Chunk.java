@@ -367,27 +367,6 @@ public class Chunk {
         return null;
     }
 
-    public Vector4f applyAO(Vector4f color, int ao) {
-        int shift = Math.max(1, 3 - ao);
-        int torchlight = ((int)color.w) & 0xF;
-        int sunlight = (((int)color.w) >> 4) & 0xF;
-        torchlight = torchlight / shift;
-        sunlight = sunlight / shift;
-        int lightLevel = (sunlight << 4 | torchlight);
-        return new Vector4f(color.x, color.y, color.z, lightLevel);
-    }
-
-    public int vertexAO(Block sideBlock1, Block sideBlock2, Block cornerBlock) {
-        int side1 = getAOIndex(sideBlock1);
-        int side2 = getAOIndex(sideBlock2);
-        int corner = getAOIndex(cornerBlock);
-
-        if (side1 == 1 && side2 == 1) {
-            return 0;
-        }
-        return 3 - (side1 + side2 + corner);
-    }
-
     public Vector4f vertexColor(Vector4f sideLight1, Vector4f sideLight2, Vector4f cornerLight, Vector4f blockLight, Vector4f store) {
         store
                 .zero()

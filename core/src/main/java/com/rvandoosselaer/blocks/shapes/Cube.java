@@ -120,30 +120,6 @@ public class Cube implements Shape {
         return grad1 < grad2;
     }
 
-    private boolean hardShadow(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevel(location, face);
-
-        // 2 3 4    a01  a11
-        // 1   5
-        // 0 7 6    a00  a10
-        Block[] nb = n.getNeighbours(face);
-
-        // Vertices sorted clockwise for flip test
-        int a00 = chunk.vertexAO(nb[7], nb[1], nb[0]);
-        int a01 = chunk.vertexAO(nb[1], nb[3], nb[2]);
-        int a11 = chunk.vertexAO(nb[3], nb[5], nb[4]);
-        int a10 = chunk.vertexAO(nb[5], nb[7], nb[6]);
-        int grad1 = Math.abs(a00 - a11);
-        int grad2 = Math.abs(a01 - a10);
-
-        chunkMesh.getColors().add(chunk.applyAO(color, a00));
-        chunkMesh.getColors().add(chunk.applyAO(color, a01));
-        chunkMesh.getColors().add(chunk.applyAO(color, a10));
-        chunkMesh.getColors().add(chunk.applyAO(color, a11));
-
-        return grad1 < grad2;
-    }
-
     private static void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
         // calculate index offset, we use this to connect the triangles
         int offset = chunkMesh.getPositions().size();

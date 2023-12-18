@@ -53,6 +53,7 @@ public class BlockNeighborhood {
     private final Block[] face = new Block[8];
     private final Vector4f[] lights = new Vector4f[NEIGHB_SIZE];
     private final Vector4f[] facelights = new Vector4f[8];
+    private final Vector4f[] tmp = new Vector4f[8];
 
     public BlockNeighborhood(Vec3i location, Chunk chunk) {
         this.chunk = chunk;
@@ -84,7 +85,7 @@ public class BlockNeighborhood {
         store[5] = get(16, 0, 0, 1);
         store[6] = get(17, 1, 0, 1);
         store[7] = get(14, 1, 0, 0);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLights(Vector4f[] store) {
@@ -96,13 +97,13 @@ public class BlockNeighborhood {
         store[5] = getLight(16, 0, 0, 1);
         store[6] = getLight(17, 1, 0, 1);
         store[7] = getLight(14, 1, 0, 0);
-        return facelights;
+        return store;
     }
 
     public Block[] getNeighbours(Direction direction) {
         return getNeighbours(direction, null);
     }
-    
+
     public Block[] getNeighbours(Direction direction, Block[] store) {
         if (store == null) {
             store = face;
@@ -126,26 +127,111 @@ public class BlockNeighborhood {
     }
 
     public Vector4f[] getNeighbourLights(Direction direction) {
-        return getNeighbourLights(direction, null);    
+        return getNeighbourLights(Direction.SOUTH, direction, null, false);
     }
-    
-    public Vector4f[] getNeighbourLights(Direction direction, Vector4f[] store) {
+
+    private void rotate(Vector4f[] store, int positions) {
+        int length = store.length;
+        for (int i = 0; i < length; i++) {
+            tmp[i] = store[(i + positions) % length];
+        }
+
+        System.arraycopy(tmp, 0, store, 0, length);
+    }
+
+    private void invert(Vector4f[] store) {
+        System.arraycopy(store, 0, tmp, 0, 8);
+        store[0] = tmp[2];
+        store[1] = tmp[1];
+        store[2] = tmp[0];
+        store[3] = tmp[7];
+        store[4] = tmp[6];
+        store[5] = tmp[5];
+        store[6] = tmp[4];
+        store[7] = tmp[3];
+    }
+
+    private void yawFace(Direction orientation, Vector4f[] store, boolean upsideDown) {
+        switch (orientation) {
+            case WEST:
+                rotate(store, upsideDown ? 6 : 2);
+                break;
+            case EAST:
+                rotate(store, upsideDown ? 2 : 6);
+                break;
+            case SOUTH:
+                rotate(store, 0);
+                break;
+            case NORTH:
+                rotate(store, 4);
+                break;
+            default:
+                throw new IllegalArgumentException("Illegal Orientation");
+        }
+    }
+
+    public Vector4f[] getNeighbourLights(Direction orientation, Direction face, Vector4f[] store, boolean upsideDown) {
+        if (store == null) {
+            store = facelights;
+        }
+        switch (face) {
+            case UP:
+                getNeighbourLightsUp(store);
+                if (upsideDown) {
+                    //invert(store);
+                }
+                yawFace(orientation, store, upsideDown);
+                break;
+            case DOWN:
+                getNeighbourLightsDown(store);
+                if (upsideDown) {
+                    //invert(store);
+                }
+                yawFace(orientation, store, upsideDown);
+                break;
+            case EAST:
+                getNeighbourLightsEast(store);
+                if (upsideDown) {
+                    rotate(store, 4);
+                }
+                break;
+            case WEST:
+                getNeighbourLightsWest(store);
+                if (upsideDown) {
+                    rotate(store, 4);
+                }
+                break;
+            case NORTH:
+                getNeighbourLightsNorth(store);
+                if (upsideDown) {
+                    rotate(store, 4);
+                }
+                break;
+            case SOUTH:
+                getNeighbourLightsSouth(store);
+                if (upsideDown) {
+                    rotate(store, 4);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Illegal Direction");
+        }
+        return store;
+    }
+
+    public Vector4f[] getNeighbourWedgeLights(Direction direction, Vector4f[] store, boolean upsideDown) {
         if (store == null) {
             store = facelights;
         }
         switch (direction) {
-            case UP:
-                return getNeighbourLightsUp(store);
-            case DOWN:
-                return getNeighbourLightsDown(store);
             case EAST:
-                return getNeighbourLightsEast(store);
+                return getNeighbourWedgeLightsEast(store, upsideDown);
             case WEST:
-                return getNeighbourLightsWest(store);
+                return getNeighbourWedgeLightsWest(store, upsideDown);
             case NORTH:
-                return getNeighbourLightsNorth(store);
+                return getNeighbourWedgeLightsNorth(store, upsideDown);
             case SOUTH:
-                return getNeighbourLightsSouth(store);
+                return getNeighbourWedgeLightsSouth(store, upsideDown);
             default:
                 throw new IllegalArgumentException("Illegal Direction");
         }
@@ -160,7 +246,7 @@ public class BlockNeighborhood {
         store[5] = get(25, 0, 1, 1);
         store[6] = get(26, 1, 1, 1);
         store[7] = get(23, 1, 1, 0);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsUp(Vector4f[] store) {
@@ -172,7 +258,7 @@ public class BlockNeighborhood {
         store[5] = getLight(25, 0, 1, 1);
         store[6] = getLight(26, 1, 1, 1);
         store[7] = getLight(23, 1, 1, 0);
-        return facelights;
+        return store;
     }
 
     //  Bottom     Middle      Top            Y ---> X
@@ -188,7 +274,7 @@ public class BlockNeighborhood {
         store[5] = get(7, 0, -1, 1);
         store[6] = get(6, -1, -1, 1);
         store[7] = get(3, -1, -1, 0);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsDown(Vector4f[] store) {
@@ -200,7 +286,7 @@ public class BlockNeighborhood {
         store[5] = getLight(7, 0, -1, 1);
         store[6] = getLight(6, -1, -1, 1);
         store[7] = getLight(3, -1, -1, 0);
-        return facelights;
+        return store;
     }
 
     public Block[] getNeighboursNorth(Block[] store) {
@@ -212,7 +298,7 @@ public class BlockNeighborhood {
         store[5] = get(11, 1, 0, -1);
         store[6] = get(2, 1, -1, -1);
         store[7] = get(1, 0, -1, -1);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsNorth(Vector4f[] store) {
@@ -224,7 +310,31 @@ public class BlockNeighborhood {
         store[5] = getLight(11, 1, 0, -1);
         store[6] = getLight(2, 1, -1, -1);
         store[7] = getLight(1, 0, -1, -1);
-        return facelights;
+        return store;
+    }
+
+    public Vector4f[] getNeighbourWedgeLightsNorth(Vector4f[] store, boolean upsideDown) {
+        if (upsideDown) {
+            store[0] = getLight(8, 1, -1, 1);
+            store[1] = getLight(7, 0, -1, 1);
+            store[2] = getLight(6, -1, -1, 1);
+            store[3] = getLight(12, -1, 0, 0);
+            store[4] = getLight(18, -1, 1, -1);
+            store[5] = getLight(19, 0, 1, -1);
+            store[6] = getLight(20, 1, 1, -1);
+            store[7] = getLight(14, 1, 0, 0);
+
+        } else {
+            store[0] = getLight(24, -1, 1, 1);
+            store[1] = getLight(25, 0, 1, 1);
+            store[2] = getLight(26, 1, 1, 1);
+            store[3] = getLight(14, 1, 0, 0);
+            store[4] = getLight(2, 1, -1, -1);
+            store[5] = getLight(1, 0, -1, -1);
+            store[6] = getLight(0, -1, -1, -1);
+            store[7] = getLight(12, -1, 0, 0);
+        }
+        return store;
     }
 
     public Block[] getNeighboursSouth(Block[] store) {
@@ -236,7 +346,7 @@ public class BlockNeighborhood {
         store[5] = get(15, -1, 0, 1);
         store[6] = get(6, -1, -1, 1);
         store[7] = get(7, 0, -1, 1);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsSouth(Vector4f[] store) {
@@ -248,7 +358,31 @@ public class BlockNeighborhood {
         store[5] = getLight(15, -1, 0, 1);
         store[6] = getLight(6, -1, -1, 1);
         store[7] = getLight(7, 0, -1, 1);
-        return facelights;
+        return store;
+    }
+
+    public Vector4f[] getNeighbourWedgeLightsSouth(Vector4f[] store, boolean upsideDown) {
+        if (upsideDown) {
+            store[0] = getLight(0, -1, -1, -1);
+            store[1] = getLight(1, 0, -1, -1);
+            store[2] = getLight(2, 1, -1, -1);
+            store[3] = getLight(14, 1, 0, 0);
+            store[4] = getLight(26, 1, 1, 1);
+            store[5] = getLight(25, 0, 1, 1);
+            store[6] = getLight(24, -1, 1, 1);
+            store[7] = getLight(12, -1, 0, 0);
+
+        } else {
+            store[0] = getLight(20, 1, 1, -1);
+            store[1] = getLight(19, 0, 1, -1);
+            store[2] = getLight(18, -1, 1, -1);
+            store[3] = getLight(12, -1, 0, 0);
+            store[4] = getLight(6, -1, -1, 1);
+            store[5] = getLight(7, 0, -1, 1);
+            store[6] = getLight(8, 1, -1, 1);
+            store[7] = getLight(14, 1, 0, 0);
+        }
+        return store;
     }
 
     public Block[] getNeighboursWest(Block[] store) {
@@ -260,7 +394,7 @@ public class BlockNeighborhood {
         store[5] = get(9, -1, 0, -1);
         store[6] = get(0, -1, -1, -1);
         store[7] = get(3, -1, -1, 0);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsWest(Vector4f[] store) {
@@ -272,7 +406,35 @@ public class BlockNeighborhood {
         store[5] = getLight(9, -1, 0, -1);
         store[6] = getLight(0, -1, -1, -1);
         store[7] = getLight(3, -1, -1, 0);
-        return facelights;
+        return store;
+    }
+
+    //  Bottom     Middle      Top            Y ---> X
+    // 00 01 02   09 10 11   18 19 20         |
+    // 03 04 05   12 13 14   21 22 23         v
+    // 06 07 08   15 16 17   24 25 26         Z
+    public Vector4f[] getNeighbourWedgeLightsWest(Vector4f[] store, boolean upsideDown) {
+        if (upsideDown) {
+            store[0] = getLight(2, 1, -1, -1);
+            store[1] = getLight(5, 1, -1, 0);
+            store[2] = getLight(8, 1, -1, 1);
+            store[3] = getLight(16, 0, 0, 1);
+            store[4] = getLight(24, -1, 1, 1);
+            store[5] = getLight(21, -1, 1, 0);
+            store[6] = getLight(18, -1, 1, -1);
+            store[7] = getLight(10, 0, 0, -1);
+
+        } else {
+            store[0] = getLight(26, 1, 1, 1);
+            store[1] = getLight(23, 1, 1, 0);
+            store[2] = getLight(20, 1, 1, -1);
+            store[3] = getLight(10, 0, 0, -1);
+            store[4] = getLight(0, -1, -1, -1);
+            store[5] = getLight(3, -1, -1, 0);
+            store[6] = getLight(6, -1, -1, 1);
+            store[7] = getLight(16, 0, 0, 1);
+        }
+        return store;
     }
 
     public Block[] getNeighboursEast(Block[] store) {
@@ -284,7 +446,7 @@ public class BlockNeighborhood {
         store[5] = get(17, 1, 0, 1);
         store[6] = get(8, 1, -1, 1);
         store[7] = get(5, 1, -1, 0);
-        return face;
+        return store;
     }
 
     public Vector4f[] getNeighbourLightsEast(Vector4f[] store) {
@@ -296,7 +458,31 @@ public class BlockNeighborhood {
         store[5] = getLight(17, 1, 0, 1);
         store[6] = getLight(8, 1, -1, 1);
         store[7] = getLight(5, 1, -1, 0);
-        return facelights;
+        return store;
+    }
+
+    public Vector4f[] getNeighbourWedgeLightsEast(Vector4f[] store, boolean upsideDown) {
+        if (upsideDown) {
+            store[0] = getLight(6, -1, -1, 1);
+            store[1] = getLight(3, -1, -1, 0);
+            store[2] = getLight(0, -1, -1, -1);
+            store[3] = getLight(10, 0, 0, -1);
+            store[4] = getLight(20, 1, 1, -1);
+            store[5] = getLight(23, 1, 1, 0);
+            store[6] = getLight(26, 1, 1, 1);
+            store[7] = getLight(16, 0, 0, 1);
+
+        } else {
+            store[0] = getLight(18, -1, 1, -1);
+            store[1] = getLight(21, -1, 1, 0);
+            store[2] = getLight(24, -1, 1, 1);
+            store[3] = getLight(16, 0, 0, 1);
+            store[4] = getLight(8, 1, -1, 1);
+            store[5] = getLight(5, 1, -1, 0);
+            store[6] = getLight(2, 1, -1, -1);
+            store[7] = getLight(10, 0, 0, -1);
+        }
+        return store;
     }
 
     public Block getNeighbour(Direction direction) {
