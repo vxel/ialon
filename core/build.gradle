@@ -3,18 +3,17 @@ apply plugin: "jacoco"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
-    jmeFastNoise = "[1.0,)"
     minieVersion = "7.4.0"
     lombokVersion = "1.18.20"
     simMathVersion = '1.5.0'
     sio2Version = '1.7.0'
     blocksVersion = "1.6.4"
-    protobufVersion = "[3.10,)"
+    protobufVersion = "3.11.4"
     jacksonVersion = "2.12.3"
-    lemurprotoVersion = "[1.12,)"
+    lemurprotoVersion = "1.13.0"
     logbackVersion = "1.2.3"
-    mockitoVersion = "[4.2,)"
-    junitVersion = "[5.8.0,)"
+    mockitoVersion = "5.11.0"
+    junitVersion = "5.10.2"
 }
 
 dependencies {

@@ -3,8 +3,8 @@ sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     lombokVersion = "1.18.20"
-    mockitoVersion = "[4.2,)"
-    junitVersion = "[5.8.0,)"
+    mockitoVersion = "5.11.0"
+    junitVersion = "5.10.2"
     logbackVersion = "1.2.3"
 }
 
