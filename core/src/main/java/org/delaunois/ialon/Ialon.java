@@ -53,6 +53,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
+@SuppressWarnings("S7091")
 public class Ialon extends SimpleApplication {
 
     public static final String IALON_STYLE = "ialon";
