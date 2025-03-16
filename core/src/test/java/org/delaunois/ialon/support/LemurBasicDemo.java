@@ -189,9 +189,6 @@ public class LemurBasicDemo extends SimpleApplication {
         hudSize.maxLocal(hudPanel.getPreferredSize());
         hudPanel.setPreferredSize( hudSize );
 
-        // Note: after next nightly, this will also work:
-        // hudPanel.setPreferredSize( new Vector3f(200,0,0).maxLocal(hudPanel.getPreferredSize()) );
-
         // Something in scene
         Box box = new Box(1, 1, 1);
         Geometry geom = new Geometry( "Box", box );
