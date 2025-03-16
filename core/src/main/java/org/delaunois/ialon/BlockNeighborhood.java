@@ -29,6 +29,7 @@ import lombok.Getter;
 
 public class BlockNeighborhood {
 
+    private static final String ILLEGAL_DIRECTION_ERROR = "Illegal Direction";
     private static final Block EMPTY = new Block();
     private static final int SIDE_SIZE = 3;
     private static final int SLICE_SIZE = SIDE_SIZE * SIDE_SIZE;
@@ -122,7 +123,7 @@ public class BlockNeighborhood {
             case SOUTH:
                 return getNeighboursSouth(store);
             default:
-                throw new IllegalArgumentException("Illegal Direction");
+                throw new IllegalArgumentException(ILLEGAL_DIRECTION_ERROR);
         }
     }
 
@@ -137,18 +138,6 @@ public class BlockNeighborhood {
         }
 
         System.arraycopy(tmp, 0, store, 0, length);
-    }
-
-    private void invert(Vector4f[] store) {
-        System.arraycopy(store, 0, tmp, 0, 8);
-        store[0] = tmp[2];
-        store[1] = tmp[1];
-        store[2] = tmp[0];
-        store[3] = tmp[7];
-        store[4] = tmp[6];
-        store[5] = tmp[5];
-        store[6] = tmp[4];
-        store[7] = tmp[3];
     }
 
     private void yawFace(Direction orientation, Vector4f[] store, boolean upsideDown) {
@@ -177,16 +166,10 @@ public class BlockNeighborhood {
         switch (face) {
             case UP:
                 getNeighbourLightsUp(store);
-                if (upsideDown) {
-                    //invert(store);
-                }
                 yawFace(orientation, store, upsideDown);
                 break;
             case DOWN:
                 getNeighbourLightsDown(store);
-                if (upsideDown) {
-                    //invert(store);
-                }
                 yawFace(orientation, store, upsideDown);
                 break;
             case EAST:
@@ -214,7 +197,7 @@ public class BlockNeighborhood {
                 }
                 break;
             default:
-                throw new IllegalArgumentException("Illegal Direction");
+                throw new IllegalArgumentException(ILLEGAL_DIRECTION_ERROR);
         }
         return store;
     }
@@ -233,7 +216,7 @@ public class BlockNeighborhood {
             case SOUTH:
                 return getNeighbourWedgeLightsSouth(store, upsideDown);
             default:
-                throw new IllegalArgumentException("Illegal Direction");
+                throw new IllegalArgumentException(ILLEGAL_DIRECTION_ERROR);
         }
     }
 

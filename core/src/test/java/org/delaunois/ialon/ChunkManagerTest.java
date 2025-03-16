@@ -21,12 +21,12 @@ public class ChunkManagerTest {
     }
 
     @BeforeAll
-    public static void setUp() {
+    static void setUp() {
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), new IalonConfig());
     }
 
     @AfterEach
-    public void reset() {
+    void reset() {
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), new IalonConfig());
     }
 

@@ -402,6 +402,10 @@ public class BlockSliderSelectionState extends BaseAppState {
     }
 
     private void updateHistory(String blockName) {
+        if (history.length <= 0) {
+            return;
+        }
+
         boolean found = false;
         for (int i = 0; i < history.length; i++) {
             highlight(false, historyButton[i]);
@@ -415,9 +419,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             return;
         }
 
-        if (history.length - 1 >= 0) {
-            System.arraycopy(history, 0, history, 1, history.length - 1);
-        }
+        System.arraycopy(history, 0, history, 1, history.length - 1);
         history[0] = blockName;
 
         for (int i = 0; i < history.length; i++) {

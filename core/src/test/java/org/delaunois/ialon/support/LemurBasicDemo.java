@@ -51,7 +51,6 @@ import com.simsilica.lemur.Label;
 import com.simsilica.lemur.LayerComparator;
 import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.Slider;
-import com.simsilica.lemur.TextField;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.TbtQuadBackgroundComponent;
@@ -80,11 +79,7 @@ public class LemurBasicDemo extends SimpleApplication {
     private VersionedReference<Boolean> showStatsRef;
     private VersionedReference<Boolean> showFpsRef;
 
-    private ColorRGBA boxColor = ColorRGBA.Blue.clone();
-
-    private Panel test;
-    private TextField tf;
-    private String strInsertText = "Inserted ";
+    private final ColorRGBA boxColor = ColorRGBA.Blue.clone();
 
     public static void main(String[] args) {
         LemurBasicDemo app = new LemurBasicDemo();
@@ -119,8 +114,6 @@ public class LemurBasicDemo extends SimpleApplication {
                                 new QuadBackgroundComponent(new ColorRGBA(0, 0.75f, 0.75f, 0.5f)) );
         styles.getSelector( "header", "glass" ).set( "shadowColor",
                                                      new ColorRGBA(1, 0f, 0f, 1) );
-/*        styles.getSelector( "header", "glass" ).set( "shadowOffset", 
-                                                     new Vector3f(3, -3, 3) );*/
 
         // Now construct some HUD panels in the "glass" style that
         // we just configured above.
@@ -213,11 +206,11 @@ public class LemurBasicDemo extends SimpleApplication {
         testPanel.setPreferredSize( new Vector3f(200, 200,0) );
         testPanel.setBackground( TbtQuadBackgroundComponent.create( "/com/simsilica/lemur/icons/border.png",
                                                                     1, 2, 2, 3, 3, 0, false ) );
-        Label test = testPanel.addChild( new Label( "Border Test" ) );
-        test.setShadowColor(ColorRGBA.Red);
+        Label testLabel = testPanel.addChild( new Label( "Border Test" ) );
+        testLabel.setShadowColor(ColorRGBA.Red);
 
         // Center the text in the box.
-        test.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
+        testLabel.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
         testPanel.setLocalTranslation( 400, 400, 0 );
 
         CursorEventControl.addListenersToSpatial(testPanel, new DragHandler());

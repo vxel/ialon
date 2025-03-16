@@ -135,9 +135,11 @@ public class ModelViewer extends SimpleApplication {
         try {
             BinaryExporter.getInstance().save(model, file);
         } catch (IOException ex) {
-            Logger.getLogger(ModelViewer.class.getName()).log(Level.SEVERE, "Error: Failed to export model", ex);
+            Logger.getLogger(ModelViewer.class.getName())
+                    .log(Level.SEVERE, "Error: Failed to export model", ex);
         }
-        Logger.getLogger(ModelViewer.class.getName()).log(Level.INFO, "Model exported to " + file.getAbsolutePath());
+        Logger.getLogger(ModelViewer.class.getName())
+                .log(Level.INFO, String.format("Model exported to %s", file.getAbsolutePath()));
     }
 
 }

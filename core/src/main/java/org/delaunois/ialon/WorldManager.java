@@ -192,7 +192,7 @@ public class WorldManager {
             shape = String.join("_", shape, "inverted");
         }
 
-        if (subShape.length() > 0) {
+        if (!subShape.isEmpty()) {
             shape = String.join("_", shape, subShape);
         }
         String orientedBlockName = String.format("%s-%s-%s", type, String.join("_", shape, direction.name().toLowerCase()), block.getLiquidLevelId());

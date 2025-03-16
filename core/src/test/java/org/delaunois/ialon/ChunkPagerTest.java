@@ -28,12 +28,12 @@ public class ChunkPagerTest {
     }
 
     @BeforeAll
-    public static void setUp() {
+    static void setUp() {
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), new IalonConfig());
     }
 
     @AfterEach
-    public void reset() {
+    void reset() {
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), new IalonConfig());
     }
 
@@ -104,8 +104,8 @@ public class ChunkPagerTest {
         for (long duration : durations) {
             varsum = varsum + (duration - mean) * (duration - mean);
         }
-        double var = varsum / (double)durations.length;
-        double stddev = Math.sqrt(var);
+        double variance = varsum / (double)durations.length;
+        double stddev = Math.sqrt(variance);
         System.out.println("Mean: " + (int)(mean / 1000000f) + "µs, Stddev: " + (int)(stddev / 1000000) + "µs");
         assertTrue(mean > 0);
     }
