@@ -78,6 +78,7 @@ import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 import static com.rvandoosselaer.blocks.ShapeIds.CROSS_PLANE;
 import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
+import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
@@ -220,6 +221,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             WEDGE_SOUTH,
             PYRAMID,
             POLE,
+            FENCE,
             STAIRS_EAST,
             STAIRS_INNER_CORNER_SOUTH,
             STAIRS_OUTER_CORNER_SOUTH,
@@ -555,7 +557,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             @Override
             public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
                 log.info("Click event={} target={}", event, target);
-                if (event.isReleased()) {
+                if (target != null && event.isReleased()) {
                     String blockName = target.getUserData(BLOCK_NAME);
                     if (blockName == null) {
                         log.warn("Wrong Click Target {}", target.getName());
