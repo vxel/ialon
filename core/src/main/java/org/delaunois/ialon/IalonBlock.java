@@ -99,6 +99,7 @@ public enum IalonBlock {
     DRAWERS("drawers", true, false, true, ShapeIds.CUBE),
     BED("bed", true, false, true, ShapeIds.SLAB),
     BEDPILLOW("bedpillow", true, false, true, ShapeIds.SLAB),
+    PHANTOM("phantom", true, true, false, ShapeIds.CUBE),
 
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
