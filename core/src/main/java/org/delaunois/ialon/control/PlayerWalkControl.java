@@ -22,11 +22,15 @@ import static org.delaunois.ialon.IalonKeyMapping.ACTION_RIGHT;
 @Slf4j
 public class PlayerWalkControl extends AbstractControl implements ActionListener {
 
+    private static final byte UNDER_WATER = 0x1;
+    private static final byte ON_SCALE = 0x2;
+    private static final byte ON_RAIL = 0x4;
+
     private PlayerCharacterControl playerCharacterControl = null;
+    private PlayerRailControl playerRailControl = null;
     private final IalonConfig config;
 
-    private boolean underWater = false;
-    private boolean onScale = false;
+    private byte state = 0;
     private boolean left = false;
     private boolean right = false;
     private boolean forward = false;
@@ -53,10 +57,9 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
         playerCharacterControl = spatial.getControl(PlayerCharacterControl.class);
+        playerRailControl = spatial.getControl(PlayerRailControl.class);
         Spatial body = ((Node) spatial).getChild(0);
         head = ((Node) body).getChild(0);
-        assert playerCharacterControl != null;
-        assert head != null;
         this.setEnabled(!config.isPlayerStartFly());
     }
 
@@ -66,31 +69,20 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
             head.getWorldRotation().getRotationColumn(2, camDir);
             head.getWorldRotation().getRotationColumn(0, camLeft);
 
-            if (!onScale && playerCharacterControl.isOnScale()) {
-                // On scale
-                onScale = true;
-                playerCharacterControl.setFallSpeed(0);
-
-            } else if (onScale && !playerCharacterControl.isOnScale()) {
-                // Leaving scale
-                onScale = false;
-                playerCharacterControl.setFallSpeed(config.getGroundGravity());
+            byte newState = 0;
+            if (playerCharacterControl.isUnderWater()) {
+                newState |= UNDER_WATER;
+            }
+            if (playerCharacterControl.isOnScale()) {
+                newState |= ON_SCALE;
+            }
+            if (playerRailControl.isOnRail()) {
+                newState |= ON_RAIL;
             }
 
-            if (!underWater && playerCharacterControl.isUnderWater()) {
-                // In water, we don't need to climb stairs, just swim ;-)
-                // Setting step height to a low value prevents a bug in bullet
-                // that makes the character fall with a different speed below
-                // the stepHeight. This bug is noticeable especially under water.
-                playerCharacterControl.getCharacter().setStepHeight(0.03f);
-                playerCharacterControl.setFallSpeed(config.getWaterGravity());
-                playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
-
-            } else if (underWater && !playerCharacterControl.isUnderWater()) {
-                // Leaving water
-                playerCharacterControl.setFallSpeed(config.getGroundGravity());
-                playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
-                playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
+            if (newState != state) {
+                state = newState;
+                updateMilieu();
             }
 
             move.set(playerCharacterControl.getWalkDirection());
@@ -102,6 +94,37 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     @Override
     protected void controlRender(RenderManager rm, ViewPort vp) {
         // Nothing to do
+    }
+
+    private void updateMilieu() {
+        log.info("New State: " + state);
+
+        switch (state) {
+            case UNDER_WATER | ON_SCALE:
+            case ON_SCALE:
+                playerCharacterControl.setFallSpeed(0);
+                log.info("Applied 0 fall speed");
+                break;
+
+            case UNDER_WATER:
+                // In water, we don't need to climb stairs, just swim ;-)
+                // Setting step height to a low value prevents a bug in bullet
+                // that makes the character fall with a different speed below
+                // the stepHeight. This bug is noticeable especially under water.
+                playerCharacterControl.getCharacter().setStepHeight(0.03f);
+                playerCharacterControl.setFallSpeed(config.getWaterGravity());
+                playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
+                log.info("Applied water gravity");
+                break;
+
+            case ON_RAIL:
+            default:
+                playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
+                playerCharacterControl.setFallSpeed(config.getGroundGravity());
+                playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
+                log.info("Applied ground gravity");
+        }
+
     }
 
     private void updateWalkMove(Vector3f move) {

@@ -46,6 +46,7 @@ import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
+import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Container;
@@ -670,6 +671,9 @@ public class BlockSliderSelectionState extends BaseAppState {
 
         Chunk chunk = Chunk.createAt(new Vec3i(0, 0, 0));
         chunk.addBlock(new Vec3i(0, 0, 0), block);
+        if (ShapeIds.FENCE.equals(block.getShape())) {
+            chunk.addBlock(new Vec3i(1, 0, 0), BlocksConfig.getInstance().getBlockRegistry().get(getName(IalonBlock.PHANTOM, CUBE)));
+        }
         chunk.update();
 
         ChunkMeshGenerator meshGenerator = BlocksConfig.getInstance().getChunkMeshGenerator();

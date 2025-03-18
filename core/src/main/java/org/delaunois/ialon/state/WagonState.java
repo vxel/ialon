@@ -44,7 +44,6 @@ public class WagonState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
-        // Nothing to do
         angle += tpf;
         wagonNode.setLocalRotation(rotation.fromAngleNormalAxis(angle, Vector3f.UNIT_Y));
     }

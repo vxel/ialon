@@ -54,6 +54,9 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
     @Setter
     private Spatial wagon;
 
+    @Getter
+    private boolean onRail = false;
+
     private final Vector3f oldPlayerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockCenterLocation = new Vector3f();
     private final Vector3f playerBlockBelowCenterLocation = new Vector3f();
@@ -96,7 +99,8 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
             config.getInputActionManager().addListener(this, ACTIONS);
         } else {
             config.getInputActionManager().removeListener(this);
-            if (wagon != null && wagon.getParent() != null) {
+            if (onRail && wagon != null && wagon.getParent() != null) {
+                onRail = false;
                 ((Node) body).detachChild(wagon);
             }
         }
@@ -123,7 +127,8 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
         if (!isRailBlock(playerCharacterControl.getBlock()) && Vector3f.ZERO.equals(railDirection)) {
             // Neither on a rail block nor in a rail move
-            if (wagon != null && wagon.getParent() != null) {
+            if (onRail && wagon != null && wagon.getParent() != null) {
+                onRail = false;
                 ((Node) body).detachChild(wagon);
             }
             return;
@@ -144,7 +149,8 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
         // Apply move
         if (railDirection.lengthSquared() > 0) {
-            if (wagon != null && wagon.getParent() == null) {
+            if (!onRail && wagon != null && wagon.getParent() == null) {
+                onRail = true;
                 ((Node)body).attachChild(wagon);
             }
             move.set(railDirection).setY(0).normalizeLocal().multLocal(speed);
@@ -203,7 +209,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
     private void updateRailMove(Vector3f currentDirection, Block block) {
         Vector3f dir = null;
-        boolean onRail = !railDirection.equals(Vector3f.ZERO);
+        //boolean onRail = !railDirection.equals(Vector3f.ZERO);
         if (onRail && forward) {
             updateHeadDirection();
             currentDirection.set(railDirection).setY(0).normalizeLocal();
@@ -325,15 +331,15 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
                 // case \ HW:¨|, possible waypoints : S or W
                 store.set(dotSE > 0 ? WP_SOUTH : WP_WEST);
                 break;
-            case ShapeIds.SQUARE_HE: // ok
+            case ShapeIds.SQUARE_HE:
                 // case \ HE:|_, possible waypoints : N or E
                 store.set(dotSE > 0 ? WP_EAST : WP_NORTH);
                 break;
-            case ShapeIds.SQUARE_HS: // ok
+            case ShapeIds.SQUARE_HS:
                 // case / HS:_|,  possible waypoints : W or N
                 store.set(dotNE > 0 ? WP_NORTH : WP_WEST);
                 break;
-            case ShapeIds.SQUARE_HN: // ok
+            case ShapeIds.SQUARE_HN:
                 // case / HN:|¨, possible waypoints : S or E
                 store.set(dotNE > 0 ? WP_EAST : WP_SOUTH);
                 break;
@@ -356,7 +362,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
 
     /**
      * Update the camera rotation.
-     * The camera direction is interpolated to smoothly align to the the rail direction,
+     * The camera direction is interpolated to smoothly align to the rail direction,
      * keeping the pitch.
      *
      * @param direction the target rail direction

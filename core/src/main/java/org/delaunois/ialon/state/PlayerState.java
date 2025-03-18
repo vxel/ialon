@@ -245,8 +245,8 @@ public class PlayerState extends BaseAppState {
         player.setLocalTranslation(config.getPlayerLocation());
         player.addControl(characterControl);
         player.addControl(flyControl);
-        player.addControl(walkControl);
         player.addControl(railControl);
+        player.addControl(walkControl);
         player.addControl(actionControl);
 
         return player;
