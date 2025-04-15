@@ -42,7 +42,7 @@ public class MainActivity extends AndroidHarness {
         appClass = Ialon.class.getCanonicalName();
         mouseEventsEnabled = true;
         screenShowTitle = false;
-        frameRate = IalonConfig.FPS_LIMIT;
+        frameRate = IalonConfig.FPS_LIMIT_MOBILE;
     }
 
     @SuppressWarnings("java:S1874")
@@ -69,7 +69,7 @@ public class MainActivity extends AndroidHarness {
 
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
-        settings.setFrameRate(IalonConfig.FPS_LIMIT);
+        settings.setFrameRate(IalonConfig.FPS_LIMIT_MOBILE);
         app.setSettings(settings);
 
         IalonConfig config = new IalonConfig();

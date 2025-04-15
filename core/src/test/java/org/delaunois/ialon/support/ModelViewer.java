@@ -59,7 +59,7 @@ public class ModelViewer extends SimpleApplication {
         SimpleApplication app = new ModelViewer(config);
 
         AppSettings settings = new AppSettings(false);
-        settings.setFrameRate(IalonConfig.FPS_LIMIT);
+        settings.setFrameRate(IalonConfig.FPS_LIMIT_DESKTOP);
         settings.setGammaCorrection(false);
         settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);

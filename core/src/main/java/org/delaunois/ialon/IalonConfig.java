@@ -26,7 +26,8 @@ public class IalonConfig {
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
     public static final String FONT_PATH = "Textures/font-apex.fnt";
-    public static final int FPS_LIMIT = 120;
+    public static final int FPS_LIMIT_MOBILE = 60;
+    public static final int FPS_LIMIT_DESKTOP = 120;
 
     // Screen - Rendering
     private float gammaCorrection = -1f; // Disabled. Used only for Android.
