@@ -103,6 +103,7 @@ public class SettingsState extends BaseAppState implements ActionListener {
 
         Container container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         container.setInsetsComponent(new DynamicInsetsComponent(10, 50, 50, 50));
+        container.addMouseListener(new IgnoreMouseClickListener());
 
         gridSize = new SettingsValue("Render distance", app.getCamera(),
                 config.getGridRadiusMin(), config.getGridRadiusMax(), config.getGridRadius(),
@@ -219,5 +220,13 @@ public class SettingsState extends BaseAppState implements ActionListener {
             }
         }
     }
+
+    private class IgnoreMouseClickListener extends DefaultMouseListener {
+        @Override
+        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+            event.setConsumed();
+        }
+    }
+
 
 }

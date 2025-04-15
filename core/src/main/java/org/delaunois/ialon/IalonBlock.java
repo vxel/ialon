@@ -24,7 +24,7 @@ import com.rvandoosselaer.blocks.TypeIds;
 
 public enum IalonBlock {
 
-    WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.SQUARE),
+    WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_WEST, ShapeIds.PLATE_EAST),
 
     WATER1(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1), TypeIds.WATER, false, true, false, ShapeIds.LIQUID1, Block.LIQUID_LEVEL1),
     WATER2(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2), TypeIds.WATER, false, true, false, ShapeIds.LIQUID2, Block.LIQUID_LEVEL2),
@@ -46,6 +46,8 @@ public enum IalonBlock {
     SNOW(TypeIds.SNOW, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     ITEM_SEAWEED("item_seaweed", false, false, false, ShapeIds.CROSS_PLANE),
     ITEM_GRASS(TypeIds.ITEM_GRASS, false, false, false, ShapeIds.CROSS_PLANE),
+    ITEM_MUSHROOM("item_mushroom", false, false, false, ShapeIds.CROSS_PLANE),
+    ITEM_SUNFLOWER("item_sunflower", false, false, false, ShapeIds.CROSS_PLANE),
     SCALE(TypeIds.SCALE, false, false, false, ShapeIds.SQUARE_NORTH, ShapeIds.SQUARE_SOUTH, ShapeIds.SQUARE_WEST, ShapeIds.SQUARE_EAST),
     RAIL(TypeIds.RAIL, true, false, false, ShapeIds.SQUARE_HE, ShapeIds.SQUARE_HS, ShapeIds.WEDGE_NORTH, ShapeIds.WEDGE_EAST, ShapeIds.WEDGE_SOUTH, ShapeIds.WEDGE_WEST),
     RAIL_CURVED(TypeIds.RAIL_CURVED, true, false, false, ShapeIds.SQUARE_HE, ShapeIds.SQUARE_HW, ShapeIds.SQUARE_HS, ShapeIds.SQUARE_HN),

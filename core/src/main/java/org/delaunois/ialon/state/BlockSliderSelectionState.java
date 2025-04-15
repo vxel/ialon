@@ -47,7 +47,6 @@ import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
 import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Panel;
@@ -81,6 +80,7 @@ import static com.rvandoosselaer.blocks.ShapeIds.CUBE;
 import static com.rvandoosselaer.blocks.ShapeIds.DOUBLE_SLAB;
 import static com.rvandoosselaer.blocks.ShapeIds.FENCE;
 import static com.rvandoosselaer.blocks.ShapeIds.PLATE;
+import static com.rvandoosselaer.blocks.ShapeIds.PLATE_NORTH;
 import static com.rvandoosselaer.blocks.ShapeIds.POLE;
 import static com.rvandoosselaer.blocks.ShapeIds.PYRAMID;
 import static com.rvandoosselaer.blocks.ShapeIds.SHORT_POLE;
@@ -116,7 +116,9 @@ import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
 import static org.delaunois.ialon.IalonBlock.GRAVEL;
 import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
+import static org.delaunois.ialon.IalonBlock.ITEM_MUSHROOM;
 import static org.delaunois.ialon.IalonBlock.ITEM_SEAWEED;
+import static org.delaunois.ialon.IalonBlock.ITEM_SUNFLOWER;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
@@ -197,6 +199,8 @@ public class BlockSliderSelectionState extends BaseAppState {
             getName(WINDOW, CUBE),
             getName(ITEM_GRASS, CROSS_PLANE),
             getName(ITEM_SEAWEED, CROSS_PLANE),
+            getName(ITEM_MUSHROOM, CROSS_PLANE),
+            getName(ITEM_SUNFLOWER, CROSS_PLANE),
             getName(COLOR_BLACK, CUBE),
             getName(COLOR_BLUE, CUBE),
             getName(COLOR_CYAN, CUBE),
@@ -219,6 +223,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             DOUBLE_SLAB,
             SLAB,
             PLATE,
+            PLATE_NORTH,
             WEDGE_SOUTH,
             PYRAMID,
             POLE,
@@ -689,16 +694,28 @@ public class BlockSliderSelectionState extends BaseAppState {
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
             geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
 
-            if (!TypeIds.SCALE.equals(block.getType())) {
-                // For shape having (partially-) transparent materials, we override the cull-mode
-                // material parameter because the faces are not properly ordered in the Gui bucket
-                // and the cullmode Off won't work (except for scale and items)
-                if (!block.getType().startsWith("item")) {
-                    geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
-                }
-                geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
-                geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
+            // Orientate the block according to its shape :
+            // front for vertical squares, rotated for other shapes
+            switch (block.getShape()) {
+                case SQUARE_NORTH:
+                    break;
+                case PLATE_NORTH:
+                    geometry.setLocalTranslation(size / 1.5f, -size / 2.2f, 0);
+                    geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
+                    geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
+                    break;
+                default:
+                    geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
+                    if (!block.getType().startsWith("item")) {
+                        // For shape having (partially-) transparent materials, we override the cull-mode
+                        // material parameter because the faces are not properly ordered in the Gui bucket
+                        // and the cullmode Off won't work (except for scale and items)
+                        geometry.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+                    }
+                    geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
+                    geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
             }
+
 
             int vc = geometry.getMesh().getVertexCount();
             FloatBuffer buf = BufferUtils.createFloatBuffer(vc * 4);
@@ -791,7 +808,7 @@ public class BlockSliderSelectionState extends BaseAppState {
 
     private static class ContainerScroller {
 
-        private static final float EFFECT_LEN = 0.5f;
+        private static final float EFFECT_LEN = 0.2f;
 
         @Getter
         private Container container;
@@ -828,7 +845,7 @@ public class BlockSliderSelectionState extends BaseAppState {
             if (container != null) {
                 scrollEffect.setMin(camera.getWidth() - container.getSize().getX() - margin);
                 scrollEffect.setMax(margin);
-                scrollEffect.setForce(deltaX / tpf / 100);
+                scrollEffect.setForce(deltaX / tpf / 30);
                 container.runEffect("scroll");
             }
         }
