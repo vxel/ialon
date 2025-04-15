@@ -1,0 +1,22 @@
+MaterialDef Procedural Map {
+    MaterialParameters {
+        Float Scale
+        Float Seed;
+        Float WaterLevel;
+        Boolean GrayScale;
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/map.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/map.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+        }
+
+        Defines {
+            GRAY_SCALE : GrayScale
+        }
+
+    }
+}

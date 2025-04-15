@@ -1,0 +1,8 @@
+Material Map : Shaders/map.j3md {
+    MaterialParameters {
+        GrayScale: false
+        Scale: 18
+        Seed: 10
+        WaterLevel: 0.3
+    }
+}
