@@ -4,7 +4,7 @@ sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     minieVersion = "7.4.0"
-    lombokVersion = "1.18.20"
+    lombokVersion = "1.18.34"
     simMathVersion = '1.5.0'
     sio2Version = '1.7.0'
     blocksVersion = "1.6.4"
@@ -46,11 +46,11 @@ test {
 
 jacocoTestReport {
     reports {
-        xml.enabled true
+        xml.required = true
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
