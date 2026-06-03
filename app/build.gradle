@@ -4,13 +4,13 @@ plugins {
 
 android {
     namespace "org.delaunois.ialon"
-    compileSdkVersion 32
-    buildToolsVersion "33.0.0"
+    compileSdkVersion 35
+    buildToolsVersion "35.0.0"
 
     defaultConfig {
         applicationId "org.delaunois.ialon"
         minSdkVersion 26
-        targetSdkVersion 32
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
@@ -29,8 +29,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     packagingOptions {
