@@ -52,6 +52,7 @@ public class DirectVector3fBuffer {
 
     public void clear() {
         buff.clear();
+        size = 0;
     }
 
     private void increaseCapacity() {

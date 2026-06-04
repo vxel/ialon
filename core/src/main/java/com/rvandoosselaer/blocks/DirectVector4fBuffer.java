@@ -49,6 +49,7 @@ public class DirectVector4fBuffer {
 
     public void clear() {
         buff.clear();
+        size = 0;
     }
 
     private void increaseCapacity() {

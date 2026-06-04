@@ -60,8 +60,17 @@ public class ChunkMesh {
         return mesh;
     }
 
+    /**
+     * Resets all buffers (position and size) so this instance can be reused for another chunk
+     * without reallocating the underlying direct buffers. The grown capacity is retained.
+     */
     public void clear() {
-        // Nothing to do
+        positions.clear();
+        normals.clear();
+        tangents.clear();
+        uvs.clear();
+        indices.clear();
+        colors.clear();
     }
 
 }

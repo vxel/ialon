@@ -48,6 +48,7 @@ public class DirectIntBuffer {
 
     public void clear() {
         buff.clear();
+        size = 0;
     }
 
     private void increaseCapacity() {
