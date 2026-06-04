@@ -34,6 +34,7 @@ import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.ChunkSaverState;
+import org.delaunois.ialon.state.FarTerrainState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
@@ -73,6 +74,10 @@ public class IalonInitializer {
         RenderQueue rq = app.getViewPort().getQueue();
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
+    }
+
+    public static AppState setupFarTerrain(IalonConfig config) {
+        return new FarTerrainState(config);
     }
 
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {

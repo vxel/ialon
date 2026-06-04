@@ -1,6 +1,4 @@
-#ifdef GL_ES
-precision mediump float;
-#endif
+#import "Common/ShaderLib/GLSLCompat.glsllib"
 
 #define PI 3.14159265359
 #define COL_WATER_LOW vec3(0.008, 0.169, 0.267)
