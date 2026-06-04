@@ -103,6 +103,70 @@ class CollisionMeshGreedyTest {
                         + " for " + faceCount + " faces)");
     }
 
+    /**
+     * The shared visibility mask (populated by the render pass) must yield exactly the same collision
+     * geometry as recomputing face visibility on the fly. Builds the mask the way the render pass does
+     * (recording isFaceVisible for every solid cube face) and compares both collision meshes.
+     */
+    @Test
+    void sharedMaskCollisionMatchesDirectComputation() {
+        BlocksConfig config = BlocksConfig.getInstance();
+        Vec3i cs = config.getChunkSize();
+        Block rock = config.getBlockRegistry().get(BlockIds.ROCK);
+
+        // Varied layout : two floor layers + several floating cubes -> exposed faces in all 6 directions.
+        Chunk chunk = Chunk.createAt(new Vec3i(0, 0, 0));
+        for (int x = 0; x < cs.x; x++) {
+            for (int z = 0; z < cs.z; z++) {
+                chunk.addBlock(x, 0, z, rock);
+                chunk.addBlock(x, 1, z, rock);
+            }
+        }
+        chunk.addBlock(cs.x / 2, 4, cs.z / 2, rock);
+        chunk.addBlock(2, 3, 2, rock);
+        chunk.addBlock(2, 3, 3, rock);
+        chunk.addBlock(cs.x - 1, 5, cs.z - 1, rock);
+        chunk.setLightMap(new byte[cs.x * cs.y * cs.z]);
+        chunk.update();
+
+        FacesMeshGenerator generator = new FacesMeshGenerator(new IalonConfig());
+
+        // Reproduce the mask exactly as the render pass records it.
+        int volume = cs.x * cs.y * cs.z;
+        boolean[] mask = new boolean[Direction.values().length * volume];
+        Vec3i loc = new Vec3i();
+        for (int x = 0; x < cs.x; x++) {
+            for (int y = 0; y < cs.y; y++) {
+                for (int z = 0; z < cs.z; z++) {
+                    Block b = chunk.getBlock(x, y, z);
+                    if (b == null || !b.isSolid() || !ShapeIds.CUBE.equals(b.getShape())) {
+                        continue;
+                    }
+                    int index = z + (y + x * cs.y) * cs.z;
+                    for (Direction d : Direction.values()) {
+                        if (chunk.isFaceVisible(loc.set(x, y, z), d)) {
+                            mask[d.ordinal() * volume + index] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        ChunkMesh sharedMaskMesh = new ChunkMesh(true);
+        generator.addCubeCollisionMesh(chunk, sharedMaskMesh, mask, volume);
+        Mesh meshFromMask = sharedMaskMesh.generateMesh();
+
+        ChunkMesh directMesh = new ChunkMesh(true);
+        generator.addCubeCollisionMesh(chunk, directMesh);
+        Mesh meshDirect = directMesh.generateMesh();
+
+        assertEquals(meshDirect.getTriangleCount(), meshFromMask.getTriangleCount(),
+                "shared mask must produce the same triangle count as direct computation");
+        assertEquals(triangleArea(meshDirect), triangleArea(meshFromMask), 1e-3f,
+                "shared mask must produce the same collision surface as direct computation");
+        assertTrue(meshFromMask.getTriangleCount() > 0, "test chunk should produce collision faces");
+    }
+
     private float triangleArea(Mesh mesh) {
         FloatBuffer pos = mesh.getFloatBuffer(VertexBuffer.Type.Position);
         IndexBuffer idx = mesh.getIndexBuffer();

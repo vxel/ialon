@@ -26,6 +26,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.jme.LayerComparator;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -49,6 +50,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private static final String CHUNK_MESH_TYPE_GENERIC = "generic";
     private static final String CHUNK_MESH_TYPE_WATER = "water";
+    // Cached once : Direction.values() allocates a new array on each call (avoid it in the hot loops).
+    private static final Direction[] DIRECTIONS = Direction.values();
 
     private final IalonConfig config;
 
@@ -62,10 +65,22 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final class MeshPool {
         private final ChunkMesh collisionMesh = new ChunkMesh(true);
         private final Map<String, ChunkMesh> renderMeshes = new HashMap<>();
+        // Shared visibility mask : faceVisible[direction.ordinal() * volume + blockIndex] for solid
+        // cubes, populated by the render pass and consumed by the greedy collision mesher.
+        private boolean[] visibilityMask;
 
         ChunkMesh acquireCollision() {
             collisionMesh.clear();
             return collisionMesh;
+        }
+
+        boolean[] acquireVisibilityMask(int size) {
+            if (visibilityMask == null || visibilityMask.length < size) {
+                visibilityMask = new boolean[size];
+            } else {
+                Arrays.fill(visibilityMask, 0, size, false);
+            }
+            return visibilityMask;
         }
 
         ChunkMesh acquireRender(String type) {
@@ -206,13 +221,20 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Map<String, ChunkMesh> meshMap = new HashMap<>();
         ChunkMesh collisionMesh = pool.acquireCollision();
 
+        // Shared visibility mask : the render pass records each solid cube's visible faces here so the
+        // greedy collision mesher can reuse them instead of recomputing face visibility for the chunk.
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        int volume = chunkSize.x * chunkSize.y * chunkSize.z;
+        boolean[] visibilityMask = pool.acquireVisibilityMask(DIRECTIONS.length * volume);
+
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
         BlockNeighborhood neighborhood = new BlockNeighborhood(blockLocation, chunk);
 
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         for (short blockId : blocks) {
-            createMesh(blockRegistry.get(blockId), blockLocation, neighborhood, meshMap, collisionMesh, pool);
+            createMesh(blockRegistry.get(blockId), blockLocation, neighborhood, meshMap, collisionMesh, pool,
+                    visibilityMask, volume, chunkSize);
 
             // increment the block location
             incrementBlockLocation(blockLocation);
@@ -242,8 +264,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // position the node
         node.setLocalTranslation(chunk.getWorldLocation());
 
-        // greedy-mesh the solid full cubes into the collision mesh (merges coplanar exposed faces)
-        addCubeCollisionMesh(chunk, collisionMesh);
+        // greedy-mesh the solid full cubes into the collision mesh (merges coplanar exposed faces),
+        // reusing the visibility mask populated by the render pass above.
+        addCubeCollisionMesh(chunk, collisionMesh, visibilityMask, volume);
 
         // set the node and collision mesh on the chunk
         chunk.setNode(node);
@@ -260,7 +283,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                             BlockNeighborhood neighborhood,
                             Map<String, ChunkMesh> meshMap,
                             ChunkMesh collisionMesh,
-                            MeshPool pool
+                            MeshPool pool,
+                            boolean[] visibilityMask,
+                            int volume,
+                            Vec3i chunkSize
     ) {
         if (block == null) {
             return;
@@ -278,9 +304,20 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         // add the block to the collision mesh.
         // Solid full cubes are deferred to the greedy collision mesher (addCubeCollisionMesh),
-        // which merges coplanar exposed faces. Non-cube solids keep their per-block faces.
-        if (block.isSolid() && !isCollisionCube(block)) {
-            shape.add(neighborhood, collisionMesh);
+        // which merges coplanar exposed faces. addShapeToMesh above has just computed (via Cube.add)
+        // the visibility of the 6 faces : record it into the shared mask so the greedy mesher reuses
+        // it instead of rescanning the whole chunk. Non-cube solids keep their per-block faces.
+        if (block.isSolid()) {
+            if (isCollisionCube(block)) {
+                int index = blockLocation.z + (blockLocation.y + blockLocation.x * chunkSize.y) * chunkSize.z;
+                for (Direction direction : DIRECTIONS) {
+                    if (neighborhood.isFaceVisible(direction)) {
+                        visibilityMask[direction.ordinal() * volume + index] = true;
+                    }
+                }
+            } else {
+                shape.add(neighborhood, collisionMesh);
+            }
         }
 
         // add water if any
@@ -308,8 +345,18 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
      * there is no texture-tiling or per-vertex-lighting constraint on merging.
      * Non-cube solid shapes are NOT handled here (they keep their per-block faces, added elsewhere).
      */
-    // package-private for testing (CollisionMeshGreedyTest)
+    // package-private for testing (CollisionMeshGreedyTest). Computes face visibility on the fly
+    // (no shared mask available — used by the test and any standalone collision-only build).
     void addCubeCollisionMesh(Chunk chunk, ChunkMesh collisionMesh) {
+        addCubeCollisionMesh(chunk, collisionMesh, null, 0);
+    }
+
+    /**
+     * @param visibilityMask shared mask (faceVisible per direction/block) populated by the render
+     *                       pass, or {@code null} to recompute face visibility on the fly.
+     * @param volume         the chunk volume (used to index the shared mask); ignored if mask is null.
+     */
+    void addCubeCollisionMesh(Chunk chunk, ChunkMesh collisionMesh, boolean[] visibilityMask, int volume) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         int[] dims = { chunkSize.x, chunkSize.y, chunkSize.z };
@@ -320,7 +367,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Vec3i loc = new Vec3i();
         Vector3f vertex = new Vector3f();
 
-        for (Direction direction : Direction.values()) {
+        for (Direction direction : DIRECTIONS) {
             Vec3i dir = direction.getVector();
             int faceAxis = dir.x != 0 ? 0 : (dir.y != 0 ? 1 : 2);
             int sign = dir.x + dir.y + dir.z; // +1 or -1
@@ -331,22 +378,32 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             int layers = dims[faceAxis];
 
             for (int s = 0; s < layers; s++) {
-                buildCollisionMask(chunk, direction, faceAxis, uAxis, vAxis, s, uSize, vSize, coord, loc, mask);
+                buildCollisionMask(chunk, direction, faceAxis, uAxis, vAxis, s, uSize, vSize, coord, loc, mask,
+                        visibilityMask, volume, chunkSize);
                 mergeAndEmit(collisionMesh, faceAxis, uAxis, vAxis, s, sign, uSize, vSize, blockScale, mask, vertex);
             }
         }
     }
 
     private void buildCollisionMask(Chunk chunk, Direction direction, int faceAxis, int uAxis, int vAxis,
-                                    int s, int uSize, int vSize, int[] coord, Vec3i loc, boolean[] mask) {
+                                    int s, int uSize, int vSize, int[] coord, Vec3i loc, boolean[] mask,
+                                    boolean[] visibilityMask, int volume, Vec3i chunkSize) {
+        int dirOffset = direction.ordinal() * volume;
         for (int vv = 0; vv < vSize; vv++) {
             for (int uu = 0; uu < uSize; uu++) {
                 coord[faceAxis] = s;
                 coord[uAxis] = uu;
                 coord[vAxis] = vv;
-                Block b = chunk.getBlock(coord[0], coord[1], coord[2]);
-                boolean exposed = isCollisionCube(b)
-                        && chunk.isFaceVisible(loc.set(coord[0], coord[1], coord[2]), direction);
+                boolean exposed;
+                if (visibilityMask != null) {
+                    // Reuse the visibility computed by the render pass.
+                    int index = coord[2] + (coord[1] + coord[0] * chunkSize.y) * chunkSize.z;
+                    exposed = visibilityMask[dirOffset + index];
+                } else {
+                    Block b = chunk.getBlock(coord[0], coord[1], coord[2]);
+                    exposed = isCollisionCube(b)
+                            && chunk.isFaceVisible(loc.set(coord[0], coord[1], coord[2]), direction);
+                }
                 mask[uu + vv * uSize] = exposed;
             }
         }
