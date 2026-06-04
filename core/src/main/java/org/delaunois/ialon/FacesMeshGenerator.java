@@ -3,6 +3,7 @@ package org.delaunois.ialon;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
@@ -15,6 +16,7 @@ import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ChunkMesh;
 import com.rvandoosselaer.blocks.ChunkMeshGenerator;
+import com.rvandoosselaer.blocks.Direction;
 import com.rvandoosselaer.blocks.Shape;
 import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.ShapeRegistry;
@@ -240,6 +242,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // position the node
         node.setLocalTranslation(chunk.getWorldLocation());
 
+        // greedy-mesh the solid full cubes into the collision mesh (merges coplanar exposed faces)
+        addCubeCollisionMesh(chunk, collisionMesh);
+
         // set the node and collision mesh on the chunk
         chunk.setNode(node);
         chunk.setCollisionMesh(collisionMesh.generateMesh());
@@ -271,8 +276,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         neighborhood.setLocation(blockLocation);
         addShapeToMesh(block.getType(), shape, mesh, neighborhood);
 
-        // add the block to the collision mesh
-        if (block.isSolid()) {
+        // add the block to the collision mesh.
+        // Solid full cubes are deferred to the greedy collision mesher (addCubeCollisionMesh),
+        // which merges coplanar exposed faces. Non-cube solids keep their per-block faces.
+        if (block.isSolid() && !isCollisionCube(block)) {
             shape.add(neighborhood, collisionMesh);
         }
 
@@ -287,6 +294,140 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID + "_" + block.getLiquidLevel());
             }
             addShapeToMesh(TypeIds.WATER, shape, mesh, neighborhood);
+        }
+    }
+
+    private static boolean isCollisionCube(Block block) {
+        return block != null && block.isSolid() && ShapeIds.CUBE.equals(block.getShape());
+    }
+
+    /**
+     * Greedy-meshes the solid full cubes of the chunk into the collision mesh : coplanar exposed
+     * cube faces are merged into the largest possible rectangles, drastically reducing the triangle
+     * count of the physics shape. Safe because the collision mesh carries no UVs/normals/colors, so
+     * there is no texture-tiling or per-vertex-lighting constraint on merging.
+     * Non-cube solid shapes are NOT handled here (they keep their per-block faces, added elsewhere).
+     */
+    // package-private for testing (CollisionMeshGreedyTest)
+    void addCubeCollisionMesh(Chunk chunk, ChunkMesh collisionMesh) {
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        float blockScale = BlocksConfig.getInstance().getBlockScale();
+        int[] dims = { chunkSize.x, chunkSize.y, chunkSize.z };
+        int maxDim = Math.max(dims[0], Math.max(dims[1], dims[2]));
+
+        boolean[] mask = new boolean[maxDim * maxDim];
+        int[] coord = new int[3];
+        Vec3i loc = new Vec3i();
+        Vector3f vertex = new Vector3f();
+
+        for (Direction direction : Direction.values()) {
+            Vec3i dir = direction.getVector();
+            int faceAxis = dir.x != 0 ? 0 : (dir.y != 0 ? 1 : 2);
+            int sign = dir.x + dir.y + dir.z; // +1 or -1
+            int uAxis = (faceAxis == 0) ? 1 : 0;
+            int vAxis = (faceAxis == 2) ? 1 : 2;
+            int uSize = dims[uAxis];
+            int vSize = dims[vAxis];
+            int layers = dims[faceAxis];
+
+            for (int s = 0; s < layers; s++) {
+                buildCollisionMask(chunk, direction, faceAxis, uAxis, vAxis, s, uSize, vSize, coord, loc, mask);
+                mergeAndEmit(collisionMesh, faceAxis, uAxis, vAxis, s, sign, uSize, vSize, blockScale, mask, vertex);
+            }
+        }
+    }
+
+    private void buildCollisionMask(Chunk chunk, Direction direction, int faceAxis, int uAxis, int vAxis,
+                                    int s, int uSize, int vSize, int[] coord, Vec3i loc, boolean[] mask) {
+        for (int vv = 0; vv < vSize; vv++) {
+            for (int uu = 0; uu < uSize; uu++) {
+                coord[faceAxis] = s;
+                coord[uAxis] = uu;
+                coord[vAxis] = vv;
+                Block b = chunk.getBlock(coord[0], coord[1], coord[2]);
+                boolean exposed = isCollisionCube(b)
+                        && chunk.isFaceVisible(loc.set(coord[0], coord[1], coord[2]), direction);
+                mask[uu + vv * uSize] = exposed;
+            }
+        }
+    }
+
+    private void mergeAndEmit(ChunkMesh mesh, int faceAxis, int uAxis, int vAxis, int s, int sign,
+                              int uSize, int vSize, float blockScale, boolean[] mask, Vector3f vertex) {
+        for (int vv = 0; vv < vSize; vv++) {
+            for (int uu = 0; uu < uSize; ) {
+                if (!mask[uu + vv * uSize]) {
+                    uu++;
+                    continue;
+                }
+                // grow width along u
+                int w = 1;
+                while (uu + w < uSize && mask[(uu + w) + vv * uSize]) {
+                    w++;
+                }
+                // grow height along v while the whole row stays set
+                int h = 1;
+                boolean grow = true;
+                while (vv + h < vSize && grow) {
+                    for (int k = 0; k < w; k++) {
+                        if (!mask[(uu + k) + (vv + h) * uSize]) {
+                            grow = false;
+                            break;
+                        }
+                    }
+                    if (grow) {
+                        h++;
+                    }
+                }
+
+                float faceCoord = s + 0.5f * sign;
+                emitCollisionQuad(mesh, faceAxis, uAxis, vAxis, faceCoord,
+                        uu - 0.5f, (uu + w - 1) + 0.5f,
+                        vv - 0.5f, (vv + h - 1) + 0.5f,
+                        blockScale, vertex);
+
+                // consume the merged cells
+                for (int dv = 0; dv < h; dv++) {
+                    for (int du = 0; du < w; du++) {
+                        mask[(uu + du) + (vv + dv) * uSize] = false;
+                    }
+                }
+                uu += w;
+            }
+        }
+    }
+
+    private void emitCollisionQuad(ChunkMesh mesh, int faceAxis, int uAxis, int vAxis, float faceCoord,
+                                   float uLo, float uHi, float vLo, float vHi, float blockScale, Vector3f vertex) {
+        int offset = mesh.getPositions().size();
+        addCollisionVertex(mesh, faceAxis, uAxis, vAxis, faceCoord, uLo, vLo, blockScale, vertex);
+        addCollisionVertex(mesh, faceAxis, uAxis, vAxis, faceCoord, uHi, vLo, blockScale, vertex);
+        addCollisionVertex(mesh, faceAxis, uAxis, vAxis, faceCoord, uHi, vHi, blockScale, vertex);
+        addCollisionVertex(mesh, faceAxis, uAxis, vAxis, faceCoord, uLo, vHi, blockScale, vertex);
+        mesh.getIndices().add(offset);
+        mesh.getIndices().add(offset + 1);
+        mesh.getIndices().add(offset + 2);
+        mesh.getIndices().add(offset);
+        mesh.getIndices().add(offset + 2);
+        mesh.getIndices().add(offset + 3);
+    }
+
+    private void addCollisionVertex(ChunkMesh mesh, int faceAxis, int uAxis, int vAxis,
+                                    float faceCoord, float u, float v, float blockScale, Vector3f vertex) {
+        setAxis(vertex, faceAxis, faceCoord);
+        setAxis(vertex, uAxis, u);
+        setAxis(vertex, vAxis, v);
+        vertex.multLocal(blockScale);
+        mesh.getPositions().add(vertex);
+    }
+
+    private static void setAxis(Vector3f v, int axis, float value) {
+        if (axis == 0) {
+            v.x = value;
+        } else if (axis == 1) {
+            v.y = value;
+        } else {
+            v.z = value;
         }
     }
 
