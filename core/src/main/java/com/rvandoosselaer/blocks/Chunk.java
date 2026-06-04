@@ -417,7 +417,11 @@ public class Chunk {
     }
 
     public boolean isFaceVisible(@NonNull BlockNeighborhood neighborhood, @NonNull Direction direction) {
-        return isFaceVisible(neighborhood.getLocation(), direction, neighborhood.getCenterBlock(), neighborhood.getNeighbour(direction));
+        boolean visible = isFaceVisible(neighborhood.getLocation(), direction, neighborhood.getCenterBlock(), neighborhood.getNeighbour(direction));
+        // Record the result so the collision mesher can reuse it (shared visibility mask) instead of
+        // recomputing face visibility over the whole chunk.
+        neighborhood.setFaceVisible(direction, visible);
+        return visible;
     }
 
     public boolean isFaceVisible(@NonNull Vec3i location, @NonNull Direction direction, Block block, Block neighbour) {
