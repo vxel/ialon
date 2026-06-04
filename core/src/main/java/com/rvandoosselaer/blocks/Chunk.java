@@ -434,6 +434,14 @@ public class Chunk {
             return true;
         }
 
+        // Fast path : an opaque full cube neighbour always hides the face, whatever the direction
+        // or the current block. This is the dominant case (terrain) and avoids the singleton +
+        // shape registry lookup + virtual fullyCoversFace() call below. Verified equivalent to the
+        // general logic : a cube fully covers every face, is not transparent, and is not a liquid.
+        if (!neighbour.isTransparent() && ShapeIds.CUBE.equals(neighbour.getShape())) {
+            return false;
+        }
+
         boolean fullyCovers = BlocksConfig
                 .getInstance()
                 .getShapeRegistry()

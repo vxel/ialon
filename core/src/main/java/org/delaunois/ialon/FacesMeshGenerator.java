@@ -50,6 +50,34 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private final IalonConfig config;
 
+    /**
+     * Per-thread pool of reusable {@link ChunkMesh} buffers. Meshing runs on a fixed thread pool
+     * and each thread meshes a single chunk at a time, so the (expensive, direct-buffer-backed)
+     * meshes can be reused across chunks instead of being reallocated each time.
+     */
+    private final ThreadLocal<MeshPool> meshPool = ThreadLocal.withInitial(MeshPool::new);
+
+    private static final class MeshPool {
+        private final ChunkMesh collisionMesh = new ChunkMesh(true);
+        private final Map<String, ChunkMesh> renderMeshes = new HashMap<>();
+
+        ChunkMesh acquireCollision() {
+            collisionMesh.clear();
+            return collisionMesh;
+        }
+
+        ChunkMesh acquireRender(String type) {
+            ChunkMesh mesh = renderMeshes.get(type);
+            if (mesh == null) {
+                mesh = new ChunkMesh();
+                renderMeshes.put(type, mesh);
+            } else {
+                mesh.clear();
+            }
+            return mesh;
+        }
+    }
+
     public FacesMeshGenerator(IalonConfig config) {
         this.config = config;
     }
@@ -170,9 +198,11 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             return;
         }
 
-        // create the map holding all the meshes of the chunk and the collision mesh
+        // create the map holding all the meshes of the chunk and the collision mesh.
+        // The meshes are reused from a per-thread pool to avoid reallocating direct buffers.
+        MeshPool pool = meshPool.get();
         Map<String, ChunkMesh> meshMap = new HashMap<>();
-        ChunkMesh collisionMesh = new ChunkMesh(true);
+        ChunkMesh collisionMesh = pool.acquireCollision();
 
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
@@ -180,7 +210,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
         for (short blockId : blocks) {
-            createMesh(blockRegistry.get(blockId), blockLocation, neighborhood, meshMap, collisionMesh);
+            createMesh(blockRegistry.get(blockId), blockLocation, neighborhood, meshMap, collisionMesh, pool);
 
             // increment the block location
             incrementBlockLocation(blockLocation);
@@ -224,7 +254,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                             Vec3i blockLocation,
                             BlockNeighborhood neighborhood,
                             Map<String, ChunkMesh> meshMap,
-                            ChunkMesh collisionMesh
+                            ChunkMesh collisionMesh,
+                            MeshPool pool
     ) {
         if (block == null) {
             return;
@@ -233,7 +264,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // create a mesh for each different block type
         ChunkMesh mesh = meshMap.computeIfAbsent(
                 getChunkMeshType(block),
-                function -> new ChunkMesh());
+                pool::acquireRender);
 
         // add the block mesh to the chunk mesh
         Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
@@ -247,7 +278,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         // add water if any
         if (block.getLiquidLevel() > 0 && !Objects.equals(block.getType(), TypeIds.WATER)) {
-            mesh = meshMap.computeIfAbsent(TypeIds.WATER, function -> new ChunkMesh());
+            mesh = meshMap.computeIfAbsent(TypeIds.WATER, pool::acquireRender);
             if (block.isLiquidSource()) {
                 shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID5);
             } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
