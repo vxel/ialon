@@ -43,7 +43,16 @@ public class IalonConfig {
     private int physicsGridRadius = 1;
     private int chunkSize = 16;
     private int chunkHeight = 16;
-    private int gridHeight = 7;
+    private int gridHeight = 11;
+
+    // Far terrain : a distant low-detail heightmap horizon rendered beyond the loaded chunks.
+    private boolean farTerrain = true;
+    private float farTerrainFogDistance = 1500f;
+    private float farTerrainFogDensity = 5f;
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.30f, 0.45f, 0.22f, 1f);
+    private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
+    private float farTerrainVerticalOffset = 1f; // sink the terrain ~1 block so the voxel chunks hide it nearby (avoids z-fighting) while staying aligned at the seam
+    private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
     // World
     private float waterHeight = 50f;

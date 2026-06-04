@@ -61,7 +61,7 @@ class ChunkPagerTest {
             chunkPager.update();
         }
 
-        assertEquals(1215, chunkPager.getAttachedPages().size());
+        assertEquals(1863, chunkPager.getAttachedPages().size()); // grid 9 x (2*gridHeight+1=23) x 9
 
         chunkPager.cleanup(100);
         chunkManager.cleanup(100);

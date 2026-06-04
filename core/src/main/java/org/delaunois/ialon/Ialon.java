@@ -101,6 +101,9 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
+        if (config.isFarTerrain()) {
+            stateManager.attach(IalonInitializer.setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
+        }
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));

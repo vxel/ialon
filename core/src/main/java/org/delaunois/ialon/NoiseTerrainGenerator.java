@@ -17,6 +17,9 @@
 
 package org.delaunois.ialon;
 
+import static com.rvandoosselaer.blocks.BlockIds.WATER;
+import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
+
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
@@ -33,10 +36,10 @@ import org.delaunois.ialon.fastnoise.LayeredNoise;
 import org.delaunois.ialon.fastnoise.NoiseLayer;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Random;
-
-import static com.rvandoosselaer.blocks.BlockIds.WATER;
-import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
 
 public class NoiseTerrainGenerator implements TerrainGenerator {
 
@@ -44,9 +47,17 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int TRUNK_HEIGHT = 3;
     private static final int TREE_HEIGHT = TRUNK_HEIGHT + 2 * CANOPY_RADIUS + 1;
 
+    // The heightmap depends only on the chunk's (x, z) column, yet every chunk of a vertical column
+    // (gridHeight of them) would recompute the same hundreds of noise samples. This bounded,
+    // thread-safe LRU memorizes the heightmap per column so it is computed once and shared by
+    // the whole column.
+    private static final int HEIGHTS_CACHE_CAPACITY = 256;
+
     private long seed;
     private float waterHeight;
     private LayeredNoise layeredNoise;
+    private final Map<Long, float[]> heightsCache =
+            Collections.synchronizedMap(new HeightsCache(HEIGHTS_CACHE_CAPACITY));
 
     // Cached block references, resolved once on first generation to avoid a String-keyed
     // registry lookup (and, for itemGrass/waterLiquid, a String concatenation) per generated block.
@@ -94,6 +105,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     public void setSeed(long seed) {
         this.seed = seed;
+        heightsCache.clear();
     }
 
     @Override
@@ -221,6 +233,19 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private float[] getHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
+        // Memorize per column : the heightmap is identical for every chunk sharing the same (x, z).
+        // The returned array is treated as immutable by all callers, so it is safe to share.
+        long key = (((long) chunk.getLocation().x) << 32) | (chunk.getLocation().z & 0xFFFFFFFFL);
+        float[] cached = heightsCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        float[] heights = computeHeights(chunk, minx, maxx, minz, maxz);
+        heightsCache.put(key, heights);
+        return heights;
+    }
+
+    private float[] computeHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
         int worldOffsetX = chunk.getLocation().x * chunkSize.x;
         int worldOffsetZ = chunk.getLocation().z * chunkSize.z;
@@ -332,6 +357,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void createWorldNoise() {
+        // The noise definition changes : any memorized heightmap is now stale.
+        heightsCache.clear();
         Random random = new Random(seed);
         layeredNoise = new LayeredNoise();
 
@@ -342,21 +369,21 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         NoiseLayer mountains = new NoiseLayer("mountains");
         mountains.setSeed(random.nextInt());
         mountains.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        mountains.setStrength(64);
-        mountains.setFrequency(mountains.getFrequency() / 4);
+        mountains.setStrength(82);
+        mountains.setFrequency(mountains.getFrequency() / 8);
         layeredNoise.addLayer(mountains);
 
         NoiseLayer hills = new NoiseLayer("Hills");
         hills.setSeed(random.nextInt());
         hills.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        hills.setStrength(32);
-        hills.setFrequency(hills.getFrequency() / 2);
+        hills.setStrength(41);
+        hills.setFrequency(hills.getFrequency() / 3);
         layeredNoise.addLayer(hills);
 
         NoiseLayer details = new NoiseLayer("Details");
         details.setSeed(random.nextInt());
         details.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        details.setStrength(15);
+        details.setStrength(21);
         layeredNoise.addLayer(details);
 
     }
@@ -369,6 +396,25 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private float getHeight(float worldX, float worldZ, Vector2f sample) {
         float height = 32f;
         return layeredNoise.evaluate(sample.set(worldX, worldZ)) + height;
+    }
+
+    /**
+     * Bounded LRU (access-ordered) cache of per-column heightmaps. Wrapped in a synchronized map by
+     * the owner, since chunk generation runs on a thread pool.
+     */
+    private static final class HeightsCache extends LinkedHashMap<Long, float[]> {
+        private static final long serialVersionUID = 1L;
+        private final transient int capacity;
+
+        HeightsCache(int capacity) {
+            super(capacity * 4 / 3 + 1, 0.75f, true);
+            this.capacity = capacity;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Long, float[]> eldest) {
+            return size() > capacity;
+        }
     }
 
 }

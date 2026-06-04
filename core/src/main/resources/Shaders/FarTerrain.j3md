@@ -1,0 +1,22 @@
+MaterialDef Far Terrain {
+
+    MaterialParameters {
+        Color BaseColor
+        Vector3 LightDir
+        Color FogColor
+        Float FogDistance
+        Float FogDensity
+        Float DepthBias
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL100 GLSL150:   Shaders/FarTerrain.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/FarTerrain.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldMatrix
+            CameraPosition
+        }
+    }
+}

@@ -20,6 +20,10 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.input.InputManager;
+import com.jme3.input.KeyInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
@@ -46,10 +50,23 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class IalonDebugState extends BaseAppState {
 
     private static final int MB = 1024 * 1024;
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
+    // Debug toggle (F8) : freezes the render chunk paging so the loaded chunks stay put while the
+    // camera moves, to visually check the alignment between the voxels and the far terrain.
+    private static final String FREEZE_PAGING = "ialon_debug_freeze_paging";
+
+    private boolean pagingFrozen = false;
+    private final ActionListener freezePagingListener = (name, isPressed, tpf) -> {
+        if (isPressed) {
+            toggleFreezePaging();
+        }
+    };
 
     private Node node;
     private Container container;
@@ -102,6 +119,23 @@ public class IalonDebugState extends BaseAppState {
 
         grid = new Container(new SpringGridLayout(Axis.X, Axis.Y));
         grid.setLocalTranslation((getApplication().getCamera().getWidth() - container.getPreferredSize().getX()) / 2f, getApplication().getCamera().getHeight() - 30f, 1);
+
+        InputManager inputManager = app.getInputManager();
+        inputManager.addMapping(FREEZE_PAGING, new KeyTrigger(KeyInput.KEY_F8));
+        inputManager.addListener(freezePagingListener, FREEZE_PAGING);
+    }
+
+    /**
+     * Toggles the render chunk paging : when frozen, the currently loaded chunks stay in place while
+     * the camera/player keeps moving, making it easy to inspect the voxel ↔ far-terrain alignment.
+     */
+    private void toggleFreezePaging() {
+        pagingFrozen = !pagingFrozen;
+        ChunkPagerState pager = getApplication().getStateManager().getState(ChunkPagerState.class);
+        if (pager != null) {
+            pager.setEnabled(!pagingFrozen);
+        }
+        log.info("Render chunk paging {}", pagingFrozen ? "FROZEN (F8 to resume)" : "resumed");
     }
 
     private Label addField(Container container, String title) {
@@ -121,7 +155,19 @@ public class IalonDebugState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        InputManager inputManager = app.getInputManager();
+        if (inputManager.hasMapping(FREEZE_PAGING)) {
+            inputManager.deleteMapping(FREEZE_PAGING);
+        }
+        inputManager.removeListener(freezePagingListener);
+        // Make sure paging is resumed if it was frozen.
+        if (pagingFrozen) {
+            ChunkPagerState pager = app.getStateManager().getState(ChunkPagerState.class);
+            if (pager != null) {
+                pager.setEnabled(true);
+            }
+            pagingFrozen = false;
+        }
     }
 
     @Override
