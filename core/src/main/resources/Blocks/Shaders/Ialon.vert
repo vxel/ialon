@@ -17,6 +17,12 @@ uniform float m_Shininess;
 uniform vec4 g_AmbientLightColor;
 uniform vec3 g_CameraPosition;
 
+#ifdef USE_FOG
+// Distance fade of the chunk edge into the far terrain : m_LinearFog = (fadeStart, fadeEnd) in world
+// units. g_WorldMatrix is already declared by the imported glsllibs, so it must NOT be redeclared here.
+uniform vec2 m_LinearFog;
+#endif
+
 attribute vec3 inPosition;
 attribute vec2 inTexCoord;
 attribute vec3 inNormal;
@@ -170,8 +176,14 @@ void main() {
          SpecularSum.rgb *= specularAccum.rgb;
     #endif
 
-    //vec4 worldSpacePso = g_WorldMatrix * modelSpacePos;
-    //float dist2 = len2(worldSpacePso.xyz - g_CameraPosition.xyz);
-    //fogFactor = 1.3f - dist2 * 0.00002f;
-    //fogFactor = clamp(fogFactor, 0.0, 1.0);
+    // Fade the outer chunks toward the far terrain : fogFactor = 1 near (full voxel), 0 at fadeEnd.
+    #ifdef USE_FOG
+        vec4 worldSpacePos = g_WorldMatrix * modelSpacePos;
+        // Horizontal distance only : tracks the (horizontal) chunk-loading boundary, so tall nearby
+        // mountains are not faded by their height.
+        float fogDist = distance(worldSpacePos.xz, g_CameraPosition.xz);
+        fogFactor = clamp((m_LinearFog.y - fogDist) / (m_LinearFog.y - m_LinearFog.x), 0.0, 1.0);
+    #else
+        fogFactor = 1.0;
+    #endif
 }

@@ -7,6 +7,7 @@ MaterialDef Far Terrain {
         Float FogDistance
         Float FogDensity
         Float DepthBias
+        Float InnerRadius
     }
 
     Technique {

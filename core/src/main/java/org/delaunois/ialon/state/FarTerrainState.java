@@ -142,6 +142,9 @@ public class FarTerrainState extends BaseAppState {
         mat.setFloat("FogDistance", config.getFarTerrainFogDistance());
         mat.setFloat("FogDensity", config.getFarTerrainFogDensity());
         mat.setFloat("DepthBias", config.getFarTerrainDepthBias());
+        // Discard the far terrain within the loaded-chunk region : it only shows beyond the voxels,
+        // starting where the voxel fade begins (gridRadius*chunkSize - chunkSize).
+        mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
         // Shared instance : update() mutates it in place so the sun direction follows day/night.
         mat.setVector3("LightDir", lightDir);
         return mat;

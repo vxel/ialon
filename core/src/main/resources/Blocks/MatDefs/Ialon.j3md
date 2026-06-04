@@ -164,6 +164,7 @@ MaterialDef Ialon {
             DIFFUSEMAP : DiffuseMap
             NORMALMAP : NormalMap
             SPECULARMAP : SpecularMap
+            USE_FOG : UseFog
         }
     }
 
