@@ -5,6 +5,10 @@
 /app/release
 /app/build
 /desktop/build
+
+# Eclipse JDT compiler output (VS Code Java / Buildship). Gradle uses build/ instead.
+bin/
+
 /save
 /local
 /export

@@ -52,21 +52,47 @@ public class BlockNeighborhood {
     // 06 07 08   15 16 17   24 25 26         Z
     private final Block[] n = new Block[NEIGHB_SIZE];
     private final Block[] face = new Block[8];
+    // Light buffers reused across blocks/faces. The neighborhood is confined to a single meshing
+    // thread, so these can be pre-allocated once and refilled rather than re-allocated per block.
     private final Vector4f[] lights = new Vector4f[NEIGHB_SIZE];
+    private final boolean[] lightComputed = new boolean[NEIGHB_SIZE];
     private final Vector4f[] facelights = new Vector4f[8];
     private final Vector4f[] tmp = new Vector4f[8];
+    // Scratch buffers for the center face light and the per-vertex output color.
+    private final Vector4f faceLightScratch = new Vector4f();
+    private final Vector4f colorScratch = new Vector4f();
 
     public BlockNeighborhood(Vec3i location, Chunk chunk) {
         this.chunk = chunk;
+        for (int i = 0; i < NEIGHB_SIZE; i++) {
+            lights[i] = new Vector4f();
+        }
         setLocation(location);
     }
 
     public void setLocation(Vec3i location) {
         Arrays.fill(n, null);
-        Arrays.fill(lights, null);
+        Arrays.fill(lightComputed, false);
         n[CENTER_IDX] = this.chunk.getBlock(location.x, location.y, location.z);
 
         this.location = location;
+    }
+
+    /**
+     * Light of the block adjacent to the center in the given face direction (water tint applied),
+     * written into a reused scratch buffer. Equivalent to {@code chunk.getLightLevel(location, face)}
+     * but allocation-free.
+     */
+    public Vector4f getFaceLight(Direction face) {
+        return chunk.getLightLevel(location.x, location.y, location.z, face, faceLightScratch);
+    }
+
+    /**
+     * A reused buffer for the per-vertex output color. Safe because consumers copy the components
+     * into the mesh color buffer immediately after each use.
+     */
+    public Vector4f getColorScratch() {
+        return colorScratch;
     }
 
     public Block getCenterBlock() {
@@ -488,11 +514,10 @@ public class BlockNeighborhood {
     }
 
     private Vector4f getLight(int index, int dx, int dy, int dz) {
-        Vector4f light = lights[index];
-        if (light == null) {
-            light = this.chunk.getLightLevel(location.x + dx, location.y + dy, location.z  + dz, null);
-            lights[index] = light;
+        if (!lightComputed[index]) {
+            this.chunk.getLightLevel(location.x + dx, location.y + dy, location.z + dz, null, lights[index]);
+            lightComputed[index] = true;
         }
-        return light;
+        return lights[index];
     }
 }

@@ -35,6 +35,58 @@ import static com.rvandoosselaer.blocks.Direction.WEST;
 @RequiredArgsConstructor
 public class Cube implements Shape {
 
+    // Shared immutable normals : DirectVector3fBuffer.add() copies the components, so a single
+    // instance can be reused for every vertex/face/thread instead of allocating a new Vector3f.
+    private static final Vector3f NORMAL_UP = new Vector3f(0.0f, 1.0f, 0.0f);
+    private static final Vector3f NORMAL_DOWN = new Vector3f(0.0f, -1.0f, 0.0f);
+    private static final Vector3f NORMAL_NORTH = new Vector3f(0.0f, 0.0f, -1.0f);
+    private static final Vector3f NORMAL_SOUTH = new Vector3f(0.0f, 0.0f, 1.0f);
+    private static final Vector3f NORMAL_EAST = new Vector3f(1.0f, 0.0f, 0.0f);
+    private static final Vector3f NORMAL_WEST = new Vector3f(-1.0f, 0.0f, 0.0f);
+
+    // Precomputed, constant UV coordinates (per face / per texturing variant).
+    private static final float U_HI = 1.0f / UV_PADDING_FACTOR + UV_PADDING;
+    private static final float U_LO = 0.0f / UV_PADDING_FACTOR + UV_PADDING;
+    private static final float V_23_MINUS = 2f / 3f - UV_PADDING;
+    private static final float V_13_PLUS = 1f / 3f + UV_PADDING;
+    private static final float V_13_MINUS = 1f / 3f - UV_PADDING;
+    private static final float V_23_PLUS = 2f / 3f + UV_PADDING;
+
+    // The four side faces (N/S/E/W) share the same UV layout.
+    private static final Vector2f[] UV_SIDE_SINGLE = {
+            new Vector2f(U_HI, U_LO), new Vector2f(U_HI, U_HI),
+            new Vector2f(U_LO, U_LO), new Vector2f(U_LO, U_HI)
+    };
+    private static final Vector2f[] UV_SIDE_MULTI = {
+            new Vector2f(U_HI, V_23_MINUS), new Vector2f(U_HI, V_13_PLUS),
+            new Vector2f(U_LO, V_23_MINUS), new Vector2f(U_LO, V_13_PLUS)
+    };
+    private static final Vector2f[] UV_DOWN_SINGLE = {
+            new Vector2f(U_LO, U_LO), new Vector2f(U_HI, U_LO),
+            new Vector2f(U_LO, U_HI), new Vector2f(U_HI, U_HI)
+    };
+    private static final Vector2f[] UV_DOWN_MULTI = {
+            new Vector2f(U_LO, U_LO), new Vector2f(U_HI, U_LO),
+            new Vector2f(U_LO, V_13_MINUS), new Vector2f(U_HI, V_13_MINUS)
+    };
+    private static final Vector2f[] UV_UP_SINGLE = {
+            new Vector2f(U_HI, U_HI), new Vector2f(U_LO, U_HI),
+            new Vector2f(U_HI, U_LO), new Vector2f(U_LO, U_LO)
+    };
+    private static final Vector2f[] UV_UP_MULTI = {
+            new Vector2f(U_HI, U_HI), new Vector2f(U_LO, U_HI),
+            new Vector2f(U_HI, V_23_PLUS), new Vector2f(U_LO, V_23_PLUS)
+    };
+
+    private static void addFaceNormalAndUvs(ChunkMesh chunkMesh, Vector3f normal, Vector2f[] uvs) {
+        for (int i = 0; i < 4; i++) {
+            chunkMesh.getNormals().add(normal);
+        }
+        for (Vector2f uv : uvs) {
+            chunkMesh.getUvs().add(uv);
+        }
+    }
+
     @Override
     public void add(BlockNeighborhood neighborhood, ChunkMesh chunkMesh) {
         Chunk chunk = neighborhood.getChunk();
@@ -91,7 +143,7 @@ public class Cube implements Shape {
     }
 
     private boolean softShadow(BlockNeighborhood n, Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {
-        Vector4f color = chunk.getLightLevel(location, face);
+        Vector4f color = n.getFaceLight(face);
 
         //  Bottom     Middle      Top            Y ---> X
         // 00 01 02   09 10 11   18 19 20         |
@@ -102,7 +154,7 @@ public class Cube implements Shape {
 
         // a01  a11
         // a00  a10
-        Vector4f store = new Vector4f();
+        Vector4f store = n.getColorScratch();
         float a11 = chunk.vertexColor(nb[7], nb[1], nb[0], color, store).w; // UP:20 DO:00 NO:00 SO:08 WE:06 EA:02
         chunkMesh.getColors().add(store);
 
@@ -147,22 +199,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, -1.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_NORTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
         }
     }
 
@@ -193,22 +230,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, 1.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_SOUTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
         }
     }
 
@@ -239,22 +261,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(1.0f, 0.0f, 0.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_EAST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
         }
     }
 
@@ -285,22 +292,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(-1.0f, 0.0f, 0.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_WEST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
         }
     }
 
@@ -331,22 +323,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(0.0f, -1.0f, 0.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f - UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_DOWN, multipleImages ? UV_DOWN_MULTI : UV_DOWN_SINGLE);
         }
     }
 
@@ -377,22 +354,7 @@ public class Cube implements Shape {
         }
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(0.0f, 1.0f, 0.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f + UV_PADDING));
-            }
+            addFaceNormalAndUvs(chunkMesh, NORMAL_UP, multipleImages ? UV_UP_MULTI : UV_UP_SINGLE);
         }
     }
 
