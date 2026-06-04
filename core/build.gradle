@@ -38,6 +38,8 @@ dependencies {
     testImplementation "org.mockito:mockito-core:${mockitoVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    // Gradle 9 no longer puts the JUnit Platform launcher on the test runtime classpath automatically.
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${junitVersion}"
 }
 
 test {
