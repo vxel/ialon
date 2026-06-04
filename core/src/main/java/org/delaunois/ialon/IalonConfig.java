@@ -51,7 +51,7 @@ public class IalonConfig {
     private float farTerrainFogDensity = 5f;
     private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.30f, 0.45f, 0.22f, 1f);
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
-    private float farTerrainVerticalOffset = 1f; // sink the terrain ~1 block so the voxel chunks hide it nearby (avoids z-fighting) while staying aligned at the seam
+    private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
     // World
