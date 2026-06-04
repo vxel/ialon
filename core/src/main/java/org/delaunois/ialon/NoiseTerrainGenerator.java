@@ -21,6 +21,7 @@ import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockIds;
+import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.Chunk;
 import com.rvandoosselaer.blocks.ShapeIds;
@@ -47,10 +48,44 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private float waterHeight;
     private LayeredNoise layeredNoise;
 
+    // Cached block references, resolved once on first generation to avoid a String-keyed
+    // registry lookup (and, for itemGrass/waterLiquid, a String concatenation) per generated block.
+    private volatile boolean blocksResolved = false;
+    private Block blockRock;
+    private Block blockGrass;
+    private Block blockSand;
+    private Block blockDirt;
+    private Block blockWaterSource;
+    private Block blockWaterLiquid;
+    private Block blockOakLog;
+    private Block blockOakLeaves;
+    private Block blockItemGrass;
+
     public NoiseTerrainGenerator(long seed, float waterHeight) {
         this.seed = seed;
         this.waterHeight = waterHeight;
         createWorldNoise();
+    }
+
+    private void resolveBlocks() {
+        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
+        blockRock = registry.get(BlockIds.ROCK);
+        blockGrass = registry.get(BlockIds.GRASS);
+        blockSand = registry.get(BlockIds.SAND);
+        blockDirt = registry.get(BlockIds.DIRT);
+        blockWaterSource = registry.get(WATER_SOURCE);
+        blockWaterLiquid = registry.get(BlockIds.getName(WATER, ShapeIds.LIQUID));
+        blockOakLog = registry.get(BlockIds.OAK_LOG);
+        blockOakLeaves = registry.get(BlockIds.OAK_LEAVES);
+        blockItemGrass = registry.get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
+        // Written last: a thread observing blocksResolved == true is guaranteed to see all block fields.
+        blocksResolved = true;
+    }
+
+    private void ensureBlocksResolved() {
+        if (!blocksResolved) {
+            resolveBlocks();
+        }
     }
 
     public long getSeed() {
@@ -73,6 +108,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     @Override
     public Chunk generate(Vec3i location) {
+        ensureBlocksResolved();
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
 
         Chunk chunk = Chunk.createAt(location);
@@ -95,7 +131,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         if (minh > maxWorldY) {
             // all heights are above the max Y of the chunk : the chunk is full with ROCK
             short[] blocks = new short[chunkSize.x * chunkSize.y * chunkSize.z];
-            short rockId = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ROCK).getId();
+            short rockId = blockRock.getId();
             Arrays.fill(blocks, rockId);
             chunk.setBlocks(blocks);
             chunk.setLightMap(new byte[chunkSize.x * chunkSize.y * chunkSize.z]);
@@ -148,18 +184,17 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     private Block generateSurface(Chunk chunk, int x, int y, int z, int worldY, float groundh) {
         chunk.setSunlight(x, y, z, 0);
-        Block itemGrass = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
 
         Block block;
         if (worldY > waterHeight) {
-            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRASS);
+            block = blockGrass;
             if (y < 15 && (groundh * 10000) % 1 == 0) {
-                chunk.addBlock(x, y + 1, z, itemGrass);
+                chunk.addBlock(x, y + 1, z, blockItemGrass);
             }
         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
-            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
+            block = blockSand;
         } else {
-            block = BlocksConfig.getInstance().getBlockRegistry().get(WATER_SOURCE);
+            block = blockWaterSource;
             chunk.setSunlight(x, y, z, 14);
         }
         return block;
@@ -169,33 +204,39 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         Block block;
         if (worldY > groundh) {
             // Above ground but below horizon => in water
-            block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(WATER, ShapeIds.LIQUID));
+            block = blockWaterLiquid;
             chunk.setSunlight(x, y, z, Math.max(0, 14 - ((int) horizon - worldY)));
 
         } else {
             chunk.setSunlight(x, y, z, 0);
             if (waterHeight - worldY < 3 && worldY == (int) groundh) {
-                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.SAND);
+                block = blockSand;
             } else if (groundh - worldY < 3) {
-                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.DIRT);
+                block = blockDirt;
             } else {
-                block = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.ROCK);
+                block = blockRock;
             }
         }
         return block;
     }
 
     private float[] getHeights(Chunk chunk, int minx, int maxx, int minz, int maxz) {
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        int worldOffsetX = chunk.getLocation().x * chunkSize.x;
+        int worldOffsetZ = chunk.getLocation().z * chunkSize.z;
         int sizex = maxx - minx + 1;
         int sizez = maxz - minz + 1;
         float min = Float.MAX_VALUE;
         float max = Float.MIN_VALUE;
         float[] heights = new float[2 + sizex * sizez];
+        // A single Vector2f is reused for every noise sample (the noise layers never mutate it,
+        // they clone internally) : one allocation per chunk instead of two per sampled column.
+        Vector2f sample = new Vector2f();
         for (int x = minx; x <= maxx; x++) {
             int rowx = (x - minx) * sizez;
             for (int z = minz; z <= maxz; z++) {
                 int index = (z - minz) + rowx;
-                float h = getHeight(getWorldLocation(new Vector3f(x, 0, z), chunk));
+                float h = getHeight(worldOffsetX + x, worldOffsetZ + z, sample);
                 heights[index] = h;
                 if (h < min) {
                     min = h;
@@ -236,7 +277,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void createTrunk(Chunk chunk, int posx, int posy, int posz) {
-        Block trunk = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LOG);
+        Block trunk = blockOakLog;
         Vec3i treeLocation = new Vec3i(posx, posy, posz);
         for (int y = 0; y < TRUNK_HEIGHT; y++) {
             addBlock(chunk, treeLocation.add(0, y, 0), trunk);
@@ -244,7 +285,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void createCanopy(Chunk chunk, int posx, int posy, int posz) {
-        Block leaves = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.OAK_LEAVES);
+        Block leaves = blockOakLeaves;
         Vector3f locf = new Vector3f();
         Vec3i loci = new Vec3i();
         Vec3i canopyCenter = new Vec3i(posx, posy + TRUNK_HEIGHT + CANOPY_RADIUS - 1, posz);
@@ -290,14 +331,6 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         }
     }
 
-    private Vector3f getWorldLocation(Vector3f blockLocation, Chunk chunk) {
-        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
-
-        return new Vector3f((chunk.getLocation().x * chunkSize.x) + blockLocation.x,
-                (chunk.getLocation().y * chunkSize.y) + blockLocation.y,
-                (chunk.getLocation().z * chunkSize.z) + blockLocation.z);
-    }
-
     private void createWorldNoise() {
         Random random = new Random(seed);
         layeredNoise = new LayeredNoise();
@@ -330,8 +363,12 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     @Override
     public float getHeight(Vector3f blockLocation) {
+        return getHeight(blockLocation.x, blockLocation.z, new Vector2f());
+    }
+
+    private float getHeight(float worldX, float worldZ, Vector2f sample) {
         float height = 32f;
-        return layeredNoise.evaluate(new Vector2f(blockLocation.x, blockLocation.z)) + height;
+        return layeredNoise.evaluate(sample.set(worldX, worldZ)) + height;
     }
 
 }

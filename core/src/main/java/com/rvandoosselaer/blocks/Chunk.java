@@ -86,6 +86,11 @@ public class Chunk {
     // To avoid many instanciation of Vec3i (costly)
     private final Vec3i v = new Vec3i();
 
+    // Reusable buffer for neighbour-chunk coordinate resolution, avoiding an int[] allocation on
+    // every cross-chunk block/light lookup. Only touched by the single thread meshing this chunk
+    // (same confinement as v), so sharing the instance is safe.
+    private final int[] neighbourCoords = new int[6];
+
     public Chunk(@NonNull Vec3i location) {
         setLocation(location);
         full = false;
@@ -357,7 +362,7 @@ public class Chunk {
         }
 
         if (hasChunkResolver()) {
-            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, blx, bly, blz);
+            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, blx, bly, blz, neighbourCoords);
             Chunk chunk = chunkResolver.unsafeFastGet(v.set(loc[0], loc[1], loc[2]));
             if (chunk != null) {
                 return chunk.getBlock(loc[3], loc[4], loc[5]);
@@ -484,6 +489,15 @@ public class Chunk {
     }
 
     public Vector4f getLightLevel(int locx, int locy, int locz, Direction direction) {
+        return getLightLevel(locx, locy, locz, direction, new Vector4f());
+    }
+
+    /**
+     * Same as {@link #getLightLevel(int, int, int, Direction)} but writes the result into the
+     * provided {@code store} instead of allocating a new {@link Vector4f}. Lets callers (e.g. the
+     * mesh generator / {@link BlockNeighborhood}) reuse buffers on this very hot path.
+     */
+    public Vector4f getLightLevel(int locx, int locy, int locz, Direction direction, Vector4f store) {
         // Beware of CPU optimization : method heavily used
         int x = locx;
         int y = locy;
@@ -496,23 +510,23 @@ public class Chunk {
         }
 
         if (isInsideChunk(x, y, z)) {
-            return getLightLevel(x, y, z, direction, WATER_COLOR_FILTER);
+            return getLightLevel(x, y, z, direction, WATER_COLOR_FILTER, store);
         }
 
         if (hasChunkResolver()) {
-            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, x, y, z);
-            Chunk chunk = chunkResolver.unsafeFastGet(new Vec3i(loc[0], loc[1], loc[2]));
+            int[] loc = computeNeighbourCoordinates(location.x, location.y, location.z, x, y, z, neighbourCoords);
+            Chunk chunk = chunkResolver.unsafeFastGet(v.set(loc[0], loc[1], loc[2]));
             if (chunk != null) {
-                return chunk.getLightLevel(loc[3], loc[4], loc[5], direction, WATER_COLOR_FILTER);
+                return chunk.getLightLevel(loc[3], loc[4], loc[5], direction, WATER_COLOR_FILTER, store);
             } else {
-                return Vector4f.ZERO;
+                return store.set(0, 0, 0, 0);
             }
         }
 
-        return Vector4f.ZERO;
+        return store.set(0, 0, 0, 0);
     }
 
-    int[] computeNeighbourCoordinates(int clx, int cly, int clz, int blx, int bly, int blz) {
+    int[] computeNeighbourCoordinates(int clx, int cly, int clz, int blx, int bly, int blz, int[] out) {
         int cx = clx, cy = cly, cz = clz, x = blx, y = bly, z = blz;
 
         if (x < 0) {
@@ -539,7 +553,13 @@ public class Chunk {
             z = 0;
         }
 
-        return new int[]{ cx, cy, cz, x, y, z };
+        out[0] = cx;
+        out[1] = cy;
+        out[2] = cz;
+        out[3] = x;
+        out[4] = y;
+        out[5] = z;
+        return out;
     }
 
     /**
@@ -551,8 +571,12 @@ public class Chunk {
      * @return a Vector with (x, y, z) = color of the light and w = sun and torch light level,
      */
     private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color) {
+        return getLightLevel(x, y, z, face, color, new Vector4f());
+    }
+
+    private Vector4f getLightLevel(int x, int y, int z, Direction face, ColorRGBA color, Vector4f store) {
         if (blocks == null) {
-            return new Vector4f(1f, 1f, 1f, 0xF << 4);
+            return store.set(1f, 1f, 1f, 0xF << 4);
         }
         int index = calculateIndex(x, y, z);
         int level = this.lightMap[index];
@@ -566,7 +590,7 @@ public class Chunk {
                 }
             }
         }
-        return new Vector4f(lightColor.r, lightColor.g, lightColor.b, level);
+        return store.set(lightColor.r, lightColor.g, lightColor.b, level);
     }
 
     public int getSunlight(int x, int y, int z) {
@@ -627,8 +651,9 @@ public class Chunk {
      * @return the block array index for the block coordinate.
      */
     private static int calculateIndex(int x, int y, int z) {
-        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
-        return z + (y + x * chunkSize.y) * chunkSize.z;
+        // Use the cached CHUNK_SIZE to avoid a singleton lookup on this very hot path
+        // (called for every block access: getBlock/addBlock/getLightLevel/getSunlight/getTorchlight).
+        return z + (y + x * CHUNK_SIZE.y) * CHUNK_SIZE.z;
     }
 
 }
