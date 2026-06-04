@@ -3,17 +3,16 @@ plugins {
 }
 
 android {
-    namespace "org.delaunois.ialon"
-    compileSdkVersion 35
-    buildToolsVersion "35.0.0"
+    namespace = 'org.delaunois.ialon'
+    compileSdkVersion 36
 
     defaultConfig {
         applicationId "org.delaunois.ialon"
         minSdkVersion 26
-        targetSdkVersion 35
+        targetSdk 36
         versionCode 1
         versionName "1.0"
-        multiDexEnabled true
+        multiDexEnabled = true
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,20 +34,24 @@ android {
 
     packagingOptions {
         jniLibs {
-            useLegacyPackaging true
+            useLegacyPackaging = true
         }
-        merge "com/simsilica/lemur/style/base/glass-styles.groovy"
-        exclude 'META-INF/DEPENDENCIES'
-        exclude 'META-INF/INDEX.LIST'
+        resources {
+            merges += ['com/simsilica/lemur/style/base/glass-styles.groovy']
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/INDEX.LIST']
+        }
     }
 }
 
+configurations.configureEach {
+    exclude group: 'com.google.guava', module: 'listenablefuture'
+}
+
 dependencies {
-    implementation 'androidx.core:core-splashscreen:1.0.0'
-    implementation('androidx.appcompat:appcompat:1.5.1') {
-        exclude group: 'com.google.guava', module: 'listenablefuture'
-    }
-    implementation('com.google.android.material:material:1.7.0') {
-        exclude group: 'com.google.guava', module: 'listenablefuture'
-    }
+    implementation 'androidx.core:core-splashscreen:1.2.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.14.0'
+    
+    // Resolve ListenableFuture conflict
+    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
 }

@@ -3,17 +3,17 @@ apply plugin: "jacoco"
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
-    minieVersion = "7.4.0"
-    lombokVersion = "1.18.34"
-    simMathVersion = '1.5.0'
+    minieVersion = '7.4.0'
+    lombokVersion = '1.18.46'
+    simMathVersion = '1.6.0'
     sio2Version = '1.7.0'
     blocksVersion = "1.6.4"
-    protobufVersion = "3.11.4"
-    jacksonVersion = "2.12.3"
+    protobufVersion = '4.35.0'
+    jacksonVersion = '2.22.0'
     lemurprotoVersion = "1.13.0"
-    logbackVersion = "1.2.3"
-    mockitoVersion = "5.11.0"
-    junitVersion = "5.10.2"
+    logbackVersion = '1.5.34'
+    mockitoVersion = '5.23.0'
+    junitVersion = '6.1.0'
 }
 
 dependencies {
@@ -33,7 +33,7 @@ dependencies {
     // logging
     implementation "ch.qos.logback:logback-core:${logbackVersion}"
     implementation "ch.qos.logback:logback-classic:${logbackVersion}"
-    implementation "org.slf4j:jul-to-slf4j:1.7.36"
+    implementation 'org.slf4j:jul-to-slf4j:2.0.18'
 
     testImplementation "org.mockito:mockito-core:${mockitoVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"

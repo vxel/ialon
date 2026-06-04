@@ -3,9 +3,9 @@ sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     lombokVersion = "1.18.20"
-    mockitoVersion = "5.11.0"
-    junitVersion = "5.10.2"
-    logbackVersion = "1.2.3"
+    mockitoVersion = '5.23.0'
+    junitVersion = '6.1.0'
+    logbackVersion = '1.5.34'
 }
 
 dependencies {
@@ -16,7 +16,7 @@ dependencies {
     // logging
     testImplementation "ch.qos.logback:logback-core:${logbackVersion}"
     testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
-    testImplementation "org.slf4j:jul-to-slf4j:1.7.36"
+    testImplementation "org.slf4j:jul-to-slf4j:2.0.18"
 }
 
 test {
