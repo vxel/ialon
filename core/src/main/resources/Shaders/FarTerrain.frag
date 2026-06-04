@@ -5,11 +5,19 @@ uniform vec3 m_LightDir;     // world-space direction the sunlight travels along
 uniform vec4 m_FogColor;
 uniform float m_FogDistance; // distance scale of the fog
 uniform float m_FogDensity;  // fog thickness
+uniform float m_InnerRadius; // below this horizontal distance the voxels are the truth -> discard
 
 varying vec3 vNormal;
 varying float vDist;
+varying float vHorizDist;
 
 void main() {
+    // The far terrain is only an horizon ring : inside the loaded-chunk region the voxels are the
+    // truth, so discard it there (prevents it showing through caves / overhangs near the player).
+    if (vHorizDist < m_InnerRadius) {
+        discard;
+    }
+
     vec3 n = normalize(vNormal);
     float diffuse = max(dot(n, -normalize(m_LightDir)), 0.0);
     vec3 color = m_BaseColor.rgb * (0.35 + 0.65 * diffuse);

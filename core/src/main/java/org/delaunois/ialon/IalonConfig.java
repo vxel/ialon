@@ -53,6 +53,10 @@ public class IalonConfig {
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
+    // Dissolve the outer chunks into the far terrain near the loading boundary (needs farTerrain).
+    // The fade distances are derived from the chunk-loading radius (gridRadius * chunkSize),
+    // see IalonInitializer.setupVoxelFade.
+    private boolean voxelFade = true;
 
     // World
     private float waterHeight = 50f;

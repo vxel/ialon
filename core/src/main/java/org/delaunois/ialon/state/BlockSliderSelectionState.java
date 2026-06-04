@@ -690,6 +690,12 @@ public class BlockSliderSelectionState extends BaseAppState {
             node.setName(name);
             Geometry geometry = (Geometry) node.getChild(0).clone();
 
+            // The GUI preview uses its own material instance with the world fade (UseFog) disabled :
+            // otherwise the chunk-edge dissolve discards the icon in the GUI (ortho) space. Cloning
+            // also avoids mutating the shared world chunk material (e.g. the cull-mode tweak below).
+            geometry.setMaterial(geometry.getMaterial().clone());
+            geometry.getMaterial().setBoolean("UseFog", false);
+
             geometry.setLocalScale(size / 2f);
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
             geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
