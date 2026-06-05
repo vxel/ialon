@@ -145,6 +145,10 @@ public class FarTerrainState extends BaseAppState {
         // Discard the far terrain within the loaded-chunk region : it only shows beyond the voxels,
         // starting where the voxel fade begins (gridRadius*chunkSize - chunkSize).
         mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
+        // Altitude palette : roughly reflects the blocks the generator places by height.
+        mat.setColor("WaterColor", config.getFarTerrainWaterColor());
+        mat.setColor("SandColor", config.getFarTerrainSandColor());
+        mat.setFloat("WaterHeight", config.getWaterHeight());
         // Shared instance : update() mutates it in place so the sun direction follows day/night.
         mat.setVector3("LightDir", lightDir);
         return mat;

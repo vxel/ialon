@@ -55,6 +55,12 @@ public class Chunk {
     private boolean full;
 
     /**
+     * True when the chunk is full AND made only of opaque blocks. Only such a chunk fully occludes
+     * its neighbours : a chunk full of a transparent type (e.g. water) is full but NOT an occluder.
+     */
+    private boolean fullyOpaque;
+
+    /**
      * Wheter this chunk was loaded (false) or generated (true)
      */
     @Setter
@@ -249,6 +255,7 @@ public class Chunk {
         if (blocks == null) {
             empty = true;
             full = false;
+            fullyOpaque = false;
             return;
         }
 
@@ -272,6 +279,21 @@ public class Chunk {
 
         this.empty = empty;
         this.full = full;
+
+        // A full chunk only occludes its neighbours if every block is opaque. A full chunk of a
+        // transparent type (e.g. water) is NOT an occluder : faces visible through it (a lake floor
+        // seen through the water) must still be meshed.
+        boolean opaque = full;
+        if (full) {
+            for (short id : blocks) {
+                Block b = REGISTRY.get(id);
+                if (b == null || b.isTransparent()) {
+                    opaque = false;
+                    break;
+                }
+            }
+        }
+        this.fullyOpaque = opaque;
 
         if (log.isTraceEnabled()) {
             log.trace("Updating {}} values took {}ms", this, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));

@@ -133,7 +133,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         float[] heights = getHeights(chunk, -CANOPY_RADIUS, maxX + CANOPY_RADIUS, -CANOPY_RADIUS, maxZ + CANOPY_RADIUS);
 
         float minh = heights[0] - 4; // Include mud depth
-        float maxh = heights[1] + TRUNK_HEIGHT + 2 * CANOPY_RADIUS; // Include tree heights !
+        // Include tree heights AND the water level : where the ground is below the water level, the
+        // column is filled with water up to waterHeight (see the per-block 'horizon' below). Ignoring
+        // it wrongly flags deep-water surface chunks as empty -> holes in lakes/seas.
+        float maxh = Math.max(heights[1] + TRUNK_HEIGHT + 2 * CANOPY_RADIUS, waterHeight);
 
         if (maxh < minWorldY) {
             // all heights are below the min Y of the chunk : the chunk is empty
@@ -172,6 +175,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void generate(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon) {
+        // The world has a solid floor at y=0 (the bottom faces there are never rendered). Keep it as
+        // bedrock so very deep water columns -- whose ground noise dips below 0 -- are not bottomless
+        // (otherwise you see straight through the bottom of the water to the background).
+        if (worldY <= 0) {
+            chunk.setSunlight(x, y, z, 0);
+            chunk.addBlock(x, y, z, blockRock);
+            return;
+        }
+
         Block block;
 
         if (worldY > horizon) {
@@ -369,7 +381,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         NoiseLayer mountains = new NoiseLayer("mountains");
         mountains.setSeed(random.nextInt());
         mountains.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        mountains.setStrength(82);
+        mountains.setStrength(80);
         mountains.setFrequency(mountains.getFrequency() / 8);
         layeredNoise.addLayer(mountains);
 

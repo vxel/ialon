@@ -190,7 +190,11 @@ public class ChunkManager {
                 triggerListenerChunkAvailable(chunk, triggers);
 
             } else if (chunk.isFull()) {
-                if (isSurroundedByFullChunks(location)) {
+                // Skip only a fully-OPAQUE chunk fully enclosed by fully-opaque neighbours : it has no
+                // visible face. A full chunk that mixes opaque + transparent blocks (e.g. a lake floor :
+                // dirt/rock under water) DOES have visible internal faces and must be meshed, even
+                // though it is "full" (no air).
+                if (chunk.isFullyOpaque() && isSurroundedByOpaqueChunks(location)) {
                     saved[0]++;
                     chunk.setNode(new EmptyNode());
                     triggerListenerChunkAvailable(chunk, triggers);
@@ -214,19 +218,27 @@ public class ChunkManager {
         return results;
     }
 
-    private boolean isSurroundedByFullChunks(Vec3i location) {
-        Chunk up = cache.unsafeFastGet(location.add(0, 1, 0));
-        Chunk down = cache.unsafeFastGet(location.add(0, -1, 0));
-        Chunk east = cache.unsafeFastGet(location.add(1, 0, 0));
-        Chunk south = cache.unsafeFastGet(location.add(0, 0, 1));
-        Chunk west = cache.unsafeFastGet(location.add(-1, 0, 0));
-        Chunk north = cache.unsafeFastGet(location.add(0, 0, -1));
-        return ((up == null || up.isFull())
-                && (down == null || down.isFull())
-                && east.isFull()
-                && south.isFull()
-                && west.isFull()
-                && north.isFull());
+    /**
+     * Whether the chunk at the given location is fully hidden by its 6 neighbours (so it can be
+     * skipped). An OPAQUE full chunk is hidden only by fully-opaque neighbours (a transparent
+     * neighbour like water would reveal its faces). A transparent full chunk (e.g. full of water)
+     * is hidden by any full neighbour (opaque or water both occlude its faces).
+     *
+     * @param requireOpaque true if neighbours must be fully opaque to occlude (chunk is opaque)
+     */
+    private boolean isSurroundedByOpaqueChunks(Vec3i location) {
+        return occludes(cache.unsafeFastGet(location.add(0, 1, 0)))
+                && occludes(cache.unsafeFastGet(location.add(0, -1, 0)))
+                && occludes(cache.unsafeFastGet(location.add(1, 0, 0)))
+                && occludes(cache.unsafeFastGet(location.add(0, 0, 1)))
+                && occludes(cache.unsafeFastGet(location.add(-1, 0, 0)))
+                && occludes(cache.unsafeFastGet(location.add(0, 0, -1)));
+    }
+
+    private static boolean occludes(Chunk neighbour) {
+        // A neighbour hides the shared face only if it is full of opaque blocks. Unloaded neighbours
+        // are assumed to occlude (as the previous implementation did for up/down).
+        return neighbour == null || neighbour.isFullyOpaque();
     }
 
     private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers) {

@@ -15,17 +15,6 @@ const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 uniform float m_AlphaDiscardThreshold;
 uniform float m_GammaCorrection;
 
-#ifdef USE_FOG
-// Ordered 4x4 Bayer matrix (0..15) used as the dissolve threshold for the chunk-edge fade.
-// Screen-space ordered dither : far more temporally stable than a world-space random hash (which
-// boils at the boundary as the distance-based fade sweeps across the random cells when moving).
-const float ditherMatrix[16] = float[16](
-     0.0,  8.0,  2.0, 10.0,
-    12.0,  4.0, 14.0,  6.0,
-     3.0, 11.0,  1.0,  9.0,
-    15.0,  7.0, 13.0,  5.0);
-#endif
-
 flat in vec2 wrapCoordMin;
 flat in vec2 wrapCoordMax;
 
@@ -74,16 +63,5 @@ void main() {
         gl_FragColor.b = pow(gl_FragColor.b, m_GammaCorrection);
     }
     gl_FragColor.a = alpha;
-
-    // Dissolve the chunk edge into the far terrain : discard a screen-space ordered-dither fraction
-    // of the fragments by distance (fogFactor : 1 near = keep all, 0 far = discard all). The matching
-    // far terrain behind shows through the holes -> soft dissolve, stays opaque (no transparency sort).
-    #ifdef USE_FOG
-        int dx = int(mod(gl_FragCoord.x, 4.0));
-        int dy = int(mod(gl_FragCoord.y, 4.0));
-        float ditherThreshold = (ditherMatrix[dy * 4 + dx] + 0.5) / 16.0;
-        if (fogFactor < ditherThreshold) {
-            discard;
-        }
-    #endif
+    //gl_FragColor = mix(vec4(0.39, 0.67, 1.0, 1.0), gl_FragColor, fogFactor);
 }
