@@ -8,6 +8,9 @@ MaterialDef Far Terrain {
         Float FogDensity
         Float DepthBias
         Float InnerRadius
+        Color WaterColor
+        Color SandColor
+        Float WaterHeight
     }
 
     Technique {

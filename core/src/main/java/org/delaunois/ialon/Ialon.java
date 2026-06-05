@@ -103,9 +103,6 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SkyState(config));
         if (config.isFarTerrain()) {
             stateManager.attach(IalonInitializer.setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
-            if (config.isVoxelFade()) {
-                IalonInitializer.setupVoxelFade(config); // Fade the chunk edge into the far terrain
-            }
         }
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));

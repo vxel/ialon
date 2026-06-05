@@ -1,5 +1,7 @@
 package org.delaunois.ialon;
 
+import static org.delaunois.ialon.Ialon.IALON_STYLE;
+
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
 import com.jme3.asset.AssetInfo;
@@ -10,9 +12,7 @@ import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
 import com.jme3.material.Material;
-import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
@@ -50,8 +50,6 @@ import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.Ialon.IALON_STYLE;
-
 @Slf4j
 public class IalonInitializer {
 
@@ -68,7 +66,7 @@ public class IalonInitializer {
 
     public static void setupCamera(SimpleApplication app) {
         app.getCamera().setFrustumNear(0.1f);
-        app.getCamera().setFrustumFar(400f);
+        app.getCamera().setFrustumFar(1000f);
         app.getCamera().setFov(50);
     }
 
@@ -81,33 +79,6 @@ public class IalonInitializer {
 
     public static AppState setupFarTerrain(IalonConfig config) {
         return new FarTerrainState(config);
-    }
-
-    /**
-     * Enables the distance fade of the chunk edge into the far terrain : the generic block material
-     * fades the outer chunks toward the far terrain colour near the loading boundary, so the
-     * voxel ↔ far-terrain seam blends instead of showing a hard cliff.
-     */
-    public static void setupVoxelFade(IalonConfig config) {
-        // Fade band derived from the (horizontal) chunk-loading radius : it ends at the boundary and
-        // spans the outermost chunk ring, so it tracks gridRadius / chunkSize automatically.
-        float fadeEnd = (float) config.getGridRadius() * config.getChunkSize();
-        float fadeStart = fadeEnd - config.getChunkSize();
-        Vector2f linearFog = new Vector2f(fadeStart, fadeEnd);
-
-        // Solid chunks and water share the same Ialon.j3md shader (dither dissolve under USE_FOG), but
-        // are distinct material instances -> enable the fade on both.
-        TypeRegistry typeRegistry = BlocksConfig.getInstance().getTypeRegistry();
-        enableFade(typeRegistry.getGenericMaterial(), linearFog);
-        enableFade(typeRegistry.get(TypeIds.WATER), linearFog);
-    }
-
-    private static void enableFade(Material material, Vector2f linearFog) {
-        if (material == null) {
-            return;
-        }
-        material.setBoolean("UseFog", true);
-        material.setVector2("LinearFog", linearFog);
     }
 
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {

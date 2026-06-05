@@ -26,7 +26,7 @@ public class IalonConfig {
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
     public static final String FONT_PATH = "Textures/font-apex.fnt";
-    public static final int FPS_LIMIT_MOBILE = 60;
+    public static final int FPS_LIMIT_MOBILE = 100;
     public static final int FPS_LIMIT_DESKTOP = 120;
 
     // Screen - Rendering
@@ -43,20 +43,18 @@ public class IalonConfig {
     private int physicsGridRadius = 1;
     private int chunkSize = 16;
     private int chunkHeight = 16;
-    private int gridHeight = 11;
+    private int gridHeight = 7;
 
     // Far terrain : a distant low-detail heightmap horizon rendered beyond the loaded chunks.
     private boolean farTerrain = true;
     private float farTerrainFogDistance = 1500f;
     private float farTerrainFogDensity = 5f;
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.30f, 0.45f, 0.22f, 1f);
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.30f, 0.45f, 0.22f, 1f); // grass / land
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.12f, 0.34f, 0.55f, 1f);
+    private ColorRGBA farTerrainSandColor = new ColorRGBA(0.80f, 0.74f, 0.48f, 1f);
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
-    // Dissolve the outer chunks into the far terrain near the loading boundary (needs farTerrain).
-    // The fade distances are derived from the chunk-loading radius (gridRadius * chunkSize),
-    // see IalonInitializer.setupVoxelFade.
-    private boolean voxelFade = true;
 
     // World
     private float waterHeight = 50f;
