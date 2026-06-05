@@ -3,7 +3,9 @@ package org.delaunois.ialon;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.math.Vector4f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
@@ -22,6 +24,7 @@ import com.rvandoosselaer.blocks.ShapeIds;
 import com.rvandoosselaer.blocks.ShapeRegistry;
 import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
+import com.rvandoosselaer.blocks.shapes.Liquid;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.jme.LayerComparator;
@@ -50,10 +53,19 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private static final String CHUNK_MESH_TYPE_GENERIC = "generic";
     private static final String CHUNK_MESH_TYPE_WATER = "water";
+    // Flat calm-water surface : its own mesh/material (a flat colour, no texture), greedy-merged.
+    private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
+    // Source water shape that does NOT emit its top face : used for calm-surface cells whose flat top is
+    // produced instead by the greedy calm-water mesher. Its sides/bottom keep the normal textured look.
+    private static final Liquid LIQUID_SOURCE_NO_TOP = new Liquid(Liquid.LEVEL_MAX - 1, false);
+    // Local-space Y of the source-water top face (Liquid: HEIGHTS[5] - 0.5 = 0.3), relative to the cell.
+    private static final float SOURCE_TOP_Y = 0.8f - 0.5f;
     // Cached once : Direction.values() allocates a new array on each call (avoid it in the hot loops).
     private static final Direction[] DIRECTIONS = Direction.values();
 
     private final IalonConfig config;
+    // Built lazily and reused : the flat-colour, alpha-blended material of the calm water surface.
+    private Material calmWaterMaterial;
 
     /**
      * Per-thread pool of reusable {@link ChunkMesh} buffers. Meshing runs on a fixed thread pool
@@ -68,10 +80,27 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // Shared visibility mask : faceVisible[direction.ordinal() * volume + blockIndex] for solid
         // cubes, populated by the render pass and consumed by the greedy collision mesher.
         private boolean[] visibilityMask;
+        // Calm-water surface collector : per block, whether its flat top must be greedy-meshed, and the
+        // (reused) light colour of that top. Populated by the render pass, consumed by the greedy pass.
+        private boolean[] calmTop;
+        private Vector4f[] calmColor;
 
         ChunkMesh acquireCollision() {
             collisionMesh.clear();
             return collisionMesh;
+        }
+
+        boolean[] acquireCalmTop(int size) {
+            if (calmTop == null || calmTop.length < size) {
+                calmTop = new boolean[size];
+                calmColor = new Vector4f[size];
+                for (int i = 0; i < size; i++) {
+                    calmColor[i] = new Vector4f();
+                }
+            } else {
+                Arrays.fill(calmTop, 0, size, false);
+            }
+            return calmTop;
         }
 
         boolean[] acquireVisibilityMask(int size) {
@@ -226,6 +255,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
         int volume = chunkSize.x * chunkSize.y * chunkSize.z;
         boolean[] visibilityMask = pool.acquireVisibilityMask(DIRECTIONS.length * volume);
+        // Calm-water surface collector : the render pass flags the source-water cells whose flat top is
+        // open to the air ; the greedy pass below merges them into the flat-coloured water_calm mesh.
+        boolean[] calmTop = pool.acquireCalmTop(volume);
 
         // the first block location is (0, 0, 0)
         Vec3i blockLocation = new Vec3i(0, 0, 0);
@@ -243,6 +275,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (log.isTraceEnabled()) {
             log.trace("Chunk {} meshes construction took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
         }
+
+        // greedy-mesh the flagged calm-water tops into a single flat-coloured surface mesh (merges the
+        // large flat sea/lake surfaces into a handful of quads). Skipped entirely if none were flagged.
+        addCalmWaterSurfaceMesh(meshMap, pool, calmTop, volume, chunkSize);
 
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
@@ -298,8 +334,20 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 pool::acquireRender);
 
         // add the block mesh to the chunk mesh
-        Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
         neighborhood.setLocation(blockLocation);
+        Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
+        // Calm water surface : a source-water block whose flat top is open to the air. Its top is rendered
+        // by the greedy calm-water mesher (merged, flat-coloured quads) instead of one textured quad per
+        // block, so swap to the no-top shape here (sides/bottom still drawn) and record the top.
+        if (config.isGreedyCalmWater() && pool.calmTop != null && block.isLiquidSource()
+                && Objects.equals(block.getType(), TypeIds.WATER)
+                && neighborhood.getNeighbour(Direction.UP) == null) {
+            int index = blockLocation.z + (blockLocation.y + blockLocation.x * chunkSize.y) * chunkSize.z;
+            pool.calmTop[index] = true;
+            neighborhood.getChunk().getLightLevel(blockLocation.x, blockLocation.y, blockLocation.z,
+                    Direction.UP, pool.calmColor[index]);
+            shape = LIQUID_SOURCE_NO_TOP;
+        }
         addShapeToMesh(block.getType(), shape, mesh, neighborhood);
 
         // add the block to the collision mesh.
@@ -336,6 +384,137 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
     private static boolean isCollisionCube(Block block) {
         return block != null && block.isSolid() && ShapeIds.CUBE.equals(block.getShape());
+    }
+
+    /**
+     * Greedy-meshes the calm-water surface : the source-water tops flagged by the render pass (flat,
+     * open to the air) are merged, per horizontal layer, into the largest possible rectangles sharing
+     * the same light colour, and emitted as flat-coloured quads into the {@code water_calm} mesh. This
+     * collapses a big sea/lake surface from one quad per block into a handful of quads. The flat colour
+     * (no texture, no scrolling) is what makes the merge safe : there is no per-block UV to preserve.
+     */
+    private void addCalmWaterSurfaceMesh(Map<String, ChunkMesh> meshMap, MeshPool pool, boolean[] calmTop,
+                                         int volume, Vec3i chunkSize) {
+        boolean any = false;
+        for (int i = 0; i < volume && !any; i++) {
+            any = calmTop[i];
+        }
+        if (!any) {
+            return;
+        }
+
+        float blockScale = BlocksConfig.getInstance().getBlockScale();
+        Vector4f[] calmColor = pool.calmColor;
+        ChunkMesh mesh = pool.acquireRender(CHUNK_MESH_TYPE_WATER_CALM);
+        int sx = chunkSize.x;
+        int sy = chunkSize.y;
+        int sz = chunkSize.z;
+
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                for (int z = 0; z < sz; ) {
+                    int idx = z + (y + x * sy) * sz;
+                    if (!calmTop[idx]) {
+                        z++;
+                        continue;
+                    }
+                    Vector4f color = calmColor[idx];
+                    // grow the run along z (same layer, contiguous, same light)
+                    int w = 1;
+                    while (z + w < sz) {
+                        int j = (z + w) + (y + x * sy) * sz;
+                        if (!calmTop[j] || !sameColor(calmColor[j], color)) {
+                            break;
+                        }
+                        w++;
+                    }
+                    // grow along x while the whole z-run stays set with the same light
+                    int d = 1;
+                    boolean grow = true;
+                    while (x + d < sx && grow) {
+                        for (int k = 0; k < w; k++) {
+                            int j = (z + k) + (y + (x + d) * sy) * sz;
+                            if (!calmTop[j] || !sameColor(calmColor[j], color)) {
+                                grow = false;
+                                break;
+                            }
+                        }
+                        if (grow) {
+                            d++;
+                        }
+                    }
+                    emitCalmQuad(mesh, x, x + d - 1, z, z + w - 1, y, blockScale, color.w);
+                    // consume the merged cells
+                    for (int dx = 0; dx < d; dx++) {
+                        for (int dz = 0; dz < w; dz++) {
+                            calmTop[(z + dz) + (y + (x + dx) * sy) * sz] = false;
+                        }
+                    }
+                    z += w;
+                }
+            }
+        }
+
+        if (mesh.getPositions().size() > 0) {
+            meshMap.put(CHUNK_MESH_TYPE_WATER_CALM, mesh);
+        }
+    }
+
+    private void emitCalmQuad(ChunkMesh mesh, int x0, int x1, int z0, int z1, int y, float blockScale, float lightPacked) {
+        float xLo = (x0 - 0.5f) * blockScale;
+        float xHi = (x1 + 0.5f) * blockScale;
+        float zLo = (z0 - 0.5f) * blockScale;
+        float zHi = (z1 + 0.5f) * blockScale;
+        float yTop = (y + SOURCE_TOP_Y) * blockScale;
+
+        // Vertex colour : RGB = the water tint (the shader's block-lighting overwrites AmbientSum with
+        // inColor.rgb, so the tint MUST live in the vertex colour, not the material), A = the packed
+        // sun/torch light level so the surface still follows the day/night cycle (no texture is used).
+        ColorRGBA c = config.getCalmWaterColor();
+        Vector4f vcolor = new Vector4f(c.r, c.g, c.b, lightPacked);
+
+        int offset = mesh.getPositions().size();
+        // Winding matches Liquid.createUp (v[3], v[2], v[7], v[6]) so the merged quad faces up.
+        mesh.getPositions().add(new Vector3f(xHi, yTop, zLo));
+        mesh.getPositions().add(new Vector3f(xLo, yTop, zLo));
+        mesh.getPositions().add(new Vector3f(xHi, yTop, zHi));
+        mesh.getPositions().add(new Vector3f(xLo, yTop, zHi));
+        for (int i = 0; i < 4; i++) {
+            mesh.getNormals().add(new Vector3f(0f, 1f, 0f));
+            mesh.getUvs().add(new Vector2f(0f, 0f)); // unused : the flat-colour material has no texture
+            mesh.getColors().add(vcolor);
+        }
+        mesh.getIndices().add(offset);
+        mesh.getIndices().add(offset + 1);
+        mesh.getIndices().add(offset + 2);
+        mesh.getIndices().add(offset + 1);
+        mesh.getIndices().add(offset + 3);
+        mesh.getIndices().add(offset + 2);
+    }
+
+    private static boolean sameColor(Vector4f a, Vector4f b) {
+        return Math.abs(a.x - b.x) < 1e-4f && Math.abs(a.y - b.y) < 1e-4f
+                && Math.abs(a.z - b.z) < 1e-4f && Math.abs(a.w - b.w) < 1e-4f;
+    }
+
+    private Material getCalmWaterMaterial() {
+        if (calmWaterMaterial == null) {
+            Material mat = new Material(BlocksConfig.getInstance().getAssetManager(), "Blocks/MatDefs/Ialon.j3md");
+            mat.setBoolean("VertexLighting", true);
+            mat.setBoolean("UseVertexColor", true);
+            mat.setBoolean("UseMaterialColors", true);
+            // White material colours : the water tint is carried by the vertex colours (see emitCalmQuad).
+            // Only the diffuse alpha matters here -- it drives the surface transparency (no texture alpha).
+            mat.setColor("Ambient", ColorRGBA.White);
+            mat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, config.getCalmWaterColor().a));
+            mat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
+            mat.setFloat("Shininess", 96f);
+            mat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+            // Nudge towards the camera so the flat surface wins over the textured side faces at the seam.
+            mat.getAdditionalRenderState().setPolyOffset(-0.1f, -0.1f);
+            calmWaterMaterial = mat;
+        }
+        return calmWaterMaterial;
     }
 
     /**
@@ -510,7 +689,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {
         Geometry geometry = createGeometry(type, chunkMesh);
         if (geometry != null) {
-            if (TypeIds.WATER.equals(type)) {
+            if (TypeIds.WATER.equals(type) || CHUNK_MESH_TYPE_WATER_CALM.equals(type)) {
                 /*
                  * Special case for water.
                  * Water must be visible from inside and outside.
@@ -564,6 +743,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         switch (type) {
             case CHUNK_MESH_TYPE_WATER:
                 typeRegistry.applyMaterial(geometry, type);
+                geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
+                break;
+            case CHUNK_MESH_TYPE_WATER_CALM:
+                geometry.setMaterial(getCalmWaterMaterial());
                 geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
                 break;
             case CHUNK_MESH_TYPE_GENERIC:

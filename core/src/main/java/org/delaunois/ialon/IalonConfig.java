@@ -70,6 +70,11 @@ public class IalonConfig {
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
     private float waterHeight = 30;
+    // Calm water rendering : the flat surface of still (source) water is rendered as merged, flat-coloured
+    // quads (greedy meshing) instead of one textured, scrolling quad per block. Huge triangle savings on
+    // large seas/lakes, at the cost of dropping the surface texture/animation (calmWaterColor is used).
+    private boolean greedyCalmWater = true;
+    private ColorRGBA calmWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 0.82f); // mean albedo+alpha of ialon-theme/water_calm.png
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;

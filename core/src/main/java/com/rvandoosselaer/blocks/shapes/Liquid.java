@@ -46,8 +46,17 @@ public class Liquid implements Shape {
     @Getter
     protected final int level;
 
+    // When false, the top (UP) face is not emitted. Used by the calm-water greedy mesher, which renders
+    // the flat water surface as merged, flat-coloured quads instead of one textured quad per block.
+    private final boolean renderUp;
+
     public Liquid(int level) {
+        this(level, true);
+    }
+
+    public Liquid(int level, boolean renderUp) {
         this.level = Math.min(LEVEL_MAX, level);
+        this.renderUp = renderUp;
     }
 
     @Override
@@ -82,9 +91,12 @@ public class Liquid implements Shape {
             v[2][1] = computeHeight(b[1], b[2], b[3]);
             v[6][1] = computeHeight(b[3], b[4], b[5]);
             v[7][1] = computeHeight(b[5], b[6], b[7]);
-            createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
-            enlightFace(neighborhood, location, UP, neighborhood.getChunk(), chunkMesh);
-        } else if (neighborhood.getNeighbour(Direction.UP) == null) {
+            // Heights above are kept even when renderUp is false : the side faces rise to the top corners.
+            if (renderUp) {
+                createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
+                enlightFace(neighborhood, location, UP, neighborhood.getChunk(), chunkMesh);
+            }
+        } else if (renderUp && neighborhood.getNeighbour(Direction.UP) == null) {
             createUp(location,  chunkMesh, blockScale, v[3], v[2], v[7], v[6]);
             enlightFace(neighborhood, location, UP, neighborhood.getChunk(), chunkMesh);
         }
