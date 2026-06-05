@@ -43,6 +43,7 @@ import java.util.Random;
 
 public class NoiseTerrainGenerator implements TerrainGenerator {
 
+    private static final float GROUND_MIN = 12f;
     private static final int CANOPY_RADIUS = 3;
     private static final int TRUNK_HEIGHT = 3;
     private static final int TREE_HEIGHT = TRUNK_HEIGHT + 2 * CANOPY_RADIUS + 1;
@@ -381,7 +382,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         NoiseLayer mountains = new NoiseLayer("mountains");
         mountains.setSeed(random.nextInt());
         mountains.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        mountains.setStrength(80);
+        mountains.setStrength(100);
         mountains.setFrequency(mountains.getFrequency() / 8);
         layeredNoise.addLayer(mountains);
 
@@ -406,8 +407,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private float getHeight(float worldX, float worldZ, Vector2f sample) {
-        float height = 32f;
-        return layeredNoise.evaluate(sample.set(worldX, worldZ)) + height;
+        return layeredNoise.evaluate(sample.set(worldX, worldZ)) + GROUND_MIN;
     }
 
     /**
