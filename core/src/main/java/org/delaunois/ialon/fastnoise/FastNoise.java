@@ -33,6 +33,8 @@ import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 
 public class FastNoise {
+    private static final float TWO_PI = (float) (2.0 * Math.PI);
+
     public enum NoiseType {Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular, WhiteNoise, Cubic, CubicFractal}
     public enum Interp {Linear, Hermite, Quintic}
     public enum FractalType {FBM, Billow, RigidMulti}
@@ -1335,6 +1337,56 @@ public class FastNoise {
         }
 
         return sum;
+    }
+
+    /**
+     * Tileable (seamless) 2D simplex FBM fractal, periodic with {@code period} (world units) in BOTH
+     * axes : {@code noise(x, y) == noise(x + period, y) == noise(x, y + period)}.
+     *
+     * <p>Each input axis is wrapped onto a circle in 4D noise space (x -&gt; (cos, sin), y -&gt;
+     * (cos, sin)) and sampled with the 4D simplex. Because cos/sin are 2&pi;-periodic and the 4D
+     * simplex is a continuous (C&infin;) function of its point, the result is seamless across every
+     * multiple of {@code period} -- there is literally no edge to match, the field tiles. The circle
+     * radius per octave is set to {@code freq * period / 2&pi;} so the local rate of change equals the
+     * octave frequency, keeping the relief close to {@link #GetSimplexFractal(float, float)} (FBM).
+     *
+     * <p>Always FBM (the only fractal type used by the terrain) ; gradient-perturb and per-axis scale
+     * are intentionally not applied here as they would break the seam.
+     *
+     * @param x      world X
+     * @param y      world Z
+     * @param period tiling period in world units (must be &gt; 0)
+     */
+    public float GetSimplexFractalTiled(float x, float y, float period) {
+        // Reduce to [0, period) BEFORE mapping to the circle : two coordinates that differ by an exact
+        // multiple of the period then map to the bit-identical angle (adding 2π in float is not exact),
+        // so wrapped/seam samples are byte-for-byte equal -> truly perfect joins, not just approximate.
+        // The circle is closed so this introduces no discontinuity in the field at the period boundary.
+        x -= period * (float) FastFloor(x / period);
+        y -= period * (float) FastFloor(y / period);
+        final float angX = TWO_PI * x / period;
+        final float angY = TWO_PI * y / period;
+        final float cosX = (float) Math.cos(angX);
+        final float sinX = (float) Math.sin(angX);
+        final float cosY = (float) Math.cos(angY);
+        final float sinY = (float) Math.sin(angY);
+        // radius so that |d(point)/dx| == freq : the effective spatial frequency matches the 2D fractal.
+        final float radiusFactor = period / TWO_PI;
+
+        int seed = m_seed;
+        float freq = m_frequency;
+        float r = freq * radiusFactor;
+        float sum = SingleSimplex(seed, cosX * r, sinX * r, cosY * r, sinY * r);
+        float amp = 1;
+
+        for (int i = 1; i < m_octaves; i++) {
+            freq *= m_lacunarity;
+            r = freq * radiusFactor;
+            amp *= m_gain;
+            sum += SingleSimplex(++seed, cosX * r, sinX * r, cosY * r, sinY * r) * amp;
+        }
+
+        return sum * m_fractalBounding;
     }
 
     public float GetSimplex(float x, float y) {

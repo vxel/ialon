@@ -73,6 +73,17 @@ public class ZipFileRepository implements ChunkRepository {
      */
     private Path path;
 
+    /**
+     * Side of the finite (torus) world in chunks. When &gt; 0 a chunk is stored/loaded under its
+     * canonical coordinates (x and z reduced modulo this value), so a logical tile is saved once and an
+     * edit made anywhere is seen on every wrap of the world. 0 disables this (legacy infinite world).
+     */
+    private int worldSizeChunks;
+
+    public ZipFileRepository(Path path) {
+        this.path = path;
+    }
+
     @Override
     public Chunk load(Vec3i location) {
         if (location == null) {
@@ -84,7 +95,21 @@ public class ZipFileRepository implements ChunkRepository {
             return null;
         }
 
-        return loadChunkFromPath(chunkPath);
+        // The file is keyed by the canonical (wrapped) coordinates, but the returned chunk must carry
+        // the REQUESTED location so it caches and renders at the right place around the player.
+        return loadChunkFromPath(chunkPath, location);
+    }
+
+    /**
+     * @return the canonical chunk coordinates : x and z reduced modulo {@link #worldSizeChunks} (y is
+     * left untouched : the world is not vertically circular). Returns the location unchanged when the
+     * world is infinite ({@code worldSizeChunks <= 0}).
+     */
+    private Vec3i canonical(@NonNull Vec3i location) {
+        if (worldSizeChunks <= 0) {
+            return location;
+        }
+        return new Vec3i(Math.floorMod(location.x, worldSizeChunks), location.y, Math.floorMod(location.z, worldSizeChunks));
     }
 
     public Chunk load(String filename) {
@@ -159,7 +184,7 @@ public class ZipFileRepository implements ChunkRepository {
     }
 
     public Path getChunkPath(@NonNull Chunk chunk) {
-        return path != null ? Paths.get(path.toAbsolutePath().toString(), getChunkFilename(chunk)) : null;
+        return path != null ? Paths.get(path.toAbsolutePath().toString(), getChunkFilename(canonical(chunk.getLocation()))) : null;
     }
 
     public static String getChunkFilename(@NonNull Chunk chunk) {
@@ -171,6 +196,15 @@ public class ZipFileRepository implements ChunkRepository {
     }
 
     private Chunk loadChunkFromPath(Path chunkPath) {
+        return loadChunkFromPath(chunkPath, null);
+    }
+
+    /**
+     * @param overrideLocation when non-null, the loaded chunk is placed at this location instead of the
+     *                         one stored in the file. Used by the finite world : a single canonical file
+     *                         is loaded into the (possibly wrapped) location requested around the player.
+     */
+    private Chunk loadChunkFromPath(Path chunkPath, Vec3i overrideLocation) {
         if (log.isTraceEnabled()) {
             log.trace("Loading {}", chunkPath.toAbsolutePath());
         }
@@ -190,7 +224,7 @@ public class ZipFileRepository implements ChunkRepository {
                 return null;
             }
 
-            Chunk chunk = loadChunkFromPath(zfile, entry);
+            Chunk chunk = loadChunkFromPath(zfile, entry, overrideLocation);
             if (log.isTraceEnabled()) {
                 log.trace("Loading {} took {}ms", chunk, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
             }
@@ -202,12 +236,12 @@ public class ZipFileRepository implements ChunkRepository {
         }
     }
 
-    private Chunk loadChunkFromPath(ZipFile zfile, ZipEntry entry) {
+    private Chunk loadChunkFromPath(ZipFile zfile, ZipEntry entry, Vec3i overrideLocation) {
         try (InputStream in = zfile.getInputStream(entry)) {
             BlocksProtos.ChunkProto chunkProto = BlocksProtos.ChunkProto.newBuilder()
                     .mergeFrom(in)
                     .build();
-            return chunkProtoToChunk(chunkProto);
+            return chunkProtoToChunk(chunkProto, overrideLocation);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
         }
@@ -256,15 +290,15 @@ public class ZipFileRepository implements ChunkRepository {
     }
 
     private Path getChunkPath(@NonNull Vec3i location) {
-        return path != null ? Paths.get(path.toAbsolutePath().toString(), getChunkFilename(location)) : null;
+        return path != null ? Paths.get(path.toAbsolutePath().toString(), getChunkFilename(canonical(location))) : null;
     }
 
     private static String getChunkFilename(@NonNull Vec3i location) {
         return "chunk_" + location.x + "_" + location.y + "_" + location.z + EXTENSION;
     }
 
-    private static Chunk chunkProtoToChunk(@NonNull BlocksProtos.ChunkProto chunkProto) {
-        Vec3i location = getVector(chunkProto.getLocationList());
+    private static Chunk chunkProtoToChunk(@NonNull BlocksProtos.ChunkProto chunkProto, Vec3i overrideLocation) {
+        Vec3i location = overrideLocation != null ? overrideLocation : getVector(chunkProto.getLocationList());
         if (location == null) {
             return null;
         }

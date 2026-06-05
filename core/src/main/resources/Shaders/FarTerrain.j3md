@@ -10,7 +10,12 @@ MaterialDef Far Terrain {
         Float InnerRadius
         Color WaterColor
         Color SandColor
+        Color RockColor
+        Color SnowColor
         Float WaterHeight
+        Float RockHeight
+        Float SnowHeight
+        Float HeightOffset
     }
 
     Technique {

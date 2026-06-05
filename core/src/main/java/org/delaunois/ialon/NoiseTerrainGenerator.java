@@ -48,6 +48,16 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int TRUNK_HEIGHT = 3;
     private static final int TREE_HEIGHT = TRUNK_HEIGHT + 2 * CANOPY_RADIUS + 1;
 
+    // Altitude tiers for the land surface, expressed as a fraction of the world ceiling
+    // (gridHeight * chunkHeight) : the highest mountains are capped with snow, then bare rock.
+    // Public so the far-terrain horizon (FarTerrainState) can colour the same tiers at the same
+    // altitudes -- single source of truth, keeping the distant relief consistent with the voxels.
+    public static final float SNOW_LINE_RATIO = 0.65f; // surface above 80% of the ceiling -> snow
+    public static final float ROCK_LINE_RATIO = 0.60f; // surface above 70% (below the snow line) -> rock
+
+    // Fallback world ceiling when none is supplied (mirrors the default gridHeight * chunkHeight).
+    private static final int DEFAULT_WORLD_HEIGHT = 7 * 16;
+
     // The heightmap depends only on the chunk's (x, z) column, yet every chunk of a vertical column
     // (gridHeight of them) would recompute the same hundreds of noise samples. This bounded,
     // thread-safe LRU memorizes the heightmap per column so it is computed once and shared by
@@ -56,6 +66,13 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     private long seed;
     private float waterHeight;
+    // Horizontal tiling period in world units : when > 0 the heightmap is seamless and periodic in X
+    // and Z with this period, producing a FINITE world whose -x/+x and -z/+z edges join perfectly
+    // (a torus). 0 disables tiling (legacy infinite world). See LayeredNoise#evaluate(Vector2f,float).
+    private float worldSize;
+    // World ceiling (gridHeight * chunkHeight) and the derived surface altitude tier thresholds.
+    private final float snowLine;
+    private final float rockLine;
     private LayeredNoise layeredNoise;
     private final Map<Long, float[]> heightsCache =
             Collections.synchronizedMap(new HeightsCache(HEIGHTS_CACHE_CAPACITY));
@@ -64,6 +81,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // registry lookup (and, for itemGrass/waterLiquid, a String concatenation) per generated block.
     private volatile boolean blocksResolved = false;
     private Block blockRock;
+    private Block blockSnow;
     private Block blockGrass;
     private Block blockSand;
     private Block blockDirt;
@@ -74,14 +92,42 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private Block blockItemGrass;
 
     public NoiseTerrainGenerator(long seed, float waterHeight) {
+        this(seed, waterHeight, DEFAULT_WORLD_HEIGHT);
+    }
+
+    public NoiseTerrainGenerator(long seed, float waterHeight, int worldHeight) {
+        this(seed, waterHeight, worldHeight, 0f);
+    }
+
+    /**
+     * @param worldHeight the world ceiling in blocks (gridHeight * chunkHeight), used to place the
+     *                    snow and rock altitude tiers on the land surface.
+     * @param worldSize   horizontal tiling period in world units (0 = infinite/non-tiling). When
+     *                    &gt; 0 the terrain is seamless and periodic in X/Z with this period, i.e. a
+     *                    finite world whose opposite edges join perfectly.
+     */
+    public NoiseTerrainGenerator(long seed, float waterHeight, int worldHeight, float worldSize) {
         this.seed = seed;
         this.waterHeight = waterHeight;
+        this.worldSize = worldSize;
+        this.snowLine = SNOW_LINE_RATIO * worldHeight;
+        this.rockLine = ROCK_LINE_RATIO * worldHeight;
         createWorldNoise();
+    }
+
+    public float getWorldSize() {
+        return worldSize;
+    }
+
+    public void setWorldSize(float worldSize) {
+        this.worldSize = worldSize;
+        heightsCache.clear();
     }
 
     private void resolveBlocks() {
         BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
         blockRock = registry.get(BlockIds.ROCK);
+        blockSnow = registry.get(BlockIds.SNOW);
         blockGrass = registry.get(BlockIds.GRASS);
         blockSand = registry.get(BlockIds.SAND);
         blockDirt = registry.get(BlockIds.DIRT);
@@ -212,9 +258,16 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
         Block block;
         if (worldY > waterHeight) {
-            block = blockGrass;
-            if (y < 15 && (groundh * 10000) % 1 == 0) {
-                chunk.addBlock(x, y + 1, z, blockItemGrass);
+            // Altitude tiers : snow caps the highest peaks, bare rock below it, grass lower down.
+            if (worldY > snowLine) {
+                block = blockSnow;
+            } else if (worldY > rockLine) {
+                block = blockRock;
+            } else {
+                block = blockGrass;
+                if (y < 15 && (groundh * 10000) % 1 == 0) {
+                    chunk.addBlock(x, y + 1, z, blockItemGrass);
+                }
             }
         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
             block = blockSand;
@@ -301,7 +354,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 int index = (z + CANOPY_RADIUS) + rowx;
                 float groundh = heights[index];
                 int y = (int) groundh - (chunk.getLocation().y * chunkSize.y);
-                if (y > -TREE_HEIGHT && y < chunkSize.z && groundh > (waterHeight + 1) && ((groundh * 100) % 1 == 0)) {
+                // Trees grow only on the grassy band : above the shore (waterHeight + 1) and below the
+                // rock line (the barren rock/snow tiers above it have no vegetation).
+                if (y > -TREE_HEIGHT && y < chunkSize.z && groundh > (waterHeight + 1)
+                        && groundh <= rockLine && ((groundh * 100) % 1 == 0)) {
                     createTree(chunk, x, y, z);
                 }
             }
@@ -407,7 +463,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private float getHeight(float worldX, float worldZ, Vector2f sample) {
-        return layeredNoise.evaluate(sample.set(worldX, worldZ)) + GROUND_MIN;
+        return layeredNoise.evaluate(sample.set(worldX, worldZ), worldSize) + GROUND_MIN;
     }
 
     /**

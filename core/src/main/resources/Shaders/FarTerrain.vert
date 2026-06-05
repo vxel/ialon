@@ -18,9 +18,13 @@ void main() {
     // Uniform world scale : direction is preserved (renormalized in the fragment shader).
     vNormal = (g_WorldMatrix * vec4(inNormal, 0.0)).xyz;
     vDist = distance(worldPos.xyz, g_CameraPosition);
-    // Horizontal distance from the camera : used to discard the far terrain inside the loaded-chunk
-    // region (where the voxels are the truth), so it can't show up in caves / under overhangs there.
-    vHorizDist = distance(worldPos.xz, g_CameraPosition.xz);
+    // Square (Chebyshev) horizontal distance from the camera : used to discard the far terrain inside
+    // the loaded-chunk region (where the voxels are the truth), so it can't show up in caves / under
+    // overhangs there. The loaded region is an axis-aligned SQUARE of chunks, so max(|dx|,|dz|) matches
+    // its boundary on all four sides ; a Euclidean (circular) test would cut the corners and let the far
+    // terrain creep in along the diagonals, where it never lines up with a chunk edge.
+    vec2 horiz = abs(worldPos.xz - g_CameraPosition.xz);
+    vHorizDist = max(horiz.x, horiz.y);
     // World height drives the altitude palette (water / sand / grass) in the fragment shader.
     vHeight = worldPos.y;
     gl_Position = g_WorldViewProjectionMatrix * vec4(inPosition, 1.0);

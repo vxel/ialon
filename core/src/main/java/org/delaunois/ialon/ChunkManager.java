@@ -223,8 +223,6 @@ public class ChunkManager {
      * skipped). An OPAQUE full chunk is hidden only by fully-opaque neighbours (a transparent
      * neighbour like water would reveal its faces). A transparent full chunk (e.g. full of water)
      * is hidden by any full neighbour (opaque or water both occlude its faces).
-     *
-     * @param requireOpaque true if neighbours must be fully opaque to occlude (chunk is opaque)
      */
     private boolean isSurroundedByOpaqueChunks(Vec3i location) {
         return occludes(cache.unsafeFastGet(location.add(0, 1, 0)))

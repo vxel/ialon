@@ -60,7 +60,10 @@ public class IalonConfigRepository {
 
         if (playerStateDTO != null) {
             if (playerStateDTO.getLocation() != null) {
-                config.setPlayerLocation(playerStateDTO.getLocation());
+                // Finite world : bring a position saved far from the origin back into the canonical tile.
+                // The terrain is periodic, so this lands on identical ground with no visible jump and
+                // keeps coordinates bounded across sessions. No-op for the infinite world.
+                config.setPlayerLocation(config.wrapToWorld(playerStateDTO.getLocation()));
             }
             if (playerStateDTO.getRotation() != null && playerStateDTO.getRotation().getRotationColumn(2).isUnitVector()) {
                 config.setPlayerRotation(playerStateDTO.getRotation());

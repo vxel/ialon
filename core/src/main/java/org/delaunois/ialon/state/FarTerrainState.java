@@ -28,6 +28,7 @@ import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.NoiseTerrainGenerator;
 import org.delaunois.ialon.TerrainGenerator;
 
 import lombok.Getter;
@@ -66,9 +67,19 @@ public class FarTerrainState extends BaseAppState {
     private final Vector3f lightDir = new Vector3f(-0.5f, -0.7f, -0.5f).normalizeLocal();
     // The fog colour is bound (once) to SkyControl's live ground colour so it follows the day/night cycle.
     private boolean fogColorBound = false;
+    // Finite world : the (periodic) far terrain is re-centered on the player's current tile so the
+    // horizon surrounds the player wherever they roam. These hold the current snap, in world units
+    // (always a multiple of the world period), so update() only moves the mesh when the tile changes.
+    private float tileOffsetX = 0f;
+    private float tileOffsetZ = 0f;
 
     public FarTerrainState(IalonConfig config) {
-        this(config, config.getFarTerrainExtent());
+        // Finite (torus) world : span 2 tiles, centered on the player's tile (see update()). With the
+        // far terrain snapped to the nearest tile, the player is at most worldSize/2 from the center, so
+        // a 2-tile span (worldSize on each side) comfortably covers the fog-visible horizon in every
+        // direction while keeping the sampling step half that of a 3-tile span (sharper coastlines).
+        // The relief is periodic, so the off-center tiles match seamlessly. Infinite world : plain extent.
+        this(config, config.getWorldSize() > 0f ? 2f * config.getWorldSize() : config.getFarTerrainExtent());
     }
 
     public FarTerrainState(IalonConfig config, float extent) {
@@ -118,14 +129,19 @@ public class FarTerrainState extends BaseAppState {
     private float[] sampleHeightmap(TerrainGenerator generator, float step) {
         float[] heightmap = new float[HEIGHTMAP_SIZE * HEIGHTMAP_SIZE];
         float half = (HEIGHTMAP_SIZE - 1) / 2f;
+        // Flatten everything below the water level up to the water surface : the distant seas / lakes
+        // then render as a flat plane at waterHeight (matching the voxel water surface), instead of
+        // showing the bumpy, relief-shaded submerged floor that the player never actually sees.
+        float waterLevel = config.getWaterHeight();
         Vector3f sample = new Vector3f();
         for (int j = 0; j < HEIGHTMAP_SIZE; j++) {
             float worldZ = (j - half) * step;
             int row = j * HEIGHTMAP_SIZE;
             for (int i = 0; i < HEIGHTMAP_SIZE; i++) {
                 float worldX = (i - half) * step;
+                float h = Math.max(generator.getHeight(sample.set(worldX, 0f, worldZ)), waterLevel);
                 // Pre-divided by step : after the uniform localScale (step) the world Y is exact again.
-                heightmap[row + i] = generator.getHeight(sample.set(worldX, 0f, worldZ)) / step;
+                heightmap[row + i] = h / step;
             }
         }
         return heightmap;
@@ -142,13 +158,23 @@ public class FarTerrainState extends BaseAppState {
         mat.setFloat("FogDistance", config.getFarTerrainFogDistance());
         mat.setFloat("FogDensity", config.getFarTerrainFogDensity());
         mat.setFloat("DepthBias", config.getFarTerrainDepthBias());
-        // Discard the far terrain within the loaded-chunk region : it only shows beyond the voxels,
-        // starting where the voxel fade begins (gridRadius*chunkSize - chunkSize).
+        // Discard the far terrain within the loaded-chunk region : it only shows beyond the voxels.
+        // Interpreted as a square (Chebyshev) half-extent in the shader, so it matches the square chunk
+        // footprint ; the -chunkSize margin keeps it safely inside as the camera moves within a chunk.
         mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
-        // Altitude palette : roughly reflects the blocks the generator places by height.
+        // Altitude palette : reflects the blocks the generator places by height (water / sand /
+        // grass, then bare rock and snow on the high mountains). The rock & snow lines use the SAME
+        // ratios and world ceiling as NoiseTerrainGenerator, so the distant tiers line up exactly.
         mat.setColor("WaterColor", config.getFarTerrainWaterColor());
         mat.setColor("SandColor", config.getFarTerrainSandColor());
+        mat.setColor("RockColor", config.getFarTerrainRockColor());
+        mat.setColor("SnowColor", config.getFarTerrainSnowColor());
         mat.setFloat("WaterHeight", config.getWaterHeight());
+        mat.setFloat("RockHeight", NoiseTerrainGenerator.ROCK_LINE_RATIO * config.getMaxy());
+        mat.setFloat("SnowHeight", NoiseTerrainGenerator.SNOW_LINE_RATIO * config.getMaxy());
+        // The terrain mesh is nudged vertically (localTranslation below) ; the shader undoes this
+        // offset so the altitude palette compares against the generator's true block heights.
+        mat.setFloat("HeightOffset", config.getFarTerrainVerticalOffset());
         // Shared instance : update() mutates it in place so the sun direction follows day/night.
         mat.setVector3("LightDir", lightDir);
         return mat;
@@ -176,6 +202,24 @@ public class FarTerrainState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
+        // Finite (torus) world : follow the player so the horizon is always around them. The relief is
+        // periodic with the world size, so snapping the mesh to the nearest multiple of that period
+        // keeps it perfectly aligned with the voxels -- a pure translation, no heightmap regeneration.
+        // The shader's inner-radius discard and fog are camera-relative, so they stay correct too.
+        if (terrain != null) {
+            float w = config.getWorldSize();
+            Vector3f p = config.getPlayerLocation();
+            if (w > 0f && p != null) {
+                float sx = Math.round(p.x / w) * w;
+                float sz = Math.round(p.z / w) * w;
+                if (sx != tileOffsetX || sz != tileOffsetZ) {
+                    tileOffsetX = sx;
+                    tileOffsetZ = sz;
+                    terrain.setLocalTranslation(sx, config.getFarTerrainVerticalOffset(), sz);
+                }
+            }
+        }
+
         // Keep the far terrain lit by the same sun as the world (day/night cycle). The material holds
         // the lightDir instance by reference, so mutating it in place updates the shader uniform.
         LightingState lighting = getState(LightingState.class);

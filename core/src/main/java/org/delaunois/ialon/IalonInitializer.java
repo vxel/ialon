@@ -23,7 +23,6 @@ import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
 import com.rvandoosselaer.blocks.BlocksTheme;
 import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
 import com.rvandoosselaer.blocks.TypeRegistry;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
@@ -66,7 +65,7 @@ public class IalonInitializer {
 
     public static void setupCamera(SimpleApplication app) {
         app.getCamera().setFrustumNear(0.1f);
-        app.getCamera().setFrustumFar(1000f);
+        app.getCamera().setFrustumFar(4000f);
         app.getCamera().setFov(50);
     }
 
