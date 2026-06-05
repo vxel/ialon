@@ -28,6 +28,9 @@ void main() {
     vec4 diffuseColor;
     vec2 uv = texCoord;
 
+    // Without a diffuse map (e.g. the flat-colour calm-water material) the whole sampling block is
+    // compiled out : referencing m_DiffuseMap when DIFFUSEMAP is undefined is a GLSL compile error.
+    #ifdef DIFFUSEMAP
     if (wrapCoordMin.y > 0.0) {
        if (uv.y >= wrapCoordMax.y) {
             uv.y = uv.y - PADDED_UV_TEX_SIZE;
@@ -43,12 +46,11 @@ void main() {
         diffuseColor = textureGrad(m_DiffuseMap, uv, dFdx(texCoord), dFdy(texCoord));
 
     } else {
-        #ifdef DIFFUSEMAP
         diffuseColor = texture2D(m_DiffuseMap, uv);
-        #else
-        diffuseColor = vec4(1.0);
-        #endif
     }
+    #else
+    diffuseColor = vec4(1.0);
+    #endif
 
     float alpha = DiffuseSum.a * diffuseColor.a;
 
