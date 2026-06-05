@@ -65,7 +65,7 @@ public class SkyState extends BaseAppState {
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
 
-        Ground groundPlate = new Ground(100, 100);
+        Ground groundPlate = new Ground(35, 35);
         ground = new Geometry("ground", groundPlate);
         ground.setQueueBucket(RenderQueue.Bucket.Sky);
         ground.setCullHint(Spatial.CullHint.Never);
@@ -77,7 +77,9 @@ public class SkyState extends BaseAppState {
         Material groundMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         groundMat.setTexture("ColorMap", groundTexture);
-        groundMat.setColor("Color", skyControl.getGroundColor());
+        // Dark "below horizon" background : decoupled from skyControl.getGroundColor() (which stays
+        // bound to the far-terrain fog), so the ground plate goes black without affecting the fog.
+        groundMat.setColor("Color", config.getSkyFloorColor());
         ground.setMaterial(groundMat);
         config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
         groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
@@ -120,6 +122,9 @@ public class SkyState extends BaseAppState {
         final ColorRGBA skyColor = config.getSkyColor();
         final ColorRGBA skyHorizonColor = config.getSkyHorizonColor();
         final ColorRGBA skyZenithColor = config.getSkyZenithColor();
+        // Nadir colour : the bottom-cap centre vertex fades to this, so the dome floor goes from the
+        // horizon colour at its rim (horizon unchanged) to skyFloorColor straight down (dark void).
+        final ColorRGBA skyFloorColor = config.getSkyFloorColor();
 
         fpb.put(new float[] {
                 // Sides Top Vertices
@@ -169,8 +174,8 @@ public class SkyState extends BaseAppState {
                 // Top Center Vextex
                 skyZenithColor.r, skyZenithColor.g, skyZenithColor.b, skyZenithColor.a,
 
-                // Bottom center Vertex
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a
+                // Bottom center Vertex (nadir) : fades the dome floor to the dark "below horizon" colour
+                skyFloorColor.r, skyFloorColor.g, skyFloorColor.b, skyFloorColor.a
         });
         skyCylinder.setBuffer(VertexBuffer.Type.Color, 4, fpb);
         return new Geometry("sky", skyCylinder);

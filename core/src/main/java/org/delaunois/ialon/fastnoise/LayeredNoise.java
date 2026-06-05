@@ -106,6 +106,47 @@ public class LayeredNoise {
         return result;
     }
 
+    /**
+     * Seamless (tileable) variant of {@link #evaluate(Vector2f)}, periodic with {@code period} world
+     * units in both axes : the field matches itself across every {@code period} step, giving a finite
+     * world with perfect edge joins. Falls back to {@link #evaluate(Vector2f)} when {@code period <= 0}.
+     */
+    public float evaluate(Vector2f v, float period) {
+
+        if (period <= 0) {
+            return evaluate(v);
+        }
+
+        float result = 0;
+
+        for (NoiseLayer layer : layers) {
+
+            LayerMask mask = null;
+            if (!layerMasks.isEmpty()) {
+                mask = layerMasks.stream()
+                        .filter(m -> m.getNoiseLayer().getName().equals(layer.getName()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            float layerNoise = layer.evaluate(v, period);
+
+            if (mask != null) {
+                layerNoise *= mask.getWithLayer().evaluate(v, period);
+            }
+
+            layerNoise *= layer.getStrength();
+            result += layerNoise;
+        }
+
+        if (hardFloor) {
+            result += FastMath.saturate((hardFloorHeight - result) * 3.0f)
+                    * ((hardFloorHeight - result) * hardFloorStrength);
+        }
+
+        return result;
+    }
+
     private float smoothstep(final float a, final float b, final float x) {
         if (x < a) {
             return 0;

@@ -120,6 +120,31 @@ public class NoiseLayer {
 
     }
 
+    /**
+     * Seamless (tileable) variant of {@link #evaluate(Vector2f)}, periodic with {@code period} world
+     * units in both axes. Used to build a finite, edge-matching world. Falls back to the regular
+     * evaluation when {@code period <= 0}. Gradient-perturb is skipped (it would break the seam).
+     */
+    public float evaluate(Vector2f v, float period) {
+
+        if (period <= 0) {
+            return evaluate(v);
+        }
+
+        if (!enabled) {
+            return 0;
+        }
+
+        float noise = primaryNoise.GetSimplexFractalTiled(v.x, v.y, period);
+
+        if (inverted) {
+            noise = -noise;
+        }
+
+        return noise;
+
+    }
+
     public Texture2D generateTexture(int size) {
         ByteBuffer buffer = BufferUtils.createByteBuffer(size * size * 4);
         Image result = new Image(Image.Format.RGB8, size, size, buffer, ColorSpace.sRGB);

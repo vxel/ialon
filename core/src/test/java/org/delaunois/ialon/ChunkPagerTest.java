@@ -61,7 +61,10 @@ class ChunkPagerTest {
             chunkPager.update();
         }
 
-        assertEquals(1863, chunkPager.getAttachedPages().size()); // grid 9 x (2*gridHeight+1=23) x 9
+        // The pager (no grid bounds set here) must attach exactly the whole grid, with no overshoot.
+        // Derived from the configured grid (gridSize x (gridHeight*2+1) x gridSize) so it stays correct
+        // when those defaults change -- the previous hard-coded count went stale after gridHeight moved.
+        assertEquals(numPages, chunkPager.getAttachedPages().size());
 
         chunkPager.cleanup(100);
         chunkManager.cleanup(100);

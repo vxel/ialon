@@ -45,18 +45,30 @@ public class IalonConfig {
     private int chunkHeight = 16;
     private int gridHeight = 7;
 
+    // World
+
+    // Finite world : when true the world is a torus -- the terrain is seamless and periodic in X and
+    // Z with period worldSize (= worldSizeChunks * chunkSize world units), so the -x/+x and -z/+z
+    // edges join perfectly. The player roams freely (no runtime bound) but its saved position is wrapped
+    // back into the origin-centered tile on load (see wrapToWorld), and saves/edits are keyed modulo
+    // worldSizeChunks so content is finite and consistent across the seam. When false the world is the
+    // legacy infinite, non-tiling terrain.
+    private boolean finiteWorld = true;
+    private int worldSizeChunks = 256; // square world side, in chunks (256 * 16 = 4096 world units)
+
     // Far terrain : a distant low-detail heightmap horizon rendered beyond the loaded chunks.
     private boolean farTerrain = true;
-    private float farTerrainFogDistance = 1500f;
+    private float farTerrainFogDistance = 2500f;
     private float farTerrainFogDensity = 5f;
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.30f, 0.45f, 0.22f, 1f); // grass / land
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.12f, 0.34f, 0.55f, 1f);
-    private ColorRGBA farTerrainSandColor = new ColorRGBA(0.80f, 0.74f, 0.48f, 1f);
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.42f, 0.667f, 0.221f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.15f, 0.59f, 0.78f, 1f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainSandColor = new ColorRGBA(1.0f, 0.966f, 0.725f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
+    private ColorRGBA farTerrainRockColor = new ColorRGBA(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
+    private ColorRGBA farTerrainSnowColor = new ColorRGBA(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
-    // World
     private float waterHeight = 30;
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
@@ -68,6 +80,9 @@ public class IalonConfig {
     private ColorRGBA skyColor = ColorRGBA.fromRGBA255(100, 172, 255, 255);
     private ColorRGBA skyZenithColor = ColorRGBA.fromRGBA255(65, 142, 255, 255);
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
+    // Background well below the horizon (nadir) : the sky dome floor + ground plate fade to this,
+    // so looking down past the terrain shows a dark void instead of the light-blue sky ground.
+    private ColorRGBA skyFloorColor = new ColorRGBA(0f, 0f, 0f, 1f);
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
     private ColorRGBA skyEveningColor = new ColorRGBA(1f, 0.7f, 0.5f, 1);
@@ -143,6 +158,32 @@ public class IalonConfig {
         return gridHeight * chunkHeight;
     }
 
+    /**
+     * Horizontal world period in world units (worldSizeChunks * chunkSize), or 0 when the world is
+     * infinite. Used as the tiling period of the terrain noise and as the half-bounds of the player.
+     */
+    public float getWorldSize() {
+        return finiteWorld ? (float) worldSizeChunks * chunkSize : 0f;
+    }
+
+    /**
+     * Wraps a world position into the canonical finite-world tile centered on the origin
+     * ([-worldSize/2, +worldSize/2] in X and Z) ; Y is left untouched (the world is not vertically
+     * circular). No-op when the world is infinite. Since the terrain is periodic with worldSize, the
+     * wrapped position lands on identical terrain : used to bring a saved player position back near the
+     * origin on load, keeping coordinates bounded across sessions with no visible jump. Mutates and
+     * returns the given vector.
+     */
+    public Vector3f wrapToWorld(Vector3f location) {
+        float w = getWorldSize();
+        if (w <= 0f || location == null) {
+            return location;
+        }
+        location.x -= w * Math.round(location.x / w);
+        location.z -= w * Math.round(location.z / w);
+        return location;
+    }
+
     public Vec3i getGridLowerBound() {
         return new Vec3i(Integer.MIN_VALUE, 0, Integer.MIN_VALUE);
     }
@@ -183,11 +224,14 @@ public class IalonConfig {
     public ChunkRepository getDefaultChunkRepository() {
         ZipFileRepository repository = new ZipFileRepository();
         repository.setPath(getSavePath());
+        // Finite world : key saves/edits by canonical (wrapped) coordinates so a tile is stored once
+        // and edits are consistent across the seam. 0 keeps the legacy per-(x,z) storage.
+        repository.setWorldSizeChunks(finiteWorld ? worldSizeChunks : 0);
         return repository;
     }
 
     public TerrainGenerator getDefaultChunkGenerator() {
-        return new NoiseTerrainGenerator(2, this.getWaterHeight());
+        return new NoiseTerrainGenerator(2, this.getWaterHeight(), this.getMaxy(), this.getWorldSize());
     }
 
     private static int clamp(int value, int min, int max) {
