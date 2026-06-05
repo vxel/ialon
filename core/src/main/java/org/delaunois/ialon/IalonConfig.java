@@ -57,7 +57,7 @@ public class IalonConfig {
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
     // World
-    private float waterHeight = 50f;
+    private float waterHeight = 30;
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
