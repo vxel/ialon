@@ -3,6 +3,8 @@ MaterialDef Far Terrain {
     MaterialParameters {
         Color BaseColor
         Vector3 LightDir
+        Color AmbientColor
+        Color SunColor
         Color FogColor
         Float FogDistance
         Float FogDensity

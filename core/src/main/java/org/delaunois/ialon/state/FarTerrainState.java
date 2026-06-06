@@ -67,6 +67,9 @@ public class FarTerrainState extends BaseAppState {
     private final Vector3f lightDir = new Vector3f(-0.5f, -0.7f, -0.5f).normalizeLocal();
     // The fog colour is bound (once) to SkyControl's live ground colour so it follows the day/night cycle.
     private boolean fogColorBound = false;
+    // The ambient / sun colours are bound (once) to LightingState's live light colours (mutated in place
+    // by SunControl) so the far terrain dims and tints with the day/night cycle like the voxels.
+    private boolean lightColorsBound = false;
     // Finite world : the (periodic) far terrain is re-centered on the player's current tile so the
     // horizon surrounds the player wherever they roam. These hold the current snap, in world units
     // (always a multiple of the world period), so update() only moves the mesh when the tile changes.
@@ -177,6 +180,10 @@ public class FarTerrainState extends BaseAppState {
         mat.setFloat("HeightOffset", config.getFarTerrainVerticalOffset());
         // Shared instance : update() mutates it in place so the sun direction follows day/night.
         mat.setVector3("LightDir", lightDir);
+        // Lighting colours : placeholders here, rebound by reference in update() to the scene's live
+        // AmbientLight / DirectionalLight colours so the far terrain is lit exactly like the voxels.
+        mat.setColor("AmbientColor", ColorRGBA.White.mult(config.getAmbiantIntensity()));
+        mat.setColor("SunColor", ColorRGBA.White.mult(config.getSunIntensity()));
         return mat;
     }
 
@@ -225,6 +232,15 @@ public class FarTerrainState extends BaseAppState {
         LightingState lighting = getState(LightingState.class);
         if (lighting != null && lighting.getDirectionalLight() != null) {
             lightDir.set(lighting.getDirectionalLight().getDirection());
+
+            // Bind the ambient / sun colours to the scene's live light colours (mutated in place by
+            // SunControl as time passes). Bound once : the shared references then track the day/night
+            // cycle automatically, so the far terrain dims and tints exactly like the voxels.
+            if (!lightColorsBound && material != null) {
+                material.setColor("AmbientColor", lighting.getAmbientLight().getColor());
+                material.setColor("SunColor", lighting.getDirectionalLight().getColor());
+                lightColorsBound = true;
+            }
         }
 
         // Bind the fog colour to SkyControl's live ground colour (mutated in place as time passes), so
