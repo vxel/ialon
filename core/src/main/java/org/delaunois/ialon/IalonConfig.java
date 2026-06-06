@@ -60,9 +60,9 @@ public class IalonConfig {
     private boolean farTerrain = true;
     private float farTerrainFogDistance = 2500f;
     private float farTerrainFogDensity = 5f;
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.42f, 0.667f, 0.221f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.15f, 0.59f, 0.78f, 1f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
-    private ColorRGBA farTerrainSandColor = new ColorRGBA(1.0f, 0.966f, 0.725f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 1f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainSandColor = new ColorRGBA(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
     private ColorRGBA farTerrainSnowColor = new ColorRGBA(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
@@ -74,7 +74,7 @@ public class IalonConfig {
     // quads (greedy meshing) instead of one textured, scrolling quad per block. Huge triangle savings on
     // large seas/lakes, at the cost of dropping the surface texture/animation (calmWaterColor is used).
     private boolean greedyCalmWater = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png
+    private ColorRGBA calmWaterColor = new ColorRGBA(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;

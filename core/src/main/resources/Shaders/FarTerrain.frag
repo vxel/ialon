@@ -2,6 +2,8 @@
 
 uniform vec4 m_BaseColor;
 uniform vec3 m_LightDir;     // world-space direction the sunlight travels along
+uniform vec4 m_AmbientColor; // scene ambient light colour (sunColor * ambiantIntensity, day/night)
+uniform vec4 m_SunColor;     // scene directional light colour (sunColor * sunIntensity, day/night)
 uniform vec4 m_FogColor;
 uniform float m_FogDistance; // distance scale of the fog
 uniform float m_FogDensity;  // fog thickness
@@ -55,7 +57,11 @@ void main() {
     land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
     vec3 terrainColor = mix(m_WaterColor.rgb, land, landAmount);
 
-    vec3 color = terrainColor * (0.35 + 0.65 * diffuse);
+    // Match the voxel lighting model (jME Phong, see Ialon.j3md) : ambient + sun * NdotL, where
+    // both colours already carry the config intensities (ambiantIntensity / sunIntensity) AND the
+    // day/night cycle, baked in by SunControl. So the far terrain now dims at dusk and respects the
+    // lighting sliders exactly like the loaded voxels do (no baked vertex light / specular here).
+    vec3 color = terrainColor * (m_AmbientColor.rgb + m_SunColor.rgb * diffuse);
 
     // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour).
     // Only the far terrain uses this material, so the sky is left untouched.
