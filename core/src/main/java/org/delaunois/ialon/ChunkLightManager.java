@@ -44,6 +44,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ChunkLightManager {
 
+    // Sunlight under water never drops below this level, regardless of depth : deep water stays well-lit
+    // instead of fading to gloom. Applied both at generation and during sunlight propagation.
+    public static final int WATER_MIN_SUNLIGHT = 13;
+
     @Setter
     private ChunkManager chunkManager;
 
@@ -326,12 +330,19 @@ public class ChunkLightManager {
         }
 
         int blockLightLevel = chunk.getSunlight(x, y, z);
-        if (blockLightLevel + 2 <= lightLevel) {
+        // Sunlight dims by 1 per block, but under water it is floored : a water block stays at least
+        // WATER_MIN_SUNLIGHT however deep it is. The propagation still terminates -- once a water block
+        // reaches the floor, its neighbours are already >= the floor and stop being updated.
+        int target = lightLevel - 1;
+        if (block != null && block.getLiquidLevel() > 0 && target < WATER_MIN_SUNLIGHT) {
+            target = WATER_MIN_SUNLIGHT;
+        }
+        if (blockLightLevel < target) {
             if (log.isDebugEnabled()) {
-                log.debug("PAS4 - Setting light ({}, {}, {}) to {}. BL={} LL={}", x, y, z, lightLevel - 1, blockLightLevel, lightLevel);
+                log.debug("PAS4 - Setting light ({}, {}, {}) to {}. BL={} LL={}", x, y, z, target, blockLightLevel, lightLevel);
             }
 
-            chunk.setSunlight(x, y, z, lightLevel - 1);
+            chunk.setSunlight(x, y, z, target);
             updateChunkMeshUpdateRequests(chunk, x, y, z, context);
             context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
 

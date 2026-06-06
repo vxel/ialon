@@ -65,7 +65,7 @@ public class SkyState extends BaseAppState {
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
 
-        Ground groundPlate = new Ground(35, 35);
+        Ground groundPlate = new Ground(50, 50);
         ground = new Geometry("ground", groundPlate);
         ground.setQueueBucket(RenderQueue.Bucket.Sky);
         ground.setCullHint(Spatial.CullHint.Never);
