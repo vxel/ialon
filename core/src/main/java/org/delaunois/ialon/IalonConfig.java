@@ -74,7 +74,7 @@ public class IalonConfig {
     // quads (greedy meshing) instead of one textured, scrolling quad per block. Huge triangle savings on
     // large seas/lakes, at the cost of dropping the surface texture/animation (calmWaterColor is used).
     private boolean greedyCalmWater = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 0.82f); // mean albedo+alpha of ialon-theme/water_calm.png
+    private ColorRGBA calmWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
@@ -87,7 +87,7 @@ public class IalonConfig {
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
     // Background well below the horizon (nadir) : the sky dome floor + ground plate fade to this,
     // so looking down past the terrain shows a dark void instead of the light-blue sky ground.
-    private ColorRGBA skyFloorColor = new ColorRGBA(0f, 0f, 0f, 1f);
+    private ColorRGBA skyFloorColor = new ColorRGBA(0.15f, 0.59f, 0.78f, 1f);
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
     private ColorRGBA skyEveningColor = new ColorRGBA(1f, 0.7f, 0.5f, 1);

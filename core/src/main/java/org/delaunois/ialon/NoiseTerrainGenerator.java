@@ -281,9 +281,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private Block generateUnderground(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon) {
         Block block;
         if (worldY > groundh) {
-            // Above ground but below horizon => in water
+            // Above ground but below horizon => in water. Water stays well-lit : its sunlight never drops
+            // below WATER_MIN_SUNLIGHT regardless of depth (so deep water is not gloomy).
             block = blockWaterLiquid;
-            chunk.setSunlight(x, y, z, Math.max(0, 14 - ((int) horizon - worldY)));
+            chunk.setSunlight(x, y, z, Math.max(ChunkLightManager.WATER_MIN_SUNLIGHT, 14 - ((int) horizon - worldY)));
 
         } else {
             chunk.setSunlight(x, y, z, 0);
@@ -357,7 +358,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 // Trees grow only on the grassy band : above the shore (waterHeight + 1) and below the
                 // rock line (the barren rock/snow tiers above it have no vegetation).
                 if (y > -TREE_HEIGHT && y < chunkSize.z && groundh > (waterHeight + 1)
-                        && groundh <= rockLine && ((groundh * 100) % 1 == 0)) {
+                        && groundh <= rockLine && ((groundh * 1000) % 1 == 0)) {
                     createTree(chunk, x, y, z);
                 }
             }
