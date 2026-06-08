@@ -34,10 +34,7 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.CameraControl;
 import com.simsilica.lemur.Label;
 
-import org.delaunois.ialon.ChunkLightManager;
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.PlayerListener;
-import org.delaunois.ialon.WorldManager;
 import org.delaunois.ialon.control.ButtonHighlightControl;
 import org.delaunois.ialon.control.PlaceholderControl;
 import org.delaunois.ialon.control.PlayerActionControl;
@@ -54,6 +51,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.ChunkLightManager;
+import org.delaunois.ialon.input.PlayerListener;
+import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 public class PlayerState extends BaseAppState {

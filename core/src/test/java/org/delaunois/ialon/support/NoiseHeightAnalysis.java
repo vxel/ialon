@@ -3,7 +3,7 @@ package org.delaunois.ialon.support;
 import com.jme3.math.Vector3f;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
  * Manual (interactive) analysis tool for the terrain height distribution — NOT part of the

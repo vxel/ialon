@@ -20,7 +20,7 @@ import org.delaunois.ialon.control.SunControl;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_TOGGLE_TIME_RUN;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_TOGGLE_TIME_RUN;
 
 @Slf4j
 public class SunState extends BaseAppState implements ActionListener {

@@ -6,22 +6,30 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.CameraNode;
-import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
+
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.WorldSettings;
+import org.delaunois.ialon.blocks.ChunkRepository;
+import org.delaunois.ialon.blocks.TextureAtlasManager;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.input.InputActionManager;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.TerrainGenerator;
+import org.delaunois.ialon.blocks.ZipFileRepository;
 
 /**
  * Global configuration options for Ialon
  */
 @Getter
 @Setter
-public class IalonConfig {
+public class IalonConfig implements WorldSettings {
 
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";

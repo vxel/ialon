@@ -8,10 +8,10 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.TypeIds;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.WorldManager;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 @Getter

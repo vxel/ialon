@@ -13,17 +13,17 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.RotationHelper;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_LOOK_DOWN;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_LOOK_LEFT;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_LOOK_RIGHT;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_LOOK_UP;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_RESET_CAM;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
-import static org.delaunois.ialon.IalonKeyMapping.TOUCH;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LOOK_DOWN;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LOOK_LEFT;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LOOK_RIGHT;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LOOK_UP;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RESET_CAM;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.TOUCH;
+import org.delaunois.ialon.util.RotationHelper;
 
 @Slf4j
 public class PlayerHeadDirectionControl extends AbstractControl implements ActionListener, AnalogListener, TouchListener {

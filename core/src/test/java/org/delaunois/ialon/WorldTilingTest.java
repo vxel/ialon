@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
  * Validates that the finite (torus) world has perfect edge joins : with a tiling period W, the

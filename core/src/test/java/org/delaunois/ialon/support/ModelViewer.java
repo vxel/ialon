@@ -12,7 +12,6 @@ import com.jme3.system.AppSettings;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
 
-import org.delaunois.ialon.EmptyGenerator;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
@@ -33,6 +32,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.delaunois.ialon.blocks.generator.EmptyGenerator;
 
 public class ModelViewer extends SimpleApplication {
 

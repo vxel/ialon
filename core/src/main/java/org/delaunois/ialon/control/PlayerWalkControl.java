@@ -13,11 +13,11 @@ import org.delaunois.ialon.IalonConfig;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_BACKWARD;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_FORWARD;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_JUMP;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_LEFT;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_RIGHT;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_BACKWARD;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FORWARD;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_JUMP;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LEFT;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RIGHT;
 
 @Slf4j
 public class PlayerWalkControl extends AbstractControl implements ActionListener {

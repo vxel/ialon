@@ -13,14 +13,8 @@ import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.ChunkLightManager;
-import org.delaunois.ialon.ChunkLiquidManager;
-import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.EmptyGenerator;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
-import org.delaunois.ialon.WorldManager;
-import org.delaunois.ialon.ZipFileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -29,6 +23,12 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.delaunois.ialon.blocks.ChunkLightManager;
+import org.delaunois.ialon.blocks.ChunkLiquidManager;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.generator.EmptyGenerator;
+import org.delaunois.ialon.blocks.WorldManager;
+import org.delaunois.ialon.blocks.ZipFileRepository;
 
 public abstract class BaseSceneryTest {
 

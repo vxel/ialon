@@ -38,7 +38,7 @@ import org.delaunois.ialon.IalonConfig;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 
 @Slf4j
 public class TimeFactorState extends BaseAppState implements ActionListener {

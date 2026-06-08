@@ -149,7 +149,7 @@ import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
-import static org.delaunois.ialon.IalonKeyMapping.TOUCH;
+import static org.delaunois.ialon.input.IalonKeyMapping.TOUCH;
 
 @Slf4j
 public class BlockSliderSelectionState extends BaseAppState {

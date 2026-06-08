@@ -5,7 +5,6 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.BlockNeighborhood;
 
 import static org.delaunois.ialon.blocks.Direction.DOWN;
 import static org.delaunois.ialon.blocks.Direction.EAST;

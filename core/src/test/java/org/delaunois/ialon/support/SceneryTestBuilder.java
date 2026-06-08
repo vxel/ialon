@@ -26,13 +26,13 @@ import com.jme3.util.PrimitiveAllocator;
 import org.delaunois.ialon.blocks.BlockIds;
 import org.delaunois.ialon.blocks.BlocksConfig;
 
-import org.delaunois.ialon.EmptyGenerator;
-import org.delaunois.ialon.FlatTerrainGenerator;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.delaunois.ialon.blocks.generator.EmptyGenerator;
+import org.delaunois.ialon.blocks.generator.FlatTerrainGenerator;
 
 
 public class SceneryTestBuilder {

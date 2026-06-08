@@ -56,3 +56,17 @@ java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
+
+// Keep authoring/source art (GIMP, Inkscape, Blender, model sources, backups) in version
+// control next to their runtime outputs, but exclude it from the packaged jar/APK -- none of
+// these are loaded at runtime (jME uses the .png / .j3o forms). Trims ~2.4 MB off the build,
+// which matters for the Android target.
+processResources {
+    exclude '**/*.xcf'      // GIMP sources -> .png
+    exclude '**/*.svg'      // Inkscape sources -> .png
+    exclude '**/*.blend'    // Blender sources -> .j3o
+    exclude '**/*.blend1'   // Blender auto-backups
+    exclude '**/*.obj'      // model sources -> .j3o
+    exclude '**/*.mtl'      // model sources -> .j3o
+    exclude '**/*.bak'      // backups
+}

@@ -24,11 +24,11 @@ import org.delaunois.ialon.blocks.shapes.Stairs;
 import org.delaunois.ialon.blocks.shapes.Wedge;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.WorldManager;
 
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 public class PlaceholderControl extends AbstractControl {

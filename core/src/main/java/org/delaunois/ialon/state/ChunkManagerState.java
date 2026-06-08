@@ -3,10 +3,10 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 
-import org.delaunois.ialon.ChunkManager;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.delaunois.ialon.blocks.ChunkManager;
 
 /**
  * An application state to handle the lifecycle of a ChunkManager.

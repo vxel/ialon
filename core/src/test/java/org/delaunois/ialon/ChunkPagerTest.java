@@ -20,6 +20,12 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.ChunkPager;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.generator.FlatTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.ZipFileRepository;
 
 class ChunkPagerTest {
 

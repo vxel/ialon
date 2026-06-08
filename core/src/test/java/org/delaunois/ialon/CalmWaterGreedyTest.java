@@ -23,6 +23,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
 
 /**
  * Validates the calm-water greedy surface mesher (FacesMeshGenerator) : the flat top of a still

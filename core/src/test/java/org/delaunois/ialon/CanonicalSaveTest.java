@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.delaunois.ialon.blocks.ZipFileRepository;
 
 /**
  * Validates the finite-world save canonicalization : a chunk saved at any location is stored once,
