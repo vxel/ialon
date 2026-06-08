@@ -20,9 +20,9 @@ package org.delaunois.ialon;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkManagerListener;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.ArrayList;

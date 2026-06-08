@@ -3,7 +3,7 @@ package org.delaunois.ialon;
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.Chunk;
+import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.BeforeAll;

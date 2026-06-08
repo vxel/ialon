@@ -1,6 +1,6 @@
 package org.delaunois.ialon;
 
-import com.rvandoosselaer.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlockIds;
 
 import org.delaunois.ialon.support.BaseSceneryTest;
 import org.junit.jupiter.api.Test;

@@ -7,7 +7,7 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
-import com.rvandoosselaer.blocks.Block;
+import org.delaunois.ialon.blocks.Block;
 
 import org.delaunois.ialon.IalonConfig;
 

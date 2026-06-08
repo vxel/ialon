@@ -8,9 +8,9 @@ import com.jme3.asset.DesktopAssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkLightManager;

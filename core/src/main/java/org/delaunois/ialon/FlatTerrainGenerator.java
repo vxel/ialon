@@ -1,10 +1,10 @@
 package org.delaunois.ialon;
 
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 public class FlatTerrainGenerator implements TerrainGenerator {

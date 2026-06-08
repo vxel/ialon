@@ -3,8 +3,8 @@ package org.delaunois.ialon.state;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkManagerListener;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;

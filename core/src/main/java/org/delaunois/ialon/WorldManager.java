@@ -1,14 +1,14 @@
 package org.delaunois.ialon;
 
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.Direction;
-import com.rvandoosselaer.blocks.Shape;
-import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.Direction;
+import org.delaunois.ialon.blocks.Shape;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.Arrays;
@@ -21,11 +21,11 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.rvandoosselaer.blocks.BlockIds.RAIL;
-import static com.rvandoosselaer.blocks.BlockIds.RAIL_CURVED;
-import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
-import static com.rvandoosselaer.blocks.TypeIds.RAIL_SLOPE;
-import static com.rvandoosselaer.blocks.shapes.Liquid.LEVEL_MAX;
+import static org.delaunois.ialon.blocks.BlockIds.RAIL;
+import static org.delaunois.ialon.blocks.BlockIds.RAIL_CURVED;
+import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
+import static org.delaunois.ialon.blocks.TypeIds.RAIL_SLOPE;
+import static org.delaunois.ialon.blocks.shapes.Liquid.LEVEL_MAX;
 
 /**
  * Handles interactions between blocks, water and lights

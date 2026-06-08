@@ -8,10 +8,10 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.Direction;
-import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.Direction;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.ChunkManager;

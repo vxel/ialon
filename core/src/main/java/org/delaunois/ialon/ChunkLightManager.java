@@ -18,10 +18,10 @@
 package org.delaunois.ialon;
 
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.Collections;

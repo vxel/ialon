@@ -3,9 +3,9 @@ package org.delaunois.ialon.support;
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkResolver;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkResolver;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.FacesMeshGenerator;

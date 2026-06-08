@@ -6,8 +6,8 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.CameraNode;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.ChunkRepository;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
 
 import java.nio.file.FileSystems;
