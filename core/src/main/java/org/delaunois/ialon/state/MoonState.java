@@ -10,18 +10,20 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.shape.Quad;
+import com.jme3.scene.shape.CenterQuad;
 import com.jme3.texture.Texture;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.MoonControl;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MoonState extends BaseAppState {
 
     private SimpleApplication app;
+    @Getter
     private MoonControl moonControl;
     private Geometry moon;
     private final IalonConfig config;
@@ -34,7 +36,10 @@ public class MoonState extends BaseAppState {
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
 
-        moon = new Geometry("moon", new Quad(15f, 15f));
+        // CenterQuad (origin at its centre), like the sun : SunControl/MoonControl place the geometry
+        // origin on the true moon direction, so a corner-origin Quad would draw the disc — and its
+        // water reflection — offset by half its size.
+        moon = new Geometry("moon", new CenterQuad(15f, 15f));
         moon.setQueueBucket(RenderQueue.Bucket.Sky);
         moon.setCullHint(Spatial.CullHint.Never);
         moon.setShadowMode(RenderQueue.ShadowMode.Off);

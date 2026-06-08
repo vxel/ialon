@@ -484,22 +484,21 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 && Math.abs(a.z - b.z) < 1e-4f && Math.abs(a.w - b.w) < 1e-4f;
     }
 
-    private Material getCalmWaterMaterial() {
+    /**
+     * The flat-colour calm-water surface material : a dedicated water shader (sky reflection + Fresnel
+     * + sun glint + normal-perturbation waves), shared by every calm-water surface geometry. The
+     * dynamic uniforms (sun direction, sky colours) are pushed each frame by the game's WaterState ;
+     * the values set here are first-frame placeholders. {@code synchronized} because chunk meshing
+     * runs on worker threads while WaterState fetches/updates it on the render thread.
+     */
+    public synchronized Material getCalmWaterMaterial() {
         if (calmWaterMaterial == null) {
-            Material mat = new Material(BlocksConfig.getInstance().getAssetManager(), "Blocks/MatDefs/Ialon.j3md");
-            mat.setBoolean("VertexLighting", true);
-            mat.setBoolean("UseVertexColor", true);
-            mat.setBoolean("UseMaterialColors", true);
-            // White material colours : the water tint is carried by the vertex colours (see emitCalmQuad).
-            // Only the diffuse alpha matters here -- it drives the surface transparency (no texture alpha).
-            mat.setColor("Ambient", ColorRGBA.White);
+            // All static tuning (waves, glint, Fresnel, blend, poly offset, placeholder sun/sky values)
+            // lives in the j3m ; only the two config-driven values are overridden here.
+            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/water_calm.j3m");
+            // Surface transparency at the steepest (looking-down) angle, from the configured water alpha.
             mat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, config.getCalmWaterColor().a));
-            mat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
             mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
-            mat.setFloat("Shininess", 96f);
-            mat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-            // Nudge towards the camera so the flat surface wins over the textured side faces at the seam.
-            mat.getAdditionalRenderState().setPolyOffset(-0.1f, -0.1f);
             calmWaterMaterial = mat;
         }
         return calmWaterMaterial;

@@ -71,14 +71,14 @@ public class IalonConfig implements WorldSettings {
     // Far terrain : a distant low-detail heightmap horizon rendered beyond the loaded chunks.
     private boolean farTerrain = true;
     private float farTerrainFogDistance = 2500f;
-    private float farTerrainFogDensity = 5f;
+    private float farTerrainFogDensity = 3f;
     // Displayed colours are authored in sRGB but stored in LINEAR space (setAsSrgb), because the
     // renderer runs the sRGB pipeline (gamma correction on) : shaders receive/emit linear values and
     // the framebuffer encodes back to sRGB on output. The literal sRGB numbers below are the intended
     // on-screen colours ; setAsSrgb keeps them looking the same after the framebuffer encode. (Light
     // INTENSITIES, e.g. White * ambiantIntensity, stay raw - they are linear multipliers, not colours.)
     private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (IalonTheme/grass.png) so near & far land read alike
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.15f, 0.45f, 0.61f, 0.92f); // teal-blue, matched to the voxel water texture (IalonTheme/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.245f, 0.421f, 0.535f, 0.92f); // teal-blue, matched to the voxel water texture (IalonTheme/water_calm.png) so near & far seas read as one body
     private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (IalonTheme/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
     private ColorRGBA farTerrainSnowColor = new ColorRGBA().setAsSrgb(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
@@ -88,7 +88,7 @@ public class IalonConfig implements WorldSettings {
 
     private float waterHeight = 30;
     private boolean greedyCalmWater = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)
+    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
@@ -100,8 +100,7 @@ public class IalonConfig implements WorldSettings {
     private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
     // Background well below the horizon (nadir) : the sky dome floor + ground plate fade to this,
-    // so looking down past the terrain shows a dark void instead of the light-blue sky ground.
-    private ColorRGBA skyFloorColor = new ColorRGBA().setAsSrgb(0.15f, 0.59f, 0.78f, 1f);
+    private ColorRGBA skyFloorColor = farTerrainWaterColor;
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
     private ColorRGBA skyEveningColor = new ColorRGBA().setAsSrgb(1f, 0.7f, 0.5f, 1);

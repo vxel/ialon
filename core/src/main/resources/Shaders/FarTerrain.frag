@@ -20,10 +20,24 @@ uniform float m_RockHeight;   // bare rock above this world height
 uniform float m_SnowHeight;   // snow above this world height
 uniform float m_HeightOffset; // vertical nudge applied to the terrain mesh ; undone here for colouring
 
+// Sky/sun reflection on the distant water (no waves : the far sea is flat, normal is up). Same colours
+// and tuning as the calm-water shader (fed by FarTerrainState) so near and far water stay consistent.
+uniform vec3 g_CameraPosition;
+uniform vec4 m_SkyColor;
+uniform vec4 m_SkyHorizonColor;
+uniform float m_ReflectionStrength;
+uniform float m_FresnelPower;
+uniform float m_GlintPower;
+uniform float m_GlintStrength;
+uniform vec3 m_MoonDirection;      // world-space, points TOWARDS the moon (normalised)
+uniform vec4 m_MoonColor;
+uniform float m_MoonGlintStrength;
+
 varying vec3 vNormal;
 varying float vDist;
 varying float vHorizDist;
 varying float vHeight;
+varying vec3 vWorldPos;
 
 void main() {
     // The far terrain is only an horizon ring : inside the loaded-chunk region the voxels are the
@@ -62,6 +76,30 @@ void main() {
     // day/night cycle, baked in by SunControl. So the far terrain now dims at dusk and respects the
     // lighting sliders exactly like the loaded voxels do (no baked vertex light / specular here).
     vec3 color = terrainColor * (m_AmbientColor.rgb + m_SunColor.rgb * diffuse);
+
+    // Sky + sun reflection on the flat distant water (weighted by how "water" this fragment is, so land
+    // and shores are untouched). Like the calm-water shader but without waves : the far sea is flat, so
+    // the surface normal n (~up) is used directly -> the sun glint is a clean, smooth highlight (no
+    // sparkle/aliasing), which is exactly the low evening sun's reflection streak that must continue
+    // past the voxel/far-terrain seam. Computed before the fog, so it fades into the horizon haze.
+    float waterness = 1.0 - landAmount;
+    if (waterness > 0.001) {
+        vec3 toSun = -normalize(m_LightDir);
+        vec3 V = normalize(g_CameraPosition - vWorldPos);
+        float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(n, V), 0.0), m_FresnelPower);
+        vec3 R = reflect(-V, n);
+        vec3 skyRefl = mix(m_SkyHorizonColor.rgb, m_SkyColor.rgb, clamp(R.y, 0.0, 1.0));
+        // Same gate/tuning as the near water so the glint is continuous across the seam.
+        float sunUp = clamp(toSun.y * 4.0, 0.0, 1.0);
+        float glint = pow(max(dot(R, toSun), 0.0), m_GlintPower) * m_GlintStrength * sunUp;
+        // Moon glint : fainter, gated by the moon's height -> only at night (the moon is anti-solar).
+        vec3 toMoon = normalize(m_MoonDirection);
+        float moonUp = clamp(toMoon.y * 4.0, 0.0, 1.0);
+        float moonGlint = pow(max(dot(R, toMoon), 0.0), m_GlintPower) * m_MoonGlintStrength * moonUp;
+        color = mix(color, skyRefl, fresnel * m_ReflectionStrength * waterness)
+              + glint * m_SunColor.rgb * waterness
+              + moonGlint * m_MoonColor.rgb * waterness;
+    }
 
     // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour).
     // Only the far terrain uses this material, so the sky is left untouched.

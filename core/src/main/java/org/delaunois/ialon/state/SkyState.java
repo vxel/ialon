@@ -20,13 +20,13 @@ import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.control.SpatialFollowCamControl;
 import org.delaunois.ialon.control.SkyControl;
+import org.delaunois.ialon.control.SpatialFollowCamControl;
+import org.delaunois.ialon.util.Ground;
 
 import java.nio.FloatBuffer;
 
 import lombok.extern.slf4j.Slf4j;
-import org.delaunois.ialon.util.Ground;
 
 @Slf4j
 public class SkyState extends BaseAppState {
@@ -107,7 +107,7 @@ public class SkyState extends BaseAppState {
         }
         skyControl.setSunControl(sunState.getSunControl());
         if (ground.getParent() == null) {
-            this.app.getRootNode().attachChild(ground);
+            //this.app.getRootNode().attachChild(ground);
             this.app.getRootNode().attachChildAt(sky, 0);
         }
     }
@@ -115,7 +115,7 @@ public class SkyState extends BaseAppState {
     @Override
     protected void onDisable() {
         if (ground.getParent() != null) {
-            this.app.getRootNode().detachChild(ground);
+            //this.app.getRootNode().detachChild(ground);
             this.app.getRootNode().detachChild(sky);
         }
     }

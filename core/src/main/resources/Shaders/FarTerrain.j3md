@@ -19,6 +19,19 @@ MaterialDef Far Terrain {
         Float SnowHeight
         Float HeightOffset
 
+        // Sky/sun reflection on the distant water (matches the calm-water shader, but with no waves
+        // since the far sea is flat). The colours come from SkyControl (same source as WaterState) and
+        // the tuning is copied from the calm-water material so near and far water stay consistent.
+        Color SkyColor
+        Color SkyHorizonColor
+        Float ReflectionStrength
+        Float FresnelPower
+        Float GlintPower
+        Float GlintStrength
+        Vector3 MoonDirection
+        Color MoonColor
+        Float MoonGlintStrength
+
         // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
         // (e.g. Android GLES). See FarTerrain.frag / IalonConfig.manualGammaEncode.
         Boolean ManualSrgb

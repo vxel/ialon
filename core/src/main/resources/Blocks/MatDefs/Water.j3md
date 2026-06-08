@@ -1,0 +1,73 @@
+MaterialDef Water {
+
+    MaterialParameters {
+
+        // Use vertex colour : carries the water tint (rgb) and the packed sun/torch light level (a).
+        Boolean UseVertexColor
+
+        // Diffuse colour : only its alpha is used here (base surface transparency).
+        Color Diffuse
+
+        // World-space direction towards the sun (normalised), for the sun glint.
+        Vector3 SunDirection
+
+        // Sun colour (tint of the glint highlight).
+        Color SunColor
+
+        // World-space direction towards the moon (normalised), its colour, and a fainter glint strength.
+        Vector3 MoonDirection
+        Color MoonColor
+        Float MoonGlintStrength
+
+        // Overhead sky colour and horizon haze colour, for the analytic reflection gradient.
+        Color SkyColor
+        Color SkyHorizonColor
+
+        // Wave (normal perturbation) tuning.
+        Float WaveScale
+        Float WaveSpeed
+        Float WaveAmplitude
+
+        // Distance (world units) over which the waves fade out, so far water flattens and joins the
+        // FarTerrain smoothly : full ripples below Near, flat surface beyond Far.
+        Float WaveFadeNear
+        Float WaveFadeFar
+
+        // Sun glint tuning.
+        Float GlintPower
+        Float GlintStrength
+
+        // Fresnel falloff exponent.
+        Float FresnelPower
+
+        // How much the (near-uniform) sky reflection tints the water : 0 keeps the pure water colour
+        // matching the FarTerrain, 1 is a full mirror. Kept low to avoid a near/far colour seam.
+        Float ReflectionStrength
+
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        // SinglePass is what makes jME populate the lighting globals (g_AmbientLightColor) the vertex
+        // shader needs for the day/night light-level decode -- without it the water renders black.
+        LightMode SinglePass
+
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Water.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Water.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldMatrix
+            CameraPosition
+            Time
+        }
+
+        Defines {
+            VERTEX_COLOR : UseVertexColor
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+
+}
