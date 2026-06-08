@@ -13,7 +13,6 @@ const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
 #endif
 
 uniform float m_AlphaDiscardThreshold;
-uniform float m_GammaCorrection;
 
 flat in vec2 wrapCoordMin;
 flat in vec2 wrapCoordMax;
@@ -52,18 +51,25 @@ void main() {
     diffuseColor = vec4(1.0);
     #endif
 
+#if defined(DIFFUSEMAP) && defined(MANUAL_SRGB)
+    // Emulate the hardware sRGB texture decode on platforms without an sRGB framebuffer (Android
+    // GLES) : bring the sRGB-authored atlas texel into linear space before the (linear) lighting.
+    diffuseColor.rgb = pow(diffuseColor.rgb, vec3(2.2));
+#endif
+
     float alpha = DiffuseSum.a * diffuseColor.a;
 
     if (alpha < m_AlphaDiscardThreshold){
         discard;
     }
 
+    // Linear-space lighting : on desktop the texture is hardware-decoded sRGB->linear (sRGB atlas +
+    // gamma correction) and the sRGB framebuffer re-encodes the output. Where the hardware sRGB
+    // framebuffer is missing (Android GLES) MANUAL_SRGB does the decode (above) and the encode (below).
     gl_FragColor.rgb = (AmbientSum.rgb + DiffuseSum.rgb) * diffuseColor.rgb;
-    if (m_GammaCorrection > 0.0) {
-        gl_FragColor.r = pow(gl_FragColor.r, m_GammaCorrection);
-        gl_FragColor.g = pow(gl_FragColor.g, m_GammaCorrection);
-        gl_FragColor.b = pow(gl_FragColor.b, m_GammaCorrection);
-    }
+#ifdef MANUAL_SRGB
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0 / 2.2));
+#endif
     gl_FragColor.a = alpha;
     //gl_FragColor = mix(vec4(0.39, 0.67, 1.0, 1.0), gl_FragColor, fogFactor);
 }

@@ -68,5 +68,11 @@ void main() {
     float f = (vDist / m_FogDistance) * m_FogDensity;
     float fog = clamp(exp(-f * f), 0.0, 1.0);
 
-    gl_FragColor = vec4(mix(m_FogColor.rgb, color, fog), 1.0);
+    vec3 outColor = mix(m_FogColor.rgb, color, fog);
+#ifdef MANUAL_SRGB
+    // No hardware sRGB framebuffer (Android GLES) : the palette/fog colours and lighting are all in
+    // linear space (matching the desktop path), so encode linear->sRGB here as the framebuffer would.
+    outColor = pow(outColor, vec3(1.0 / 2.2));
+#endif
+    gl_FragColor = vec4(outColor, 1.0);
 }

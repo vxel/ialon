@@ -70,6 +70,10 @@ public class MainActivity extends AndroidHarness {
         AppSettings settings = new AppSettings(true);
         settings.setAudioRenderer(null);
         settings.setFrameRate(IalonConfig.FPS_LIMIT_MOBILE);
+        // Render through the sRGB pipeline (linear lighting, hardware sRGB framebuffer). This is what
+        // keeps the colours consistent between desktop and Android : without it the GLES default
+        // framebuffer made everything look noticeably darker than on the PC.
+        settings.setGammaCorrection(true);
         app.setSettings(settings);
 
         IalonConfig config = new IalonConfig();
@@ -80,7 +84,6 @@ public class MainActivity extends AndroidHarness {
         config.setGridRadiusMax(7);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
-        config.setGammaCorrection(-1f);
         ((Ialon) app).setConfig(config);
 
         super.onStart();

@@ -154,6 +154,9 @@ public class FarTerrainState extends BaseAppState {
         // Custom material : fog lives HERE (only the terrain fades to the horizon colour), so the
         // sky — rendered separately by SkyState — keeps its blue gradient untouched.
         Material mat = new Material(app.getAssetManager(), "Shaders/FarTerrain.j3md");
+        // Emulate the sRGB output encode in-shader where the hardware sRGB framebuffer is missing
+        // (Android GLES) ; on desktop the hardware does it and this define compiles out.
+        mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
         mat.setColor("BaseColor", config.getFarTerrainBaseColor());
         // Initial placeholder : update() rebinds this to SkyControl's live ground colour (day/night).
         ColorRGBA ground = config.getGroundDayColor();

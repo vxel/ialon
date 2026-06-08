@@ -1,0 +1,49 @@
+MaterialDef Ialon Unshaded {
+
+    // Minimal fork of Common/MatDefs/Misc/Unshaded.j3md (main technique only) using a custom fragment
+    // shader that supports MANUAL_SRGB (see IalonUnshaded.frag). Used for the sky dome / ground plate,
+    // whose colours are authored linear, so they get the same sRGB encode as the voxels on platforms
+    // without a hardware sRGB framebuffer (Android GLES). The vertex shader is the stock one.
+
+    MaterialParameters {
+        Texture2D ColorMap
+        Texture2D LightMap
+        Color Color (Color)
+        Boolean VertexColor (UseVertexColor)
+        Float PointSize : 1.0
+        Boolean SeparateTexCoord
+
+        // Alpha threshold for fragment discarding
+        Float AlphaDiscardThreshold (AlphaTestFallOff)
+
+        // 1.0 indicates 100% desaturation
+        Float DesaturationValue
+
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See IalonUnshaded.frag / IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL100 GLSL150:   Common/MatDefs/Misc/Unshaded.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/IalonUnshaded.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            ViewProjectionMatrix
+            ViewMatrix
+        }
+
+        Defines {
+            SEPARATE_TEXCOORD : SeparateTexCoord
+            HAS_COLORMAP : ColorMap
+            HAS_LIGHTMAP : LightMap
+            HAS_VERTEXCOLOR : VertexColor
+            HAS_POINTSIZE : PointSize
+            HAS_COLOR : Color
+            DISCARD_ALPHA : AlphaDiscardThreshold
+            DESATURATION : DesaturationValue
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

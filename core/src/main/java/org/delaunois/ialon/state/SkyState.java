@@ -56,8 +56,11 @@ public class SkyState extends BaseAppState {
         sky.setCullHint(Spatial.CullHint.Never);
         sky.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        Material skyMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        Material skyMat = new Material(app.getAssetManager(), "Shaders/IalonUnshaded.j3md");
         skyMat.setParam("VertexColor", VarType.Boolean, true );
+        // Sky vertex colours are authored linear (IalonConfig setAsSrgb) : encode them in-shader where
+        // the hardware sRGB framebuffer is missing (Android GLES), as the voxels/far terrain already do.
+        skyMat.setBoolean("ManualSrgb", config.isManualGammaEncode());
         sky.setMaterial(skyMat);
 
         skyControl = new SkyControl(config);
@@ -74,7 +77,8 @@ public class SkyState extends BaseAppState {
         TextureKey tex = new TextureKey("Textures/ground.png");
         tex.setGenerateMips(false);
         Texture groundTexture = app.getAssetManager().loadTexture(tex);
-        Material groundMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        Material groundMat = new Material(app.getAssetManager(), "Shaders/IalonUnshaded.j3md");
+        groundMat.setBoolean("ManualSrgb", config.isManualGammaEncode());
         groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         groundMat.setTexture("ColorMap", groundTexture);
         // Dark "below horizon" background : decoupled from skyControl.getGroundColor() (which stays

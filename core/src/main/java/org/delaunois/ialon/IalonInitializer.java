@@ -70,7 +70,8 @@ public class IalonInitializer {
     }
 
     public static void setupViewPort(SimpleApplication app) {
-        app.getViewPort().setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.7f, 1.0f));
+        // Authored in sRGB, stored linear : the sRGB framebuffer encodes the clear colour on output.
+        app.getViewPort().setBackgroundColor(new ColorRGBA().setAsSrgb(0.5f, 0.6f, 0.7f, 1.0f));
         RenderQueue rq = app.getViewPort().getQueue();
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
