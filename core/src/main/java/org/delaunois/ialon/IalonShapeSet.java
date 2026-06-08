@@ -1,6 +1,6 @@
 package org.delaunois.ialon;
 
-import com.rvandoosselaer.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.ShapeIds;
 
 public enum IalonShapeSet {
 

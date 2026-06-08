@@ -28,7 +28,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.rvandoosselaer.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.BlocksConfig;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;

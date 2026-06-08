@@ -5,9 +5,9 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkMeshGenerator;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkMeshGenerator;
 import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.AfterEach;

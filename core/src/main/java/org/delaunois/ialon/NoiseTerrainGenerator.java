@@ -17,18 +17,18 @@
 
 package org.delaunois.ialon;
 
-import static com.rvandoosselaer.blocks.BlockIds.WATER;
-import static com.rvandoosselaer.blocks.BlockIds.WATER_SOURCE;
+import static org.delaunois.ialon.blocks.BlockIds.WATER;
+import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlockRegistry;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlockRegistry;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.fastnoise.FastNoise;

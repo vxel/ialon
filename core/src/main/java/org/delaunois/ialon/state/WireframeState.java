@@ -6,8 +6,8 @@ import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.RenderState;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.TypeRegistry;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.TypeRegistry;
 
 /**
  * @author rvandoosselaer

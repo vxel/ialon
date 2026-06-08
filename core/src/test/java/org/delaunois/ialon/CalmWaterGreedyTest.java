@@ -10,10 +10,10 @@ import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.mesh.IndexBuffer;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.BeforeAll;

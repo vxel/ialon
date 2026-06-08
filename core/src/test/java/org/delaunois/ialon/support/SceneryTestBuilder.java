@@ -23,8 +23,8 @@ import com.jme3.math.Vector3f;
 import com.jme3.system.AppSettings;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
 
 import org.delaunois.ialon.EmptyGenerator;
 import org.delaunois.ialon.FlatTerrainGenerator;

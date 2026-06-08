@@ -17,10 +17,10 @@
 
 package org.delaunois.ialon;
 
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.ShapeIds;
-import com.rvandoosselaer.blocks.TypeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 
 public enum IalonBlock {
 

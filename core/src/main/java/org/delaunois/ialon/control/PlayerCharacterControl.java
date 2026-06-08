@@ -4,8 +4,8 @@ import com.jme3.bullet.collision.shapes.ConvexShape;
 import com.jme3.bullet.control.CharacterControl;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Spatial;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.TypeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.TypeIds;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.WorldManager;

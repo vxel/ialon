@@ -9,8 +9,8 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.ShapeIds;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.WorldManager;
@@ -19,9 +19,9 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.rvandoosselaer.blocks.TypeIds.RAIL;
-import static com.rvandoosselaer.blocks.TypeIds.RAIL_CURVED;
-import static com.rvandoosselaer.blocks.TypeIds.RAIL_SLOPE;
+import static org.delaunois.ialon.blocks.TypeIds.RAIL;
+import static org.delaunois.ialon.blocks.TypeIds.RAIL_CURVED;
+import static org.delaunois.ialon.blocks.TypeIds.RAIL_SLOPE;
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_BACKWARD;
 import static org.delaunois.ialon.IalonKeyMapping.ACTION_FORWARD;
 

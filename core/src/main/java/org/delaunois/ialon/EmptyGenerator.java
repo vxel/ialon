@@ -1,7 +1,7 @@
 package org.delaunois.ialon;
 
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.Chunk;
+import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
 public class EmptyGenerator implements TerrainGenerator {

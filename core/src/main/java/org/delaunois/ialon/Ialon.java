@@ -20,7 +20,7 @@ package org.delaunois.ialon;
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
-import com.rvandoosselaer.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.BlocksConfig;
 import com.simsilica.lemur.anim.AnimationState;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;

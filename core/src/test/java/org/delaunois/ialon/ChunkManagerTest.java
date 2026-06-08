@@ -4,7 +4,7 @@ import com.jme3.asset.DesktopAssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
-import com.rvandoosselaer.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.BlocksConfig;
 import com.simsilica.mathd.Vec3i;
 
 import org.junit.jupiter.api.AfterEach;

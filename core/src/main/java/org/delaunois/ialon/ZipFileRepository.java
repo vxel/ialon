@@ -18,12 +18,12 @@
 package org.delaunois.ialon;
 
 import com.google.protobuf.ByteString;
-import com.rvandoosselaer.blocks.Block;
-import com.rvandoosselaer.blocks.BlockIds;
-import com.rvandoosselaer.blocks.BlockRegistry;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkRepository;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlockRegistry;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkRepository;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.protobuf.BlocksProtos;

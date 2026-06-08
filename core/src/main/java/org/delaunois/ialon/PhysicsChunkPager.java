@@ -22,9 +22,9 @@ import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.shapes.MeshCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
 import com.jme3.math.Vector3f;
-import com.rvandoosselaer.blocks.BlocksConfig;
-import com.rvandoosselaer.blocks.Chunk;
-import com.rvandoosselaer.blocks.ChunkManagerListener;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkManagerListener;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.HashSet;

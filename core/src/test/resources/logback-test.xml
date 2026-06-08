@@ -12,10 +12,10 @@
     </appender>
 
     <logger name="com.jme3.bullet.objects.PhysicsRigidBody" level="error"/>
-    <logger name="com.rvandoosselaer" level="info"/>
-    <logger name="com.rvandoosselaer.blocks.shapes.Liquid" level="error" />
-    <logger name="com.rvandoosselaer.blocks.ChunkCache" level="info"/>
-    <logger name="com.rvandoosselaer.blocks.BlockRegistry" level="error"/>
+    <logger name="org.delaunois.ialon.blocks" level="info"/>
+    <logger name="org.delaunois.ialon.blocks.shapes.Liquid" level="error" />
+    <logger name="org.delaunois.ialon.blocks.ChunkCache" level="info"/>
+    <logger name="org.delaunois.ialon.blocks.BlockRegistry" level="error"/>
     <logger name="org.delaunois.ialon" level="info"/>
     <logger name="org.delaunois.jme.AndroidHarness" level="trace"/>
     <logger name="org.delaunois.ialon.ChunkManager" level="debug"/>
