@@ -225,8 +225,12 @@ public class ChunkPager {
                 removed += 1;
             }
 
-            // No limit when detaching nodes
-            pageLocation = pagesToDetach.poll();
+            if (removed < maxUpdatePerFrame) {
+                pageLocation = pagesToDetach.poll();
+            } else {
+                // Spread large detach bursts (e.g. grid shrink or teleport) over several frames.
+                pageLocation = null;
+            }
         }
 
         if (removed > 0) {
@@ -248,8 +252,12 @@ public class ChunkPager {
                 unfetched += 1;
             }
 
-            // No limit when detaching nodes
-            pageLocation = pagesToUnfetch.poll();
+            if (unfetched < maxUpdatePerFrame) {
+                pageLocation = pagesToUnfetch.poll();
+            } else {
+                // Spread large unfetch bursts (e.g. grid shrink or teleport) over several frames.
+                pageLocation = null;
+            }
         }
 
         if (unfetched > 0) {

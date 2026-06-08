@@ -46,7 +46,7 @@ public class IalonConfig implements WorldSettings {
     private int screenWidth = 1520;
     private int screenHeight = 720;
     private int maxUpdatePerFrame = 8;
-    private int chunkPoolsize = 2;
+    private int chunkPoolsize = defaultChunkPoolSize();
 
     // Grid
     private int gridRadius = 4;
@@ -255,6 +255,16 @@ public class IalonConfig implements WorldSettings {
 
     private static int clamp(int value, int min, int max) {
         return Math.max(Math.min(value, max), min);
+    }
+
+    /**
+     * Default size of the chunk generation/meshing thread pool, scaled to the device. Chunk
+     * generation is a critical CPU path, so we use most of the available cores ; one core is left
+     * for the render thread and one for physics, and the result is clamped to [2, 6] to avoid
+     * oversubscription on high-core devices (which only increases contention and memory use).
+     */
+    private static int defaultChunkPoolSize() {
+        return clamp(Runtime.getRuntime().availableProcessors() - 2, 2, 6);
     }
 
 }
