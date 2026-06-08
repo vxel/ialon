@@ -45,7 +45,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Quad;
 
-import org.delaunois.ialon.jme.StatsView;
+import org.delaunois.ialon.blocks.jme.StatsView;
 
 
 /**

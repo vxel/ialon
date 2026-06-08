@@ -3,14 +3,14 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 
-import org.delaunois.ialon.ChunkPager;
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.PhysicsChunkPager;
 
 import java.util.Optional;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.ChunkPager;
+import org.delaunois.ialon.blocks.PhysicsChunkPager;
 
 /**
  * Builds the World

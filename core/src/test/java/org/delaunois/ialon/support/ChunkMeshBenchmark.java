@@ -13,8 +13,7 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.ShapeIds;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.BlockNeighborhood;
-import org.delaunois.ialon.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.BlockNeighborhood;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 
@@ -22,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
 
 /**
  * Manual (interactive) micro-benchmark for chunk meshing — NOT part of the automated suite.

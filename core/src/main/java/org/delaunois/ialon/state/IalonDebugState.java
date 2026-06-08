@@ -40,8 +40,6 @@ import com.simsilica.lemur.component.SpringGridLayout;
 import com.simsilica.lemur.style.ElementId;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.ChunkPager;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.PlaceholderControl;
 
@@ -51,6 +49,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.ChunkPager;
 
 @Slf4j
 public class IalonDebugState extends BaseAppState {

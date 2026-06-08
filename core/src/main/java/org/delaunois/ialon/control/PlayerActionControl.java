@@ -14,17 +14,17 @@ import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.ChunkManager;
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.WorldManager;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_ADD_BLOCK;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_DEBUG_CHUNK;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_FLY;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_REMOVE_BLOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ADD_BLOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_DEBUG_CHUNK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FLY;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 public class PlayerActionControl extends AbstractControl implements ActionListener {

@@ -8,16 +8,17 @@ import org.delaunois.ialon.blocks.Chunk;
 import org.delaunois.ialon.blocks.ChunkResolver;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.FacesMeshGenerator;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
-import org.delaunois.ialon.NoiseTerrainGenerator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
  * Manual (interactive) micro-benchmark for the FULL world generation performed at application

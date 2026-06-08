@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.delaunois.ialon.blocks.ChunkLightManager;
+import org.delaunois.ialon.blocks.ChunkLiquidManager;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.WorldManager;
 
 class ChunkManagerTest {
 

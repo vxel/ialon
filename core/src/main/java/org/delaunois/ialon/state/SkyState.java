@@ -19,7 +19,6 @@ import com.jme3.shader.VarType;
 import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 
-import org.delaunois.ialon.Ground;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.SpatialFollowCamControl;
 import org.delaunois.ialon.control.SkyControl;
@@ -27,6 +26,7 @@ import org.delaunois.ialon.control.SkyControl;
 import java.nio.FloatBuffer;
 
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.util.Ground;
 
 @Slf4j
 public class SkyState extends BaseAppState {

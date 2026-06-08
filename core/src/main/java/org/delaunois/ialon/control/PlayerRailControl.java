@@ -13,7 +13,6 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.ShapeIds;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.WorldManager;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -22,8 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 import static org.delaunois.ialon.blocks.TypeIds.RAIL;
 import static org.delaunois.ialon.blocks.TypeIds.RAIL_CURVED;
 import static org.delaunois.ialon.blocks.TypeIds.RAIL_SLOPE;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_BACKWARD;
-import static org.delaunois.ialon.IalonKeyMapping.ACTION_FORWARD;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_BACKWARD;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FORWARD;
+import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 public class PlayerRailControl extends AbstractControl implements ActionListener {

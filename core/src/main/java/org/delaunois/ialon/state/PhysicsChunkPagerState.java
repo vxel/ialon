@@ -5,10 +5,10 @@ import com.jme3.app.state.BaseAppState;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.math.Vector3f;
 
-import org.delaunois.ialon.ChunkManager;
-import org.delaunois.ialon.PhysicsChunkPager;
 
 import lombok.Getter;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.PhysicsChunkPager;
 
 /**
  * An AppState implementation that manages the lifecycle of a {@link PhysicsChunkPager}.

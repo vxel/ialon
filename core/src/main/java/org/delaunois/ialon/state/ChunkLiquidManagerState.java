@@ -21,7 +21,6 @@ import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.ChunkLiquidManager;
 import org.delaunois.ialon.IalonConfig;
 
 import java.util.HashSet;
@@ -29,6 +28,7 @@ import java.util.Set;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.ChunkLiquidManager;
 
 /**
  * An application state to handle the liquid simulation.

@@ -12,6 +12,7 @@ import org.delaunois.ialon.support.SceneryTestBuilderApplication;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 class BlockSelectionStateTest {
 

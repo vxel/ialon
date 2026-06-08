@@ -16,8 +16,7 @@ import com.jme3.texture.Texture2D;
 import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
 
-import org.delaunois.ialon.TextureAtlasManager;
-import org.delaunois.ialon.jme.TextureAtlas;
+import org.delaunois.ialon.blocks.jme.TextureAtlas;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;

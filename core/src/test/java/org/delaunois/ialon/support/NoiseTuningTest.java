@@ -20,12 +20,13 @@ import com.simsilica.lemur.Label;
 import com.simsilica.lemur.Slider;
 import com.simsilica.lemur.DefaultRangedValueModel;
 
-import org.delaunois.ialon.fastnoise.FastNoise;
-import org.delaunois.ialon.fastnoise.LayeredNoise;
-import org.delaunois.ialon.fastnoise.NoiseLayer;
+import org.delaunois.ialon.blocks.fastnoise.FastNoise;
+import org.delaunois.ialon.blocks.fastnoise.LayeredNoise;
+import org.delaunois.ialon.blocks.fastnoise.NoiseLayer;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
  * Manual (interactive) tool to fine-tune the terrain noise — NOT part of the automated suite.

@@ -3,8 +3,8 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.math.Vector3f;
+import org.delaunois.ialon.blocks.ChunkPager;
 
-import org.delaunois.ialon.ChunkPager;
 
 
 public class ChunkPagerState extends BaseAppState {

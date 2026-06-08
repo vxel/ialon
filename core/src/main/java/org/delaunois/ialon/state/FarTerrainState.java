@@ -28,11 +28,11 @@ import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 
 import org.delaunois.ialon.IalonConfig;
-import org.delaunois.ialon.NoiseTerrainGenerator;
-import org.delaunois.ialon.TerrainGenerator;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 
 /**
  * Renders a distant low-detail terrain ("far horizon") well beyond the loaded voxel chunks.

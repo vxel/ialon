@@ -8,12 +8,12 @@ import com.jme3.scene.control.AbstractControl;
 import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 
-import org.delaunois.ialon.InputActionManager;
 
 import java.util.function.Supplier;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.delaunois.ialon.input.InputActionManager;
 
 public class ButtonHighlightControl extends AbstractControl implements ActionListener {
 

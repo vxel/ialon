@@ -21,6 +21,7 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlockIds;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.WaterLevel;
 
 public enum IalonBlock {
 

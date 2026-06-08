@@ -12,7 +12,7 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.Shape;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.BlockNeighborhood;
+import org.delaunois.ialon.blocks.BlockNeighborhood;
 
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;

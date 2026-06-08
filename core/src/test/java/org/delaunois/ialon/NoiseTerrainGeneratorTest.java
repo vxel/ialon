@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
  * Validates that the per-column heightmap memorization in {@link NoiseTerrainGenerator} does not

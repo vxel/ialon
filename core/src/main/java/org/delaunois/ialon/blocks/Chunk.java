@@ -7,7 +7,6 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.BlockNeighborhood;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
