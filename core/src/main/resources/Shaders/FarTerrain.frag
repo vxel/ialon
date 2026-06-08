@@ -71,11 +71,13 @@ void main() {
     land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
     vec3 terrainColor = mix(m_WaterColor.rgb, land, landAmount);
 
-    // Match the voxel lighting model (jME Phong, see Ialon.j3md) : ambient + sun * NdotL, where
-    // both colours already carry the config intensities (ambiantIntensity / sunIntensity) AND the
-    // day/night cycle, baked in by SunControl. So the far terrain now dims at dusk and respects the
-    // lighting sliders exactly like the loaded voxels do (no baked vertex light / specular here).
-    vec3 color = terrainColor * (m_AmbientColor.rgb + m_SunColor.rgb * diffuse);
+    // Match the voxel lighting model (see Ialon.vert) : the voxels tint their AMBIENT term only by its
+    // LUMINANCE (a scalar dim), not its colour, so the orange dusk ambient darkens the world without
+    // washing it orange. Mirror that here -- use the ambient luminance, not the ambient colour -- so the
+    // far beaches/land read like the voxels. The directional term keeps the warm sun colour on the lit
+    // slopes (also like the voxels). Both colours carry the config intensities + day/night cycle.
+    float ambientLum = dot(m_AmbientColor.rgb, vec3(0.3, 0.59, 0.11));
+    vec3 color = terrainColor * (vec3(ambientLum) + m_SunColor.rgb * diffuse);
 
     // Sky + sun reflection on the flat distant water (weighted by how "water" this fragment is, so land
     // and shores are untouched). Like the calm-water shader but without waves : the far sea is flat, so
