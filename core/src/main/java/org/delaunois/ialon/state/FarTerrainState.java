@@ -28,11 +28,16 @@ import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.ChunkMeshGenerator;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.TerrainGenerator;
+import org.delaunois.ialon.control.MoonControl;
+import org.delaunois.ialon.control.SkyControl;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
-import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 
 /**
  * Renders a distant low-detail terrain ("far horizon") well beyond the loaded voxel chunks.
@@ -65,11 +70,22 @@ public class FarTerrainState extends BaseAppState {
     private Material material;
     // Sun direction, shared by reference with the material and refreshed each frame from LightingState.
     private final Vector3f lightDir = new Vector3f(-0.5f, -0.7f, -0.5f).normalizeLocal();
+    // Moon direction (towards the moon), shared by reference with the material and refreshed each frame
+    // from MoonControl. Starts below the horizon so the moon glint stays off until resolved.
+    private final Vector3f moonDir = new Vector3f(0f, -1f, 0f);
+    private MoonControl moonControl;
     // The fog colour is bound (once) to SkyControl's live ground colour so it follows the day/night cycle.
     private boolean fogColorBound = false;
     // The ambient / sun colours are bound (once) to LightingState's live light colours (mutated in place
     // by SunControl) so the far terrain dims and tints with the day/night cycle like the voxels.
     private boolean lightColorsBound = false;
+    // Water reflection : the overhead sky colour, refreshed each frame from SkyControl (shared source
+    // with WaterState). Bound once by reference, then mutated in place so the shader tracks it.
+    private final ColorRGBA reflectionSkyColor = new ColorRGBA();
+    private boolean reflectionBound = false;
+    // The reflection tuning (strength / glint / Fresnel) is copied once from the calm-water material so
+    // near and far water reflect identically ; the calm-water j3m stays the single source of truth.
+    private boolean reflectionTuningCopied = false;
     // Finite world : the (periodic) far terrain is re-centered on the player's current tile so the
     // horizon surrounds the player wherever they roam. These hold the current snap, in world units
     // (always a multiple of the world period), so update() only moves the mesh when the tile changes.
@@ -187,6 +203,19 @@ public class FarTerrainState extends BaseAppState {
         // AmbientLight / DirectionalLight colours so the far terrain is lit exactly like the voxels.
         mat.setColor("AmbientColor", ColorRGBA.White.mult(config.getAmbiantIntensity()));
         mat.setColor("SunColor", ColorRGBA.White.mult(config.getSunIntensity()));
+        // Water reflection : placeholders. update() binds the sky colours to SkyControl's live values
+        // and copies the tuning from the calm-water material (the single source of truth).
+        mat.setColor("SkyColor", new ColorRGBA(0.25f, 0.55f, 1f, 1f));
+        mat.setColor("SkyHorizonColor", new ColorRGBA(0.7f, 0.82f, 1f, 1f));
+        mat.setFloat("ReflectionStrength", 0f);
+        mat.setFloat("FresnelPower", 5f);
+        mat.setFloat("GlintPower", 220f);
+        mat.setFloat("GlintStrength", 2.2f);
+        // Moon : direction shared by reference (mutated each frame in update()) ; colour/strength are
+        // placeholders, overwritten by the values copied from the calm-water material.
+        mat.setVector3("MoonDirection", moonDir);
+        mat.setColor("MoonColor", new ColorRGBA(0.55f, 0.62f, 0.78f, 1f));
+        mat.setFloat("MoonGlintStrength", 0.6f);
         return mat;
     }
 
@@ -246,14 +275,52 @@ public class FarTerrainState extends BaseAppState {
             }
         }
 
-        // Bind the fog colour to SkyControl's live ground colour (mutated in place as time passes), so
-        // the terrain fades into the exact current ground colour. Bound once : the shared reference
-        // then tracks the day/night cycle automatically.
-        if (!fogColorBound && material != null) {
-            SkyState sky = getState(SkyState.class);
-            if (sky != null && sky.getSkyControl() != null) {
-                material.setColor("FogColor", sky.getSkyControl().getGroundColor());
+        // Moon direction (towards the moon), mutated in place so the shader's reflection tracks it.
+        if (moonControl == null) {
+            MoonState moonState = getState(MoonState.class);
+            if (moonState != null) {
+                moonControl = moonState.getMoonControl();
+            }
+        }
+        if (moonControl != null) {
+            moonDir.set(moonControl.getPosition()).normalizeLocal();
+        }
+
+        SkyState sky = getState(SkyState.class);
+        SkyControl skyControl = (sky != null) ? sky.getSkyControl() : null;
+        if (skyControl != null && material != null) {
+            // Bind the fog colour to SkyControl's live ground colour (mutated in place as time passes),
+            // so the terrain fades into the exact current ground colour. Bound once : the shared
+            // reference then tracks the day/night cycle automatically.
+            if (!fogColorBound) {
+                material.setColor("FogColor", skyControl.getGroundColor());
                 fogColorBound = true;
+            }
+            // Water reflection sky colours, shared with the calm-water shader (WaterState) so near and
+            // far water reflect the same sky. The overhead colour is a product (sky hue * day/night
+            // multiplier), refreshed each frame into a held instance ; the horizon colour is the live
+            // ground colour, bound by reference. Both are bound once, then tracked automatically.
+            skyControl.getReflectionSkyColor(reflectionSkyColor);
+            if (!reflectionBound) {
+                material.setColor("SkyColor", reflectionSkyColor);
+                material.setColor("SkyHorizonColor", skyControl.getGroundColor());
+                reflectionBound = true;
+            }
+        }
+
+        // Copy the reflection tuning from the calm-water material once it exists, so near and far water
+        // use identical strength / glint / Fresnel (the calm-water j3m stays the single source).
+        if (!reflectionTuningCopied && material != null) {
+            ChunkMeshGenerator generator = BlocksConfig.getInstance().getChunkMeshGenerator();
+            if (generator instanceof FacesMeshGenerator) {
+                Material water = ((FacesMeshGenerator) generator).getCalmWaterMaterial();
+                material.setFloat("ReflectionStrength", (Float) water.getParamValue("ReflectionStrength"));
+                material.setFloat("FresnelPower", (Float) water.getParamValue("FresnelPower"));
+                material.setFloat("GlintPower", (Float) water.getParamValue("GlintPower"));
+                material.setFloat("GlintStrength", (Float) water.getParamValue("GlintStrength"));
+                material.setColor("MoonColor", (ColorRGBA) water.getParamValue("MoonColor"));
+                material.setFloat("MoonGlintStrength", (Float) water.getParamValue("MoonGlintStrength"));
+                reflectionTuningCopied = true;
             }
         }
     }

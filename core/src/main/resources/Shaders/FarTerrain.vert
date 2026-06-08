@@ -12,9 +12,11 @@ varying vec3 vNormal;
 varying float vDist;
 varying float vHorizDist;
 varying float vHeight;
+varying vec3 vWorldPos;
 
 void main() {
     vec4 worldPos = g_WorldMatrix * vec4(inPosition, 1.0);
+    vWorldPos = worldPos.xyz; // for the water reflection view ray (fragment shader)
     // Uniform world scale : direction is preserved (renormalized in the fragment shader).
     vNormal = (g_WorldMatrix * vec4(inNormal, 0.0)).xyz;
     vDist = distance(worldPos.xyz, g_CameraPosition);

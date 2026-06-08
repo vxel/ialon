@@ -1,0 +1,49 @@
+Material Calm Water : Blocks/MatDefs/Water.j3md {
+
+    MaterialParameters {
+
+        // The water tint and packed light level are carried by the vertex colours (see
+        // FacesMeshGenerator.emitCalmQuad), so vertex colour is always on.
+        UseVertexColor : true
+
+        // Only the alpha is used (base transparency looking straight down). The game overrides it
+        // from IalonConfig.calmWaterColor at load time ; this is the default.
+        Diffuse : 1.0 1.0 1.0 0.92
+
+        // --- Wave (normal perturbation) tuning ---
+        WaveScale : 0.1
+        WaveSpeed : 0.4
+        WaveAmplitude : 0.18
+        WaveFadeNear : 30.0
+        WaveFadeFar : 120.0
+
+        // --- Sun glint / Fresnel tuning ---
+        GlintPower : 220.0
+        GlintStrength : 2.2
+        FresnelPower : 5.0
+
+        // Sky reflection kept subtle so the water colour matches the FarTerrain (0 = none, 1 = mirror).
+        ReflectionStrength : 1.0
+
+        // --- Dynamic uniforms : first-frame placeholders, overwritten every update by WaterState
+        // with the live sun direction and sky colours. ---
+        SunDirection : 0.4 0.85 0.34
+        SunColor : 1.0 1.0 1.0 1.0
+        // Moon : direction pushed by WaterState ; colour (cool pale white) and a fainter glint are static.
+        MoonDirection : 0.0 -1.0 0.0
+        MoonColor : 0.55 0.62 0.78 1.0
+        MoonGlintStrength : 0.6
+        SkyColor : 0.25 0.55 1.0 1.0
+        SkyHorizonColor : 0.7 0.82 1.0 1.0
+
+        // Emulate the sRGB pipeline in-shader on platforms without an sRGB framebuffer (Android GLES).
+        // Overridden from IalonConfig.manualGammaEncode at load time.
+        ManualSrgb : false
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+        // Nudge towards the camera so the flat surface wins over the textured side faces at the seam.
+        PolyOffset -0.1 -0.1
+    }
+}

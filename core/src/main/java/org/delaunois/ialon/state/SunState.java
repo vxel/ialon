@@ -11,7 +11,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.shape.Quad;
+import com.jme3.scene.shape.CenterQuad;
 import com.jme3.texture.Texture;
 
 import org.delaunois.ialon.IalonConfig;
@@ -41,7 +41,10 @@ public class SunState extends BaseAppState implements ActionListener {
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
 
-        sun = new Geometry("Sun", new Quad(30f, 30f));
+        // CenterQuad (origin at its centre), not Quad (origin at a corner) : SunControl places the
+        // geometry origin on the true sun direction, so a corner-origin quad would draw the disc offset
+        // by half its size -- visibly misaligned from the (physically correct) water sun reflection.
+        sun = new Geometry("Sun", new CenterQuad(30f, 30f));
         sun.setQueueBucket(RenderQueue.Bucket.Sky);
         sun.setCullHint(Spatial.CullHint.Never);
         sun.setShadowMode(RenderQueue.ShadowMode.Off);

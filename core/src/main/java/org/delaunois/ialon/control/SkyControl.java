@@ -39,6 +39,7 @@ public class SkyControl extends AbstractControl {
     @Getter
     private final ColorRGBA groundColor = new ColorRGBA();
 
+    @Getter
     private final ColorRGBA color = new ColorRGBA();
     private long lastUpdate = 0;
     private final IalonConfig config;
@@ -65,6 +66,18 @@ public class SkyControl extends AbstractControl {
             }
             ((Geometry) spatial).getMaterial().setColor("Color", color);
         }
+    }
+
+    /**
+     * The colour to use for a sky reflection (calm water surface, far-terrain water) : the configured
+     * sky hue modulated by the live day/night multiplier ({@link #getColor()}). {@link #getColor()}
+     * alone is that multiplier (white at noon), NOT the sky hue, so reflecting it directly would read
+     * grey ; the rendered sky is skyColor * multiplier, which is what this returns. Shared by
+     * WaterState and FarTerrainState so near and far water reflect the same sky.
+     */
+    public ColorRGBA getReflectionSkyColor(ColorRGBA store) {
+        ColorRGBA base = config.getSkyColor();
+        return store.set(base.r * color.r, base.g * color.g, base.b * color.b, 1f);
     }
 
     private float getUpdateThreshold() {

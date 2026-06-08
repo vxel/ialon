@@ -37,6 +37,7 @@ import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.WagonState;
+import org.delaunois.ialon.state.WaterState;
 import org.delaunois.ialon.state.WireframeState;
 import org.delaunois.ialon.state.WorldBuilderState;
 
@@ -109,6 +110,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
+        stateManager.attach(new WaterState(config)); // Animates the calm-water shader, depends on SunState + SkyState
         if (config.isFarTerrain()) {
             stateManager.attach(IalonInitializer.setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
         }
