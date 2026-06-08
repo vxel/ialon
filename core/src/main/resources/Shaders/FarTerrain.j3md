@@ -18,6 +18,10 @@ MaterialDef Far Terrain {
         Float RockHeight
         Float SnowHeight
         Float HeightOffset
+
+        // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See FarTerrain.frag / IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
     }
 
     Technique {
@@ -28,6 +32,10 @@ MaterialDef Far Terrain {
             WorldViewProjectionMatrix
             WorldMatrix
             CameraPosition
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
         }
     }
 }

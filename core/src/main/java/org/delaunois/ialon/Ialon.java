@@ -78,6 +78,14 @@ public class Ialon extends SimpleApplication {
         log.info("Initializing Ialon");
         config.getInputActionManager().setInputManager(inputManager);
 
+        // sRGB pipeline : gamma correction is requested in the AppSettings, but jME's hardware sRGB
+        // framebuffer is only available on renderers that expose Caps.Srgb (desktop GL). On others
+        // (notably Android GLES) setGammaCorrection(true) is a silent no-op, so we fall back to
+        // emulating the sRGB encode/decode inside our own world shaders to keep colours consistent.
+        config.setManualGammaEncode(!getRenderer().getCaps().contains(com.jme3.renderer.Caps.Srgb));
+        log.info("Hardware sRGB framebuffer: {} (manual gamma encode: {})",
+                !config.isManualGammaEncode(), config.isManualGammaEncode());
+
         stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();

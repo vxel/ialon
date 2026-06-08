@@ -30,7 +30,11 @@ public class IalonConfig {
     public static final int FPS_LIMIT_DESKTOP = 120;
 
     // Screen - Rendering
-    private float gammaCorrection = -1f; // Disabled. Used only for Android.
+    // True when the hardware sRGB framebuffer is unavailable (e.g. Android GLES, where
+    // setGammaCorrection(true) is a silent no-op) : our world shaders then emulate the sRGB pipeline
+    // (texture decode + output encode) so colours match the desktop hardware path. Set at startup
+    // from the renderer caps (Ialon.simpleInitApp) ; not persisted.
+    private boolean manualGammaEncode = false;
     private int screenWidth = 1520;
     private int screenHeight = 720;
     private int maxUpdatePerFrame = 8;
@@ -60,21 +64,23 @@ public class IalonConfig {
     private boolean farTerrain = true;
     private float farTerrainFogDistance = 2500f;
     private float farTerrainFogDensity = 5f;
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA(0.15f, 0.41f, 0.55f, 1f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
-    private ColorRGBA farTerrainSandColor = new ColorRGBA(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
-    private ColorRGBA farTerrainRockColor = new ColorRGBA(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
-    private ColorRGBA farTerrainSnowColor = new ColorRGBA(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
+    // Displayed colours are authored in sRGB but stored in LINEAR space (setAsSrgb), because the
+    // renderer runs the sRGB pipeline (gamma correction on) : shaders receive/emit linear values and
+    // the framebuffer encodes back to sRGB on output. The literal sRGB numbers below are the intended
+    // on-screen colours ; setAsSrgb keeps them looking the same after the framebuffer encode. (Light
+    // INTENSITIES, e.g. White * ambiantIntensity, stay raw - they are linear multipliers, not colours.)
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.15f, 0.45f, 0.61f, 0.92f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
+    private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
+    private ColorRGBA farTerrainSnowColor = new ColorRGBA().setAsSrgb(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
     private float waterHeight = 30;
-    // Calm water rendering : the flat surface of still (source) water is rendered as merged, flat-coloured
-    // quads (greedy meshing) instead of one textured, scrolling quad per block. Huge triangle savings on
-    // large seas/lakes, at the cost of dropping the surface texture/animation (calmWaterColor is used).
     private boolean greedyCalmWater = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png
+    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png (alpha kept as-is by setAsSrgb)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
@@ -82,22 +88,22 @@ public class IalonConfig {
     private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;
 
-    private ColorRGBA skyColor = ColorRGBA.fromRGBA255(100, 172, 255, 255);
-    private ColorRGBA skyZenithColor = ColorRGBA.fromRGBA255(65, 142, 255, 255);
+    private ColorRGBA skyColor = new ColorRGBA().setAsSrgb(100 / 255f, 172 / 255f, 255 / 255f, 1f);
+    private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
     // Background well below the horizon (nadir) : the sky dome floor + ground plate fade to this,
     // so looking down past the terrain shows a dark void instead of the light-blue sky ground.
-    private ColorRGBA skyFloorColor = new ColorRGBA(0.15f, 0.59f, 0.78f, 1f);
+    private ColorRGBA skyFloorColor = new ColorRGBA().setAsSrgb(0.15f, 0.59f, 0.78f, 1f);
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
-    private ColorRGBA skyEveningColor = new ColorRGBA(1f, 0.7f, 0.5f, 1);
-    private ColorRGBA skyNightColor = ColorRGBA.fromRGBA255(9, 12, 19, 255);
-    private ColorRGBA groundDayColor = ColorRGBA.fromRGBA255(141, 199, 255, 255);
-    private ColorRGBA groundEveningColor = ColorRGBA.fromRGBA255(150, 136, 126, 255);
-    private ColorRGBA groundNightColor = ColorRGBA.fromRGBA255(6, 6, 12, 255);
+    private ColorRGBA skyEveningColor = new ColorRGBA().setAsSrgb(1f, 0.7f, 0.5f, 1);
+    private ColorRGBA skyNightColor = new ColorRGBA().setAsSrgb(9 / 255f, 12 / 255f, 19 / 255f, 1f);
+    private ColorRGBA groundDayColor = new ColorRGBA().setAsSrgb(141 / 255f, 199 / 255f, 255 / 255f, 1f);
+    private ColorRGBA groundEveningColor = new ColorRGBA().setAsSrgb(150 / 255f, 136 / 255f, 126 / 255f, 1f);
+    private ColorRGBA groundNightColor = new ColorRGBA().setAsSrgb(6 / 255f, 6 / 255f, 12 / 255f, 1f);
     private ColorRGBA dayColor = ColorRGBA.White;
-    private ColorRGBA eveningColor = ColorRGBA.fromRGBA255(255, 173, 66, 255);
-    private ColorRGBA nightColor = new ColorRGBA(0.2f, 0.2f, 0.2f, 1);
+    private ColorRGBA eveningColor = new ColorRGBA().setAsSrgb(255 / 255f, 173 / 255f, 66 / 255f, 1f);
+    private ColorRGBA nightColor = new ColorRGBA().setAsSrgb(0.2f, 0.2f, 0.2f, 1);
 
     private float time = FastMath.HALF_PI;
     private int timeFactorIndex = 1;

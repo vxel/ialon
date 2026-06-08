@@ -11,7 +11,6 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.WireBox;
-import com.jme3.shader.VarType;
 import com.rvandoosselaer.blocks.Block;
 import com.rvandoosselaer.blocks.BlockRegistry;
 import com.rvandoosselaer.blocks.BlocksConfig;
@@ -508,6 +507,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             mat.setColor("Ambient", ColorRGBA.White);
             mat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, config.getCalmWaterColor().a));
             mat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
+            mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
             mat.setFloat("Shininess", 96f);
             mat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
             // Nudge towards the camera so the flat surface wins over the textured side faces at the seam.
@@ -751,9 +751,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 break;
             case CHUNK_MESH_TYPE_GENERIC:
                 typeRegistry.applyGenericMaterial(geometry);
-                if (config.getGammaCorrection() > 0) {
-                    geometry.getMaterial().setParam("GammaCorrection", VarType.Float, 1.0f / config.getGammaCorrection());
-                }
+                geometry.getMaterial().setBoolean("ManualSrgb", config.isManualGammaEncode());
                 break;
             default:
                 typeRegistry.applyMaterial(geometry, type);

@@ -136,8 +136,9 @@ MaterialDef Ialon {
         Float TextureScrollSpeedX
         Float TextureScrollSpeedY
 
-        // Gamma Correction on Android, if > 0
-        Float GammaCorrection
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See Ialon.frag / IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
     }
 
     Technique {
@@ -164,6 +165,7 @@ MaterialDef Ialon {
             DIFFUSEMAP : DiffuseMap
             NORMALMAP : NormalMap
             SPECULARMAP : SpecularMap
+            MANUAL_SRGB : ManualSrgb
         }
     }
 
