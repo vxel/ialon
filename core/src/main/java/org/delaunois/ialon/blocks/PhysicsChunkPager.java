@@ -25,7 +25,6 @@ import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
@@ -82,7 +81,7 @@ public class PhysicsChunkPager {
     private final ChunkManagerListener listener = new PhysicsChunkPagerListener();
     private final Queue<Vec3i> pagesToCreate = new ConcurrentLinkedQueue<>();
     private final Queue<CreatedPage> pagesToAttach = new ConcurrentLinkedQueue<>();
-    private final Queue<Vec3i> pagesToDetach = new LinkedList<>();
+    private final Queue<Vec3i> pagesToDetach = new ConcurrentLinkedQueue<>();
     private ExecutorService requestExecutor;
     private final Vec3i min = new Vec3i();
     private final Vec3i max = new Vec3i();

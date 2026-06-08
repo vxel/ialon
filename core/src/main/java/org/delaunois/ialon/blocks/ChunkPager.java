@@ -25,7 +25,7 @@ import com.simsilica.mathd.Vec3i;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -78,11 +77,17 @@ public class ChunkPager {
     private final Map<Vec3i, Chunk> fetchedPages = new ConcurrentHashMap<>();
 
     private final Queue<Chunk> pagesToAttach = new ConcurrentLinkedQueue<>();
-    private final Queue<Vec3i> pagesToDetach = new LinkedList<>();
+    private final Queue<Vec3i> pagesToDetach = new ConcurrentLinkedQueue<>();
     private final Queue<Vec3i> pagesToUnfetch = new ConcurrentLinkedQueue<>();
     private final ChunkManagerListener listener = new ChunkPagerListener();
     private final Node node;
     private ExecutorService requestExecutor;
+
+    // Scratch buffers reused across updateQueues() invocations to avoid per-crossing allocation.
+    // Only ever touched on the single-threaded requestExecutor, so no synchronization is needed.
+    private final Set<Vec3i> pagesToMesh = new HashSet<>();
+    private final Set<Vec3i> pagesToFetch = new HashSet<>();
+    private final Comparator<Vec3i> meshDistanceComparator = Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage));
 
     public ChunkPager(Node node, @NonNull ChunkManager chunkManager) {
         this.node = node;
@@ -153,8 +158,8 @@ public class ChunkPager {
             log.debug("Grid is set to ({}:{}, {}:{}, {}:{})", meshMinX, meshMaxX, meshMinY, meshMaxY, meshMinZ, meshMaxZ);
         }
 
-        Set<Vec3i> pagesToMesh = new HashSet<>();
-        Set<Vec3i> pagesToFetch = new HashSet<>();
+        pagesToMesh.clear();
+        pagesToFetch.clear();
 
         for (int x = fetchMinX; x <= fetchMaxX; x++) {
             for (int y = fetchMinY; y <= fetchMaxY; y++) {
@@ -188,14 +193,11 @@ public class ChunkPager {
             }
         }
 
-        // request the new pages pages to load/generate and mesh
-        // 82%
-        chunkManager.requestChunks(
-                new ArrayList<>(pagesToFetch),
-                // 14%
-                pagesToMesh.stream()
-                        .sorted(Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage)))
-                        .collect(Collectors.toList()));
+        // request the new pages to load/generate and mesh
+        // Mesh pages sorted by distance to the center so the closest chunks appear first.
+        List<Vec3i> meshList = new ArrayList<>(pagesToMesh);
+        meshList.sort(meshDistanceComparator);
+        chunkManager.requestChunks(new ArrayList<>(pagesToFetch), meshList);
 
         pagesToMesh.clear();
         pagesToFetch.clear();
