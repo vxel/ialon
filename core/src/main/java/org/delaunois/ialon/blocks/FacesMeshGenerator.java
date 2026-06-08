@@ -11,10 +11,10 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.WireBox;
-import org.delaunois.ialon.blocks.shapes.Liquid;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.blocks.jme.LayerComparator;
+import org.delaunois.ialon.blocks.shapes.Liquid;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -442,7 +442,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             }
         }
 
-        if (mesh.getPositions().size() > 0) {
+        if (!mesh.getPositions().isEmpty()) {
             meshMap.put(CHUNK_MESH_TYPE_WATER_CALM, mesh);
         }
     }

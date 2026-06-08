@@ -332,10 +332,12 @@ public class PhysicsChunkPager {
         @Override
         public void onChunkAvailable(Chunk chunk) {
             if (isInGrid(chunk.getLocation()) && !chunk.isEmpty()) {
-                log.info("Chunk Physic page update available at {}", chunk.getLocation());
+                log.debug("Chunk Physic page update available at {}", chunk.getLocation());
                 pagesToCreate.offer(chunk.getLocation());
+            } else if (chunk.isEmpty()) {
+                log.debug("Ignoring empty physic grid chunk update at {}", chunk.getLocation());
             } else {
-                log.info("Ignoring empty or outside physic grid chunk update at {}", chunk.getLocation());
+                log.debug("Ignoring outside physic grid chunk update at {}", chunk.getLocation());
             }
         }
 

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option java_package = "org.delaunois.explorer.protobuf";
+option java_package = "org.delaunois.ialon.blocks.protobuf";
 option java_outer_classname = "BlocksProtos";
 
 message ChunkProto {
