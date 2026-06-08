@@ -9,20 +9,20 @@ import com.jme3.scene.CameraNode;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.WorldSettings;
+import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.ChunkRepository;
 import org.delaunois.ialon.blocks.TextureAtlasManager;
+import org.delaunois.ialon.blocks.WorldSettings;
+import org.delaunois.ialon.blocks.ZipFileRepository;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.TerrainGenerator;
+import org.delaunois.ialon.input.InputActionManager;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.delaunois.ialon.blocks.ChunkManager;
-import org.delaunois.ialon.input.InputActionManager;
-import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
-import org.delaunois.ialon.blocks.generator.TerrainGenerator;
-import org.delaunois.ialon.blocks.ZipFileRepository;
 
 /**
  * Global configuration options for Ialon
@@ -77,9 +77,9 @@ public class IalonConfig implements WorldSettings {
     // the framebuffer encodes back to sRGB on output. The literal sRGB numbers below are the intended
     // on-screen colours ; setAsSrgb keeps them looking the same after the framebuffer encode. (Light
     // INTENSITIES, e.g. White * ambiantIntensity, stay raw - they are linear multipliers, not colours.)
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (ialon-theme/grass.png) so near & far land read alike
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.15f, 0.45f, 0.61f, 0.92f); // teal-blue, matched to the voxel water texture (ialon-theme/water_calm.png) so near & far seas read as one body
-    private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (ialon-theme/sand.png)
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (IalonTheme/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.15f, 0.45f, 0.61f, 0.92f); // teal-blue, matched to the voxel water texture (IalonTheme/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (IalonTheme/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
     private ColorRGBA farTerrainSnowColor = new ColorRGBA().setAsSrgb(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
@@ -88,7 +88,7 @@ public class IalonConfig implements WorldSettings {
 
     private float waterHeight = 30;
     private boolean greedyCalmWater = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of ialon-theme/water_calm.png (alpha kept as-is by setAsSrgb)
+    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.92f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;

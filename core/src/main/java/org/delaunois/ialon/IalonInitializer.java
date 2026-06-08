@@ -260,7 +260,7 @@ public class IalonInitializer {
         blocksConfig.setChunkMeshGenerator(new FacesMeshGenerator(ialonConfig));
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
-        typeRegistry.setTheme(new BlocksTheme("Ialon", "/ialon-theme"));
+        typeRegistry.setTheme(new BlocksTheme("Ialon", "/IalonTheme"));
         typeRegistry.setAtlasManager(ialonConfig.getTextureAtlasManager());
         typeRegistry.registerDefaultMaterials();
 
