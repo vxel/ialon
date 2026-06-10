@@ -134,9 +134,25 @@ void main() {
     float moonGlint = pow(max(dot(R, m_MoonDirection), 0.0), m_GlintPower) * m_MoonGlintStrength * moonUp;
 
     vec3 color = mix(vBodyColor, skyRefl, refl) + glint * m_SunColor.rgb + moonGlint * m_MoonColor.rgb;
-    // Constant transparency : tying opacity to the Fresnel turned the surface opaque at grazing angles,
-    // which hid everything when looking up at it from underwater. Keep the configured alpha everywhere.
-    float alpha = vAlpha;
+    // Bright sky leaks THROUGH the transparent water where nothing backs it (the far-terrain seam, where
+    // the voxel seabed runs out). That only happens FAR away and at GRAZING angles ; near the player the
+    // seabed backs the water, so we keep it see-through there (you can watch the bottom). So, seen from
+    // ABOVE, make the water opaque when it is grazing (Fresnel) OR distant (smoothstep) -> it then shows
+    // the sky REFLECTION, not the sky through a gap. Seen from BELOW (underwater) keep the configured
+    // alpha so you can still look out of the water.
+    // Use the HORIZONTAL distance (not the 3D one) : the missing backdrop is at the far chunk edge, a
+    // horizontal boundary. The 3D distance also grows with camera altitude, which would wrongly turn the
+    // water opaque when looking straight down from high up (where the seabed IS there, right below).
+    float aboveWater = step(vWorldPos.y, g_CameraPosition.y);
+    float horizDist = distance(g_CameraPosition.xz, vWorldPos.xz);
+    float farOpaque = smoothstep(50.0, 80.0, horizDist);
+    // Angle-based opacity : opaque unless looking fairly steeply DOWN (where the ray hits the seabed
+    // right below and we want to see it). ndv = dot(up, viewDir) -> ~1 looking straight down, ~0 grazing.
+    // A sharp ramp (sharper than the Fresnel) closes the medium/grazing angles where the ray shoots far
+    // out to the no-backdrop horizon and the sky would otherwise leak through.
+    float angleOpaque = 1.0 - smoothstep(0.05, 0.4, ndv);
+    float opaqueness = max(angleOpaque, farOpaque) * aboveWater;
+    float alpha = mix(vAlpha, 1.0, opaqueness);
 
 #ifdef MANUAL_SRGB
     // Emulate the sRGB framebuffer encode where the hardware one is missing (Android GLES).

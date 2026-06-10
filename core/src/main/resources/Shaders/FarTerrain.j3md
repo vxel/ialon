@@ -10,7 +10,7 @@ MaterialDef Far Terrain {
         Float FogDensity
         Float DepthBias
         Float InnerRadius
-        Color WaterColor
+        Color SeabedColor
         Color SandColor
         Color RockColor
         Color SnowColor
@@ -19,9 +19,7 @@ MaterialDef Far Terrain {
         Float SnowHeight
         Float HeightOffset
 
-        // Sky/sun reflection on the distant water (matches the calm-water shader, but with no waves
-        // since the far sea is flat). The colours come from SkyControl (same source as WaterState) and
-        // the tuning is copied from the calm-water material so near and far water stay consistent.
+        // Sky/sun/moon reflection on the flattened sea surface (same source/tuning as the calm water).
         Color SkyColor
         Color SkyHorizonColor
         Float ReflectionStrength
@@ -42,7 +40,7 @@ MaterialDef Far Terrain {
         FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/FarTerrain.frag
 
         WorldParameters {
-            WorldViewProjectionMatrix
+            ViewProjectionMatrix
             WorldMatrix
             CameraPosition
         }
