@@ -136,7 +136,6 @@ public class BlockRegistry {
         registerStoneBrickBlocks();
         registerWaterBlocks();
         registerWindowBlocks();
-        registerItemBlocks();
         registerScaleBlocks();
     }
 
@@ -246,16 +245,6 @@ public class BlockRegistry {
         register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_WEST)).shape(ShapeIds.SHORT_POLE_WEST).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
         register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_SOUTH)).shape(ShapeIds.SHORT_POLE_SOUTH).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
         register(Block.builder().name(BlockIds.getName(TypeIds.WHITE_LIGHT, ShapeIds.SHORT_POLE_NORTH)).shape(ShapeIds.SHORT_POLE_NORTH).type(TypeIds.WHITE_LIGHT).solid(true).torchlight(true).build());
-    }
-
-    private void registerItemBlocks() {
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_NONE).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 1)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL1).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 2)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL2).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 3)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL3).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 4)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL4).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 5)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_LEVEL5).build());
-        register(Block.builder().name(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 6)).shape(ShapeIds.CROSS_PLANE).type(TypeIds.ITEM_GRASS).liquidLevel(Block.LIQUID_FULL).build());
     }
 
     private void registerScaleBlocks() {

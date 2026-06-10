@@ -43,6 +43,15 @@ public class Liquid implements Shape {
     private static final float[] HEIGHTS = { 0.0f, 0.05f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f };
     public static final int LEVEL_MAX = HEIGHTS.length - 1;
 
+    /**
+     * Local-space Y (relative to the cell centre) of the flat top face of a liquid at the given level :
+     * {@code HEIGHTS[level] - 0.5}. Used by the calm-water mesher to place a merged surface quad at the
+     * same height the textured top face would have had.
+     */
+    public static float topOffset(int level) {
+        return HEIGHTS[Math.min(LEVEL_MAX, level)] - 0.5f;
+    }
+
     @Getter
     protected final int level;
 

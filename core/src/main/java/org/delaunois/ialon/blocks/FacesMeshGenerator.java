@@ -42,11 +42,16 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final String CHUNK_MESH_TYPE_WATER = "water";
     // Flat calm-water surface : its own mesh/material (a flat colour, no texture), greedy-merged.
     private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
-    // Source water shape that does NOT emit its top face : used for calm-surface cells whose flat top is
-    // produced instead by the greedy calm-water mesher. Its sides/bottom keep the normal textured look.
-    private static final Liquid LIQUID_SOURCE_NO_TOP = new Liquid(Liquid.LEVEL_MAX - 1, false);
-    // Local-space Y of the source-water top face (Liquid: HEIGHTS[5] - 0.5 = 0.3), relative to the cell.
-    private static final float SOURCE_TOP_Y = 0.8f - 0.5f;
+    // Water shapes that do NOT emit their top face, one per liquid level : used for calm-surface cells
+    // whose flat top is produced instead by the greedy calm-water mesher. Their sides/bottom keep the
+    // normal textured look. Any exposed water top (source = level 5, full = level 6, or flowing levels
+    // 1-4 created by the liquid sim) is rendered calm, each at its own level height (see Liquid.topOffset).
+    private static final Liquid[] LIQUID_NO_TOP = new Liquid[Liquid.LEVEL_MAX + 1];
+    static {
+        for (int level = 1; level <= Liquid.LEVEL_MAX; level++) {
+            LIQUID_NO_TOP[level] = new Liquid(level, false);
+        }
+    }
     // Cached once : Direction.values() allocates a new array on each call (avoid it in the hot loops).
     private static final Direction[] DIRECTIONS = Direction.values();
 
@@ -71,6 +76,12 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // (reused) light colour of that top. Populated by the render pass, consumed by the greedy pass.
         private boolean[] calmTop;
         private Vector4f[] calmColor;
+        // Local-space top Y of each calm cell (per liquid level) : merged only with equal-height
+        // neighbours, and emitted at this height so flowing/source/full tops keep their own level.
+        private float[] calmTopY;
+        // Per-layer grid of smoothed corner light, indexed gx*(sz+1)+gz. Reused across layers and
+        // chunks ; rebuilt for each water layer by addCalmWaterSurfaceMesh before its greedy merge.
+        private int[] calmCorner;
 
         ChunkMesh acquireCollision() {
             collisionMesh.clear();
@@ -80,6 +91,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         boolean[] acquireCalmTop(int size) {
             if (calmTop == null || calmTop.length < size) {
                 calmTop = new boolean[size];
+                calmTopY = new float[size];
                 calmColor = new Vector4f[size];
                 for (int i = 0; i < size; i++) {
                     calmColor[i] = new Vector4f();
@@ -87,7 +99,16 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             } else {
                 Arrays.fill(calmTop, 0, size, false);
             }
+            // calmTopY / calmColor need no reset : only entries whose calmTop flag is set are read.
             return calmTop;
+        }
+
+        int[] acquireCalmCorner(int size) {
+            if (calmCorner == null || calmCorner.length < size) {
+                calmCorner = new int[size];
+            }
+            // No fill needed : fillCornerLight rewrites every entry it later reads, layer by layer.
+            return calmCorner;
         }
 
         boolean[] acquireVisibilityMask(int size) {
@@ -265,7 +286,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         // greedy-mesh the flagged calm-water tops into a single flat-coloured surface mesh (merges the
         // large flat sea/lake surfaces into a handful of quads). Skipped entirely if none were flagged.
-        addCalmWaterSurfaceMesh(meshMap, pool, calmTop, volume, chunkSize);
+        addCalmWaterSurfaceMesh(chunk, meshMap, pool, calmTop, volume, chunkSize);
 
         // create the node of the chunk
         Vec3i chunkLocation = chunk.getLocation();
@@ -323,17 +344,14 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // add the block mesh to the chunk mesh
         neighborhood.setLocation(blockLocation);
         Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
-        // Calm water surface : a source-water block whose flat top is open to the air. Its top is rendered
-        // by the greedy calm-water mesher (merged, flat-coloured quads) instead of one textured quad per
-        // block, so swap to the no-top shape here (sides/bottom still drawn) and record the top.
-        if (config.isGreedyCalmWater() && pool.calmTop != null && block.isLiquidSource()
-                && Objects.equals(block.getType(), TypeIds.WATER)
-                && neighborhood.getNeighbour(Direction.UP) == null) {
-            int index = blockLocation.z + (blockLocation.y + blockLocation.x * chunkSize.y) * chunkSize.z;
-            pool.calmTop[index] = true;
-            neighborhood.getChunk().getLightLevel(blockLocation.x, blockLocation.y, blockLocation.z,
-                    Direction.UP, pool.calmColor[index]);
-            shape = LIQUID_SOURCE_NO_TOP;
+        // Calm water surface : a WATER block whose flat top is open to the air. Its top is rendered by
+        // the greedy calm-water mesher (merged, flat-coloured quads with sky reflection) instead of one
+        // textured quad per block, so swap to the matching no-top shape (sides/bottom still textured).
+        if (Objects.equals(block.getType(), TypeIds.WATER)) {
+            Shape noTop = flagCalmTopIfExposed(block, blockLocation, neighborhood, pool, chunkSize);
+            if (noTop != null) {
+                shape = noTop;
+            }
         }
         addShapeToMesh(block.getType(), shape, mesh, neighborhood);
 
@@ -355,10 +373,16 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             }
         }
 
-        // add water if any
+        // add water if any : a NON-water block carrying liquid (e.g. a pole/mushroom/structure placed in
+        // water). Its water fills the cell around the block's own shape. The exposed flat top, if any, is
+        // routed to the calm mesher too (same as a water block) so structures in water keep the reflective
+        // surface instead of a textured matte patch ; the sides stay textured.
         if (block.getLiquidLevel() > 0 && !Objects.equals(block.getType(), TypeIds.WATER)) {
             mesh = meshMap.computeIfAbsent(TypeIds.WATER, pool::acquireRender);
-            if (block.isLiquidSource()) {
+            Shape noTop = flagCalmTopIfExposed(block, blockLocation, neighborhood, pool, chunkSize);
+            if (noTop != null) {
+                shape = noTop;
+            } else if (block.isLiquidSource()) {
                 shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID5);
             } else if (block.getLiquidLevel() == Block.LIQUID_FULL) {
                 shape = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.LIQUID);
@@ -367,6 +391,29 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             }
             addShapeToMesh(TypeIds.WATER, shape, mesh, neighborhood);
         }
+    }
+
+    /**
+     * If this cell's liquid has a flat top open to the air, flag it for the greedy calm-water mesher
+     * (record its position, level height and light) and return the matching no-top liquid shape so the
+     * caller draws the sides/bottom but not the textured top. Returns {@code null} when the top is not a
+     * calm candidate (greedy calm off, no liquid, or covered by a block above), leaving the caller to
+     * draw the normal textured shape. Shared by water blocks (Path A) and liquid-carrying non-water
+     * blocks (Path B : poles/structures placed in water) so both keep the reflective surface.
+     */
+    private Shape flagCalmTopIfExposed(Block block, Vec3i blockLocation, BlockNeighborhood neighborhood,
+                                       MeshPool pool, Vec3i chunkSize) {
+        int level = block.getLiquidLevel();
+        if (!config.isGreedyCalmWater() || pool.calmTop == null || level <= 0
+                || neighborhood.getNeighbour(Direction.UP) != null) {
+            return null;
+        }
+        int index = blockLocation.z + (blockLocation.y + blockLocation.x * chunkSize.y) * chunkSize.z;
+        pool.calmTop[index] = true;
+        pool.calmTopY[index] = Liquid.topOffset(level);
+        neighborhood.getChunk().getLightLevel(blockLocation.x, blockLocation.y, blockLocation.z,
+                Direction.UP, pool.calmColor[index]);
+        return LIQUID_NO_TOP[level];
     }
 
     private static boolean isCollisionCube(Block block) {
@@ -380,7 +427,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
      * collapses a big sea/lake surface from one quad per block into a handful of quads. The flat colour
      * (no texture, no scrolling) is what makes the merge safe : there is no per-block UV to preserve.
      */
-    private void addCalmWaterSurfaceMesh(Map<String, ChunkMesh> meshMap, MeshPool pool, boolean[] calmTop,
+    private void addCalmWaterSurfaceMesh(Chunk chunk, Map<String, ChunkMesh> meshMap, MeshPool pool, boolean[] calmTop,
                                          int volume, Vec3i chunkSize) {
         boolean any = false;
         for (int i = 0; i < volume && !any; i++) {
@@ -392,12 +439,21 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
 
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         Vector4f[] calmColor = pool.calmColor;
+        float[] calmTopY = pool.calmTopY;
         ChunkMesh mesh = pool.acquireRender(CHUNK_MESH_TYPE_WATER_CALM);
         int sx = chunkSize.x;
         int sy = chunkSize.y;
         int sz = chunkSize.z;
+        // Smoothed light at each grid corner (vertex) of the current layer. Reused per layer.
+        int[] corner = pool.acquireCalmCorner((sx + 1) * (sz + 1));
+        Vector4f lightScratch = new Vector4f();
 
         for (int y = 0; y < sy; y++) {
+            // Build the smoothed corner-light grid for this layer BEFORE the merge below consumes
+            // (clears) calmTop, so neighbour sampling sees the full, untouched layer.
+            if (!fillCornerLight(chunk, calmTop, calmColor, corner, y, sx, sy, sz, lightScratch)) {
+                continue;
+            }
             for (int x = 0; x < sx; x++) {
                 for (int z = 0; z < sz; ) {
                     int idx = z + (y + x * sy) * sz;
@@ -406,22 +462,24 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                         continue;
                     }
                     Vector4f color = calmColor[idx];
-                    // grow the run along z (same layer, contiguous, same light)
+                    float topY = calmTopY[idx];
+                    // grow the run along z (same layer, contiguous, same light AND same top height :
+                    // different water levels sit at different Y, so they must not merge)
                     int w = 1;
                     while (z + w < sz) {
                         int j = (z + w) + (y + x * sy) * sz;
-                        if (!calmTop[j] || !sameColor(calmColor[j], color)) {
+                        if (!calmTop[j] || !sameColor(calmColor[j], color) || calmTopY[j] != topY) {
                             break;
                         }
                         w++;
                     }
-                    // grow along x while the whole z-run stays set with the same light
+                    // grow along x while the whole z-run stays set with the same light and height
                     int d = 1;
                     boolean grow = true;
                     while (x + d < sx && grow) {
                         for (int k = 0; k < w; k++) {
                             int j = (z + k) + (y + (x + d) * sy) * sz;
-                            if (!calmTop[j] || !sameColor(calmColor[j], color)) {
+                            if (!calmTop[j] || !sameColor(calmColor[j], color) || calmTopY[j] != topY) {
                                 grow = false;
                                 break;
                             }
@@ -430,7 +488,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                             d++;
                         }
                     }
-                    emitCalmQuad(mesh, x, x + d - 1, z, z + w - 1, y, blockScale, color.w);
+                    emitCalmQuad(mesh, x, x + d - 1, z, z + w - 1, y, topY, blockScale, corner, sz);
                     // consume the merged cells
                     for (int dx = 0; dx < d; dx++) {
                         for (int dz = 0; dz < w; dz++) {
@@ -447,18 +505,31 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         }
     }
 
-    private void emitCalmQuad(ChunkMesh mesh, int x0, int x1, int z0, int z1, int y, float blockScale, float lightPacked) {
+    private void emitCalmQuad(ChunkMesh mesh, int x0, int x1, int z0, int z1, int y, float topY, float blockScale, int[] corner, int sz) {
         float xLo = (x0 - 0.5f) * blockScale;
         float xHi = (x1 + 0.5f) * blockScale;
         float zLo = (z0 - 0.5f) * blockScale;
         float zHi = (z1 + 0.5f) * blockScale;
-        float yTop = (y + SOURCE_TOP_Y) * blockScale;
+        float yTop = (y + topY) * blockScale;
+
+        // Per-corner smoothed light (the gradient that kills the per-block checkerboard) : the shader
+        // unpacks the alpha nibbles per vertex, then the GPU interpolates the result across the quad,
+        // exactly like the soft-shadowed cube faces. The grid corner at block boundary (gx, gz) lives
+        // at index gx*(sz+1)+gz ; a 1x1 quad spans corners (x0..x0+1, z0..z0+1).
+        int cw = sz + 1;
+        float lLoLo = corner[x0 * cw + z0];
+        float lHiLo = corner[(x1 + 1) * cw + z0];
+        float lLoHi = corner[x0 * cw + (z1 + 1)];
+        float lHiHi = corner[(x1 + 1) * cw + (z1 + 1)];
 
         // Vertex colour : RGB = the water tint (the shader's block-lighting overwrites AmbientSum with
         // inColor.rgb, so the tint MUST live in the vertex colour, not the material), A = the packed
         // sun/torch light level so the surface still follows the day/night cycle (no texture is used).
         ColorRGBA c = config.getCalmWaterColor();
-        Vector4f vcolor = new Vector4f(c.r, c.g, c.b, lightPacked);
+        // One scratch per quad (a local, not a shared field : meshing runs on several threads).
+        // DirectVector4fBuffer#add copies the components, so mutating w between adds is safe and
+        // avoids a Vector4f per vertex.
+        Vector4f vcolor = new Vector4f(c.r, c.g, c.b, 0f);
 
         int offset = mesh.getPositions().size();
         // Winding matches Liquid.createUp (v[3], v[2], v[7], v[6]) so the merged quad faces up.
@@ -466,9 +537,11 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         mesh.getPositions().add(new Vector3f(xLo, yTop, zLo));
         mesh.getPositions().add(new Vector3f(xHi, yTop, zHi));
         mesh.getPositions().add(new Vector3f(xLo, yTop, zHi));
+        float[] cornerLight = { lHiLo, lLoLo, lHiHi, lLoHi }; // matches the 4 vertices above
         for (int i = 0; i < 4; i++) {
             mesh.getNormals().add(new Vector3f(0f, 1f, 0f));
             mesh.getUvs().add(new Vector2f(0f, 0f)); // unused : the flat-colour material has no texture
+            vcolor.w = cornerLight[i];
             mesh.getColors().add(vcolor);
         }
         mesh.getIndices().add(offset);
@@ -477,6 +550,75 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         mesh.getIndices().add(offset + 1);
         mesh.getIndices().add(offset + 3);
         mesh.getIndices().add(offset + 2);
+    }
+
+    /**
+     * Builds the smoothed corner-light grid for one water layer. Each grid corner (vertex) gets the
+     * average of the (up to four) calm-water tops meeting at it — the same neighbour-averaging the
+     * cube soft-shadow uses — so adjacent quads share identical corner values and the surface light
+     * varies smoothly instead of stepping per block. Sun and torch nibbles are averaged separately
+     * (over the cells actually present, so shores are not darkened) and repacked. Returns false when
+     * the layer holds no calm top, letting the caller skip it.
+     * <p>
+     * Cells OUTSIDE this chunk (the border corners) are resolved through {@code chunk} (cross-chunk),
+     * so the gradient is continuous across chunk boundaries : two adjacent chunks compute their shared
+     * edge corners from the same world columns and get the same value — no lighting seam at the border.
+     */
+    private boolean fillCornerLight(Chunk chunk, boolean[] calmTop, Vector4f[] calmColor, int[] corner,
+                                    int y, int sx, int sy, int sz, Vector4f scratch) {
+        int cw = sz + 1;
+        boolean any = false;
+        for (int gx = 0; gx <= sx; gx++) {
+            for (int gz = 0; gz <= sz; gz++) {
+                int sunSum = 0;
+                int torchSum = 0;
+                int count = 0;
+                for (int cx = gx - 1; cx <= gx; cx++) {
+                    for (int cz = gz - 1; cz <= gz; cz++) {
+                        int packed = cellTopLight(chunk, calmTop, calmColor, cx, y, cz, sx, sy, sz, scratch);
+                        if (packed >= 0) {
+                            sunSum += (packed >> 4) & 0xF;
+                            torchSum += packed & 0xF;
+                            count++;
+                        }
+                    }
+                }
+                int packed = 0;
+                if (count > 0) {
+                    packed = ((sunSum / count) << 4) | (torchSum / count);
+                    any = true;
+                }
+                corner[gx * cw + gz] = packed;
+            }
+        }
+        return any;
+    }
+
+    /**
+     * Packed light (sun high nibble, torch low nibble) of the calm-water top at {@code (cx, y, cz)}, or
+     * -1 if that cell is not an exposed water top (so it doesn't contribute to the corner average).
+     * In-chunk cells read the cheap render-pass snapshot ({@code calmTop}/{@code calmColor}) ; out-of-chunk
+     * cells are resolved through the chunk (cross-chunk aware) so corner light is continuous across chunk
+     * borders. The out-of-chunk gate mirrors the in-chunk calm flag (WATER block, liquid, top open to air)
+     * so water/land borders never average in land light.
+     */
+    private int cellTopLight(Chunk chunk, boolean[] calmTop, Vector4f[] calmColor,
+                             int cx, int y, int cz, int sx, int sy, int sz, Vector4f scratch) {
+        if (cx >= 0 && cx < sx && cz >= 0 && cz < sz) {
+            int idx = cz + (y + cx * sy) * sz;
+            if (!calmTop[idx]) {
+                return -1;
+            }
+            // & 0xFF : the lightmap byte is signed (full sun 0xF0 arrives as -16.0f).
+            return Math.round(calmColor[idx].w) & 0xFF;
+        }
+        Block nb = chunk.getNeighbour(cx, y, cz, 0, 0, 0);
+        if (nb == null || nb.getLiquidLevel() <= 0 || !TypeIds.WATER.equals(nb.getType())
+                || chunk.getNeighbour(cx, y, cz, 0, 1, 0) != null) {
+            return -1;
+        }
+        chunk.getLightLevel(cx, y, cz, Direction.UP, scratch);
+        return Math.round(scratch.w) & 0xFF;
     }
 
     private static boolean sameColor(Vector4f a, Vector4f b) {
