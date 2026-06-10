@@ -3,9 +3,7 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
-import com.jme3.asset.TextureKey;
 import com.jme3.material.Material;
-import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
@@ -16,13 +14,11 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.shader.VarType;
-import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.SkyControl;
 import org.delaunois.ialon.control.SpatialFollowCamControl;
-import org.delaunois.ialon.util.Ground;
 
 import java.nio.FloatBuffer;
 
@@ -34,7 +30,6 @@ public class SkyState extends BaseAppState {
     private SimpleApplication app;
     @lombok.Getter
     private SkyControl skyControl;
-    private Geometry ground;
     private Geometry sky;
 
     private final IalonConfig config;
@@ -67,30 +62,6 @@ public class SkyState extends BaseAppState {
         SpatialFollowCamControl followCamControl = new SpatialFollowCamControl(app.getCamera());
         sky.addControl(skyControl);
         sky.addControl(followCamControl);
-
-        Ground groundPlate = new Ground(50, 50);
-        ground = new Geometry("ground", groundPlate);
-        ground.setQueueBucket(RenderQueue.Bucket.Sky);
-        ground.setCullHint(Spatial.CullHint.Never);
-        ground.setShadowMode(RenderQueue.ShadowMode.Off);
-
-        TextureKey tex = new TextureKey("Textures/ground.png");
-        tex.setGenerateMips(false);
-        Texture groundTexture = app.getAssetManager().loadTexture(tex);
-        Material groundMat = new Material(app.getAssetManager(), "Shaders/IalonUnshaded.j3md");
-        groundMat.setBoolean("ManualSrgb", config.isManualGammaEncode());
-        groundMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-        groundMat.setTexture("ColorMap", groundTexture);
-        // Dark "below horizon" background : decoupled from skyControl.getGroundColor() (which stays
-        // bound to the far-terrain fog), so the ground plate goes black without affecting the fog.
-        groundMat.setColor("Color", config.getSkyFloorColor());
-        ground.setMaterial(groundMat);
-        config.getTextureAtlasManager().getAtlas().applyCoords(ground, 0.1f);
-        groundMat.setTexture("ColorMap", config.getTextureAtlasManager().getDiffuseMap());
-
-        SpatialFollowCamControl spatialFollowCamControl = new SpatialFollowCamControl(app.getCamera());
-        spatialFollowCamControl.setTranslation(new Vector3f(0f, -0.5f, 0f));
-        ground.addControl(spatialFollowCamControl);
     }
 
     @Override
@@ -106,16 +77,14 @@ public class SkyState extends BaseAppState {
             return;
         }
         skyControl.setSunControl(sunState.getSunControl());
-        if (ground.getParent() == null) {
-            //this.app.getRootNode().attachChild(ground);
+        if (sky.getParent() == null) {
             this.app.getRootNode().attachChildAt(sky, 0);
         }
     }
 
     @Override
     protected void onDisable() {
-        if (ground.getParent() != null) {
-            //this.app.getRootNode().detachChild(ground);
+        if (sky.getParent() != null) {
             this.app.getRootNode().detachChild(sky);
         }
     }

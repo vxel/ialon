@@ -21,11 +21,18 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
+import com.jme3.scene.VertexBuffer;
 import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
+import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.BlocksConfig;
@@ -47,9 +54,19 @@ import lombok.extern.slf4j.Slf4j;
  * generate the voxel chunks, so the distant relief matches exactly what the player walks on. No
  * voxels, no chunk meshing : a single heightfield mesh covers a large finite area cheaply.
  *
- * <p>v1 : finite, static island centered on the world origin. Coloring is a simple lit material
- * (relief shown by the terrain normals under the scene's sun light). Fog and player-recentring are
- * handled separately.
+ * <p>The sea is part of this same mesh : the vertex shader flattens everything below the water level
+ * up to the water surface (so the distant sea is a single flat surface, natively occluded by the hills
+ * and voxels -- no separate water plane, no depth-fighting), while the fragment shader draws the
+ * coastal sand-&gt;deep-blue gradient (from the preserved true height) and the sky/sun/moon reflection.
+ *
+ * <p>A closed enclosure (the {@link #enclosure} box) seals the world from below : its top is open (the
+ * heightfield above is the lid), and its four walls + floor are simple inward-facing opaque quads. This
+ * guarantees no ray can ever reach the sky from below the water surface -- which used to leak the bright
+ * sky through the transparent voxel water (external grazing views, underwater views, and the brief gap
+ * while a chunk pages in). The walls top out just under the flattened far-sea level, and the floor sits
+ * below the deepest relief. The box follows the <b>camera</b> (not the world tile) at a radius safely
+ * inside the camera far clip plane : a world-edge box would sit beyond the far plane and be clipped away,
+ * leaving the underwater horizon unsealed.
  */
 @Slf4j
 public class FarTerrainState extends BaseAppState {
@@ -67,6 +84,12 @@ public class FarTerrainState extends BaseAppState {
     @Getter
     private TerrainQuad terrain;
 
+    // Closed box sealing the world from below (open top : the heightfield is the lid). Built once, it
+    // follows the camera at a radius inside the far clip plane so the horizon is always enclosed in
+    // every direction (a world-edge box would be clipped away by the far plane -- see update()).
+    @Getter
+    private Geometry enclosure;
+
     private Material material;
     // Sun direction, shared by reference with the material and refreshed each frame from LightingState.
     private final Vector3f lightDir = new Vector3f(-0.5f, -0.7f, -0.5f).normalizeLocal();
@@ -79,12 +102,12 @@ public class FarTerrainState extends BaseAppState {
     // The ambient / sun colours are bound (once) to LightingState's live light colours (mutated in place
     // by SunControl) so the far terrain dims and tints with the day/night cycle like the voxels.
     private boolean lightColorsBound = false;
-    // Water reflection : the overhead sky colour, refreshed each frame from SkyControl (shared source
-    // with WaterState). Bound once by reference, then mutated in place so the shader tracks it.
+    // Sea reflection : the overhead sky colour, refreshed each frame from SkyControl (shared source with
+    // WaterState). Bound once by reference, then mutated in place so the shader tracks it.
     private final ColorRGBA reflectionSkyColor = new ColorRGBA();
     private boolean reflectionBound = false;
-    // The reflection tuning (strength / glint / Fresnel) is copied once from the calm-water material so
-    // near and far water reflect identically ; the calm-water j3m stays the single source of truth.
+    // The reflection tuning (strength / glint / Fresnel / moon) is copied once from the calm-water
+    // material so near and far water reflect identically ; the calm-water j3m stays the single source.
     private boolean reflectionTuningCopied = false;
     // Finite world : the (periodic) far terrain is re-centered on the player's current tile so the
     // horizon surrounds the player wherever they roam. These hold the current snap, in world units
@@ -130,11 +153,13 @@ public class FarTerrainState extends BaseAppState {
         // keeps it buried inside the solid voxel volume near the player (so the real chunks hide it /
         // avoid z-fighting), while it still rises into view as the horizon beyond the chunks.
         terrain.setLocalTranslation(0f, config.getFarTerrainVerticalOffset(), 0f);
-        terrain.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
+        terrain.setShadowMode(RenderQueue.ShadowMode.Off);
 
         // Distance-based LOD : reduces far patches' triangle count.
         TerrainLodControl lodControl = new TerrainLodControl(terrain, app.getCamera());
         terrain.addControl(lodControl);
+
+        enclosure = createEnclosure(heightmap, step);
 
         log.info("Far terrain generated : {}x{} heightmap, extent {} units (step {})",
                 HEIGHTMAP_SIZE, HEIGHTMAP_SIZE, extent, step);
@@ -143,22 +168,20 @@ public class FarTerrainState extends BaseAppState {
     /**
      * Samples the generator height over a regular grid centered on the origin. The world coordinate
      * of sample (i, j) matches the position {@link TerrainQuad} gives to that heightmap cell, so the
-     * far relief lines up with the voxel terrain.
+     * far relief lines up with the voxel terrain. The real (un-flattened) relief is kept everywhere,
+     * including the submerged sea floor : the vertex shader flattens the sea to the water level while
+     * preserving the true height for the fragment shader's coastal depth gradient.
      */
     private float[] sampleHeightmap(TerrainGenerator generator, float step) {
         float[] heightmap = new float[HEIGHTMAP_SIZE * HEIGHTMAP_SIZE];
         float half = (HEIGHTMAP_SIZE - 1) / 2f;
-        // Flatten everything below the water level up to the water surface : the distant seas / lakes
-        // then render as a flat plane at waterHeight (matching the voxel water surface), instead of
-        // showing the bumpy, relief-shaded submerged floor that the player never actually sees.
-        float waterLevel = config.getWaterHeight();
         Vector3f sample = new Vector3f();
         for (int j = 0; j < HEIGHTMAP_SIZE; j++) {
             float worldZ = (j - half) * step;
             int row = j * HEIGHTMAP_SIZE;
             for (int i = 0; i < HEIGHTMAP_SIZE; i++) {
                 float worldX = (i - half) * step;
-                float h = Math.max(generator.getHeight(sample.set(worldX, 0f, worldZ)), waterLevel);
+                float h = generator.getHeight(sample.set(worldX, 0f, worldZ));
                 // Pre-divided by step : after the uniform localScale (step) the world Y is exact again.
                 heightmap[row + i] = h / step;
             }
@@ -184,39 +207,124 @@ public class FarTerrainState extends BaseAppState {
         // Interpreted as a square (Chebyshev) half-extent in the shader, so it matches the square chunk
         // footprint ; the -chunkSize margin keeps it safely inside as the camera moves within a chunk.
         mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
-        // Altitude palette : reflects the blocks the generator places by height (water / sand /
-        // grass, then bare rock and snow on the high mountains). The rock & snow lines use the SAME
-        // ratios and world ceiling as NoiseTerrainGenerator, so the distant tiers line up exactly.
-        mat.setColor("WaterColor", config.getFarTerrainWaterColor());
+        // Altitude palette : the coastal gradient (sand at the shore -> open-water colour with depth)
+        // plus sand / grass / rock / snow above. The rock & snow lines use the SAME ratios and world
+        // ceiling as NoiseTerrainGenerator, so the distant tiers line up exactly.
+        // Deep-sea colour : the OPAQUE far sea is a water SURFACE, so its deep tint must match the near
+        // voxel/calm water (calmWaterColor), not a dark seabed -- otherwise the deep blue doesn't line
+        // up with the near water at the seam.
+        ColorRGBA deep = config.getCalmWaterColor();
+        mat.setColor("SeabedColor", new ColorRGBA(deep.r, deep.g, deep.b, 1f));
         mat.setColor("SandColor", config.getFarTerrainSandColor());
         mat.setColor("RockColor", config.getFarTerrainRockColor());
         mat.setColor("SnowColor", config.getFarTerrainSnowColor());
         mat.setFloat("WaterHeight", config.getWaterHeight());
         mat.setFloat("RockHeight", NoiseTerrainGenerator.ROCK_LINE_RATIO * config.getMaxy());
         mat.setFloat("SnowHeight", NoiseTerrainGenerator.SNOW_LINE_RATIO * config.getMaxy());
-        // The terrain mesh is nudged vertically (localTranslation below) ; the shader undoes this
-        // offset so the altitude palette compares against the generator's true block heights.
+        // The terrain mesh is nudged vertically (localTranslation above) ; the shaders undo this offset
+        // so the altitude palette compares against the generator's true block heights, and the vertex
+        // shader flattens the sea at the right world level.
         mat.setFloat("HeightOffset", config.getFarTerrainVerticalOffset());
-        // Shared instance : update() mutates it in place so the sun direction follows day/night.
+        // Shared instances : update() mutates them in place so the sun / moon directions follow the cycle.
         mat.setVector3("LightDir", lightDir);
+        mat.setVector3("MoonDirection", moonDir);
         // Lighting colours : placeholders here, rebound by reference in update() to the scene's live
         // AmbientLight / DirectionalLight colours so the far terrain is lit exactly like the voxels.
         mat.setColor("AmbientColor", ColorRGBA.White.mult(config.getAmbiantIntensity()));
         mat.setColor("SunColor", ColorRGBA.White.mult(config.getSunIntensity()));
-        // Water reflection : placeholders. update() binds the sky colours to SkyControl's live values
-        // and copies the tuning from the calm-water material (the single source of truth).
+        // Sea reflection : placeholders, rebound/overwritten in update() (sky colours + tuning copied
+        // from the calm-water material, the single source of truth).
         mat.setColor("SkyColor", new ColorRGBA(0.25f, 0.55f, 1f, 1f));
         mat.setColor("SkyHorizonColor", new ColorRGBA(0.7f, 0.82f, 1f, 1f));
         mat.setFloat("ReflectionStrength", 0f);
         mat.setFloat("FresnelPower", 5f);
         mat.setFloat("GlintPower", 220f);
         mat.setFloat("GlintStrength", 2.2f);
-        // Moon : direction shared by reference (mutated each frame in update()) ; colour/strength are
-        // placeholders, overwritten by the values copied from the calm-water material.
-        mat.setVector3("MoonDirection", moonDir);
         mat.setColor("MoonColor", new ColorRGBA(0.55f, 0.62f, 0.78f, 1f));
         mat.setFloat("MoonGlintStrength", 0.6f);
         return mat;
+    }
+
+    /**
+     * Builds the closed box that seals the world from below (open top : the heightfield is the lid).
+     * Four walls + a floor of plain inward-facing opaque quads, so no ray can reach the sky through the
+     * transparent water from below the surface. The Y extents are baked into the mesh in WORLD units, so
+     * the camera-follow in update() only shifts X/Z and the box stays at the right height (walls just
+     * under the flattened far-sea level, floor below the deepest relief).
+     */
+    private Geometry createEnclosure(float[] heightmap, float step) {
+        float offset = config.getFarTerrainVerticalOffset();
+        // Walls top out exactly at the flattened far-sea level (worldPos.y = WaterHeight + HeightOffset,
+        // see FarTerrain.vert) : they seam seamlessly with the far sea surface AND reach at least the
+        // near voxel water level, so an underwater horizontal ray is always stopped before the horizon.
+        float wallTopY = config.getWaterHeight() + offset;
+        // Floor below the deepest relief AND below the world bottom (Y=0, the lowest a player can dig),
+        // with a chunk-size margin so even the deepest valley/pit is comfortably sealed.
+        float minWorldY = offset;
+        for (float h : heightmap) {
+            float y = h * step + offset;
+            if (y < minWorldY) {
+                minWorldY = y;
+            }
+        }
+        float floorY = Math.min(minWorldY, 0f) - config.getChunkSize();
+
+        float half = config.getChunkSize() * config.getGridRadius();
+
+        Geometry geom = new Geometry("FarTerrainEnclosure", buildEnclosureMesh(half, floorY, wallTopY));
+
+        Material mat = new Material(app.getAssetManager(), "Shaders/Enclosure.j3md");
+        mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
+        // Opaque deep-water blue (calmWaterColor is the deep-sea source, but authored with alpha 0.5 for
+        // the transparent near water -- force it opaque here, this box is a solid backdrop, not water).
+        ColorRGBA deep = config.getCalmWaterColor();
+        mat.setColor("Color", new ColorRGBA(deep.r, deep.g, deep.b, 1f));
+        // Slightly more clip-space depth push-back than the far terrain, so the enclosure is always the
+        // backstop BEHIND both the voxels and the far terrain (it only shows through genuine gaps).
+        // Without it the unbiased box won the depth test against the depth-biased far sea and occluded it.
+        mat.setFloat("DepthBias", config.getFarTerrainDepthBias() + 0.01f);
+        // Inward-facing : the camera is always inside the box, so render both sides (only 5 quads).
+        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        geom.setMaterial(mat);
+
+        geom.setShadowMode(RenderQueue.ShadowMode.Off);
+        // The box always encloses the camera, so its bounds straddle the frustum : never cull it.
+        geom.setCullHint(Spatial.CullHint.Never);
+        Vector3f camLoc = app.getCamera().getLocation();
+        geom.setLocalTranslation(camLoc.x, -0.2f, camLoc.z);
+        return geom;
+    }
+
+    /**
+     * Five inward-facing quads (4 walls + floor, open top) spanning [-half, +half] in X/Z, from floorY
+     * to topY. Positions only : the material is unshaded flat colour, so no normals / texcoords needed.
+     * Winding is irrelevant (face culling is Off).
+     */
+    private Mesh buildEnclosureMesh(float half, float floorY, float topY) {
+        float[] pos = {
+                // Floor (y = floorY)
+                -half, floorY, -half,   half, floorY, -half,   half, floorY, half,   -half, floorY, half,
+                // West wall (x = -half)
+                -half, floorY, -half,   -half, floorY, half,   -half, topY, half,    -half, topY, -half,
+                // East wall (x = +half)
+                half, floorY, -half,    half, floorY, half,    half, topY, half,     half, topY, -half,
+                // North wall (z = -half)
+                -half, floorY, -half,   half, floorY, -half,   half, topY, -half,    -half, topY, -half,
+                // South wall (z = +half)
+                -half, floorY, half,    half, floorY, half,    half, topY, half,     -half, topY, half
+        };
+        short[] idx = {
+                0, 1, 2, 0, 2, 3,        // floor
+                4, 5, 6, 4, 6, 7,        // west
+                8, 9, 10, 8, 10, 11,     // east
+                12, 13, 14, 12, 14, 15,  // north
+                16, 17, 18, 16, 18, 19   // south
+        };
+        Mesh mesh = new Mesh();
+        mesh.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(pos));
+        mesh.setBuffer(VertexBuffer.Type.Index, 3, BufferUtils.createShortBuffer(idx));
+        mesh.updateBound();
+        return mesh;
     }
 
     @Override
@@ -226,9 +334,12 @@ public class FarTerrainState extends BaseAppState {
 
     @Override
     protected void onEnable() {
+        Node node = app.getRootNode();
         if (terrain != null && terrain.getParent() == null) {
-            Node node = app.getRootNode();
             node.attachChild(terrain);
+        }
+        if (enclosure != null && enclosure.getParent() == null) {
+            node.attachChild(enclosure);
         }
     }
 
@@ -236,6 +347,9 @@ public class FarTerrainState extends BaseAppState {
     protected void onDisable() {
         if (terrain != null && terrain.getParent() != null) {
             terrain.removeFromParent();
+        }
+        if (enclosure != null && enclosure.getParent() != null) {
+            enclosure.removeFromParent();
         }
     }
 
@@ -259,6 +373,14 @@ public class FarTerrainState extends BaseAppState {
             }
         }
 
+        // The enclosure follows the CAMERA (not the world tile) at a radius within the far clip plane,
+        // so its walls are never clipped and seal the horizon in every direction (a world-edge box would
+        // sit beyond the far plane). Y is baked into the mesh, so only shift X/Z.
+        if (enclosure != null) {
+            Vector3f cam = app.getCamera().getLocation();
+            enclosure.setLocalTranslation(cam.x, -0.2f, cam.z);
+        }
+
         // Keep the far terrain lit by the same sun as the world (day/night cycle). The material holds
         // the lightDir instance by reference, so mutating it in place updates the shader uniform.
         LightingState lighting = getState(LightingState.class);
@@ -275,7 +397,7 @@ public class FarTerrainState extends BaseAppState {
             }
         }
 
-        // Moon direction (towards the moon), mutated in place so the shader's reflection tracks it.
+        // Moon direction (towards the moon), mutated in place so the sea's moon glint tracks it.
         if (moonControl == null) {
             MoonState moonState = getState(MoonState.class);
             if (moonState != null) {
@@ -290,14 +412,13 @@ public class FarTerrainState extends BaseAppState {
         SkyControl skyControl = (sky != null) ? sky.getSkyControl() : null;
         if (skyControl != null && material != null) {
             // Bind the fog colour to SkyControl's live ground colour (mutated in place as time passes),
-            // so the terrain fades into the exact current ground colour. Bound once : the shared
-            // reference then tracks the day/night cycle automatically.
+            // so the terrain/sea fade into the exact current ground colour at the horizon. Bound once.
             if (!fogColorBound) {
                 material.setColor("FogColor", skyControl.getGroundColor());
                 fogColorBound = true;
             }
-            // Water reflection sky colours, shared with the calm-water shader (WaterState) so near and
-            // far water reflect the same sky. The overhead colour is a product (sky hue * day/night
+            // Sea reflection sky colours, shared with the calm-water shader (WaterState) so near and far
+            // water reflect the same sky. The overhead colour is a product (sky hue * day/night
             // multiplier), refreshed each frame into a held instance ; the horizon colour is the live
             // ground colour, bound by reference. Both are bound once, then tracked automatically.
             skyControl.getReflectionSkyColor(reflectionSkyColor);
@@ -309,17 +430,17 @@ public class FarTerrainState extends BaseAppState {
         }
 
         // Copy the reflection tuning from the calm-water material once it exists, so near and far water
-        // use identical strength / glint / Fresnel (the calm-water j3m stays the single source).
+        // use identical strength / glint / Fresnel / moon (the calm-water j3m stays the single source).
         if (!reflectionTuningCopied && material != null) {
             ChunkMeshGenerator generator = BlocksConfig.getInstance().getChunkMeshGenerator();
             if (generator instanceof FacesMeshGenerator) {
-                Material water = ((FacesMeshGenerator) generator).getCalmWaterMaterial();
-                material.setFloat("ReflectionStrength", (Float) water.getParamValue("ReflectionStrength"));
-                material.setFloat("FresnelPower", (Float) water.getParamValue("FresnelPower"));
-                material.setFloat("GlintPower", (Float) water.getParamValue("GlintPower"));
-                material.setFloat("GlintStrength", (Float) water.getParamValue("GlintStrength"));
-                material.setColor("MoonColor", (ColorRGBA) water.getParamValue("MoonColor"));
-                material.setFloat("MoonGlintStrength", (Float) water.getParamValue("MoonGlintStrength"));
+                Material w = ((FacesMeshGenerator) generator).getCalmWaterMaterial();
+                material.setFloat("ReflectionStrength", (Float) w.getParamValue("ReflectionStrength"));
+                material.setFloat("FresnelPower", (Float) w.getParamValue("FresnelPower"));
+                material.setFloat("GlintPower", (Float) w.getParamValue("GlintPower"));
+                material.setFloat("GlintStrength", (Float) w.getParamValue("GlintStrength"));
+                material.setColor("MoonColor", (ColorRGBA) w.getParamValue("MoonColor"));
+                material.setFloat("MoonGlintStrength", (Float) w.getParamValue("MoonGlintStrength"));
                 reflectionTuningCopied = true;
             }
         }

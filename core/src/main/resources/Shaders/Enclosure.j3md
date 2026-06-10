@@ -1,0 +1,26 @@
+MaterialDef Enclosure {
+
+    // Flat opaque colour for the world-sealing enclosure box (see FarTerrainState). Carries the same
+    // clip-space depth bias as the far terrain so the box stays the backstop behind everything.
+
+    MaterialParameters {
+        Color Color
+        Float DepthBias
+        // Emulate the sRGB output encode in-shader where the hardware sRGB framebuffer is missing
+        // (Android GLES) ; on desktop the hardware does it and this define compiles out.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL100 GLSL150:   Shaders/Enclosure.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Enclosure.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

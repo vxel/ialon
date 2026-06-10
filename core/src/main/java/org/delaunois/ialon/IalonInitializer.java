@@ -112,7 +112,6 @@ public class IalonInitializer {
         atlas.addTexture(app.getAssetManager().loadTexture("Models/Wagon/wagon.png"), TextureAtlasManager.DIFFUSE);
 
         String[] noMiptexPaths = new String[] {
-                "Textures/ground.png",
                 "Textures/sun.png",
                 "Textures/moon.png",
                 "Textures/arrowleft.png",
