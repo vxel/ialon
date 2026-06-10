@@ -48,7 +48,7 @@ public class TypeRegistry {
     public static final String DEFAULT_BLOCK_MATERIAL = "Blocks/Materials/default-block.j3m";
 
     private enum TextureType {
-        DIFFUSE, NORMAL, PARALLAX, OVERLAY;
+        DIFFUSE, NORMAL, PARALLAX;
     }
 
     private final ConcurrentMap<String, Material> registry = new ConcurrentHashMap<>();
@@ -94,7 +94,6 @@ public class TypeRegistry {
     public Material register(@NonNull String name) {
         Material mat = getMaterial(name);
         addToTextureAtlas(name, mat, "DiffuseMap", TextureAtlasManager.DIFFUSE);
-        addToTextureAtlas(name, mat, "OverlayMap", TextureAtlasManager.OVERLAY);
         return register(name, mat);
     }
 
@@ -103,13 +102,8 @@ public class TypeRegistry {
         if (matParamTexture != null) {
             Texture texture = matParamTexture.getTextureValue();
             if (texture != null) {
-                if (TextureAtlasManager.DIFFUSE.equals(atlasMapName)) {
-                    texture.setKey(new TextureKey(name));
-                    atlasManager.addTexture(texture, atlasMapName);
-                } else {
-                    texture.setKey(new TextureKey(name + "-overlay"));
-                    atlasManager.addTexture(texture, atlasMapName, new TextureKey(name).toString());
-                }
+                texture.setKey(new TextureKey(name));
+                atlasManager.addTexture(texture, atlasMapName);
             }
         }
     }
@@ -121,9 +115,6 @@ public class TypeRegistry {
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
             texture.setImage(atlasManager.getDiffuseMap().getImage());
-            if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
-            }
         }
         geom.setMaterial(mat);
     }
@@ -148,9 +139,6 @@ public class TypeRegistry {
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
             texture.setImage(atlasManager.getDiffuseMap().getImage());
-            if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
-            }
         }
         mat.getTextureParam("DiffuseMap").getTextureValue()
                 .setMagFilter(Texture.MagFilter.Nearest);
@@ -173,9 +161,6 @@ public class TypeRegistry {
         if (matParamTexture != null) {
             Texture texture = mat.getTextureParam("DiffuseMap").getTextureValue();
             texture.setImage(atlasManager.getDiffuseMap().getImage());
-            if (mat.getTextureParam("OverlayMap") != null) {
-                mat.setTexture("OverlayMap", atlasManager.getOverlayMap());
-            }
         }
         mat.getTextureParam("DiffuseMap").getTextureValue()
                 .setMagFilter(Texture.MagFilter.Nearest);
@@ -405,7 +390,6 @@ public class TypeRegistry {
         material.setTexture("DiffuseMap", textures.getDiffuseMap());
         material.setTexture("NormalMap", textures.getNormalMap().orElse(null));
         material.setTexture("ParallaxMap", textures.getParallaxMap().orElse(null));
-        material.setTexture("OverlayMap", textures.getOverlayMap().orElse(null));
 
         return material;
     }
@@ -436,8 +420,7 @@ public class TypeRegistry {
         // map the value if present, or return an empty optional
         return diffuseMap.map(texture -> new TexturesWrapper(texture,
                 getTexture(type, TextureType.NORMAL, theme),
-                getTexture(type, TextureType.PARALLAX, theme),
-                getTexture(type, TextureType.OVERLAY, theme)));
+                getTexture(type, TextureType.PARALLAX, theme)));
 
     }
 
@@ -562,7 +545,6 @@ public class TypeRegistry {
         MatParamTexture diffuseMapParamTexture = material.getTextureParam("DiffuseMap");
         MatParamTexture normalMapParamTexture = material.getTextureParam("NormalMap");
         MatParamTexture parallaxMapParamTexture = material.getTextureParam("ParallaxMap");
-        MatParamTexture overlayMapParamTexture = material.getTextureParam("OverlayMap");
 
         if (diffuseMapParamTexture != null) {
             expandTexture(diffuseMapParamTexture.getTextureValue());
@@ -572,9 +554,6 @@ public class TypeRegistry {
         }
         if (parallaxMapParamTexture != null) {
             expandTexture(parallaxMapParamTexture.getTextureValue());
-        }
-        if (overlayMapParamTexture != null) {
-            expandTexture(overlayMapParamTexture.getTextureValue());
         }
         return material;
     }
@@ -681,8 +660,6 @@ public class TypeRegistry {
                 return type + "-normal" + fileExtension;
             case PARALLAX:
                 return type + "-parallax" + fileExtension;
-            case OVERLAY:
-                return type + "-overlay" + fileExtension;
             default:
                 return type + fileExtension;
         }
@@ -695,7 +672,6 @@ public class TypeRegistry {
         private final Texture diffuseMap;
         private final Optional<Texture> normalMap;
         private final Optional<Texture> parallaxMap;
-        private final Optional<Texture> overlayMap;
 
     }
 

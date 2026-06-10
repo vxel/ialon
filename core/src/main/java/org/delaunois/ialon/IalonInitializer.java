@@ -104,6 +104,7 @@ public class IalonInitializer {
     }
 
     public static void setupAtlasManager(SimpleApplication app, IalonConfig config) {
+        long start = System.nanoTime();
         TextureAtlasManager atlas = config.getTextureAtlasManager();
 
         BitmapFont font = app.getAssetManager().loadFont(IalonConfig.FONT_PATH);
@@ -130,6 +131,10 @@ public class IalonInitializer {
             key.setGenerateMips(false);
             atlas.addTexture(app.getAssetManager().loadTexture(key), TextureAtlasManager.DIFFUSE);
         }
+        // Timing only covers loading/decoding the source textures registered here ; the actual atlas
+        // packing happens lazily on the first getDiffuseMap() (timed separately in TextureAtlasManager).
+        log.info("setupAtlasManager: loaded source textures in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
     }
 
     public static void setupAtlasFont(SimpleApplication app, IalonConfig config) {
@@ -261,7 +266,10 @@ public class IalonInitializer {
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/IalonTheme"));
         typeRegistry.setAtlasManager(ialonConfig.getTextureAtlasManager());
+        long start = System.nanoTime();
         typeRegistry.registerDefaultMaterials();
+        log.info("registerDefaultMaterials: loaded block materials/textures in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
 
         registerIalonBlocks();
     }
