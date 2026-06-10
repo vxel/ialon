@@ -1,5 +1,11 @@
 package org.delaunois.ialon.blocks;
 
+import static org.delaunois.ialon.blocks.BlockIds.RAIL;
+import static org.delaunois.ialon.blocks.BlockIds.RAIL_CURVED;
+import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
+import static org.delaunois.ialon.blocks.TypeIds.RAIL_SLOPE;
+import static org.delaunois.ialon.blocks.shapes.Liquid.LEVEL_MAX;
+
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
@@ -12,12 +18,6 @@ import java.util.Set;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.blocks.BlockIds.RAIL;
-import static org.delaunois.ialon.blocks.BlockIds.RAIL_CURVED;
-import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
-import static org.delaunois.ialon.blocks.TypeIds.RAIL_SLOPE;
-import static org.delaunois.ialon.blocks.shapes.Liquid.LEVEL_MAX;
 
 /**
  * Handles interactions between blocks, water and lights
@@ -73,7 +73,7 @@ public class WorldManager {
             }
 
         } else if (ShapeIds.SLAB.equals(block.getShape())) {
-            // Select slab block according to to below block
+            // Select slab block according to the block below
             BlockWithLocation blockWithLocation = selectSlabBlock(block, location);
             if (blockWithLocation != null) {
                 block = blockWithLocation.block;

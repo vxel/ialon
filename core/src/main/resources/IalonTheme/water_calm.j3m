@@ -1,4 +1,4 @@
-Material Calm Water : Blocks/MatDefs/Water.j3md {
+Material water-calm : Blocks/MatDefs/Water.j3md {
 
     MaterialParameters {
 
