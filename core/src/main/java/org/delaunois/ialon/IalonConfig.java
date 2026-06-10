@@ -97,10 +97,8 @@ public class IalonConfig implements WorldSettings {
     private float sunAmplitude = 10f;
 
     private ColorRGBA skyColor = new ColorRGBA().setAsSrgb(100 / 255f, 172 / 255f, 255 / 255f, 1f);
-    private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);
+    private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(14 / 255f, 62 / 255f, 138 / 255f, 1f);//new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
-    // Background well below the horizon (nadir) : the sky dome floor + ground plate fade to this,
-    private ColorRGBA skyFloorColor = farTerrainWaterColor;
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
     private ColorRGBA skyEveningColor = new ColorRGBA().setAsSrgb(1f, 0.7f, 0.5f, 1);

@@ -76,6 +76,8 @@ public class FarTerrainState extends BaseAppState {
     // Patch size : must be (2^m + 1) and <= HEIGHTMAP_SIZE. Drives the LOD granularity.
     private static final int PATCH_SIZE = 65;
 
+    private static final float ENCLOSURE_OFFSET = 0f;
+
     private final IalonConfig config;
     private final float extent;
 
@@ -99,6 +101,9 @@ public class FarTerrainState extends BaseAppState {
     private MoonControl moonControl;
     // The fog colour is bound (once) to SkyControl's live ground colour so it follows the day/night cycle.
     private boolean fogColorBound = false;
+    // The enclosure backstop colour is bound (once) to the same live ground colour as the fog, so the box
+    // matches the horizon haze and darkens with the day/night cycle (otherwise it stays bright at night).
+    private boolean enclosureColorBound = false;
     // The ambient / sun colours are bound (once) to LightingState's live light colours (mutated in place
     // by SunControl) so the far terrain dims and tints with the day/night cycle like the voxels.
     private boolean lightColorsBound = false;
@@ -277,8 +282,8 @@ public class FarTerrainState extends BaseAppState {
         mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
         // Opaque deep-water blue (calmWaterColor is the deep-sea source, but authored with alpha 0.5 for
         // the transparent near water -- force it opaque here, this box is a solid backdrop, not water).
-        ColorRGBA deep = config.getCalmWaterColor();
-        mat.setColor("Color", new ColorRGBA(deep.r, deep.g, deep.b, 1f));
+        ColorRGBA deep = config.getSkyColor();
+        mat.setColor("Color", new ColorRGBA(deep.r, deep.g, deep.b, 1.0f));
         // Slightly more clip-space depth push-back than the far terrain, so the enclosure is always the
         // backstop BEHIND both the voxels and the far terrain (it only shows through genuine gaps).
         // Without it the unbiased box won the depth test against the depth-biased far sea and occluded it.
@@ -291,7 +296,7 @@ public class FarTerrainState extends BaseAppState {
         // The box always encloses the camera, so its bounds straddle the frustum : never cull it.
         geom.setCullHint(Spatial.CullHint.Never);
         Vector3f camLoc = app.getCamera().getLocation();
-        geom.setLocalTranslation(camLoc.x, -0.2f, camLoc.z);
+        geom.setLocalTranslation(camLoc.x, ENCLOSURE_OFFSET, camLoc.z);
         return geom;
     }
 
@@ -378,7 +383,7 @@ public class FarTerrainState extends BaseAppState {
         // sit beyond the far plane). Y is baked into the mesh, so only shift X/Z.
         if (enclosure != null) {
             Vector3f cam = app.getCamera().getLocation();
-            enclosure.setLocalTranslation(cam.x, -0.2f, cam.z);
+            enclosure.setLocalTranslation(cam.x, ENCLOSURE_OFFSET, cam.z);
         }
 
         // Keep the far terrain lit by the same sun as the world (day/night cycle). The material holds
@@ -417,6 +422,12 @@ public class FarTerrainState extends BaseAppState {
                 material.setColor("FogColor", skyControl.getGroundColor());
                 fogColorBound = true;
             }
+            // Same live ground colour for the enclosure backstop : it sits behind the far terrain at the
+            // horizon, so it must fade and darken identically (bound once, then tracked by reference).
+            if (!enclosureColorBound && enclosure != null) {
+                enclosure.getMaterial().setColor("Color", skyControl.getGroundColor());
+                enclosureColorBound = true;
+            }
             // Sea reflection sky colours, shared with the calm-water shader (WaterState) so near and far
             // water reflect the same sky. The overhead colour is a product (sky hue * day/night
             // multiplier), refreshed each frame into a held instance ; the horizon colour is the live
@@ -435,12 +446,12 @@ public class FarTerrainState extends BaseAppState {
             ChunkMeshGenerator generator = BlocksConfig.getInstance().getChunkMeshGenerator();
             if (generator instanceof FacesMeshGenerator) {
                 Material w = ((FacesMeshGenerator) generator).getCalmWaterMaterial();
-                material.setFloat("ReflectionStrength", (Float) w.getParamValue("ReflectionStrength"));
-                material.setFloat("FresnelPower", (Float) w.getParamValue("FresnelPower"));
-                material.setFloat("GlintPower", (Float) w.getParamValue("GlintPower"));
-                material.setFloat("GlintStrength", (Float) w.getParamValue("GlintStrength"));
-                material.setColor("MoonColor", (ColorRGBA) w.getParamValue("MoonColor"));
-                material.setFloat("MoonGlintStrength", (Float) w.getParamValue("MoonGlintStrength"));
+                material.setFloat("ReflectionStrength", w.getParamValue("ReflectionStrength"));
+                material.setFloat("FresnelPower", w.getParamValue("FresnelPower"));
+                material.setFloat("GlintPower", w.getParamValue("GlintPower"));
+                material.setFloat("GlintStrength", w.getParamValue("GlintStrength"));
+                material.setColor("MoonColor", w.getParamValue("MoonColor"));
+                material.setFloat("MoonGlintStrength", w.getParamValue("MoonGlintStrength"));
                 reflectionTuningCopied = true;
             }
         }
