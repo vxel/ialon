@@ -1,0 +1,46 @@
+MaterialDef Ialon Sky {
+
+    // Procedural sky dome : the vertical gradient (horizon -> sky -> deep zenith) and the warm
+    // sunrise/sunset glow are computed PER FRAGMENT from the view-direction elevation, not baked into
+    // vertex colours. This removes the Gouraud banding on the cylinder cap and the visible cap/side
+    // seam of the old vertex-coloured sky, regardless of the mesh tessellation. Colours are authored
+    // linear (IalonConfig setAsSrgb) ; MANUAL_SRGB re-encodes on output where the hardware sRGB
+    // framebuffer is missing (Android GLES), like FarTerrain / IalonUnshaded.
+
+    MaterialParameters {
+        // Vertical gradient stops (linear space)
+        Color HorizonColor
+        Color SkyColor
+        Color ZenithColor
+
+        // Day/night multiplier (white at noon, warm at dusk, dark at night) - set live by SkyControl
+        Color Color
+
+        // Warm horizon glow towards the sun (sunrise/sunset)
+        Color GlowColor
+        Vector3 SunDirection // world-space direction from camera to the sun
+        Float GlowStrength   // live, peaks near the horizon, ~0 at noon / deep night
+        Float GlowSharpness  // angular tightness of the glow around the sun
+
+        // Gradient shaping
+        Float ZenithExponent // how quickly the sky deepens towards the zenith
+
+        // Emulate the sRGB framebuffer encode in-shader when there is no hardware one (Android GLES)
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Sky.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Sky.frag
+
+        WorldParameters {
+            WorldMatrix
+            ViewProjectionMatrix
+            CameraPosition
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

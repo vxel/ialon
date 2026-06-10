@@ -17,8 +17,10 @@
 
 package org.delaunois.ialon.control;
 
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Geometry;
@@ -41,6 +43,9 @@ public class SkyControl extends AbstractControl {
 
     @Getter
     private final ColorRGBA color = new ColorRGBA();
+
+    // Reused each update to feed the sky shader's sun direction uniform without allocating in the loop.
+    private final Vector3f sunDir = new Vector3f();
     private long lastUpdate = 0;
     private final IalonConfig config;
 
@@ -64,7 +69,16 @@ public class SkyControl extends AbstractControl {
                 color.interpolateLocal(config.getSkyEveningColor(), config.getSkyNightColor(), shift);
                 groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundNightColor(), shift);
             }
-            ((Geometry) spatial).getMaterial().setColor("Color", color);
+
+            Material mat = ((Geometry) spatial).getMaterial();
+            mat.setColor("Color", color);
+
+            // Direction (camera -> sun) and glow intensity for the sky shader's horizon glow. The glow
+            // peaks when the sun is near the horizon (sunrise/sunset) and vanishes at noon / deep night.
+            sunDir.set(sunControl.getPosition()).normalizeLocal();
+            mat.setVector3("SunDirection", sunDir);
+            float glow = FastMath.clamp(1f - FastMath.abs(sunHeight) * 3f, 0f, 1f);
+            mat.setFloat("GlowStrength", glow);
         }
     }
 

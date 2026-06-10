@@ -4,23 +4,17 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.shape.Cylinder;
-import com.jme3.shader.VarType;
-import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.SkyControl;
 import org.delaunois.ialon.control.SpatialFollowCamControl;
-
-import java.nio.FloatBuffer;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -51,10 +45,16 @@ public class SkyState extends BaseAppState {
         sky.setCullHint(Spatial.CullHint.Never);
         sky.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        Material skyMat = new Material(app.getAssetManager(), "Shaders/IalonUnshaded.j3md");
-        skyMat.setParam("VertexColor", VarType.Boolean, true );
-        // Sky vertex colours are authored linear (IalonConfig setAsSrgb) : encode them in-shader where
-        // the hardware sRGB framebuffer is missing (Android GLES), as the voxels/far terrain already do.
+        Material skyMat = new Material(app.getAssetManager(), "Shaders/Sky.j3md");
+        // Static gradient stops + glow colour : authored linear (IalonConfig setAsSrgb), encoded
+        // in-shader where the hardware sRGB framebuffer is missing (Android GLES), like the voxels.
+        skyMat.setColor("HorizonColor", config.getSkyHorizonColor());
+        skyMat.setColor("SkyColor", config.getSkyColor());
+        skyMat.setColor("ZenithColor", config.getSkyZenithColor());
+        skyMat.setColor("GlowColor", config.getSkyEveningColor());
+        skyMat.setFloat("ZenithExponent", 0.5f);
+        skyMat.setFloat("GlowSharpness", 8f);
+        // Dynamic uniforms (Color, SunDirection, GlowStrength) are driven by SkyControl.
         skyMat.setBoolean("ManualSrgb", config.isManualGammaEncode());
         sky.setMaterial(skyMat);
 
@@ -90,67 +90,9 @@ public class SkyState extends BaseAppState {
     }
 
     private Geometry createSkyGeometry() {
+        // The cylinder only has to surround the camera : the gradient is computed per fragment from the
+        // view-direction elevation (Shaders/Sky.frag), so the coarse tessellation no longer matters.
         Cylinder skyCylinder = new Cylinder(2, 8, 25f, 20f, true, true);
-        FloatBuffer fpb = BufferUtils.createFloatBuffer(38 * 4);
-        final ColorRGBA skyColor = config.getSkyColor();
-        final ColorRGBA skyHorizonColor = config.getSkyHorizonColor();
-        final ColorRGBA skyZenithColor = config.getSkyZenithColor();
-        // Nadir colour : the bottom-cap centre vertex fades to this, so the dome floor goes from the
-        // horizon colour at its rim (horizon unchanged) to skyFloorColor straight down (dark void).
-        final ColorRGBA skyFloorColor = config.getSkyFloorColor();
-
-        fpb.put(new float[] {
-                // Sides Top Vertices
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-
-                // Side Bottom Vertices
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-
-                // Top Cap Vertices
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-                skyColor.r, skyColor.g, skyColor.b, skyColor.a,
-
-                // Bottom Cap Vertices
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-                skyHorizonColor.r, skyHorizonColor.g, skyHorizonColor.b, skyHorizonColor.a,
-
-                // Top Center Vextex
-                skyZenithColor.r, skyZenithColor.g, skyZenithColor.b, skyZenithColor.a,
-
-                // Bottom center Vertex (nadir) : fades the dome floor to the dark "below horizon" colour
-                skyFloorColor.r, skyFloorColor.g, skyFloorColor.b, skyFloorColor.a
-        });
-        skyCylinder.setBuffer(VertexBuffer.Type.Color, 4, fpb);
         return new Geometry("sky", skyCylinder);
     }
 
