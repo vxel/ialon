@@ -87,6 +87,11 @@ public class ChunkManager {
         return location == null ? Optional.empty() : cache.get(location);
     }
 
+    /** The chunk cache, exposed for debug/measurement (cache size and chunk-data memory). */
+    public ChunkCache getCache() {
+        return cache;
+    }
+
     public void requestChunks(Collection<Vec3i> locationsToGenerate, Collection<Vec3i> locationsToMesh) {
         assertInitialized();
 

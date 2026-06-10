@@ -62,4 +62,12 @@ public class ChunkCache implements ChunkResolver {
 
     }
 
+    /**
+     * Live view of all cached chunks. Intended for debug/measurement (e.g. summing chunk-data
+     * memory) ; the returned collection reflects the backing map.
+     */
+    public java.util.Collection<Chunk> getChunks() {
+        return cache.values();
+    }
+
 }
