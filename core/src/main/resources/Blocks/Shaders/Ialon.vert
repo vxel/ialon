@@ -116,8 +116,12 @@ void main() {
     #endif
 
     #ifdef VERTEX_COLOR
-         int SunIntensity = (int(inColor.a) >> 4) & 0xF;
-         int TorchIntensity = (int(inColor.a)) & 0xF;
+         // inColor is a normalized UnsignedByte buffer, so the alpha channel (the packed light level,
+         // sunlight in the high nibble, torch in the low nibble) arrives in [0,1] : scale back to
+         // [0,255] with rounding before unpacking the nibbles.
+         int packedLight = int(inColor.a * 255.0 + 0.5);
+         int SunIntensity = (packedLight >> 4) & 0xF;
+         int TorchIntensity = packedLight & 0xF;
 
          // Adapt the sunlight to the current ambient level (i.e. night or day)
          float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;

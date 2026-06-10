@@ -42,8 +42,11 @@ void main() {
     vec3 tint = vec3(0.19, 0.52, 0.70);
     float lightLevel = 0.7;
     #ifdef VERTEX_COLOR
-        int sunIntensity = (int(inColor.a) >> 4) & 0xF;
-        int torchIntensity = (int(inColor.a)) & 0xF;
+        // inColor is a normalized UnsignedByte buffer : the alpha channel (the packed light level)
+        // arrives in [0,1], scale back to [0,255] with rounding before unpacking the nibbles.
+        int packedLight = int(inColor.a * 255.0 + 0.5);
+        int sunIntensity = (packedLight >> 4) & 0xF;
+        int torchIntensity = packedLight & 0xF;
         float lum = g_AmbientLightColor.r * 0.3 + g_AmbientLightColor.g * 0.59 + g_AmbientLightColor.b * 0.11;
         float sunlight = levels[sunIntensity] * lum;
         float torchlight = levels[torchIntensity];

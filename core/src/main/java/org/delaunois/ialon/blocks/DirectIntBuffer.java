@@ -3,6 +3,7 @@ package org.delaunois.ialon.blocks;
 import com.jme3.util.BufferUtils;
 
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 
 public class DirectIntBuffer {
 
@@ -30,6 +31,22 @@ public class DirectIntBuffer {
         IntBuffer newbuffer = BufferUtils.createIntBuffer(buff.position());
         buff.flip();
         newbuffer.put(buff);
+        newbuffer.flip();
+        return newbuffer;
+    }
+
+    /**
+     * Returns a tightly-sized {@link ShortBuffer} copy of the accumulated indices, for meshes whose
+     * vertex count fits in an unsigned short (&le; 65536). Halves the index buffer footprint
+     * (2 bytes/index instead of 4). The caller is responsible for checking the vertex count ; values
+     * &gt; 65535 are truncated to their low 16 bits. Use {@link #getBuffer()} otherwise.
+     */
+    public ShortBuffer getShortBuffer() {
+        ShortBuffer newbuffer = BufferUtils.createShortBuffer(buff.position());
+        buff.flip();
+        while (buff.hasRemaining()) {
+            newbuffer.put((short) buff.get());
+        }
         newbuffer.flip();
         return newbuffer;
     }

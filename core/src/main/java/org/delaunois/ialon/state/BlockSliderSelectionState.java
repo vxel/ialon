@@ -66,7 +66,7 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.IalonBlock;
 import org.delaunois.ialon.IalonConfig;
 
-import java.nio.FloatBuffer;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -717,17 +717,25 @@ public class BlockSliderSelectionState extends BaseAppState {
             }
 
 
+            // Override the preview colour : full white light, max sunlight. Must match the chunk mesh
+            // convention -- a normalized UnsignedByte RGBA buffer where A is the packed light level
+            // (high nibble sun, low nibble torch). 240 = 0xF0 = sun 15, torch 0. Replacing the buffer
+            // built by the shape (also UnsignedByte) requires clearing it first : the typed
+            // setBuffer(VertexBuffer) rejects an already-set type.
             int vc = geometry.getMesh().getVertexCount();
-            FloatBuffer buf = BufferUtils.createFloatBuffer(vc * 4);
+            ByteBuffer buf = BufferUtils.createByteBuffer(vc * 4);
             for (int i = 0; i < vc; i++) {
-                // White light color
-                buf.put(1);
-                buf.put(1);
-                buf.put(1);
-                // Max sun
-                buf.put(240);
+                buf.put((byte) 255); // r
+                buf.put((byte) 255); // g
+                buf.put((byte) 255); // b
+                buf.put((byte) 240); // a : packed light, max sun
             }
-            geometry.getMesh().setBuffer(VertexBuffer.Type.Color, 4, buf);
+            buf.flip();
+            geometry.getMesh().clearBuffer(VertexBuffer.Type.Color);
+            VertexBuffer colorBuffer = new VertexBuffer(VertexBuffer.Type.Color);
+            colorBuffer.setupData(VertexBuffer.Usage.Static, 4, VertexBuffer.Format.UnsignedByte, buf);
+            colorBuffer.setNormalized(true);
+            geometry.getMesh().setBuffer(colorBuffer);
 
             node.attachChild(geometry);
 

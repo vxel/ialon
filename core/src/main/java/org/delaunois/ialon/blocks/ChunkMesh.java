@@ -21,6 +21,9 @@ public class ChunkMesh {
 
     private static final int INITIAL_CAPACITY = 2000;
 
+    // Largest vertex count addressable with 16-bit (unsigned) indices : indices 0..65535.
+    private static final int MAX_USHORT_VERTICES = 65536;
+
     private boolean collisionMesh = false;
     private final DirectVector3fBuffer positions = new DirectVector3fBuffer(INITIAL_CAPACITY);
     private final DirectVector3fBuffer normals = new DirectVector3fBuffer(INITIAL_CAPACITY);
@@ -38,7 +41,15 @@ public class ChunkMesh {
         Mesh mesh = new Mesh();
         // all meshes have a position and index buffer
         mesh.setBuffer(VertexBuffer.Type.Position, 3, positions.getBuffer());
-        mesh.setBuffer(VertexBuffer.Type.Index, 1, indices.getBuffer());
+
+        // Index buffer : use 16-bit indices (half the memory) when the vertex count fits in an
+        // unsigned short, falling back to 32-bit only for the (rare) larger meshes. A chunk index
+        // references a vertex of this very mesh, so the max index is positions.size() - 1.
+        if (positions.size() <= MAX_USHORT_VERTICES) {
+            mesh.setBuffer(VertexBuffer.Type.Index, 1, indices.getShortBuffer());
+        } else {
+            mesh.setBuffer(VertexBuffer.Type.Index, 1, indices.getBuffer());
+        }
 
         // collision meshes don't require uvs, normals and tangents
         if (!isCollisionMesh()) {
@@ -48,7 +59,13 @@ public class ChunkMesh {
                 mesh.setBuffer(VertexBuffer.Type.Tangent, 4, tangents.getBuffer());
             }
             if (!colors.isEmpty()) {
-                mesh.setBuffer(VertexBuffer.Type.Color, 4, colors.getBuffer());
+                // Colours are stored as 4 normalized unsigned bytes (RGBA) instead of 4 floats :
+                // 4 bytes/vertex instead of 16. The shader receives them back in [0, 1] (normalized).
+                // See DirectVector4fBuffer#getByteBuffer for the A-channel (packed light) convention.
+                VertexBuffer colorBuffer = new VertexBuffer(VertexBuffer.Type.Color);
+                colorBuffer.setupData(VertexBuffer.Usage.Static, 4, VertexBuffer.Format.UnsignedByte, colors.getByteBuffer());
+                colorBuffer.setNormalized(true);
+                mesh.setBuffer(colorBuffer);
             }
         }
         mesh.updateBound();
