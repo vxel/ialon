@@ -26,7 +26,11 @@ import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.VertexBuffer;
+import com.jme3.texture.Image;
 import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.lemur.Axis;
@@ -43,6 +47,8 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.PlaceholderControl;
 
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -60,11 +66,19 @@ public class IalonDebugState extends BaseAppState {
     // Debug toggle (F8) : freezes the render chunk paging so the loaded chunks stay put while the
     // camera moves, to visually check the alignment between the voxels and the far terrain.
     private static final String FREEZE_PAGING = "ialon_debug_freeze_paging";
+    // Debug toggle (F9) : logs a detailed memory breakdown (heap, off-heap direct buffers, chunk
+    // meshes, chunk data arrays, collision meshes, texture atlas) to measure where RAM actually goes.
+    private static final String MEMORY_REPORT = "ialon_debug_memory_report";
 
     private boolean pagingFrozen = false;
     private final ActionListener freezePagingListener = (name, isPressed, tpf) -> {
         if (isPressed) {
             toggleFreezePaging();
+        }
+    };
+    private final ActionListener memoryReportListener = (name, isPressed, tpf) -> {
+        if (isPressed) {
+            logMemoryReport();
         }
     };
 
@@ -123,6 +137,8 @@ public class IalonDebugState extends BaseAppState {
         InputManager inputManager = app.getInputManager();
         inputManager.addMapping(FREEZE_PAGING, new KeyTrigger(KeyInput.KEY_F8));
         inputManager.addListener(freezePagingListener, FREEZE_PAGING);
+        inputManager.addMapping(MEMORY_REPORT, new KeyTrigger(KeyInput.KEY_F9));
+        inputManager.addListener(memoryReportListener, MEMORY_REPORT);
     }
 
     /**
@@ -136,6 +152,118 @@ public class IalonDebugState extends BaseAppState {
             pager.setEnabled(!pagingFrozen);
         }
         log.info("Render chunk paging {}", pagingFrozen ? "FROZEN (F8 to resume)" : "resumed");
+    }
+
+    /**
+     * Logs a detailed memory breakdown. Mesh vertex/index buffers are NIO DIRECT buffers (off-heap),
+     * so they are invisible to {@link Runtime#freeMemory()} : the "direct buffers" line (from the
+     * JVM's direct {@link BufferPoolMXBean}) is where the bulk of the chunk-mesh memory shows up. The
+     * per-category sums below attribute that total to the loaded chunk meshes, chunk data arrays,
+     * collision meshes and the texture atlas.
+     */
+    private void logMemoryReport() {
+        Runtime rt = Runtime.getRuntime();
+        // Heap "used" includes uncollected garbage, which on a multi-GB desktop heap dwarfs the live
+        // set. Hint a GC first so the reported figure approximates the LIVE objects (the number that
+        // actually matters on a memory-constrained Android device).
+        long heapUsedBeforeGc = rt.totalMemory() - rt.freeMemory();
+        System.gc();
+        System.gc();
+        long heapUsed = rt.totalMemory() - rt.freeMemory();
+        long heapMax = rt.maxMemory();
+
+        long directUsed = 0;
+        long directCount = 0;
+        for (BufferPoolMXBean pool : ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
+            if ("direct".equals(pool.getName())) {
+                directUsed = pool.getMemoryUsed();
+                directCount = pool.getCount();
+            }
+        }
+
+        // Loaded chunk render meshes (the geometries attached to the scene).
+        long renderMeshBytes = 0;
+        long geometryCount = 0;
+        long vertexCount = 0;
+        Map<Vec3i, Node> attachedPages = chunkPager.getAttachedPages();
+        for (Node page : attachedPages.values()) {
+            for (Geometry geom : collectGeometries(page)) {
+                renderMeshBytes += meshBytes(geom.getMesh());
+                geometryCount++;
+                vertexCount += geom.getMesh().getVertexCount();
+            }
+        }
+
+        // Chunk data arrays (heap) + collision meshes (direct), over the FULL ChunkManager cache
+        // (not just the pager working set), so stale chunks lingering beyond the grid radius show up.
+        long blockBytes = 0;
+        long lightBytes = 0;
+        long collisionBytes = 0;
+        int cachedChunks = 0;
+        int nonEmptyChunks = 0;
+        for (Chunk chunk : chunkPager.getChunkManager().getCache().getChunks()) {
+            cachedChunks++;
+            if (chunk.getBlocks() != null) {
+                blockBytes += chunk.getBlocks().length * 2L; // short[]
+                nonEmptyChunks++;
+            }
+            if (chunk.getLightMap() != null) {
+                lightBytes += chunk.getLightMap().length; // byte[]
+            }
+            if (chunk.getCollisionMesh() != null) {
+                collisionBytes += meshBytes(chunk.getCollisionMesh());
+            }
+        }
+        int fetchedChunks = chunkPager.getFetchedPages().size();
+
+        // Texture atlas (diffuse) : ABGR8, plus ~33% for the mipmap chain on the GPU.
+        Image atlas = config.getTextureAtlasManager().getDiffuseMap().getImage();
+        long atlasBytes = (long) atlas.getWidth() * atlas.getHeight() * 4;
+
+        log.info(String.format(Locale.US,
+                "%n=== MEMORY REPORT ===%n"
+                + "Heap used (live, post-GC) %6.1f MB / %.0f MB max  (was %.1f MB before GC = garbage)%n"
+                + "Direct buffers (total) .. %6.1f MB  (%d buffers)  <- meshes live here (off-heap)%n"
+                + "  Chunk render meshes ... %6.1f MB  (%d geometries, %d vertices, %d chunks attached)%n"
+                + "  Collision meshes ...... %6.1f MB%n"
+                + "Chunk data (heap) ....... %6.1f MB  (%d non-empty / %d cached / %d in pager)%n"
+                + "  blocks short[] ........ %6.1f MB%n"
+                + "  lightMap byte[] ....... %6.1f MB%n"
+                + "Texture atlas (diffuse) . %6.1f MB  (%dx%d ABGR8, +~33%% mips on GPU)%n"
+                + "=====================",
+                mb(heapUsed), mb(heapMax), mb(heapUsedBeforeGc),
+                mb(directUsed), directCount,
+                mb(renderMeshBytes), geometryCount, vertexCount, attachedPages.size(),
+                mb(collisionBytes),
+                mb(blockBytes + lightBytes), nonEmptyChunks, cachedChunks, fetchedChunks,
+                mb(blockBytes),
+                mb(lightBytes),
+                mb(atlasBytes), atlas.getWidth(), atlas.getHeight()));
+    }
+
+    private static double mb(long bytes) {
+        return bytes / (double) MB;
+    }
+
+    /** Sums the byte size of all vertex/index buffers of a mesh (capacity x component size). */
+    private static long meshBytes(Mesh mesh) {
+        long bytes = 0;
+        for (VertexBuffer vb : mesh.getBufferList()) {
+            if (vb.getData() != null) {
+                bytes += (long) vb.getData().capacity() * vb.getFormat().getComponentSize();
+            }
+        }
+        return bytes;
+    }
+
+    private static List<Geometry> collectGeometries(Node node) {
+        List<Geometry> geometries = new java.util.ArrayList<>();
+        node.depthFirstTraversal(spatial -> {
+            if (spatial instanceof Geometry) {
+                geometries.add((Geometry) spatial);
+            }
+        });
+        return geometries;
     }
 
     private Label addField(Container container, String title) {
@@ -159,7 +287,11 @@ public class IalonDebugState extends BaseAppState {
         if (inputManager.hasMapping(FREEZE_PAGING)) {
             inputManager.deleteMapping(FREEZE_PAGING);
         }
+        if (inputManager.hasMapping(MEMORY_REPORT)) {
+            inputManager.deleteMapping(MEMORY_REPORT);
+        }
         inputManager.removeListener(freezePagingListener);
+        inputManager.removeListener(memoryReportListener);
         // Make sure paging is resumed if it was frozen.
         if (pagingFrozen) {
             ChunkPagerState pager = app.getStateManager().getState(ChunkPagerState.class);

@@ -54,7 +54,13 @@ public class ChunkMesh {
         // collision meshes don't require uvs, normals and tangents
         if (!isCollisionMesh()) {
             mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, uvs.getBuffer());
-            mesh.setBuffer(VertexBuffer.Type.Normal, 3, normals.getBuffer());
+            // Normals are unit vectors : store them as 3 normalized signed bytes (3 bytes/vertex
+            // instead of 12). The shader normalizes the interpolated normal, so the byte quantization
+            // is imperceptible. See DirectVector3fBuffer#getByteBuffer.
+            VertexBuffer normalBuffer = new VertexBuffer(VertexBuffer.Type.Normal);
+            normalBuffer.setupData(VertexBuffer.Usage.Static, 3, VertexBuffer.Format.Byte, normals.getByteBuffer());
+            normalBuffer.setNormalized(true);
+            mesh.setBuffer(normalBuffer);
             if (!tangents.isEmpty()) {
                 mesh.setBuffer(VertexBuffer.Type.Tangent, 4, tangents.getBuffer());
             }

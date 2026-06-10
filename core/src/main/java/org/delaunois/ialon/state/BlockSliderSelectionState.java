@@ -67,6 +67,7 @@ import org.delaunois.ialon.IalonBlock;
 import org.delaunois.ialon.IalonConfig;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -736,6 +737,23 @@ public class BlockSliderSelectionState extends BaseAppState {
             colorBuffer.setupData(VertexBuffer.Usage.Static, 4, VertexBuffer.Format.UnsignedByte, buf);
             colorBuffer.setNormalized(true);
             geometry.getMesh().setBuffer(colorBuffer);
+
+            // The selection popup batches these preview geometries with a jME BatchNode, whose
+            // mergeGeometries casts the Normal buffer to FloatBuffer. Chunk meshes store normals as
+            // compact signed bytes (a memory optimisation that never reaches a BatchNode in-game), so
+            // expand them back to float here for the batched UI meshes only.
+            VertexBuffer normalBuffer = geometry.getMesh().getBuffer(VertexBuffer.Type.Normal);
+            if (normalBuffer != null && normalBuffer.getFormat() == VertexBuffer.Format.Byte) {
+                ByteBuffer normalBytes = (ByteBuffer) normalBuffer.getData();
+                int count = normalBytes.limit();
+                FloatBuffer normalFloats = BufferUtils.createFloatBuffer(count);
+                for (int i = 0; i < count; i++) {
+                    normalFloats.put(Math.max(normalBytes.get(i) / 127f, -1f));
+                }
+                normalFloats.flip();
+                geometry.getMesh().clearBuffer(VertexBuffer.Type.Normal);
+                geometry.getMesh().setBuffer(VertexBuffer.Type.Normal, 3, normalFloats);
+            }
 
             node.attachChild(geometry);
 
