@@ -128,10 +128,6 @@ MaterialDef Ialon {
         Float ExpFog
         Float ExpSqFog
 
-        // overlay map and color
-        Texture2D OverlayMap
-        Color OverlayColor
-
         // texture scroll speed
         Float TextureScrollSpeedX
         Float TextureScrollSpeedY

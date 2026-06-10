@@ -36,14 +36,11 @@ import lombok.extern.slf4j.Slf4j;
 public class TextureAtlasManager {
 
     public static final String DIFFUSE = "DiffuseMap";
-    public static final String OVERLAY = "OverlayMap";
 
     @Getter
     private final TextureAtlas atlas;
 
     private Texture diffuseMap;
-
-    private Texture overlayMap;
 
     public TextureAtlasManager() {
         atlas = new TextureAtlas(2048, 2048);
@@ -53,28 +50,16 @@ public class TextureAtlasManager {
         atlas.addTexture(texture, mapName);
     }
 
-    public void addTexture(Texture texture, String mapName, String sourceTextureName) {
-        atlas.addTexture(texture, mapName, sourceTextureName);
-    }
-
     public Texture getDiffuseMap() {
         if (diffuseMap == null) {
+            long start = System.nanoTime();
             diffuseMap = atlas.getAtlasTexture(DIFFUSE);
             diffuseMap.setName("TextureAtlasRepository/DiffuseMap");
             diffuseMap.getImage().setColorSpace(ColorSpace.sRGB);
-            log.info("Atlas texture {} generated", diffuseMap);
+            log.info("Atlas texture {} generated (packing took {} ms)",
+                    diffuseMap, (System.nanoTime() - start) / 1_000_000);
         }
         return diffuseMap;
-    }
-
-    public Texture getOverlayMap() {
-        if (overlayMap == null) {
-            overlayMap = atlas.getAtlasTexture(OVERLAY);
-            overlayMap.setName("TextureAtlasRepository/OverlayMap");
-            overlayMap.getImage().setColorSpace(ColorSpace.sRGB);
-            log.info("Atlas texture {} generated", overlayMap);
-        }
-        return overlayMap;
     }
 
     public void dump() {
