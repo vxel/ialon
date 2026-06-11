@@ -44,8 +44,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
     // Water shapes that do NOT emit their top face, one per liquid level : used for calm-surface cells
     // whose flat top is produced instead by the greedy calm-water mesher. Their sides/bottom keep the
-    // normal textured look. Any exposed water top (source = level 5, full = level 6, or flowing levels
-    // 1-4 created by the liquid sim) is rendered calm, each at its own level height (see Liquid.topOffset).
+    // normal textured look. Only SOURCE water (level 5) is calm-rendered ; flowing water keeps its
+    // textured sloped top (the scrolling texture conveys the flow).
     private static final Liquid[] LIQUID_NO_TOP = new Liquid[Liquid.LEVEL_MAX + 1];
     static {
         for (int level = 1; level <= Liquid.LEVEL_MAX; level++) {
@@ -344,9 +344,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // add the block mesh to the chunk mesh
         neighborhood.setLocation(blockLocation);
         Shape shape = BlocksConfig.getInstance().getShapeRegistry().get(block.getShape());
-        // Calm water surface : a WATER block whose flat top is open to the air. Its top is rendered by
-        // the greedy calm-water mesher (merged, flat-coloured quads with sky reflection) instead of one
-        // textured quad per block, so swap to the matching no-top shape (sides/bottom still textured).
+        // Calm water surface : a WATER source block whose flat top is open to the air. Its top is rendered
+        // by the greedy calm-water mesher (merged, flat-coloured quads with sky reflection) instead of one
+        // textured quad per block, so swap to the no-top shape (sides/bottom still textured). Flowing water
+        // keeps its textured sloped top (the scrolling texture conveys the flow).
         if (Objects.equals(block.getType(), TypeIds.WATER)) {
             Shape noTop = flagCalmTopIfExposed(block, blockLocation, neighborhood, pool, chunkSize);
             if (noTop != null) {
@@ -394,20 +395,22 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     }
 
     /**
-     * If this cell's liquid has a flat top open to the air, flag it for the greedy calm-water mesher
-     * (record its position, level height and light) and return the matching no-top liquid shape so the
-     * caller draws the sides/bottom but not the textured top. Returns {@code null} when the top is not a
-     * calm candidate (greedy calm off, no liquid, or covered by a block above), leaving the caller to
-     * draw the normal textured shape. Shared by water blocks (Path A) and liquid-carrying non-water
-     * blocks (Path B : poles/structures placed in water) so both keep the reflective surface.
+     * If this cell holds SOURCE water (a still surface) with a flat top open to the air, flag it for the
+     * greedy calm-water mesher (record its position, level height and light) and return the no-top liquid
+     * shape so the caller draws the sides/bottom but not the textured top. Returns {@code null} otherwise
+     * (greedy calm off, not source, or covered by a block above), leaving the caller to draw the normal
+     * textured shape. Only SOURCE water is calm-rendered : FLOWING water (levels 1-4) has a sloped top
+     * (Liquid.computeHeight tilts its corners towards neighbours) that the flat calm quad cannot
+     * represent, so flowing cascades must keep their textured sloped faces. Shared by water blocks
+     * (Path A) and liquid-carrying non-water blocks (Path B : poles/structures placed in water).
      */
     private Shape flagCalmTopIfExposed(Block block, Vec3i blockLocation, BlockNeighborhood neighborhood,
                                        MeshPool pool, Vec3i chunkSize) {
-        int level = block.getLiquidLevel();
-        if (!config.isGreedyCalmWater() || pool.calmTop == null || level <= 0
+        if (!config.isGreedyCalmWater() || pool.calmTop == null || !block.isLiquidSource()
                 || neighborhood.getNeighbour(Direction.UP) != null) {
             return null;
         }
+        int level = block.getLiquidLevel();
         int index = blockLocation.z + (blockLocation.y + blockLocation.x * chunkSize.y) * chunkSize.z;
         pool.calmTop[index] = true;
         pool.calmTopY[index] = Liquid.topOffset(level);
