@@ -112,6 +112,7 @@ public class BlockNeighborhood {
     private int epoch;
     // Scratch buffers for the center face light and the per-vertex output color.
     private final Vector4f faceLightScratch = new Vector4f();
+    private final Vector4f selfLightScratch = new Vector4f();
     /**
      * -- GETTER --
      *  A reused buffer for the per-vertex output color. Safe because consumers copy the components
@@ -153,6 +154,26 @@ public class BlockNeighborhood {
      */
     public Vector4f getFaceLight(Direction face) {
         return chunk.getLightLevel(location.x, location.y, location.z, face, faceLightScratch);
+    }
+
+    /**
+     * Light of the center block's own cell (no offset), written into a reused scratch buffer.
+     * Equivalent to {@code chunk.getLightLevel(location, null)} but allocation-free. Used as the
+     * "looked-into" light for a face that lies inside the center cell (e.g. a slab whose top/bottom
+     * surface does not reach the cell boundary).
+     */
+    public Vector4f getSelfLight() {
+        return chunk.getLightLevel(location.x, location.y, location.z, null, selfLightScratch);
+    }
+
+    /**
+     * Light of the neighbour at the given {@code (dx, dy, dz)} offset (each component in [-1, 1]),
+     * returned from the reused, per-block-cached light buffers (do not retain the reference). Lets
+     * smooth-lighting callers sample arbitrary corners of the 3x3x3 neighbourhood without a winding
+     * table (see {@code Slab} top/bottom ambient occlusion).
+     */
+    public Vector4f neighbourLight(int dx, int dy, int dz) {
+        return getLightOff(dx, dy, dz);
     }
 
     public Block getCenterBlock() {
