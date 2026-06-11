@@ -53,8 +53,10 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -139,6 +141,7 @@ public class TextureAtlas {
     private final Node root;
     private final Map<String, TextureAtlasTile> locationMap;
     private final Map<String, String> mapNameMap;
+    private final Set<String> dilatedMaps = new HashSet<>();
     private String rootMapName;
 
     public TextureAtlas(int width, int height) {
@@ -439,6 +442,14 @@ public class TextureAtlas {
         }
         byte[] image = images.get(mapName);
         if (image != null) {
+            // Bleed the colour of opaque texels into the surrounding transparent ones so that the
+            // mipmap chain averages real colours instead of the (black) RGB of fully-transparent
+            // texels. Without this, alpha-tested geometry (e.g. grass billboards) shows a dark halo
+            // at distance because coarse mip levels drag edge colours toward black. Idempotent and
+            // guarded so it runs only once per map.
+            if (dilatedMaps.add(mapName)) {
+                dilateTransparentEdges(image);
+            }
             //TODO check if color space shouldn't be sRGB
             Texture2D tex = new Texture2D(new Image(format, atlasWidth, atlasHeight, BufferUtils.createByteBuffer(image), null, ColorSpace.Linear));
             tex.setMagFilter(Texture.MagFilter.Bilinear);
@@ -447,6 +458,88 @@ public class TextureAtlas {
             return tex;
         }
         return null;
+    }
+
+    /**
+     * Propagates the colour (RGB) of opaque texels into the surrounding fully-transparent texels,
+     * leaving the alpha channel untouched. This removes the dark halo that alpha-tested geometry
+     * exhibits at distance: when the GPU builds the mipmap chain it box-filters neighbouring texels,
+     * and fully-transparent texels normally carry a black RGB which drags edge colours toward black.
+     * After dilation every transparent texel carries the colour of its nearest opaque texel, so the
+     * averaged mip colours stay correct while the alpha test still discards the same pixels.
+     *
+     * <p>The fill is a multi-source breadth-first flood from every opaque texel, giving each
+     * transparent texel the colour of the (Manhattan-)nearest opaque one. It runs once at atlas
+     * build time; the working buffers are transient and released immediately afterwards.</p>
+     *
+     * <p>Pixel layout is {@link Format#ABGR8} : 4 bytes per texel ordered A, B, G, R, row-major,
+     * row stride {@code atlasWidth * 4}.</p>
+     *
+     * @param image the atlas pixel buffer, mutated in place
+     */
+    private void dilateTransparentEdges(byte[] image) {
+        final int w = atlasWidth;
+        final int h = atlasHeight;
+        final int n = w * h;
+        final boolean[] known = new boolean[n];
+        final int[] queue = new int[n];
+        int head = 0;
+        int tail = 0;
+
+        // Seed the flood with every opaque texel (alpha != 0).
+        for (int p = 0; p < n; p++) {
+            if (image[p * 4] != 0) {
+                known[p] = true;
+                queue[tail++] = p;
+            }
+        }
+
+        // Edge case : a map with no opaque texel at all - nothing to bleed.
+        if (tail == 0) {
+            return;
+        }
+
+        while (head < tail) {
+            int p = queue[head++];
+            int px = p % w;
+            int py = p / w;
+            int src = p * 4;
+            byte b = image[src + 1];
+            byte g = image[src + 2];
+            byte r = image[src + 3];
+
+            if (px > 0) {
+                tail = bleedInto(image, known, queue, tail, p - 1, b, g, r);
+            }
+            if (px < w - 1) {
+                tail = bleedInto(image, known, queue, tail, p + 1, b, g, r);
+            }
+            if (py > 0) {
+                tail = bleedInto(image, known, queue, tail, p - w, b, g, r);
+            }
+            if (py < h - 1) {
+                tail = bleedInto(image, known, queue, tail, p + w, b, g, r);
+            }
+        }
+    }
+
+    /**
+     * Assigns the given RGB to neighbour texel {@code np} if it has not been reached yet, leaving its
+     * alpha untouched, and enqueues it for further propagation.
+     *
+     * @return the updated queue tail index
+     */
+    private int bleedInto(byte[] image, boolean[] known, int[] queue, int tail, int np, byte b, byte g, byte r) {
+        if (known[np]) {
+            return tail;
+        }
+        known[np] = true;
+        int dst = np * 4;
+        image[dst + 1] = b;
+        image[dst + 2] = g;
+        image[dst + 3] = r;
+        queue[tail] = np;
+        return tail + 1;
     }
 
     /**
