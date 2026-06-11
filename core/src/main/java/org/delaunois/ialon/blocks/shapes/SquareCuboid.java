@@ -1,6 +1,5 @@
 package org.delaunois.ialon.blocks.shapes;
 
-import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
@@ -52,9 +51,6 @@ public class SquareCuboid extends Slab {
 
         boolean multipleImages = block.isUsingMultipleImages();
 
-        // get the rotation of the shape based on the direction
-        Quaternion rotation = Shape.getRotationFromDirection(direction);
-
         float localStartY = startY;
         float localEndY = endY;
 
@@ -77,31 +73,31 @@ public class SquareCuboid extends Slab {
         };
 
         if (upFace) {
-            createUp(location, rotation, chunkMesh, blockScale, multipleImages);
+            createUp(location, chunkMesh, blockScale, multipleImages);
             enlightFace(neighborhood, location, Direction.UP, chunk, chunkMesh);
         } else {
             localEndY = .5f;
         }
         if (downFace) {
-            createDown(location, rotation, chunkMesh, blockScale, multipleImages, faces, neighbours, chunk);
+            createDown(location, chunkMesh, blockScale, multipleImages, faces, neighbours, chunk);
             enlightFace(neighborhood, location, Direction.DOWN, chunk, chunkMesh);
         } else {
             localStartY = -0.5f;
         }
         if (westFace) {
-            createWest(location, rotation, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
+            createWest(location, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
             enlightFace(neighborhood, location, Direction.WEST, chunk, chunkMesh);
         }
         if (eastFace) {
-            createEast(location, rotation, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
+            createEast(location, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
             enlightFace(neighborhood, location, Direction.EAST, chunk, chunkMesh);
         }
         if (southFace) {
-            createSouth(location, rotation, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
+            createSouth(location, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
             enlightFace(neighborhood, location, Direction.SOUTH, chunk, chunkMesh);
         }
         if (northFace) {
-            createNorth(location, rotation, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
+            createNorth(location, chunkMesh, blockScale, multipleImages, localStartY, localEndY, faces, neighbours, chunk);
             enlightFace(neighborhood, location, Direction.NORTH, chunk, chunkMesh);
         }
     }
@@ -153,173 +149,83 @@ public class SquareCuboid extends Slab {
         return grad1 < grad2;
     }
 
-    protected void createNorth(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
+    // Side-face UVs (N/S/E/W) for the SquareCuboid, depending on the slab start/end height. The multi-image
+    // variant maps the raw height to the middle texture third *before* padding (note : this differs from
+    // Slab, which maps the already-padded value), preserving the original SquareCuboid texturing.
+    private Vector2f[] sideUvs(boolean multipleImages, float startY, float endY) {
+        float vStart;
+        float vEnd;
+        if (!multipleImages) {
+            vStart = (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING;
+            vEnd = (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING;
+        } else {
+            vStart = Shape.mapValueToRange(startY + 0.5f, 0f, 1f, 1f / 3f, 2f / 3f) / UV_PADDING_FACTOR + UV_PADDING;
+            vEnd = Shape.mapValueToRange(endY + 0.5f, 0f, 1f, 1f / 3f, 2f / 3f) / UV_PADDING_FACTOR + UV_PADDING;
+        }
+        return new Vector2f[]{
+                new Vector2f(1f - UV_PADDING, vStart), new Vector2f(1f - UV_PADDING, vEnd),
+                new Vector2f(UV_PADDING, vStart), new Vector2f(UV_PADDING, vEnd)
+        };
+    }
+
+    protected void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
         Direction faceDirection = Direction.NORTH;
         float extendEast = getExtension(location, Direction.EAST, faceDirection, faces, neighbours, chunk);
         float extendWest = getExtension(location, Direction.WEST, faceDirection, faces, neighbours, chunk);
-        float extendUp = faces[UP] ? 0 : DELTA;//getExtension(location, Direction.UP, faceDirection, faces, neighbours, chunk);
+        float extendUp = faces[UP] ? 0 : DELTA;
         float extendDown = getExtension(location, Direction.DOWN, faceDirection, faces, neighbours, chunk);
 
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, startY - extendDown, -(.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, endY + extendUp, -(.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, startY - extendDown, -(.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, endY + extendUp, -(.5f - DELTA))), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 0.0f, -1.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-            }
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f(-0.5f - extendWest, startY - extendDown, -(.5f - DELTA)),
+                new Vector3f(-0.5f - extendWest, endY + extendUp, -(.5f - DELTA)),
+                new Vector3f(0.5f + extendEast, startY - extendDown, -(.5f - DELTA)),
+                new Vector3f(0.5f + extendEast, endY + extendUp, -(.5f - DELTA)),
+                nNorth, sideUvs(multipleImages, startY, endY), false, chunkMesh.isCollisionMesh());
     }
 
-    protected void createSouth(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
+    protected void createSouth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
         Direction faceDirection = Direction.SOUTH;
         float extendEast = getExtension(location, Direction.EAST, faceDirection, faces, neighbours, chunk);
         float extendWest = getExtension(location, Direction.WEST, faceDirection, faces, neighbours, chunk);
         float extendUp = faces[UP] ? 0 : DELTA;
         float extendDown = getExtension(location, Direction.DOWN, faceDirection, faces, neighbours, chunk);
 
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, startY - extendDown, (.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, endY + extendUp, (.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, startY - extendDown, (.5f - DELTA))), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, endY + extendUp, (.5f - DELTA))), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 0.0f, 1.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-            }
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f(0.5f + extendEast, startY - extendDown, (.5f - DELTA)),
+                new Vector3f(0.5f + extendEast, endY + extendUp, (.5f - DELTA)),
+                new Vector3f(-0.5f - extendWest, startY - extendDown, (.5f - DELTA)),
+                new Vector3f(-0.5f - extendWest, endY + extendUp, (.5f - DELTA)),
+                nSouth, sideUvs(multipleImages, startY, endY), false, chunkMesh.isCollisionMesh());
     }
 
-    protected void createEast(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
+    protected void createEast(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
         Direction faceDirection = Direction.EAST;
         float extendNorth = getExtension(location, Direction.NORTH, faceDirection, faces, neighbours, chunk);
         float extendSouth = getExtension(location, Direction.SOUTH, faceDirection, faces, neighbours, chunk);
         float extendUp = faces[UP] ? 0 : DELTA;
         float extendDown = getExtension(location, Direction.DOWN, faceDirection, faces, neighbours, chunk);
 
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f((.5f - DELTA), startY - extendDown, -0.5f - extendNorth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f((.5f - DELTA), endY + extendUp, -0.5f - extendNorth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f((.5f - DELTA), startY - extendDown, 0.5f + extendSouth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f((.5f - DELTA), endY + extendUp, 0.5f + extendSouth)), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.0f, 0.0f, 0.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-            }
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f((.5f - DELTA), startY - extendDown, -0.5f - extendNorth),
+                new Vector3f((.5f - DELTA), endY + extendUp, -0.5f - extendNorth),
+                new Vector3f((.5f - DELTA), startY - extendDown, 0.5f + extendSouth),
+                new Vector3f((.5f - DELTA), endY + extendUp, 0.5f + extendSouth),
+                nEast, sideUvs(multipleImages, startY, endY), false, chunkMesh.isCollisionMesh());
     }
 
-    protected void createWest(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
+    protected void createWest(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, float startY, float endY, boolean[] faces, Block[] neighbours, Chunk chunk) {
         Direction faceDirection = Direction.WEST;
         float extendNorth = getExtension(location, Direction.NORTH, faceDirection, faces, neighbours, chunk);
         float extendSouth = getExtension(location, Direction.SOUTH, faceDirection, faces, neighbours, chunk);
         float extendUp = faces[UP] ? 0 : DELTA;
         float extendDown = getExtension(location, Direction.DOWN, faceDirection, faces, neighbours, chunk);
 
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-(.5f - DELTA), startY - extendDown, 0.5f + extendSouth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-(.5f - DELTA), endY + extendUp, 0.5f + extendSouth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-(.5f - DELTA), startY - extendDown, -0.5f - extendNorth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-(.5f - DELTA), endY + extendUp, -0.5f - extendNorth)), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1, 0.0f, 0.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (startY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, (endY + 0.5f) / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(startY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, mapValueToRange(endY + 0.5f, new Vector2f(0, 1), new Vector2f(1f / 3f, 2f / 3f)) / UV_PADDING_FACTOR + UV_PADDING));
-            }
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f(-(.5f - DELTA), startY - extendDown, 0.5f + extendSouth),
+                new Vector3f(-(.5f - DELTA), endY + extendUp, 0.5f + extendSouth),
+                new Vector3f(-(.5f - DELTA), startY - extendDown, -0.5f - extendNorth),
+                new Vector3f(-(.5f - DELTA), endY + extendUp, -0.5f - extendNorth),
+                nWest, sideUvs(multipleImages, startY, endY), false, chunkMesh.isCollisionMesh());
     }
 
     private float getExtension(Vec3i location, Direction extensionDirection, Direction faceDirection, boolean[] faces, Block[] neighbours, Chunk chunk) {
@@ -329,95 +235,49 @@ public class SquareCuboid extends Slab {
         return DELTA;
     }
 
-    protected void createDown(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean[] faces, Block[] neighbours, Chunk chunk) {
+    protected void createDown(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean[] faces, Block[] neighbours, Chunk chunk) {
         Direction faceDirection = Direction.DOWN;
         float extendEast = getExtension(location, Direction.EAST, faceDirection, faces, neighbours, chunk);
         float extendWest = getExtension(location, Direction.WEST, faceDirection, faces, neighbours, chunk);
         float extendNorth = getExtension(location, Direction.NORTH, faceDirection, faces, neighbours, chunk);
         float extendSouth = getExtension(location, Direction.SOUTH, faceDirection, faces, neighbours, chunk);
 
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, startY + DELTA, -0.5f - extendNorth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, startY + DELTA, -0.5f - extendNorth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f - extendWest, startY + DELTA, 0.5f + extendSouth)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f + extendEast, startY + DELTA, 0.5f + extendSouth)), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, -1.0f, 0.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
-            }
-        }
+        Vector2f[] uvs = multipleImages ? UV_DOWN_MULTI : UV_DOWN_SINGLE;
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f(-0.5f - extendWest, startY + DELTA, -0.5f - extendNorth),
+                new Vector3f(0.5f + extendEast, startY + DELTA, -0.5f - extendNorth),
+                new Vector3f(-0.5f - extendWest, startY + DELTA, 0.5f + extendSouth),
+                new Vector3f(0.5f + extendEast, startY + DELTA, 0.5f + extendSouth),
+                nDown, uvs, false, chunkMesh.isCollisionMesh());
     }
 
-    protected void createUp(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale, boolean multipleImages) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, endY, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, endY, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, endY, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, endY, 0.5f)), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 1.0f, 0.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 2f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 2f / 3f + UV_PADDING));
-            }
-        }
+    protected void createUp(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages) {
+        Vector2f[] uvs = multipleImages ? UV_UP_MULTI : UV_UP_SINGLE;
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                new Vector3f(0.5f, endY, -0.5f),
+                new Vector3f(-0.5f, endY, -0.5f),
+                new Vector3f(0.5f, endY, 0.5f),
+                new Vector3f(-0.5f, endY, 0.5f),
+                nUp, uvs, false, chunkMesh.isCollisionMesh());
     }
 
-
-    /**
-     * Calculate the value in a range to a value in another range.
-     *
-     * @param value            input value
-     * @param range            input value range
-     * @param destinationRange destination range
-     * @return value in destination range
-     */
-    private static float mapValueToRange(float value, Vector2f range, Vector2f destinationRange) {
-        return (value - range.x) * ((destinationRange.y - destinationRange.x) / (range.y - range.x)) + destinationRange.x;
-    }
+    // SquareCuboid's own top/bottom UVs (kept private : the SINGLE/MULTI layouts differ slightly from Slab's
+    // shared caps — in particular the original DOWN multi mapping is asymmetric, preserved here verbatim).
+    private static final Vector2f[] UV_UP_SINGLE = {
+            new Vector2f(1f - UV_PADDING, 1f - UV_PADDING), new Vector2f(UV_PADDING, 1f - UV_PADDING),
+            new Vector2f(1f - UV_PADDING, UV_PADDING), new Vector2f(UV_PADDING, UV_PADDING)
+    };
+    private static final Vector2f[] UV_UP_MULTI = {
+            new Vector2f(1f - UV_PADDING, 1f - UV_PADDING), new Vector2f(UV_PADDING, 1f - UV_PADDING),
+            new Vector2f(1f - UV_PADDING, 2f / 3f + UV_PADDING), new Vector2f(UV_PADDING, 2f / 3f + UV_PADDING)
+    };
+    private static final Vector2f[] UV_DOWN_SINGLE = {
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(1f - UV_PADDING, UV_PADDING),
+            new Vector2f(UV_PADDING, 1f - UV_PADDING), new Vector2f(1f - UV_PADDING, 1f - UV_PADDING)
+    };
+    private static final Vector2f[] UV_DOWN_MULTI = {
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(1f - UV_PADDING, UV_PADDING),
+            new Vector2f(UV_PADDING, 1f / 3f - UV_PADDING), new Vector2f(1f - UV_PADDING, 1f / 3f + UV_PADDING)
+    };
 
 }

@@ -2,6 +2,7 @@ package org.delaunois.ialon.blocks;
 
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
@@ -83,6 +84,87 @@ public interface Shape {
      */
     static Vector3f createVertex(Vector3f vertex, Vec3i blockLocation, float blockScale) {
         return vertex.addLocal(blockLocation.x, blockLocation.y, blockLocation.z).multLocal(blockScale);
+    }
+
+    /**
+     * Per-thread scratch vertex, reused by {@link #emitQuad} to rotate/offset/scale every emitted
+     * position without allocating a {@link Vector3f} in the (multi-threaded) meshing loop. The buffer
+     * {@code add(...)} methods copy the components, so a single instance can be reused for all vertices.
+     */
+    ThreadLocal<Vector3f> VERTEX_SCRATCH = ThreadLocal.withInitial(Vector3f::new);
+
+    /**
+     * Emits one quad (4 vertices / 2 triangles) into the chunk mesh. This is the shared building block
+     * for all quad-based shapes : it factors out the index/normal/uv emission that used to be copy-pasted
+     * in every {@code createXxx()} method, and removes the per-vertex {@link Vector3f} allocations.
+     * <p>
+     * The local vertices {@code v0..v3} and the {@code normal} are <strong>never mutated</strong>, so
+     * callers can (and should) pass shared {@code static final} constants. The {@code normal} must already
+     * be expressed in the shape's world orientation : pre-rotate/precompute it once (e.g. in the shape
+     * constructor) rather than rotating it per vertex.
+     *
+     * @param rotation      the shape rotation, or {@code null} for an axis-aligned (identity) shape
+     * @param v0 v1 v2 v3   the 4 local vertices, in the emission order the legacy {@code createXxx()} used
+     * @param normal        the (already world-oriented) face normal, shared across the 4 vertices
+     * @param uvs           the 4 texture coordinates
+     * @param flip          when {@code true}, swaps the triangle diagonal (used by smooth-shadow AO)
+     * @param collisionMesh when {@code true}, only positions + indices are emitted (no normals / uvs)
+     */
+    static void emitQuad(ChunkMesh mesh, Vec3i location, float blockScale, Quaternion rotation,
+                         Vector3f v0, Vector3f v1, Vector3f v2, Vector3f v3,
+                         Vector3f normal, Vector2f[] uvs, boolean flip, boolean collisionMesh) {
+        int offset = mesh.getPositions().size();
+        Vector3f scratch = VERTEX_SCRATCH.get();
+        emitVertex(mesh, scratch, rotation, v0, location, blockScale);
+        emitVertex(mesh, scratch, rotation, v1, location, blockScale);
+        emitVertex(mesh, scratch, rotation, v2, location, blockScale);
+        emitVertex(mesh, scratch, rotation, v3, location, blockScale);
+
+        DirectIntBuffer indices = mesh.getIndices();
+        if (flip) {
+            indices.add(offset + 1);
+            indices.add(offset + 3);
+            indices.add(offset);
+            indices.add(offset + 3);
+            indices.add(offset + 2);
+            indices.add(offset);
+        } else {
+            indices.add(offset);
+            indices.add(offset + 1);
+            indices.add(offset + 2);
+            indices.add(offset + 1);
+            indices.add(offset + 3);
+            indices.add(offset + 2);
+        }
+
+        if (!collisionMesh) {
+            DirectVector3fBuffer normals = mesh.getNormals();
+            normals.add(normal);
+            normals.add(normal);
+            normals.add(normal);
+            normals.add(normal);
+            DirectVector2fBuffer uvBuffer = mesh.getUvs();
+            uvBuffer.add(uvs[0]);
+            uvBuffer.add(uvs[1]);
+            uvBuffer.add(uvs[2]);
+            uvBuffer.add(uvs[3]);
+        }
+    }
+
+    /**
+     * Rotates (when {@code rotation} is non-null), offsets by the block location and scales the
+     * {@code local} vertex into the supplied {@code scratch} instance, then appends it to the mesh
+     * positions. No allocation : {@code scratch} is mutated and the buffer copies its components.
+     */
+    static void emitVertex(ChunkMesh mesh, Vector3f scratch, Quaternion rotation, Vector3f local,
+                           Vec3i location, float blockScale) {
+        if (rotation == null) {
+            scratch.set(local);
+        } else {
+            rotation.mult(local, scratch);
+        }
+        scratch.addLocal(location.x, location.y, location.z).multLocal(blockScale);
+        mesh.getPositions().add(scratch);
     }
 
     /**
@@ -177,5 +259,14 @@ public interface Shape {
         Vector3f newFaceDirection = shapeRotation.mult(faceDirection.getVector().toVector3f());
 
         return Direction.fromVector(newFaceDirection);
+    }
+
+    /**
+     * Linearly maps {@code value} from the source range {@code [rangeMin, rangeMax]} to the
+     * destination range {@code [destMin, destMax]}. Float-based to avoid the throwaway
+     * {@link Vector2f} allocations the per-shape variants used for their (constant) ranges.
+     */
+    static float mapValueToRange(float value, float rangeMin, float rangeMax, float destMin, float destMax) {
+        return (value - rangeMin) * ((destMax - destMin) / (rangeMax - rangeMin)) + destMin;
     }
 }

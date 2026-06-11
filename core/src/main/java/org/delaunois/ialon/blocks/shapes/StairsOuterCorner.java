@@ -28,7 +28,15 @@ public class StairsOuterCorner implements Shape {
 
     private final Direction direction;
     private final boolean upsideDown;
-    private Quaternion rotation;
+    private final Quaternion rotation;
+
+    // Each face uses a single uniform normal : rotate it once here instead of per vertex.
+    private final Vector3f nUp;
+    private final Vector3f nDown;
+    private final Vector3f nNorth;
+    private final Vector3f nSouth;
+    private final Vector3f nEast;
+    private final Vector3f nWest;
 
     public StairsOuterCorner() {
         this(Direction.UP, false);
@@ -40,10 +48,18 @@ public class StairsOuterCorner implements Shape {
 
         // when the shape is upside down (inverted), we need to perform 3 rotations. Two to invert the shape and one
         // for the direction.
-        rotation = Shape.getYawFromDirection(direction);
+        Quaternion rot = Shape.getYawFromDirection(direction);
         if (upsideDown) {
-            rotation = INVERSE.mult(rotation.inverse());
+            rot = INVERSE.mult(rot.inverse());
         }
+        this.rotation = rot;
+
+        this.nUp = rot.mult(new Vector3f(0.0f, 1.0f, 0.0f));
+        this.nDown = rot.mult(new Vector3f(0.0f, -1.0f, 0.0f));
+        this.nNorth = rot.mult(new Vector3f(0.0f, 0.0f, -1.0f));
+        this.nSouth = rot.mult(new Vector3f(0.0f, 0.0f, 1.0f));
+        this.nEast = rot.mult(new Vector3f(1.0f, 0.0f, 0.0f));
+        this.nWest = rot.mult(new Vector3f(-1.0f, 0.0f, 0.0f));
     }
 
     @Override
@@ -88,7 +104,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createUp(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createUp(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:16
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.167f, 0.167f, -0.500f)), location, blockScale));
@@ -140,22 +156,22 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 11);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 1.000f, 0.000f)));
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
+            chunkMesh.getNormals().add(nUp);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
@@ -194,7 +210,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createSouth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createSouth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:12
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.167f, 0.167f, -0.167f)), location, blockScale));
@@ -230,18 +246,18 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 11);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, 1.000f)));
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
+            chunkMesh.getNormals().add(nSouth);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.333f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 1.000f / UV_PADDING_FACTOR + UV_PADDING));
@@ -272,7 +288,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createDown(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createDown(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:4
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.500f, -0.500f, 0.500f)), location, blockScale));
@@ -288,10 +304,10 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 3);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, -1.000f, 0.000f)));
+            chunkMesh.getNormals().add(nDown);
+            chunkMesh.getNormals().add(nDown);
+            chunkMesh.getNormals().add(nDown);
+            chunkMesh.getNormals().add(nDown);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, UV_PADDING));
@@ -306,7 +322,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createNorth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createNorth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:10
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.500f, -0.500f, -0.500f)), location, blockScale));
@@ -340,16 +356,16 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 6);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.000f, 0.000f, -1.000f)));
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
+            chunkMesh.getNormals().add(nNorth);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
@@ -376,7 +392,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createEast(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createEast(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:12
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.500f, -0.167f, -0.500f)), location, blockScale));
@@ -412,18 +428,18 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 7);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.000f, 0.000f, 0.000f)));
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(1.000f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.000f / UV_PADDING_FACTOR + UV_PADDING));
@@ -454,7 +470,7 @@ public class StairsOuterCorner implements Shape {
         }
     }
 
-    private static void createWest(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
+    private void createWest(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
         // # Positions:10
         chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.500f, -0.167f, 0.167f)), location, blockScale));
@@ -488,16 +504,16 @@ public class StairsOuterCorner implements Shape {
         chunkMesh.getIndices().add(offset + 6);
         if (!chunkMesh.isCollisionMesh()) {
             // Normals:
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
-            chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.000f, 0.000f, 0.000f)));
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(0.667f / UV_PADDING_FACTOR + UV_PADDING, 0.333f / UV_PADDING_FACTOR + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(0.000f / UV_PADDING_FACTOR + UV_PADDING, 0.667f / UV_PADDING_FACTOR + UV_PADDING));

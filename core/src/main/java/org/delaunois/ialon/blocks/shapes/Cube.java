@@ -78,14 +78,17 @@ public class Cube implements Shape {
             new Vector2f(U_HI, V_23_PLUS), new Vector2f(U_LO, V_23_PLUS)
     };
 
-    private static void addFaceNormalAndUvs(ChunkMesh chunkMesh, Vector3f normal, Vector2f[] uvs) {
-        for (int i = 0; i < 4; i++) {
-            chunkMesh.getNormals().add(normal);
-        }
-        for (Vector2f uv : uvs) {
-            chunkMesh.getUvs().add(uv);
-        }
-    }
+    // The 8 cube corners, named by the sign of (x, y, z) : n = -0.5, p = +0.5. Shared immutable
+    // constants : Shape.emitQuad() never mutates the local vertices, so the same instance can be
+    // reused across every face / block / thread instead of allocating a Vector3f per vertex.
+    private static final Vector3f C_NNN = new Vector3f(-0.5f, -0.5f, -0.5f);
+    private static final Vector3f C_NNP = new Vector3f(-0.5f, -0.5f, 0.5f);
+    private static final Vector3f C_NPN = new Vector3f(-0.5f, 0.5f, -0.5f);
+    private static final Vector3f C_NPP = new Vector3f(-0.5f, 0.5f, 0.5f);
+    private static final Vector3f C_PNN = new Vector3f(0.5f, -0.5f, -0.5f);
+    private static final Vector3f C_PNP = new Vector3f(0.5f, -0.5f, 0.5f);
+    private static final Vector3f C_PPN = new Vector3f(0.5f, 0.5f, -0.5f);
+    private static final Vector3f C_PPP = new Vector3f(0.5f, 0.5f, 0.5f);
 
     @Override
     public void add(BlockNeighborhood neighborhood, ChunkMesh chunkMesh) {
@@ -173,189 +176,39 @@ public class Cube implements Shape {
     }
 
     private static void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, -0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_NORTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_NNN, C_NPN, C_PNN, C_PPN,
+                NORMAL_NORTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
     private static void createSouth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, 0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_SOUTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_PNP, C_PPP, C_NNP, C_NPP,
+                NORMAL_SOUTH, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
     private static void createEast(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, 0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_EAST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_PNN, C_PPN, C_PNP, C_PPP,
+                NORMAL_EAST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
     private static void createWest(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, -0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_WEST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_NNP, C_NPP, C_NNN, C_NPN,
+                NORMAL_WEST, multipleImages ? UV_SIDE_MULTI : UV_SIDE_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
     private static void createDown(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, -0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, -0.5f, 0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_DOWN, multipleImages ? UV_DOWN_MULTI : UV_DOWN_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_NNN, C_PNN, C_NNP, C_PNP,
+                NORMAL_DOWN, multipleImages ? UV_DOWN_MULTI : UV_DOWN_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
     private static void createUp(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, -0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(0.5f, 0.5f, 0.5f), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(new Vector3f(-0.5f, 0.5f, 0.5f), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            addFaceNormalAndUvs(chunkMesh, NORMAL_UP, multipleImages ? UV_UP_MULTI : UV_UP_SINGLE);
-        }
+        Shape.emitQuad(chunkMesh, location, blockScale, null,
+                C_PPN, C_NPN, C_PPP, C_NPP,
+                NORMAL_UP, multipleImages ? UV_UP_MULTI : UV_UP_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
 }

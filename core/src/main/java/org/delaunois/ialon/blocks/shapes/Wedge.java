@@ -20,6 +20,10 @@ import lombok.ToString;
 /**
  * A shape implementation for a wedge. The default facing of a wedge is South: the sloping side (hypotenuse) will face
  * south.
+ * <p>
+ * The three quad faces (down, north, slope) are emitted through the shared {@link Shape#emitQuad} helper with
+ * precomputed normals and corner vertices. The two triangular sides (east/west) keep their own emission but reuse
+ * the precomputed normals.
  *
  * @author rvandoosselaer
  */
@@ -30,9 +34,52 @@ public class Wedge implements Shape {
     private static final Quaternion PI_Y = new Quaternion().fromAngleAxis(FastMath.PI, Vector3f.UNIT_Y);
     private static final Quaternion INVERSE = PI_X.mult(PI_Y);
 
+    // The 8 cube corners (named by the sign of x, y, z : n = -0.5, p = +0.5). Shared immutable constants ;
+    // Shape.emitQuad never mutates the local vertices.
+    private static final Vector3f C_NNN = new Vector3f(-0.5f, -0.5f, -0.5f);
+    private static final Vector3f C_NNP = new Vector3f(-0.5f, -0.5f, 0.5f);
+    private static final Vector3f C_NPN = new Vector3f(-0.5f, 0.5f, -0.5f);
+    private static final Vector3f C_PNN = new Vector3f(0.5f, -0.5f, -0.5f);
+    private static final Vector3f C_PNP = new Vector3f(0.5f, -0.5f, 0.5f);
+    private static final Vector3f C_PPN = new Vector3f(0.5f, 0.5f, -0.5f);
+
+    // The north face keeps a fixed (un-rotated) normal, exactly as the original implementation.
+    private static final Vector3f NORMAL_NORTH = new Vector3f(0.0f, 0.0f, -1.0f);
+
+    private static final Vector2f[] UV_DOWN_SINGLE = {
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING),
+            new Vector2f(UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING)
+    };
+    private static final Vector2f[] UV_DOWN_MULTI = {
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING),
+            new Vector2f(UV_PADDING, 1f / 3f - UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f - UV_PADDING)
+    };
+    private static final Vector2f[] UV_NORTH_SINGLE = {
+            new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING),
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING)
+    };
+    private static final Vector2f[] UV_NORTH_MULTI = {
+            new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING),
+            new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING), new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING)
+    };
+    private static final Vector2f[] UV_SOUTH_SINGLE = {
+            new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING),
+            new Vector2f(UV_PADDING, UV_PADDING), new Vector2f(UV_PADDING, 1f / UV_PADDING_FACTOR + UV_PADDING)
+    };
+    private static final Vector2f[] UV_SOUTH_MULTI = {
+            new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 1f - UV_PADDING), new Vector2f(1f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f + UV_PADDING),
+            new Vector2f(UV_PADDING, 1f - UV_PADDING), new Vector2f(UV_PADDING, 2f / 3f + UV_PADDING)
+    };
+
     private final Direction direction;
     private final boolean upsideDown;
-    private Quaternion rotation;
+    private final Quaternion rotation;
+    private final Quaternion emitRotation;
+
+    private final Vector3f nDown;
+    private final Vector3f nSouth;
+    private final Vector3f nEast;
+    private final Vector3f nWest;
 
     public Wedge() {
         this(Direction.UP, false);
@@ -44,10 +91,17 @@ public class Wedge implements Shape {
 
         // when the shape is upside down (inverted), we need to perform 3 rotations. Two to invert the shape and one
         // for the direction.
-        rotation = Shape.getYawFromDirection(direction);
+        Quaternion rot = Shape.getYawFromDirection(direction);
         if (upsideDown) {
-            rotation = INVERSE.mult(rotation.inverse());
+            rot = INVERSE.mult(rot.inverse());
         }
+        this.rotation = rot;
+        this.emitRotation = Quaternion.IDENTITY.equals(rot) ? null : rot;
+
+        this.nDown = rot.mult(new Vector3f(0.0f, -1.0f, 0.0f));
+        this.nSouth = rot.mult(new Vector3f(0.0f, 0.70710677f, 0.70710677f));
+        this.nEast = rot.mult(new Vector3f(1.0f, 0.0f, 0.0f));
+        this.nWest = rot.mult(new Vector3f(-1.0f, 0.0f, 0.0f));
     }
 
     @Override
@@ -61,7 +115,7 @@ public class Wedge implements Shape {
             return;
 
         Direction faceDirection;
-        boolean flip = false;
+        boolean flip;
         boolean enlight = !chunkMesh.isCollisionMesh();
         boolean multipleImages = block.isUsingMultipleImages();
 
@@ -70,34 +124,34 @@ public class Wedge implements Shape {
         // SOUTH
         faceDirection = Shape.getYawFaceDirection(Direction.SOUTH, direction);
         flip = enlight && softShadowSouthFace(neighborhood, location, faceDirection, chunk, chunkMesh);
-        createSouth(location, chunkMesh, rotation, blockScale, multipleImages, flip);
+        createSouth(location, chunkMesh, blockScale, multipleImages, flip);
 
         // WEST
         faceDirection = Shape.getYawFaceDirection(upsideDown ? Direction.EAST : Direction.WEST, direction);
         if (chunk.isFaceVisible(location, faceDirection)) {
-            flip = enlight && softShadowWestFace(neighborhood, location, faceDirection, chunk, chunkMesh);
-            createWest(location, chunkMesh, rotation, blockScale, multipleImages, flip);
+            softShadowWestFace(neighborhood, location, faceDirection, chunk, chunkMesh);
+            createWest(location, chunkMesh, blockScale, multipleImages);
         }
 
         // EAST
         faceDirection = Shape.getYawFaceDirection(upsideDown ? Direction.WEST : Direction.EAST, direction);
         if (chunk.isFaceVisible(location, faceDirection)) {
-            flip = enlight && softShadowEastFace(neighborhood, location, faceDirection, chunk, chunkMesh);
-            createEast(location, chunkMesh, rotation, blockScale, multipleImages, flip);
+            softShadowEastFace(neighborhood, location, faceDirection, chunk, chunkMesh);
+            createEast(location, chunkMesh, blockScale, multipleImages);
         }
 
         // NORTH
         faceDirection = Shape.getYawFaceDirection(Direction.NORTH, direction);
         if (chunk.isFaceVisible(location, faceDirection)) {
             flip = enlight && softShadow(neighborhood, location, faceDirection, chunk, chunkMesh);
-            createNorth(location, chunkMesh, rotation, blockScale, multipleImages, flip);
+            createNorth(location, chunkMesh, blockScale, multipleImages, flip);
         }
 
         // DOWN
         faceDirection = Shape.getYawFaceDirection(upsideDown ? Direction.UP : Direction.DOWN, direction);
         if (chunk.isFaceVisible(location, faceDirection)) {
             flip = enlight && softShadow(neighborhood, location, faceDirection, chunk, chunkMesh);
-            createDown(location, chunkMesh, rotation, blockScale, multipleImages, flip);
+            createDown(location, chunkMesh, blockScale, multipleImages, flip);
         }
     }
 
@@ -181,116 +235,40 @@ public class Wedge implements Shape {
         return grad1 < grad2;
     }
 
-    private static void createDown(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, 0.5f)), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, -1.0f, 0.0f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f - UV_PADDING));
-            }
-        }
+    private void createDown(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                C_NNN, C_PNN, C_NNP, C_PNP,
+                nDown, multipleImages ? UV_DOWN_MULTI : UV_DOWN_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
-    private static void createNorth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, 0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, 0.5f, -0.5f)), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(new Vector3f(0.0f, 0.0f, -1.0f));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f / 3f + UV_PADDING));
-            }
-        }
+    private void createNorth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                C_NNN, C_NPN, C_PNN, C_PPN,
+                NORMAL_NORTH, multipleImages ? UV_NORTH_MULTI : UV_NORTH_SINGLE, flip, chunkMesh.isCollisionMesh());
     }
 
-    private static void createEast(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
+    private void createSouth(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages, boolean flip) {
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                C_PNP, C_PPN, C_NNP, C_NPN,
+                nSouth, multipleImages ? UV_SOUTH_MULTI : UV_SOUTH_SINGLE, flip, chunkMesh.isCollisionMesh());
+    }
+
+    // East/West are triangular faces : emitQuad only handles quads, so they keep their own emission, but the
+    // rotated normal is now computed once (precomputed) instead of per-vertex in a loop.
+    private void createEast(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages) {
         int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, 0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, 0.5f)), location, blockScale));
-        // indices
+        Vector3f scratch = VERTEX_SCRATCH.get();
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_PNN, location, blockScale);
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_PPN, location, blockScale);
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_PNP, location, blockScale);
         chunkMesh.getIndices().add(offset);
         chunkMesh.getIndices().add(offset + 1);
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 3; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(1.0f, 0.0f, 0.0f)));
-            }
-            // uvs
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
+            chunkMesh.getNormals().add(nEast);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
@@ -303,25 +281,20 @@ public class Wedge implements Shape {
         }
     }
 
-    private static void createWest(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages, boolean flip) {
-        int offset;
-        // calculate index offset, we use this to connect the triangles
-        offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, 0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, -0.5f)), location, blockScale));
-        // indices
+    private void createWest(Vec3i location, ChunkMesh chunkMesh, float blockScale, boolean multipleImages) {
+        int offset = chunkMesh.getPositions().size();
+        Vector3f scratch = VERTEX_SCRATCH.get();
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_NNP, location, blockScale);
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_NPN, location, blockScale);
+        Shape.emitVertex(chunkMesh, scratch, emitRotation, C_NNN, location, blockScale);
         chunkMesh.getIndices().add(offset);
         chunkMesh.getIndices().add(offset + 1);
         chunkMesh.getIndices().add(offset + 2);
 
         if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 3; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(-1.0f, 0.0f, 0.0f)));
-            }
-            // uvs
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
+            chunkMesh.getNormals().add(nWest);
             if (!multipleImages) {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1.0f - UV_PADDING));
@@ -330,52 +303,6 @@ public class Wedge implements Shape {
                 chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1f / 3f + UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 2f / 3f - UV_PADDING));
                 chunkMesh.getUvs().add(new Vector2f(UV_PADDING, 1f / 3f + UV_PADDING));
-            }
-        }
-    }
-
-    private static void createSouth(Vec3i location, ChunkMesh chunkMesh, Quaternion rotation, float blockScale, boolean multipleImages, boolean flip) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.5f, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, 0.5f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.5f, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, 0.5f, -0.5f)), location, blockScale));
-        // indices
-        if (flip) {
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset);
-
-        } else {
-            chunkMesh.getIndices().add(offset);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 2);
-            chunkMesh.getIndices().add(offset + 1);
-            chunkMesh.getIndices().add(offset + 3);
-            chunkMesh.getIndices().add(offset + 2);
-        }
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 0.70710677f, 0.70710677f)));
-            }
-            // uvs
-            if (!multipleImages) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 0.0f / UV_PADDING_FACTOR + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1.0f / UV_PADDING_FACTOR + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 1f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 1f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f / UV_PADDING_FACTOR + UV_PADDING, 2f / 3f + UV_PADDING));
             }
         }
     }
