@@ -21,31 +21,54 @@ import lombok.ToString;
 @ToString
 public class Square implements Shape {
 
+    // The single face : 4 fixed local vertices (never mutated by Shape.emitQuad), shared across instances.
+    private static final Vector3f V0 = new Vector3f(0.5f, -0.48f, -0.5f);
+    private static final Vector3f V1 = new Vector3f(-0.5f, -0.48f, -0.5f);
+    private static final Vector3f V2 = new Vector3f(0.5f, -0.48f, 0.5f);
+    private static final Vector3f V3 = new Vector3f(-0.5f, -0.48f, 0.5f);
+
+    private static final Vector2f[] UV_NORTH_SOUTH = {
+            new Vector2f(1f - UV_PADDING, 1f - UV_PADDING), new Vector2f(UV_PADDING, 1f - UV_PADDING),
+            new Vector2f(1f - UV_PADDING, UV_PADDING), new Vector2f(UV_PADDING, UV_PADDING)
+    };
+    private static final Vector2f[] UV_OTHER = {
+            new Vector2f(UV_PADDING, 1f - UV_PADDING), new Vector2f(UV_PADDING, UV_PADDING),
+            new Vector2f(1f - UV_PADDING, 1f - UV_PADDING), new Vector2f(1f - UV_PADDING, UV_PADDING)
+    };
+
     private final Direction direction;
-    private final Quaternion yaw;
+
+    // emitRotation is null for the default UP plane (identity) so the per-vertex rotation is skipped.
+    private final Quaternion emitRotation;
+    private final Vector3f normal;
+    private final Vector2f[] uvFace;
 
     public Square() {
         this(Direction.UP);
     }
 
     public Square(Direction direction) {
-        this.direction = direction;
-        yaw = new Quaternion();
+        this(direction, Shape.getRotationFromDirection(direction));
     }
 
     public Square(Quaternion yaw) {
-        this.direction = null;
-        this.yaw = yaw;
+        this(null, yaw);
+    }
+
+    private Square(Direction direction, Quaternion rotation) {
+        this.direction = direction;
+        this.emitRotation = direction == Direction.UP ? null : rotation;
+        this.normal = rotation.mult(new Vector3f(0f, 1f, 0f));
+        this.uvFace = (direction == Direction.NORTH || direction == Direction.SOUTH) ? UV_NORTH_SOUTH : UV_OTHER;
     }
 
     @Override
     public void add(Vec3i location, Chunk chunk, ChunkMesh chunkMesh) {
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
-        // get the rotation of the shape based on the direction
-        Quaternion rotation = direction != null ? Shape.getRotationFromDirection(direction) : yaw;
-
-        createFace(location, rotation, chunkMesh, blockScale);
+        Shape.emitQuad(chunkMesh, location, blockScale, emitRotation,
+                V0, V1, V2, V3,
+                normal, uvFace, false, chunkMesh.isCollisionMesh());
         enlightFace(location, chunk, chunkMesh);
     }
 
@@ -55,41 +78,6 @@ public class Square implements Shape {
         chunkMesh.getColors().add(color);
         chunkMesh.getColors().add(color);
         chunkMesh.getColors().add(color);
-    }
-
-    private void createFace(Vec3i location, Quaternion rotation, ChunkMesh chunkMesh, float blockScale) {
-        // calculate index offset, we use this to connect the triangles
-        int offset = chunkMesh.getPositions().size();
-        // vertices
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.48f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.48f, -0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(0.5f, -0.48f, 0.5f)), location, blockScale));
-        chunkMesh.getPositions().add(Shape.createVertex(rotation.mult(new Vector3f(-0.5f, -0.48f, 0.5f)), location, blockScale));
-        // indices
-        chunkMesh.getIndices().add(offset);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 2);
-        chunkMesh.getIndices().add(offset + 1);
-        chunkMesh.getIndices().add(offset + 3);
-        chunkMesh.getIndices().add(offset + 2);
-
-        if (!chunkMesh.isCollisionMesh()) {
-            // normals
-            for (int i = 0; i < 4; i++) {
-                chunkMesh.getNormals().add(rotation.mult(new Vector3f(0.0f, 1.0f, 0.0f)));
-            }
-            if (direction == Direction.NORTH || direction == Direction.SOUTH) {
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
-            } else {
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(0.0f + UV_PADDING, 0.0f + UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 1.0f - UV_PADDING));
-                chunkMesh.getUvs().add(new Vector2f(1.0f - UV_PADDING, 0.0f + UV_PADDING));
-            }
-        }
     }
 
 }
