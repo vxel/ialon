@@ -3,6 +3,7 @@ package org.delaunois.ialon;
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
+import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
 import com.simsilica.mathd.Vec3i;
 
@@ -52,6 +53,29 @@ class NoiseTerrainGeneratorTest {
                             "lightmap differs for chunk " + loc);
                 }
             }
+        }
+    }
+
+    /**
+     * On the finite torus, vegetation (trees + decorative grass) must be as seamless as the terrain :
+     * the forest-density map is tiled and the per-cell tree scatter + per-column grass wrap exactly at
+     * the period. So a chunk and its twin one full period (W) away in X must be byte-identical.
+     */
+    @Test
+    void vegetationIsSeamlessAcrossTheTorusSeam() {
+        IalonConfig config = new IalonConfig();
+        float w = config.getWorldSize(); // 4096 by default (finite world)
+        int gridHeight = config.getGridHeight();
+        int chunksPerPeriod = (int) (w / BlocksConfig.getInstance().getChunkSize().x);
+
+        NoiseTerrainGenerator gen =
+                new NoiseTerrainGenerator(2, config.getWaterHeight(), config.getMaxy(), w);
+
+        for (int y = 0; y < gridHeight; y++) {
+            Chunk a = gen.generate(new Vec3i(0, y, 0));
+            Chunk b = gen.generate(new Vec3i(chunksPerPeriod, y, 0));
+            assertArrayEquals(a.getBlocks(), b.getBlocks(),
+                    "vegetation/terrain must match across the +W seam at y=" + y);
         }
     }
 }
