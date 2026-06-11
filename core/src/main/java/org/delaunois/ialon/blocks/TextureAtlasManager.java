@@ -71,12 +71,21 @@ public class TextureAtlasManager {
         ByteBuffer outData = ByteBuffer.allocate(sourceData.capacity());
         try (OutputStream out = new FileOutputStream(filename)) {
             int size = sourceData.limit();
+            boolean abgr = img.getFormat() == Image.Format.ABGR8;
             for (int i = 0; i < size; i += 4) {
-                // ABGR8 to RGBA8
-                outData.put(i, sourceData.get(i + 3));
-                outData.put(i + 1, sourceData.get(i + 2));
-                outData.put(i + 2, sourceData.get(i + 1));
-                outData.put(i + 3, sourceData.get(i));
+                if (abgr) {
+                    // ABGR -> RGBA
+                    outData.put(i, sourceData.get(i + 3));
+                    outData.put(i + 1, sourceData.get(i + 2));
+                    outData.put(i + 2, sourceData.get(i + 1));
+                    outData.put(i + 3, sourceData.get(i));
+                } else {
+                    // already RGBA8 (the atlas GPU image) : copy as-is
+                    outData.put(i, sourceData.get(i));
+                    outData.put(i + 1, sourceData.get(i + 1));
+                    outData.put(i + 2, sourceData.get(i + 2));
+                    outData.put(i + 3, sourceData.get(i + 3));
+                }
             }
             JmeSystem.writeImageFile(out, "png", outData, img.getWidth(), img.getHeight());
         } catch (IOException e) {

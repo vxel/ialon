@@ -450,8 +450,24 @@ public class TextureAtlas {
             if (dilatedMaps.add(mapName)) {
                 dilateTransparentEdges(image);
             }
-            //TODO check if color space shouldn't be sRGB
-            Texture2D tex = new Texture2D(new Image(format, atlasWidth, atlasHeight, BufferUtils.createByteBuffer(image), null, ColorSpace.Linear));
+            // The atlas is assembled in ABGR byte order (the `format` field), but ABGR8 is a desktop-GL
+            // format. jME 3.7..3.9 upload ABGR8 on GLES3 with type GL_UNSIGNED_INT_8_8_8_8
+            // (GLImageFormats: the ABGR8 entry became gated on Caps.OpenGLES30), a type GLES does not
+            // accept -- a strict backend such as ANGLE-on-Vulkan (used by recent Android devices)
+            // rejects the upload and samples the whole atlas as solid black (every block and UI icon).
+            // Earlier jME took the swizzled GL_UNSIGNED_BYTE path for ABGR8 on GLES, which is why this
+            // used to work. Repack to RGBA8, uploaded everywhere as the universally valid
+            // GL_UNSIGNED_BYTE.
+            // NOTE: fixed upstream in jME 3.10 (GLImageFormats now uses formatSwiz(ABGR8, GL_UNSIGNED_BYTE)
+            // for opengles3) -- this repack can be dropped once the project moves to jME >= 3.10 stable.
+            byte[] rgba = new byte[image.length];
+            for (int p = 0; p + 3 < image.length; p += 4) {
+                rgba[p]     = image[p + 3]; // r
+                rgba[p + 1] = image[p + 2]; // g
+                rgba[p + 2] = image[p + 1]; // b
+                rgba[p + 3] = image[p];     // a
+            }
+            Texture2D tex = new Texture2D(new Image(Format.RGBA8, atlasWidth, atlasHeight, BufferUtils.createByteBuffer(rgba), null, ColorSpace.Linear));
             tex.setMagFilter(Texture.MagFilter.Bilinear);
             tex.setMinFilter(Texture.MinFilter.BilinearNearestMipMap);
             tex.setWrap(Texture.WrapMode.EdgeClamp);
