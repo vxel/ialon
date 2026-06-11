@@ -79,11 +79,25 @@ public class Ialon extends SimpleApplication {
         log.info("Initializing Ialon");
         config.getInputActionManager().setInputManager(inputManager);
 
-        // sRGB pipeline : gamma correction is requested in the AppSettings, but jME's hardware sRGB
-        // framebuffer is only available on renderers that expose Caps.Srgb (desktop GL). On others
-        // (notably Android GLES) setGammaCorrection(true) is a silent no-op, so we fall back to
-        // emulating the sRGB encode/decode inside our own world shaders to keep colours consistent.
-        config.setManualGammaEncode(!getRenderer().getCaps().contains(com.jme3.renderer.Caps.Srgb));
+        // sRGB pipeline : gamma correction is requested in the AppSettings and is performed by the
+        // hardware sRGB framebuffer on desktop GL. On Android GLES the default framebuffer does not
+        // sRGB-encode on write (GLES has no GL_FRAMEBUFFER_SRGB and the EGL window surface is not
+        // sRGB), so we emulate the sRGB encode/decode inside our own world shaders to keep colours
+        // consistent.
+        // NB: do NOT key this off Caps.Srgb. Since jME 3.7 the GLES3 renderer advertises Caps.Srgb
+        // even though its default framebuffer performs no encode (see GLRenderer: the cap is now
+        // granted for OpenGLES30). Trusting it wrongly disables the in-shader emulation and renders
+        // the whole world far too dark. Detect the GLES backend instead -- desktop GL never reports
+        // Caps.OpenGLES20.
+        config.setManualGammaEncode(getRenderer().getCaps().contains(com.jme3.renderer.Caps.OpenGLES20));
+        if (config.isManualGammaEncode()) {
+            // jME 3.9 now advertises Caps.Srgb on GLES3 and consequently flips the main framebuffer to
+            // "sRGB", emitting glEnable(GL_FRAMEBUFFER_SRGB) every frame -- an enum GLES does not honour
+            // for the default framebuffer (jME even logs "Enabling anyway"). Turn it back off so the
+            // pipeline is fully manual (as it was pre-3.7) and jME does not half-apply a hardware sRGB
+            // encode that we already perform in-shader.
+            getRenderer().setMainFrameBufferSrgb(false);
+        }
         log.info("Hardware sRGB framebuffer: {} (manual gamma encode: {})",
                 !config.isManualGammaEncode(), config.isManualGammaEncode());
 
