@@ -89,8 +89,9 @@ public class IalonConfig implements WorldSettings {
     // Far trees : GPU billboards scattered on the far terrain (FarTreeState), matching the voxel woods.
     private boolean farTree = true;
     private float farTreeDistance = 512f; // world radius of the billboard ring around the player (beyond it, only the shader forest tint shows)
-    private int farTreeMaxCount = 4000; // hard cap on billboards (the region is thinned to fit, with a log line)
+    private int farTreeMaxCount = 8000; // hard cap on billboards (the region is thinned to fit, with a log line)
     private float farTreeScale = 1f; // global size multiplier for the tree sprites
+    private float farTreeSink = 1f; // sink the billboard base this many world units into the ground so vertical billboards don't appear to float on slopes (their base is a flat line at the anchor's column height, above the downhill terrain)
     // Forest tint : the far terrain darkens to this colour where the forest-density field is high (the
     // distant, beyond-billboard woods read as dark-green slopes). Authored sRGB, stored linear (setAsSrgb).
     private ColorRGBA forestTintColor = new ColorRGBA().setAsSrgb(0.10f, 0.26f, 0.09f, 1f);

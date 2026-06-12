@@ -88,8 +88,8 @@ public class FarTreeState extends BaseAppState {
     // Keep probability at the far edge of the billboard region (1.0 just outside the chunk grid) : the
     // distant forest thins towards the horizon, where the shader forest tint (FarTerrain) takes over.
     private static final float FAR_KEEP_MIN = 0.4f;
-    // Below this alpha a texel is the transparent silhouette background and is skipped.
-    private static final float ALPHA_DISCARD = 0.05f;
+    // Below this alpha a texel is the transparent silhouette background and is skipped (hard alpha test).
+    private static final float ALPHA_DISCARD = 0.5f;
 
     private final IalonConfig config;
 
@@ -119,6 +119,10 @@ public class FarTreeState extends BaseAppState {
     // day/night cycle), exactly like FarTerrainState, so the trees dim and tint with the cycle.
     private boolean lightColorsBound = false;
     private boolean fogColorBound = false;
+    // World-unit spacing of the far-terrain heightmap grid (extent / (HEIGHTMAP_SIZE - 1)). Trees are
+    // grounded on the COARSE far-terrain surface (this grid), not the per-block height, so they don't
+    // float above the under-sampled relief the far terrain actually renders. Mirrors FarTerrainState.
+    private float farGridStep;
 
     public FarTreeState(IalonConfig config) {
         this.config = config;
@@ -135,6 +139,11 @@ public class FarTreeState extends BaseAppState {
         }
         this.generator = (NoiseTerrainGenerator) gen;
 
+        // Far-terrain heightmap grid spacing : extent / (HEIGHTMAP_SIZE - 1), with HEIGHTMAP_SIZE = 513
+        // and extent = 2*worldSize on the torus (else farTerrainExtent). Must match FarTerrainState.
+        float extent = config.getWorldSize() > 0f ? 2f * config.getWorldSize() : config.getFarTerrainExtent();
+        farGridStep = extent / 512f;
+
         if (!resolveSpeciesUv()) {
             this.generator = null; // textures not in the atlas : disable rather than draw garbage
             return;
@@ -144,9 +153,10 @@ public class FarTreeState extends BaseAppState {
         treeGeom = new Geometry("FarTrees", emptyMesh());
         treeGeom.setMaterial(material);
         treeGeom.setShadowMode(RenderQueue.ShadowMode.Off);
-        // Blended billboards (smooth distance fade, no dithering) : the Transparent bucket, blended,
-        // depth-tested but not depth-writing, so faded edges never punch holes in the terrain behind.
-        treeGeom.setQueueBucket(RenderQueue.Bucket.Transparent);
+        // Opaque alpha-tested billboards : no fade of any kind, so the Opaque bucket (depth-write on,
+        // correct occlusion, no depth sorting). The silhouette is a hard alpha test ; trees appear/vanish
+        // crisply at the inner clip and the ring edge.
+        treeGeom.setQueueBucket(RenderQueue.Bucket.Opaque);
     }
 
     /** Resolves each species' atlas tile UVs (same in-tile convention as the block faces). */
@@ -186,13 +196,13 @@ public class FarTreeState extends BaseAppState {
         mat.setFloat("FogDensity", config.getFarTerrainFogDensity());
         // Same inner radius as the far terrain : the square loaded-chunk footprint, with a chunk margin.
         mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
-        // Far edge of the ring : trees fade out before it instead of cutting off abruptly.
-        mat.setFloat("OuterRadius", config.getFarTreeDistance());
-        // Dither fade width at the inner seam and the outer edge (a few chunks for a smooth ramp).
-        mat.setFloat("FadeRange", config.getChunkSize() * 4f);
         mat.setFloat("AlphaDiscard", ALPHA_DISCARD);
-        // Trees stand IN FRONT of the (depth-biased-back) far terrain, so no bias of their own.
-        mat.setFloat("DepthBias", 0f);
+        // SAME clip-space depth bias as the far terrain : the far terrain is pushed back so the voxels win
+        // the depth test ; if the trees kept bias 0 they would win against that pushed-back relief and poke
+        // through the hills (appearing to float, un-masked by the terrain). Sharing the bias puts trees and
+        // far terrain in the same depth space, so the relief occludes the trees correctly, while both still
+        // lose to the (un-biased) voxel chunks near the player.
+        mat.setFloat("DepthBias", config.getFarTerrainDepthBias());
         // Lighting / fog colours : placeholders, rebound by reference in update() to the live scene colours.
         mat.setColor("AmbientColor", com.jme3.math.ColorRGBA.White.mult(config.getAmbiantIntensity()));
         mat.setColor("SunColor", com.jme3.math.ColorRGBA.White.mult(config.getSunIntensity()));
@@ -200,10 +210,6 @@ public class FarTreeState extends BaseAppState {
         mat.setColor("FogColor", new com.jme3.math.ColorRGBA(ground.r, ground.g, ground.b, 1f));
         // Single quad facing the camera : render both faces (the winding flips as the camera circles).
         mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
-        // Alpha blending for a smooth distance fade (no dithering). Depth-tested (hidden behind hills)
-        // but not depth-writing, so the fading, partly-transparent edges don't occlude the terrain.
-        mat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-        mat.getAdditionalRenderState().setDepthWrite(false);
         return mat;
     }
 
@@ -298,7 +304,11 @@ public class FarTreeState extends BaseAppState {
     private Mesh buildMesh(int cx, int cz) {
         int innerR = config.getGridRadius() * config.getChunkSize() - config.getChunkSize();
         int region = Math.round(config.getFarTreeDistance());
-        float voff = config.getFarTerrainVerticalOffset();
+        // Ground the trunk base on the far-terrain surface (+ vertical offset), then sink it a little so the
+        // billboard doesn't appear to float on slopes (its base is a flat line, above the downhill side).
+        float voff = config.getFarTerrainVerticalOffset() - config.getFarTreeSink();
+        // Scratch for the coarse-height lookups (off-thread, single-threaded builder : safe to share).
+        Vector3f scratch = new Vector3f();
 
         AnchorList list = new AnchorList();
         generator.forEachTreeAnchor(cx - region, cx + region, cz - region, cz + region,
@@ -313,10 +323,34 @@ public class FarTreeState extends BaseAppState {
                     if (hash01((int) wx, (int) wz) > keep) {
                         return;
                     }
-                    list.add(wx, gy + voff, wz, species, height);
+                    // Anchor on the COARSE far-terrain surface (not the per-block gy) so the tree sits on
+                    // the relief the far terrain actually renders, instead of floating above its under-
+                    // sampled surface.
+                    list.add(wx, coarseHeight(wx, wz, scratch) + voff, wz, species, height);
                 });
 
         return packMesh(list);
+    }
+
+    /**
+     * Height of the far-terrain surface at world (wx, wz) : bilinear interpolation of {@code getHeight}
+     * over the far-terrain heightmap lattice (spacing {@link #farGridStep}, aligned on multiples of the
+     * step like FarTerrainState's grid). This is the surface the far terrain actually renders — grounding
+     * trees on it (rather than the per-block height) stops them floating above the under-sampled relief.
+     */
+    private float coarseHeight(float wx, float wz, Vector3f scratch) {
+        float step = farGridStep;
+        float x0 = (float) Math.floor(wx / step) * step;
+        float z0 = (float) Math.floor(wz / step) * step;
+        float fx = (wx - x0) / step;
+        float fz = (wz - z0) / step;
+        float h00 = generator.getHeight(scratch.set(x0, 0f, z0));
+        float h10 = generator.getHeight(scratch.set(x0 + step, 0f, z0));
+        float h01 = generator.getHeight(scratch.set(x0, 0f, z0 + step));
+        float h11 = generator.getHeight(scratch.set(x0 + step, 0f, z0 + step));
+        float hx0 = h00 + (h10 - h00) * fx;
+        float hx1 = h01 + (h11 - h01) * fx;
+        return hx0 + (hx1 - hx0) * fz;
     }
 
     private Mesh packMesh(AnchorList a) {
