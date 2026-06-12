@@ -30,6 +30,16 @@ MaterialDef Far Terrain {
         Color MoonColor
         Float MoonGlintStrength
 
+        // Forest tint : darken the distant grass slopes where the forest-density field is high, so the
+        // beyond-billboard woods read as dark-green relief. The density map covers [-Extent/2, +Extent/2]
+        // in local X/Z ; ForestOrigin is the terrain's current world translation (tile snap on the torus).
+        Texture2D ForestDensityMap
+        Color ForestTintColor
+        Float ForestTintStrength
+        Float ForestTintStart
+        Float Extent
+        Vector2 ForestOrigin
+
         // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
         // (e.g. Android GLES). See FarTerrain.frag / IalonConfig.manualGammaEncode.
         Boolean ManualSrgb
@@ -47,6 +57,7 @@ MaterialDef Far Terrain {
 
         Defines {
             MANUAL_SRGB : ManualSrgb
+            FOREST_TINT : ForestDensityMap
         }
     }
 }
