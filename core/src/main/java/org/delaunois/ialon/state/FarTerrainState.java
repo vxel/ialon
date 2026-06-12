@@ -23,6 +23,7 @@ import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
@@ -32,7 +33,13 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
+import com.jme3.texture.Image;
+import com.jme3.texture.Texture;
+import com.jme3.texture.Texture2D;
+import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
+
+import java.nio.ByteBuffer;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.BlocksConfig;
@@ -75,6 +82,8 @@ public class FarTerrainState extends BaseAppState {
     private static final int HEIGHTMAP_SIZE = 513;
     // Patch size : must be (2^m + 1) and <= HEIGHTMAP_SIZE. Drives the LOD granularity.
     private static final int PATCH_SIZE = 65;
+    // Forest-density tint map resolution (single channel, covers the whole extent).
+    private static final int FOREST_DENSITY_SIZE = 256;
 
     private static final float ENCLOSURE_OFFSET = 0f;
 
@@ -119,6 +128,10 @@ public class FarTerrainState extends BaseAppState {
     // (always a multiple of the world period), so update() only moves the mesh when the tile changes.
     private float tileOffsetX = 0f;
     private float tileOffsetZ = 0f;
+    // Forest tint : the density map's local origin, shared by reference with the material. On the torus it
+    // tracks the tile snap (a multiple of the period, so the periodic density texture stays aligned).
+    private final Vector2f forestOrigin = new Vector2f();
+    private boolean forestTintEnabled = false;
 
     public FarTerrainState(IalonConfig config) {
         // Finite (torus) world : span 2 tiles, centered on the player's tile (see update()). With the
@@ -150,6 +163,7 @@ public class FarTerrainState extends BaseAppState {
 
         terrain = new TerrainQuad("FarTerrain", PATCH_SIZE, HEIGHTMAP_SIZE, heightmap);
         material = createMaterial();
+        bindForestTint(generator, step);
         terrain.setMaterial(material);
         // Uniform scale : heights were pre-divided by step (see sampleHeightmap), so world Y is exact
         // again after scaling, AND a uniform scale keeps the terrain normals correct in world space.
@@ -248,6 +262,55 @@ public class FarTerrainState extends BaseAppState {
         mat.setColor("MoonColor", new ColorRGBA(0.55f, 0.62f, 0.78f, 1f));
         mat.setFloat("MoonGlintStrength", 0.6f);
         return mat;
+    }
+
+    /**
+     * Builds the forest-density tint map (a low-res field of the same seamless forest noise that scatters
+     * the trees) and binds it plus the tint parameters to the material. The shader darkens the distant
+     * grass slopes where this field is high, so the beyond-billboard woods read as dark-green relief. Only
+     * the noise generator carries a forest field ; for the others the FOREST_TINT define stays off.
+     */
+    private void bindForestTint(TerrainGenerator generator, float step) {
+        if (!(generator instanceof NoiseTerrainGenerator)) {
+            return;
+        }
+        NoiseTerrainGenerator noise = (NoiseTerrainGenerator) generator;
+        material.setTexture("ForestDensityMap", createForestDensityTexture(noise, step));
+        material.setColor("ForestTintColor", config.getForestTintColor());
+        material.setFloat("ForestTintStrength", config.getForestTintStrength());
+        // Ramp the tint in where the billboards thin out, so the two layers don't double-darken the slopes.
+        material.setFloat("ForestTintStart", config.getFarTreeDistance());
+        material.setFloat("Extent", extent);
+        material.setVector2("ForestOrigin", forestOrigin); // mutated in place in update() on tile snaps
+        forestTintEnabled = true;
+    }
+
+    /**
+     * Samples the forest-density field over the same origin-centered grid as the heightmap (local coords),
+     * into a single-channel-as-RGBA8 texture covering the whole extent. The field is periodic with the
+     * world size, so on the torus the tile snap (a multiple of that period) keeps it aligned.
+     */
+    private Texture2D createForestDensityTexture(NoiseTerrainGenerator noise, float step) {
+        int n = FOREST_DENSITY_SIZE;
+        // Map the n texels across the same world span the heightmap covers (HEIGHTMAP_SIZE-1 cells of step).
+        float worldStep = step * (HEIGHTMAP_SIZE - 1) / (float) n;
+        float half = n / 2f;
+        ByteBuffer data = BufferUtils.createByteBuffer(n * n * 4);
+        for (int j = 0; j < n; j++) {
+            float worldZ = (j - half) * worldStep;
+            for (int i = 0; i < n; i++) {
+                float worldX = (i - half) * worldStep;
+                float d = noise.getForestDensity(worldX, worldZ);
+                byte b = (byte) Math.round(Math.max(0f, Math.min(1f, d)) * 255f);
+                data.put(b).put(b).put(b).put((byte) 0xFF);
+            }
+        }
+        data.flip();
+        Image img = new Image(Image.Format.RGBA8, n, n, data, ColorSpace.Linear);
+        Texture2D tex = new Texture2D(img);
+        tex.setMagFilter(Texture.MagFilter.Bilinear);
+        tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
+        return tex;
     }
 
     /**
@@ -374,6 +437,11 @@ public class FarTerrainState extends BaseAppState {
                     tileOffsetX = sx;
                     tileOffsetZ = sz;
                     terrain.setLocalTranslation(sx, config.getFarTerrainVerticalOffset(), sz);
+                    // Keep the (periodic) density map aligned with the snapped terrain : the snap is a
+                    // multiple of the world period, so the field repeats onto the new tile exactly.
+                    if (forestTintEnabled) {
+                        forestOrigin.set(sx, sz);
+                    }
                 }
             }
         }

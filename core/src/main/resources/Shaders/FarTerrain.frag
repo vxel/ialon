@@ -33,6 +33,15 @@ uniform vec3 m_MoonDirection;
 uniform vec4 m_MoonColor;
 uniform float m_MoonGlintStrength;
 
+#ifdef FOREST_TINT
+uniform sampler2D m_ForestDensityMap;
+uniform vec4 m_ForestTintColor;
+uniform float m_ForestTintStrength;
+uniform float m_ForestTintStart; // distance at which the tint ramps in (where the billboards thin out)
+uniform float m_Extent;          // world span the density map covers (same as the terrain extent)
+uniform vec2 m_ForestOrigin;     // terrain world translation (tile snap on the torus ; 0 otherwise)
+#endif
+
 varying vec3 vNormal;
 varying float vDist;
 varying float vHorizDist;
@@ -63,6 +72,19 @@ void main() {
     land = mix(land, m_RockColor.rgb, smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
     land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
     vec3 terrainColor = mix(seabed, land, landAmount);
+
+#ifdef FOREST_TINT
+    // Forest tint : pull the distant grass slopes toward a dark forest green where the (seamless) density
+    // field is high. Gated to land in the grass band only (no tint on sea / sand / bare rock / snow) and
+    // to beyond the billboard ring (ForestTintStart), so the near billboards aren't double-darkened.
+    vec2 fuv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
+    float density = texture2D(m_ForestDensityMap, fuv).r;
+    float grass = smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height)
+                * (1.0 - smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
+    float distGate = smoothstep(m_ForestTintStart, m_ForestTintStart + 128.0, vDist);
+    float tint = density * m_ForestTintStrength * landAmount * grass * distGate;
+    terrainColor = mix(terrainColor, m_ForestTintColor.rgb, tint);
+#endif
 
     // Lighting normal : flat (up) on the sea (it was flattened), real relief on land. The sea reflection
     // also uses the flat up-normal, so the distant sea reads as a calm flat surface.

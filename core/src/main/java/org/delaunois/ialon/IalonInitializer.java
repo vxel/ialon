@@ -38,6 +38,7 @@ import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.ChunkSaverState;
 import org.delaunois.ialon.state.FarTerrainState;
+import org.delaunois.ialon.state.FarTreeState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.StatsAppState;
@@ -86,6 +87,10 @@ public class IalonInitializer {
         return new FarTerrainState(config);
     }
 
+    public static AppState setupFarTree(IalonConfig config) {
+        return new FarTreeState(config);
+    }
+
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {
         ChunkSaverState chunkSaverState = new ChunkSaverState(config);
         if (config.getChunkManager() == null) {
@@ -130,6 +135,13 @@ public class IalonInitializer {
             TextureKey key = new TextureKey(texPath);
             key.setGenerateMips(false);
             atlas.addTexture(app.getAssetManager().loadTexture(key), TextureAtlasManager.DIFFUSE);
+        }
+
+        // Far-tree silhouettes (one per species) : packed into the same atlas so the distant billboards
+        // share the single block-atlas binding. Mips kept on (the atlas builds a mip chain) to limit
+        // shimmer on the small, distant sprites. FarTreeState resolves these tiles' UVs by the same keys.
+        for (String texPath : FarTreeState.FAR_TREE_TEXTURES) {
+            atlas.addTexture(app.getAssetManager().loadTexture(texPath), TextureAtlasManager.DIFFUSE);
         }
         // Timing only covers loading/decoding the source textures registered here ; the actual atlas
         // packing happens lazily on the first getDiffuseMap() (timed separately in TextureAtlasManager).

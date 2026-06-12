@@ -511,16 +511,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 }
                 float groundh = heights[index];
                 int y = (int) groundh - chunkY;
-                // Trees grow only on the grassy band : above the shore (waterHeight + 1) and below the
-                // rock line (the barren rock/snow tiers above it have no vegetation).
-                if (y <= -TREE_HEIGHT || y >= chunkSize.z || groundh <= (waterHeight + 1)
-                        || groundh > rockLine) {
+                // Trees grow only on the grassy band (treeBandOk) ; the y bounds are this chunk's vertical
+                // slice, so a tree whose base sits in another chunk of the column is skipped here.
+                if (y <= -TREE_HEIGHT || y >= chunkSize.z || !treeBandOk(groundh)) {
                     continue;
                 }
 
                 // Forest density drives the keep probability : dense groves vs open clearings.
                 float density = heights[densityBase + index];
-                if (hash01(hx, hz, CH_PLANT) >= density * TREE_MAX_PROB) {
+                if (!treeKept(hx, hz, density)) {
                     continue;
                 }
 
@@ -529,14 +528,115 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                     continue;
                 }
 
-                int trunkHeight = TREE_TRUNK_MIN
-                        + (int) (hash01(hx, hz, CH_TRUNK) * (TREE_TRUNK_MAX - TREE_TRUNK_MIN + 1));
-                int canopyRadius = TREE_CANOPY_MIN
-                        + (int) (hash01(hx, hz, CH_CANOPY) * (CANOPY_RADIUS - TREE_CANOPY_MIN + 1));
+                int trunkHeight = treeTrunkHeight(hx, hz);
+                int canopyRadius = treeCanopyRadius(hx, hz);
                 TreeSpecies species = selectSpecies(groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
                 createTree(chunk, x, y, z, trunkHeight, canopyRadius, species);
             }
         }
+    }
+
+    // --- Shared tree-placement rules ------------------------------------------------------------------
+    // Single source of truth for WHERE a tree grows and HOW big it is, used both by the voxel generator
+    // (generateTrees) and by the far-horizon billboards (forEachTreeAnchor), so the distant trees match
+    // the walked-on ones exactly at the chunk-grid seam — no divergence, no double-drawn trees.
+
+    /** Grass band where trees grow : above the shore (waterHeight + 1), at or below the barren rock line. */
+    private boolean treeBandOk(float groundh) {
+        return groundh > (waterHeight + 1) && groundh <= rockLine;
+    }
+
+    /** Forest-density keep test : dense woods keep most cells, clearings keep few (same hash channel). */
+    private boolean treeKept(int hx, int hz, float density) {
+        return hash01(hx, hz, CH_PLANT) < density * TREE_MAX_PROB;
+    }
+
+    private int treeTrunkHeight(int hx, int hz) {
+        return TREE_TRUNK_MIN + (int) (hash01(hx, hz, CH_TRUNK) * (TREE_TRUNK_MAX - TREE_TRUNK_MIN + 1));
+    }
+
+    private int treeCanopyRadius(int hx, int hz) {
+        return TREE_CANOPY_MIN + (int) (hash01(hx, hz, CH_CANOPY) * (CANOPY_RADIUS - TREE_CANOPY_MIN + 1));
+    }
+
+    /** Receives one scattered tree anchor (base of trunk, world coords). See {@link #forEachTreeAnchor}. */
+    @FunctionalInterface
+    public interface TreeAnchorConsumer {
+        /**
+         * @param worldX  tree trunk base, world X
+         * @param worldZ  tree trunk base, world Z
+         * @param groundY ground height at the trunk base (world Y of the trunk foot)
+         * @param species ordinal of the tree species (0=oak, 1=birch, 2=spruce, 3=palm)
+         * @param height  total tree height in blocks (trunk + canopy), for the billboard sprite scale
+         */
+        void accept(float worldX, float worldZ, float groundY, int species, float height);
+    }
+
+    /**
+     * Enumerates the tree anchors whose (jittered) trunk base falls inside the world-space AABB
+     * [minX, maxX] x [minZ, maxZ], applying the <b>same</b> scatter / density / altitude / slope / species
+     * rules as {@link #generateTrees} — but without any chunk : heights and density are sampled directly
+     * from the noise. Used by the far-horizon billboards so the distant forest matches the voxel one.
+     *
+     * <p>Allocation-light : a single {@link Vector2f} is reused for every noise lookup, and anchors are
+     * pushed to the consumer rather than collected, so the caller controls storage. Safe to call off the
+     * render thread (pure functions of seed + coords, like the chunk generator).
+     */
+    public void forEachTreeAnchor(int minX, int maxX, int minZ, int maxZ, TreeAnchorConsumer out) {
+        // Same per-cell scatter as generateTrees : one candidate per TREE_CELL_SIZE cell, hash wrapping
+        // every 'cellsAcross' cells on the torus so the placement is seamless at the world seam.
+        int cellsAcross = worldSize > 0 ? Math.max(1, Math.round(worldSize / TREE_CELL_SIZE)) : 0;
+        Vector2f sample = new Vector2f();
+
+        int minCellX = Math.floorDiv(minX, TREE_CELL_SIZE);
+        int maxCellX = Math.floorDiv(maxX, TREE_CELL_SIZE);
+        int minCellZ = Math.floorDiv(minZ, TREE_CELL_SIZE);
+        int maxCellZ = Math.floorDiv(maxZ, TREE_CELL_SIZE);
+
+        for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
+            for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
+                int hx = cellsAcross > 0 ? Math.floorMod(cellX, cellsAcross) : cellX;
+                int hz = cellsAcross > 0 ? Math.floorMod(cellZ, cellsAcross) : cellZ;
+
+                int worldX = cellX * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_X) * TREE_CELL_SIZE);
+                int worldZ = cellZ * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_Z) * TREE_CELL_SIZE);
+                if (worldX < minX || worldX > maxX || worldZ < minZ || worldZ > maxZ) {
+                    continue;
+                }
+
+                float groundh = getHeight(worldX, worldZ, sample);
+                if (!treeBandOk(groundh)) {
+                    continue;
+                }
+                if (!treeKept(hx, hz, densityAt(worldX, worldZ, sample))) {
+                    continue;
+                }
+                if (farSlope(worldX, worldZ, groundh, sample) > SLOPE_MAX) {
+                    continue;
+                }
+
+                TreeSpecies species = selectSpecies(groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
+                // Mirror createTree's effective trunk/canopy so the billboard height tracks the voxel tree.
+                int th = Math.max(2, treeTrunkHeight(hx, hz) + species.trunkBonus);
+                int cr = Math.max(1, Math.min(CANOPY_RADIUS, treeCanopyRadius(hx, hz) + species.radiusDelta));
+                out.accept(worldX, worldZ, groundh, species.ordinal(), th + 2f * cr);
+            }
+        }
+    }
+
+    /** Max abs height delta to the 4 one-block neighbours (the chunk-free analogue of {@link #slopeAt}). */
+    private float farSlope(float worldX, float worldZ, float groundh, Vector2f sample) {
+        float s = Math.abs(groundh - getHeight(worldX - 1, worldZ, sample));
+        s = Math.max(s, Math.abs(groundh - getHeight(worldX + 1, worldZ, sample)));
+        s = Math.max(s, Math.abs(groundh - getHeight(worldX, worldZ - 1, sample)));
+        s = Math.max(s, Math.abs(groundh - getHeight(worldX, worldZ + 1, sample)));
+        return s;
+    }
+
+    /** Forest density in [0, 1] at a world column : 1 in the heart of a wood, 0 in a clearing. Public so
+     *  the far horizon (FarTerrainState) can tint the same woods shader-side. See {@link #densityAt}. */
+    public float getForestDensity(float worldX, float worldZ) {
+        return densityAt(worldX, worldZ, new Vector2f());
     }
 
     /**

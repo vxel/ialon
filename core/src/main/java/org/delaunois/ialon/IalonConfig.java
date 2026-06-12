@@ -86,6 +86,16 @@ public class IalonConfig implements WorldSettings {
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
 
+    // Far trees : GPU billboards scattered on the far terrain (FarTreeState), matching the voxel woods.
+    private boolean farTree = true;
+    private float farTreeDistance = 512f; // world radius of the billboard ring around the player (beyond it, only the shader forest tint shows)
+    private int farTreeMaxCount = 4000; // hard cap on billboards (the region is thinned to fit, with a log line)
+    private float farTreeScale = 1f; // global size multiplier for the tree sprites
+    // Forest tint : the far terrain darkens to this colour where the forest-density field is high (the
+    // distant, beyond-billboard woods read as dark-green slopes). Authored sRGB, stored linear (setAsSrgb).
+    private ColorRGBA forestTintColor = new ColorRGBA().setAsSrgb(0.10f, 0.26f, 0.09f, 1f);
+    private float forestTintStrength = 0.55f; // how strongly dense woods pull the grass toward forestTintColor
+
     private float waterHeight = 30;
     private boolean greedyCalmWater = true;
     private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)

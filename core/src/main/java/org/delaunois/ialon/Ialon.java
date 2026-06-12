@@ -128,6 +128,9 @@ public class Ialon extends SimpleApplication {
         if (config.isFarTerrain()) {
             stateManager.attach(IalonInitializer.setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
         }
+        if (config.isFarTree()) {
+            stateManager.attach(IalonInitializer.setupFarTree(config)); // Distant trees on the horizon, depends on camera + terrain generator
+        }
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));

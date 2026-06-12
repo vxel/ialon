@@ -1,0 +1,36 @@
+MaterialDef Far Tree {
+
+    MaterialParameters {
+        Texture2D TreeAtlas
+        Color AmbientColor
+        Color SunColor
+        Color FogColor
+        Float FogDistance
+        Float FogDensity
+        Float InnerRadius   // below this horizontal distance the voxel chunks hold the real trees
+        Float OuterRadius   // far edge of the billboard ring : trees fade out before it (no hard cut-off)
+        Float FadeRange     // alpha fade width at both the inner seam and the outer edge
+        Float AlphaDiscard  // below this texel alpha is the transparent silhouette background (skipped)
+        Float DepthBias
+
+        // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See FarTree.frag / IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL100 GLSL150:   Shaders/FarTree.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/FarTree.frag
+
+        WorldParameters {
+            ViewProjectionMatrix
+            ViewMatrix
+            WorldMatrix
+            CameraPosition
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}
