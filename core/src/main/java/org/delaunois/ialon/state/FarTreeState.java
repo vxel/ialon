@@ -85,9 +85,7 @@ public class FarTreeState extends BaseAppState {
 
     // Billboard width as a fraction of its height (trees are taller than wide).
     private static final float WIDTH_RATIO = 0.8f;
-    // Keep probability at the far edge of the billboard region (1.0 just outside the chunk grid) : the
-    // distant forest thins towards the horizon, where the shader forest tint (FarTerrain) takes over.
-    private static final float FAR_KEEP_MIN = 0.4f;
+
     // Below this alpha a texel is the transparent silhouette background and is skipped (hard alpha test).
     private static final float ALPHA_DISCARD = 0.5f;
 
@@ -317,12 +315,7 @@ public class FarTreeState extends BaseAppState {
                     if (cheb < innerR || cheb > region) {
                         return; // inside the chunk grid (real voxel trees) or outside the round region
                     }
-                    // Thin the forest towards the horizon : keep all near the grid, fewer far out.
-                    float t = (cheb - innerR) / Math.max(1f, region - (float) innerR);
-                    float keep = 1f - t * (1f - FAR_KEEP_MIN);
-                    if (hash01((int) wx, (int) wz) > keep) {
-                        return;
-                    }
+
                     // Anchor on the COARSE far-terrain surface (not the per-block gy) so the tree sits on
                     // the relief the far terrain actually renders, instead of floating above its under-
                     // sampled surface.

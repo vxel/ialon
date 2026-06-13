@@ -79,7 +79,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // Forest-density map : low frequency = large patches (big woods AND big clearings). The raw noise is
     // concentrated near its median, so a smoothstep around FOREST_THRESHOLD carves crisp dense woods
     // (density -> 1) and bare clearings (density -> 0). Raise the threshold to enlarge the clearings.
-    private static final float FOREST_FREQUENCY = 0.012f; // ~125-block patches
+    private static final float FOREST_FREQUENCY = 0.004f; // ~125-block patches
     private static final int FOREST_OCTAVES = 2; // fewer octaves -> more contrast (higher variance)
     private static final float FOREST_THRESHOLD = 0.54f; // noise level splitting clearing (below) / wood (above)
     private static final float FOREST_EDGE = 0.06f; // half-width of the wood/clearing transition band
