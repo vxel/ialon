@@ -109,10 +109,10 @@ public class ChunkLiquidManager {
         }
 
         Set<Vector3f> neighborBlockLocations = new HashSet<>();
-        for (float x = location.x - 1; x <= location.x + 1; x++) {
-            for (float y = location.y - 1; y <= location.y + 1; y++) {
-                for (float z = location.z - 1; z <= location.z + 1; z++) {
-                    neighborBlockLocations.add(new Vector3f(x, y, z));
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    neighborBlockLocations.add(new Vector3f(location.x + dx, location.y + dy, location.z + dz));
                 }
             }
         }

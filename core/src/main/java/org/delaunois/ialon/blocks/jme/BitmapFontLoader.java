@@ -67,6 +67,10 @@ public class BitmapFontLoader {
         String line;
         while ((line = reader.readLine()) != null) {
             String[] tokens = line.split(regex);
+            if (tokens.length == 0) {
+                // Blank / all-separator line : split() yields no token, skip it (avoids tokens[0] AIOOBE).
+                continue;
+            }
             if (tokens[0].equals("info")) {
                 // Get rendered size
                 for (int i = 1; i < tokens.length; i++) {
@@ -153,7 +157,9 @@ public class BitmapFontLoader {
                 int second = 0;
                 int amount = 0;
 
-                for (int i = 1; i < tokens.length; i++) {
+                // Each key ("first"/"second"/"amount") is followed by its value, so stop before the last
+                // token : a key can never be the final token, which keeps tokens[i + 1] in bounds.
+                for (int i = 1; i + 1 < tokens.length; i++) {
                     if (tokens[i].equals("first")) {
                         index = Integer.parseInt(tokens[i + 1]);
                     } else if (tokens[i].equals("second")) {

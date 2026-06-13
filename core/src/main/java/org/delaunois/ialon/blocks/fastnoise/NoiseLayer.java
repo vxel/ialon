@@ -270,6 +270,7 @@ public class NoiseLayer {
 
     public void setSeed(int seed) {
         this.seed = seed;
+        @SuppressWarnings("java:S2245")
         Random random = new Random(seed);
 
         primaryNoise.SetSeed(random.nextInt());

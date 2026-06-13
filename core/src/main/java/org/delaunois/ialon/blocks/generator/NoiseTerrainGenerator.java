@@ -823,6 +823,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private void createWorldNoise() {
         // The noise definition changes : any memorized heightmap is now stale.
         heightsCache.clear();
+        @SuppressWarnings("java:S2245")
         Random random = new Random(seed);
         layeredNoise = new LayeredNoise();
 
