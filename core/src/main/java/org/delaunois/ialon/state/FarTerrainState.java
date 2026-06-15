@@ -100,6 +100,10 @@ public class FarTerrainState extends BaseAppState {
     // every direction (a world-edge box would be clipped away by the far plane -- see update()).
     @Getter
     private Geometry enclosure;
+    // Enclosure vertical extents : depend on the relief/water level, not on the render distance, so they
+    // are cached when the box is first built and reused when only its half-size (gridRadius) changes.
+    private float enclosureFloorY;
+    private float enclosureWallTopY;
 
     private Material material;
     // Sun direction, shared by reference with the material and refreshed each frame from LightingState.
@@ -337,6 +341,9 @@ public class FarTerrainState extends BaseAppState {
         }
         float floorY = Math.min(minWorldY, 0f) - config.getChunkSize();
 
+        enclosureFloorY = floorY;
+        enclosureWallTopY = wallTopY;
+
         float half = config.getChunkSize() * config.getGridRadius();
 
         Geometry geom = new Geometry("FarTerrainEnclosure", buildEnclosureMesh(half, floorY, wallTopY));
@@ -418,6 +425,23 @@ public class FarTerrainState extends BaseAppState {
         }
         if (enclosure != null && enclosure.getParent() != null) {
             enclosure.removeFromParent();
+        }
+    }
+
+    /**
+     * Adapts the far terrain to a change of render distance (voxel {@code gridRadius}) : the shader's
+     * inner-radius discard (where the far terrain starts, just beyond the loaded chunks) and the
+     * enclosure box half-size both scale with the render distance and must be refreshed.
+     */
+    public void onRenderDistanceChanged() {
+        if (material != null) {
+            material.setFloat("InnerRadius",
+                    (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
+        }
+        if (enclosure != null) {
+            float half = config.getChunkSize() * config.getGridRadius();
+            enclosure.setMesh(buildEnclosureMesh(half, enclosureFloorY, enclosureWallTopY));
+            enclosure.updateModelBound();
         }
     }
 

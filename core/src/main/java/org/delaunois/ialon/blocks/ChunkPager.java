@@ -234,7 +234,7 @@ public class ChunkPager {
         }
 
         if (removed > 0) {
-            log.info("{} pages removed", removed);
+            log.trace("{} pages removed", removed);
         }
     }
 
@@ -261,7 +261,7 @@ public class ChunkPager {
         }
 
         if (unfetched > 0) {
-            log.info("{} pages unfetched", unfetched);
+            log.trace("{} pages unfetched", unfetched);
         }
     }
 
@@ -294,7 +294,7 @@ public class ChunkPager {
         }
 
         if (attached > 0) {
-            log.info("{} pages attached", attached);
+            log.trace("{} pages attached", attached);
         }
     }
 

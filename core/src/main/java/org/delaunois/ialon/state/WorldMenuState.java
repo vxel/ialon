@@ -377,15 +377,17 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         int row = 0;
 
-        Button load = menuButton("Load", vw, vh);
-        load.setEnabled(!selIsCurrent);
-        load.addClickCommands(source -> {
-            // Keep the popup up : WorldSelectionState closes it once the loading screen is shown, so the
-            // in-game buttons stay blocked until then.
-            Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
-                    .ifPresent(wss -> wss.switchTo(selectedWorldId));
-        });
-        buttons.addChild(load, row++, 0);
+        // No Load button for the world already loaded : it is the current world, nothing to load.
+        if (!selIsCurrent) {
+            Button load = menuButton("Load", vw, vh);
+            load.addClickCommands(source -> {
+                // Keep the popup up : WorldSelectionState closes it once the loading screen is shown, so the
+                // in-game buttons stay blocked until then.
+                Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
+                        .ifPresent(wss -> wss.switchTo(selectedWorldId));
+            });
+            buttons.addChild(load, row++, 0);
+        }
 
         if (selIsCurrent) {
             // For the current world : refresh its screenshot (in place of Delete, which is not allowed).
@@ -418,7 +420,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     /** A right-column button : fixed size, with a top inset that spaces the buttons vertically apart. */
     private Button menuButton(String text, float vw, float vh) {
         Button button = new Button(text, IALON_STYLE);
-        button.setFontSize(5 * vh);
+        button.setFontSize(4 * vh);
         button.setPreferredSize(new Vector3f(26 * vw, 8 * vh, 0));
         button.setInsetsComponent(new InsetsComponent(3 * vh, 0, 0, 0));
         return button;
@@ -472,7 +474,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         dialog.setBackground(dialogBg);
 
         Label title = new Label("Delete \"" + name + "\" ?", IALON_STYLE);
-        title.setFontSize(6 * vh);
+        title.setFontSize(4 * vh);
         title.setTextHAlignment(HAlignment.Center);
         title.setPreferredSize(new Vector3f(50 * vw, 8 * vh, 0)); // span the two buttons so the text centres
         dialog.addChild(title, 0, 0);
@@ -480,7 +482,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         // Buttons side by side : row 0, columns 0 and 1.
         Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         Button confirm = new Button("Delete", IALON_STYLE);
-        confirm.setFontSize(5 * vh);
+        confirm.setFontSize(4 * vh);
         confirm.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
         confirm.setTextHAlignment(HAlignment.Center);
         confirm.setTextVAlignment(VAlignment.Center);
@@ -495,7 +497,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         buttons.addChild(confirm, 0, 0);
 
         Button cancel = new Button("Cancel", IALON_STYLE);
-        cancel.setFontSize(5 * vh);
+        cancel.setFontSize(4 * vh);
         cancel.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
         cancel.setTextHAlignment(HAlignment.Center);
         cancel.setTextVAlignment(VAlignment.Center);
@@ -517,7 +519,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         float vw = app.getCamera().getWidth() / 100f;
 
         Label title = new Label("New world", IALON_STYLE);
-        title.setFontSize(6 * vh);
+        title.setFontSize(4 * vh);
         content.addChild(title, 0, 0);
 
         // The name is assigned automatically ("World N", first free number) — no text input (awkward on
@@ -536,13 +538,13 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
 
         Container buttons = new Container(new SpringGridLayout(Axis.X, Axis.Y, FillMode.None, FillMode.None), IALON_STYLE);
         Button createBtn = new Button("Create", IALON_STYLE);
-        createBtn.setFontSize(5 * vh);
+        createBtn.setFontSize(4 * vh);
         createBtn.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
         createBtn.addClickCommands(source -> createAndPlay(seed, water, relief, density, trees, woods));
         buttons.addChild(createBtn, 0, 0);
 
         Button cancel = new Button("Cancel", IALON_STYLE);
-        cancel.setFontSize(5 * vh);
+        cancel.setFontSize(4 * vh);
         cancel.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
         cancel.addClickCommands(source -> rebuildGrid());
         buttons.addChild(cancel, 0, 1);

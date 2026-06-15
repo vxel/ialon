@@ -40,12 +40,17 @@ import com.jme3.font.BitmapText;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Quad;
 
+import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.jme.StatsView;
+import org.delaunois.ialon.ui.UiHelper;
+
+import java.util.Locale;
 
 
 /**
@@ -60,15 +65,24 @@ public class StatsAppState extends AbstractAppState implements Resizable {
     protected StatsView statsView;
     private boolean showFps = true;
     private boolean showStats = true;
+    private boolean showPosition = false;
     private boolean darkenBehind = false;
 
     protected Node guiNode;
     protected float secondCounter = 0.0f;
     protected int frameCounter = 0;
     protected BitmapText fpsText;
+    protected BitmapText positionText;
     protected BitmapFont guiFont;
     protected Geometry darkenFps;
     protected Geometry darkenStats;
+
+    /** Optional config used to read the live player world position for {@link #positionText}. */
+    private IalonConfig config;
+    // Last displayed rounded coordinates ; the text geometry is only rebuilt when they change.
+    private int lastX = Integer.MIN_VALUE;
+    private int lastY = Integer.MIN_VALUE;
+    private int lastZ = Integer.MIN_VALUE;
 
     public StatsAppState() {
     }
@@ -119,6 +133,19 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         }
     }
 
+    /** Provides the config from which the live player world position is read. */
+    public void setConfig(IalonConfig config) {
+        this.config = config;
+    }
+
+    /** Shows or hides the on-screen world-position readout (top-left), e.g. {@code "x:10 y:2 z:230"}. */
+    public void setDisplayPosition(boolean show) {
+        showPosition = show;
+        if (positionText != null) {
+            positionText.setCullHint(show ? CullHint.Never : CullHint.Always);
+        }
+    }
+
     public void setDisplayStatView(boolean show) {
         showStats = show;
         if (statsView != null ) {
@@ -163,6 +190,7 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         }
 
         loadFpsText();
+        loadPositionText();
         loadStatsView();
         loadDarken();
 
@@ -177,6 +205,10 @@ public class StatsAppState extends AbstractAppState implements Resizable {
             // FPS text is top-centered ; the stats view and darken quads are bottom-anchored (origin) and
             // therefore do not move on resize.
             fpsText.setLocalTranslation((width - fpsText.getLineWidth()) / 2f, height, 0);
+        }
+        if (positionText != null) {
+            // Position text is top-left, shifted right by twice the screen margin (see loadPositionText).
+            positionText.setLocalTranslation(2 * UiHelper.screenMargin(height), height, 0);
         }
     }
 
@@ -194,6 +226,20 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         fpsText.setCullHint(showFps ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(fpsText);
 
+    }
+
+    /**
+     * Attaches the world-position readout to guiNode, top-left, using the same font as the FPS counter.
+     */
+    public void loadPositionText() {
+        positionText = new BitmapText(guiFont);
+        positionText.setText("x:0 y:0 z:0");
+        // Shifted right by twice the screen margin so it clears the block-removal button placed below it
+        // (ButtonManagerState positions that button at x = margin).
+        float height = app.getCamera().getHeight();
+        positionText.setLocalTranslation(2 * UiHelper.screenMargin(height), height, 0);
+        positionText.setCullHint(showPosition ? CullHint.Never : CullHint.Always);
+        guiNode.attachChild(positionText);
     }
 
     /**
@@ -240,12 +286,14 @@ public class StatsAppState extends AbstractAppState implements Resizable {
             statsView.setEnabled(showStats);
             statsView.setCullHint(showStats ? CullHint.Never : CullHint.Always);
             darkenStats.setCullHint(showStats && darkenBehind ? CullHint.Never : CullHint.Always);
+            positionText.setCullHint(showPosition ? CullHint.Never : CullHint.Always);
         } else {
             fpsText.setCullHint(CullHint.Always);
             darkenFps.setCullHint(CullHint.Always);
             statsView.setEnabled(false);
             statsView.setCullHint(CullHint.Always);
             darkenStats.setCullHint(CullHint.Always);
+            positionText.setCullHint(CullHint.Always);
         }
     }
 
@@ -261,6 +309,27 @@ public class StatsAppState extends AbstractAppState implements Resizable {
                 frameCounter = 0;
             }
         }
+        updatePositionText();
+    }
+
+    /** Refreshes the position readout, rebuilding the text only when the rounded coordinates change. */
+    private void updatePositionText() {
+        if (!showPosition || positionText == null || config == null) {
+            return;
+        }
+        Vector3f loc = config.getPlayerLocation();
+        if (loc == null) {
+            return;
+        }
+        int x = Math.round(loc.x);
+        int y = Math.round(loc.y);
+        int z = Math.round(loc.z);
+        if (x != lastX || y != lastY || z != lastZ) {
+            lastX = x;
+            lastY = y;
+            lastZ = z;
+            positionText.setText(String.format(Locale.ENGLISH, "x:%d y:%d z:%d", x, y, z));
+        }
     }
 
     @Override
@@ -272,6 +341,7 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         }
         guiNode.detachChild(statsView);
         guiNode.detachChild(fpsText);
+        guiNode.detachChild(positionText);
         guiNode.detachChild(darkenFps);
         guiNode.detachChild(darkenStats);
     }

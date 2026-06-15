@@ -77,6 +77,20 @@ public class ScreenState extends BaseAppState implements ActionListener {
     }
 
     /**
+     * Changes the frame-rate cap and applies it live. jME only reads {@code AppSettings.frameRate} when
+     * the context is (re)created, so the new cap is applied by restarting the context (same mechanism as
+     * the fullscreen toggle).
+     */
+    public void setFrameRate(int fps) {
+        if (settings.getFrameRate() == fps) {
+            return;
+        }
+        log.info("Setting frame rate to {}", fps);
+        settings.setFrameRate(fps);
+        app.restart();
+    }
+
+    /**
      * Re-lays-out every registered {@link Resizable} for the new screen size. Called by
      * {@code Ialon.reshape(...)} on the render thread.
      *

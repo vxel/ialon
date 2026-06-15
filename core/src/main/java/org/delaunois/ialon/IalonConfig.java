@@ -34,7 +34,7 @@ public class IalonConfig implements WorldSettings {
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
     public static final String FONT_PATH = "Textures/font-apex.fnt";
-    public static final int FPS_LIMIT_MOBILE = 100;
+    public static final int FPS_LIMIT_MOBILE = 120;
     public static final int FPS_LIMIT_DESKTOP = 120;
 
     // Screen - Rendering
@@ -120,6 +120,10 @@ public class IalonConfig implements WorldSettings {
     private float ambiantIntensity = 0.55f;
     private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;
+
+    private boolean showFps = true; // on-screen FPS counter (StatsAppState)
+    private boolean showPosition = false; // on-screen world position, top-left (StatsAppState)
+    private int maxFramerate = FPS_LIMIT_DESKTOP; // frame rate cap ; toggled between 60 and 120 in the settings (battery on mobile)
 
     private ColorRGBA skyColor = new ColorRGBA().setAsSrgb(100 / 255f, 172 / 255f, 255 / 255f, 1f);
     private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(14 / 255f, 62 / 255f, 138 / 255f, 1f);//new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);

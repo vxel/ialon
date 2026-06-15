@@ -24,6 +24,7 @@ public class SettingsValue {
     private final Camera cam;
     private final Function<Double, String> labelValueFunction;
     private VersionedReference<Double> sliderRef;
+    private Slider slider;
     private Label label;
 
     public SettingsValue(String title, Camera cam, double min, double max, double value) {
@@ -48,7 +49,7 @@ public class SettingsValue {
         titleLabel.setTextVAlignment(VAlignment.Center);
         container.addChild(titleLabel, position, 0);
 
-        Slider slider = new Slider(IALON_STYLE);
+        slider = new Slider(IALON_STYLE);
         slider.setPreferredSize(new Vector3f(50  * vw, 8 * vh, 0));
         slider.setModel(new DefaultRangedValueModel(min, max, value));
         slider.setLocalTranslation(0, 0, 4f);
@@ -70,6 +71,13 @@ public class SettingsValue {
 
     public double getValue() {
         return sliderRef.get();
+    }
+
+    /** Programmatically moves the slider (e.g. to enforce a dependency between settings). */
+    public void setValue(double newValue) {
+        if (slider != null) {
+            slider.getModel().setValue(newValue);
+        }
     }
 
 }
