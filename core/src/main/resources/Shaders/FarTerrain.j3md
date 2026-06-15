@@ -19,6 +19,10 @@ MaterialDef Far Terrain {
         Float SnowHeight
         Float HeightOffset
 
+        // fBm brightness variation on the distant land, to break up the flat altitude palette.
+        Float NoiseStrength
+        Float NoiseScale
+
         // Sky/sun/moon reflection on the flattened sea surface (same source/tuning as the calm water).
         Color SkyColor
         Color SkyHorizonColor
@@ -58,6 +62,7 @@ MaterialDef Far Terrain {
         Defines {
             MANUAL_SRGB : ManualSrgb
             FOREST_TINT : ForestDensityMap
+            FAR_NOISE : NoiseStrength
         }
     }
 }

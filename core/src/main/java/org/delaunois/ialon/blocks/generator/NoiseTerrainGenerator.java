@@ -118,6 +118,19 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     public static final float SNOW_LINE_RATIO = 0.65f; // surface above 80% of the ceiling -> snow
     public static final float ROCK_LINE_RATIO = 0.60f; // surface above 70% (below the snow line) -> rock
 
+    // "Relief" (reliefAmplitude) scales the MOUNTAINS layer fully (it sets the broad altitude, hence how
+    // high the land climbs toward the fixed rock/snow tiers), but only PARTLY scales the hills/details
+    // layers : those add zero-mean LOCAL roughness, so they keep this floor of their strength even at the
+    // lowest relief. Otherwise a low relief flattens the whole landscape into a pancake instead of merely
+    // removing the high snowy peaks. The blend (floor + (1-floor)*amplitude) passes through 1.0 at
+    // amplitude 1.0, so the default world is generated exactly as before.
+    private static final float RELIEF_LOCAL_FLOOR = 0.55f;
+
+    // Fixed terrain base level (the lowland/sea-bed shelf the hard floor settles the low terrain around),
+    // decoupled from waterHeight so the water level only fills the basins -- it never drags the whole
+    // terrain down. 30 = the default world's water height, keeping that world byte-identical.
+    private static final float TERRAIN_BASE_LEVEL = 30f;
+
     // Fallback world ceiling when none is supplied (mirrors the default gridHeight * chunkHeight).
     private static final int DEFAULT_WORLD_HEIGHT = 7 * 16;
 
@@ -872,9 +885,19 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         Random random = new Random(seed);
         layeredNoise = new LayeredNoise();
 
+        // The hard floor is the "soft floor" the low-lying land settles around (the broad lowland/sea-bed
+        // shelf). It is kept FIXED and INDEPENDENT of waterHeight : the water level only sets how high the
+        // water FILLS the basins, it must not drag the whole terrain shelf down with it. Tying it to
+        // waterHeight made a low water level collapse the lowlands into deep pits (drained lakes became
+        // bedrock chasms). TERRAIN_BASE_LEVEL = the default world's water height, so that world is
+        // generated exactly as before.
         layeredNoise.setHardFloor(true);
-        layeredNoise.setHardFloorHeight(waterHeight);
+        layeredNoise.setHardFloorHeight(TERRAIN_BASE_LEVEL);
         layeredNoise.setHardFloorStrength(0.6f);
+
+        // Local layers (hills/details) keep a floor of their strength so low relief stays rolling, not
+        // flat ; only the mountains layer follows the slider fully (it drives altitude -> rock/snow).
+        float localRelief = RELIEF_LOCAL_FLOOR + (1f - RELIEF_LOCAL_FLOOR) * reliefAmplitude;
 
         NoiseLayer mountains = new NoiseLayer("mountains");
         mountains.setSeed(random.nextInt());
@@ -886,14 +909,14 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         NoiseLayer hills = new NoiseLayer("Hills");
         hills.setSeed(random.nextInt());
         hills.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        hills.setStrength(41 * reliefAmplitude);
+        hills.setStrength(41 * localRelief);
         hills.setFrequency(hills.getFrequency() / 3 * reliefFrequency);
         layeredNoise.addLayer(hills);
 
         NoiseLayer details = new NoiseLayer("Details");
         details.setSeed(random.nextInt());
         details.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        details.setStrength(21 * reliefAmplitude);
+        details.setStrength(21 * localRelief);
         details.setFrequency(details.getFrequency() * reliefFrequency);
         layeredNoise.addLayer(details);
 

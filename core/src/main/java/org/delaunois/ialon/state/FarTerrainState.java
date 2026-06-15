@@ -248,6 +248,13 @@ public class FarTerrainState extends BaseAppState {
         // so the altitude palette compares against the generator's true block heights, and the vertex
         // shader flattens the sea at the right world level.
         mat.setFloat("HeightOffset", config.getFarTerrainVerticalOffset());
+        // fBm brightness variation : breaks up the flat altitude palette so the distant land reads as
+        // textured relief. Only set when enabled (>0), so the FAR_NOISE define (keyed on NoiseStrength)
+        // compiles the noise out entirely otherwise.
+        if (config.getFarTerrainNoiseStrength() > 0f) {
+            mat.setFloat("NoiseStrength", config.getFarTerrainNoiseStrength());
+            mat.setFloat("NoiseScale", config.getFarTerrainNoiseScale());
+        }
         // Shared instances : update() mutates them in place so the sun / moon directions follow the cycle.
         mat.setVector3("LightDir", lightDir);
         mat.setVector3("MoonDirection", moonDir);

@@ -3,6 +3,7 @@ package org.delaunois.ialon.support;
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
+import com.simsilica.lemur.GuiGlobals;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
@@ -32,6 +33,10 @@ public class SceneryTestBuilderApplication extends SimpleApplication {
     @Override
     public void simpleInitApp() {
         config.getInputActionManager().setInputManager(inputManager);
+        // Required by the splashscreen's (and every other state's) Lemur UI. The real bootstrap
+        // (Ialon.simpleInitApp) initialises GuiGlobals here, before any UI state ; it was moved out of
+        // setupGui(), so this test harness must do the same or GuiGlobals.getInstance() stays null.
+        GuiGlobals.initialize(this);
         stateManager.attach(new SplashscreenState(config));
 
         IalonInitializer.setupLogging();
