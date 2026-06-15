@@ -65,8 +65,10 @@ public abstract class BaseSceneryTest {
         config.setSavePath(path);
         config.setTerrainGenerator(new EmptyGenerator());
 
+        // Chunks live directly under the scenery dir (flat layout), matching verify() below ; we point the
+        // repository at it explicitly rather than at config's per-world dir (savePath/worlds/<id>).
         ChunkManager chunkManager = ChunkManager.builder()
-                .repository(config.getChunkRepository())
+                .repository(new ZipFileRepository(path))
                 .poolSize(1)
                 .build();
         assertNotNull(chunkManager);

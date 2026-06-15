@@ -163,6 +163,8 @@ public class PlayerState extends BaseAppState {
 
         crossHair.removeFromParent();
         config.getInputActionManager().removeListener(playerActionControl);
+        config.getInputActionManager().removeListener(playerWalkControl);
+        config.getInputActionManager().removeListener(playerFlyControl);
 
         if (playerNode.getParent() != null) {
             playerNode.getParent().detachChild(playerNode);
@@ -203,11 +205,7 @@ public class PlayerState extends BaseAppState {
         characterControl.getCharacter().setMaxSlope(FastMath.PI * 0.3f);
 
         if (config.getPlayerLocation() == null) {
-            config.setPlayerLocation(new Vector3f(
-                    config.getChunkSize() / 2f,
-                    config.getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + config.getPlayerStartHeight(),
-                    config.getChunkSize() / 2f
-            ));
+            config.setPlayerLocation(config.computeSpawnLocation());
         }
 
         PlayerWalkControl walkControl = new PlayerWalkControl(config);

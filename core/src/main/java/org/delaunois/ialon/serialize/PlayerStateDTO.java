@@ -53,13 +53,9 @@ public class PlayerStateDTO {
     private float pitch;
 
     private float time = FastMath.HALF_PI;
-    private int timeFactorIndex = 1;
-    private int gridRadius;
     private boolean fly;
     private Integer selectedBlockIndex;
     private String selectedBlockName;
-    private Float ambiantIntensity;
-    private Float sunIntensity;
 
     public PlayerStateDTO(IalonConfig config) {
         this.posx = config.getPlayerLocation().x;
@@ -74,13 +70,9 @@ public class PlayerStateDTO {
         this.yaw = config.getPlayerYaw();
         this.pitch = config.getPlayerPitch();
         this.time = config.getTime();
-        this.timeFactorIndex = config.getTimeFactorIndex();
         this.fly = config.isPlayerStartFly();
-        this.gridRadius = config.getGridRadius();
         this.selectedBlockIndex = config.getSelectedBlockIndex();
         this.selectedBlockName = config.getSelectedBlockName();
-        this.ambiantIntensity = config.getAmbiantIntensity();
-        this.sunIntensity = config.getSunIntensity();
     }
 
     @JsonIgnore

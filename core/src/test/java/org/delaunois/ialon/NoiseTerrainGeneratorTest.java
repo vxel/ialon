@@ -78,4 +78,52 @@ class NoiseTerrainGeneratorTest {
                     "vegetation/terrain must match across the +W seam at y=" + y);
         }
     }
+
+    /**
+     * Multi-world non-regression : the new tunable generation knobs default to the original constants,
+     * so a generator left at its defaults must produce byte-identical terrain to the pre-refactor one.
+     */
+    @Test
+    void defaultKnobsLeaveTerrainUnchanged() {
+        float waterHeight = new IalonConfig().getWaterHeight();
+        int gridHeight = new IalonConfig().getGridHeight();
+
+        NoiseTerrainGenerator base = new NoiseTerrainGenerator(2, waterHeight);
+        NoiseTerrainGenerator knobbed = new NoiseTerrainGenerator(2, waterHeight);
+        knobbed.setReliefAmplitude(1f);
+        knobbed.setReliefFrequency(1f);
+        knobbed.setTreeMaxProb(knobbed.getTreeMaxProb());
+        knobbed.setForestFrequency(knobbed.getForestFrequency());
+
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                for (int y = 0; y < gridHeight; y++) {
+                    Vec3i loc = new Vec3i(x, y, z);
+                    assertArrayEquals(base.generate(loc).getBlocks(), knobbed.generate(loc).getBlocks(),
+                            "default knobs must not change blocks for chunk " + loc);
+                }
+            }
+        }
+    }
+
+    /**
+     * The relief amplitude knob must actually reshape the terrain : doubling it changes the heightmap.
+     */
+    @Test
+    void reliefAmplitudeChangesTerrain() {
+        float waterHeight = new IalonConfig().getWaterHeight();
+        NoiseTerrainGenerator standard = new NoiseTerrainGenerator(2, waterHeight);
+        NoiseTerrainGenerator amplified = new NoiseTerrainGenerator(2, waterHeight);
+        amplified.setReliefAmplitude(2f);
+
+        float standardTotal = 0f;
+        float amplifiedTotal = 0f;
+        for (int i = 0; i < 64; i++) {
+            com.jme3.math.Vector3f p = new com.jme3.math.Vector3f(i * 13f, 0, i * 7f);
+            standardTotal += standard.getHeight(p);
+            amplifiedTotal += amplified.getHeight(p);
+        }
+        org.junit.jupiter.api.Assertions.assertNotEquals(standardTotal, amplifiedTotal,
+                "doubling reliefAmplitude must change the terrain height");
+    }
 }

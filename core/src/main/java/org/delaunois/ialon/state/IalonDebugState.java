@@ -327,6 +327,18 @@ public class IalonDebugState extends BaseAppState {
         }
 
         curTime = 0;
+
+        // The world-dependent states are torn down and rebuilt on a world switch (WorldSelectionState),
+        // so re-resolve them here instead of trusting the references cached at initialize() : otherwise
+        // the overlay keeps querying the previous, now shut-down chunk manager and crashes.
+        ChunkPagerState pagerState = getApplication().getStateManager().getState(ChunkPagerState.class);
+        playerState = getApplication().getStateManager().getState(PlayerState.class);
+        sunState = getApplication().getStateManager().getState(SunState.class);
+        if (pagerState == null || playerState == null) {
+            return; // a world switch is in progress : skip this frame
+        }
+        chunkPager = pagerState.getChunkPager();
+
         heapLabel.setText(getHeapString());
         worldPositionLabel.setText(getWorldLocationString());
         positionLabel.setText(getChunkLocationString());
