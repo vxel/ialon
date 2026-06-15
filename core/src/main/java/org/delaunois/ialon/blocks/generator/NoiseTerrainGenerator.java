@@ -129,6 +129,12 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     private long seed;
     private float waterHeight;
+    // Tunable generation knobs, defaulting to the constants above so an unconfigured (default) world is
+    // generated exactly as before. Per-world values are injected by IalonConfig#getDefaultChunkGenerator.
+    private float reliefAmplitude = 1f; // multiplies the mountain/hill/detail strengths (terrain height)
+    private float reliefFrequency = 1f; // multiplies the mountain/hill/detail frequencies (feature density)
+    private float treeMaxProb = TREE_MAX_PROB; // tree chance per cell in the heart of a wood
+    private float forestFrequency = FOREST_FREQUENCY; // forest-density field frequency (lower = bigger woods/clearings)
     // Horizontal tiling period in world units : when > 0 the heightmap is seamless and periodic in X
     // and Z with this period, producing a FINITE world whose -x/+x and -z/+z edges join perfectly
     // (a torus). 0 disables tiling (legacy infinite world). See LayeredNoise#evaluate(Vector2f,float).
@@ -239,7 +245,46 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     public void setSeed(long seed) {
         this.seed = seed;
-        heightsCache.clear();
+        createWorldNoise();
+    }
+
+    public float getReliefAmplitude() {
+        return reliefAmplitude;
+    }
+
+    /** Multiplies the mountain/hill/detail strengths (overall terrain height). 1 = default relief. */
+    public void setReliefAmplitude(float reliefAmplitude) {
+        this.reliefAmplitude = reliefAmplitude;
+        createWorldNoise();
+    }
+
+    public float getReliefFrequency() {
+        return reliefFrequency;
+    }
+
+    /** Multiplies the mountain/hill/detail frequencies (how dense/tight the relief features are). */
+    public void setReliefFrequency(float reliefFrequency) {
+        this.reliefFrequency = reliefFrequency;
+        createWorldNoise();
+    }
+
+    public float getTreeMaxProb() {
+        return treeMaxProb;
+    }
+
+    /** Tree chance per cell in the heart of a wood (0 = no trees, 1 = maximal density). */
+    public void setTreeMaxProb(float treeMaxProb) {
+        this.treeMaxProb = treeMaxProb;
+    }
+
+    public float getForestFrequency() {
+        return forestFrequency;
+    }
+
+    /** Forest-density field frequency : lower values yield larger woods and larger clearings. */
+    public void setForestFrequency(float forestFrequency) {
+        this.forestFrequency = forestFrequency;
+        createWorldNoise();
     }
 
     @Override
@@ -548,7 +593,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     /** Forest-density keep test : dense woods keep most cells, clearings keep few (same hash channel). */
     private boolean treeKept(int hx, int hz, float density) {
-        return hash01(hx, hz, CH_PLANT) < density * TREE_MAX_PROB;
+        return hash01(hx, hz, CH_PLANT) < density * treeMaxProb;
     }
 
     private int treeTrunkHeight(int hx, int hz) {
@@ -834,21 +879,22 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         NoiseLayer mountains = new NoiseLayer("mountains");
         mountains.setSeed(random.nextInt());
         mountains.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        mountains.setStrength(100);
-        mountains.setFrequency(mountains.getFrequency() / 8);
+        mountains.setStrength(100 * reliefAmplitude);
+        mountains.setFrequency(mountains.getFrequency() / 8 * reliefFrequency);
         layeredNoise.addLayer(mountains);
 
         NoiseLayer hills = new NoiseLayer("Hills");
         hills.setSeed(random.nextInt());
         hills.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        hills.setStrength(41);
-        hills.setFrequency(hills.getFrequency() / 3);
+        hills.setStrength(41 * reliefAmplitude);
+        hills.setFrequency(hills.getFrequency() / 3 * reliefFrequency);
         layeredNoise.addLayer(hills);
 
         NoiseLayer details = new NoiseLayer("Details");
         details.setSeed(random.nextInt());
         details.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        details.setStrength(21);
+        details.setStrength(21 * reliefAmplitude);
+        details.setFrequency(details.getFrequency() * reliefFrequency);
         layeredNoise.addLayer(details);
 
         // Forest-density map : a low-frequency field clustering trees into groves and opening clearings.
@@ -856,7 +902,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         forestNoise = new NoiseLayer("forest");
         forestNoise.setSeed(random.nextInt());
         forestNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
-        forestNoise.setFrequency(FOREST_FREQUENCY);
+        forestNoise.setFrequency(forestFrequency);
         forestNoise.setFractalOctaves(FOREST_OCTAVES);
 
         // Per-wood broadleaf preference (oak vs birch), seamless on the torus.

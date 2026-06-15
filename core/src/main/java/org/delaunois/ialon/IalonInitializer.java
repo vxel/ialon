@@ -4,6 +4,8 @@ import static org.delaunois.ialon.Ialon.IALON_STYLE;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
+import com.jme3.app.state.AppStateManager;
+import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetInfo;
 import com.jme3.asset.AssetKey;
 import com.jme3.asset.AssetManager;
@@ -41,7 +43,9 @@ import org.delaunois.ialon.state.FarTerrainState;
 import org.delaunois.ialon.state.FarTreeState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
+import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.StatsAppState;
+import org.delaunois.ialon.state.WorldBuilderState;
 import org.delaunois.ialon.ui.Slider;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
@@ -128,7 +132,9 @@ public class IalonInitializer {
                 "Textures/flight.png",
                 "Textures/minus.png",
                 "Textures/plus.png",
-                "Textures/gear.png"
+                "Textures/gear.png",
+                "Textures/settings.png",
+                "Textures/trash.png"
         };
 
         for (String texPath : noMiptexPaths) {
@@ -264,6 +270,66 @@ public class IalonInitializer {
         ChunkLiquidManagerState chunkLiquidManagerState = new ChunkLiquidManagerState(config);
         chunkLiquidManagerState.setEnabled(config.isSimulateLiquidFlow());
         return chunkLiquidManagerState;
+    }
+
+    /**
+     * Attaches, in dependency order, every AppState that depends on the currently loaded world (chunk
+     * generation, paging, physics, liquids, the distant horizon and the world builder that enables the
+     * player once enough chunks are paged in). Shared by the initial bootstrap ({@link Ialon}) and the
+     * runtime world switch (WorldSelectionState), so both build the world the same way. The world's data
+     * sources (chunk manager, repository and terrain generator) are pulled lazily from {@code config} ;
+     * the caller must have set the target world on the config (and cleared those cached references when
+     * switching) before calling this.
+     */
+    public static void attachWorldStates(SimpleApplication app, IalonConfig config) {
+        AppStateManager sm = app.getStateManager();
+        sm.attach(setupChunkSaverState(config));
+        sm.attach(setupPlayerState(app, config));
+        sm.attach(setupChunkManager(config));
+        sm.attach(setupChunkPager(app, config)); // Depends on PlayerState
+        sm.attach(setupPhysicsChunkPager(app, config)); // Depends on PlayerState and BulletAppState
+        sm.attach(setupChunkLiquidManager(config));
+        if (config.isFarTerrain()) {
+            sm.attach(setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
+        }
+        if (config.isFarTree()) {
+            sm.attach(setupFarTree(config)); // Distant trees, depends on camera + terrain generator
+        }
+        sm.attach(new WorldBuilderState(config)); // Depends on PlayerState + the pagers
+    }
+
+    /**
+     * Detaches the world-dependent states attached by {@link #attachWorldStates}, in reverse order. Each
+     * state's cleanup() releases its world data (pages detached from the chunk node, physics bodies
+     * removed, chunk manager pool shut down), leaving the shared scene/physics ready to host a new world.
+     */
+    public static void detachWorldStates(SimpleApplication app) {
+        AppStateManager sm = app.getStateManager();
+        detachIfPresent(sm, WorldBuilderState.class);
+        detachIfPresent(sm, FarTreeState.class);
+        detachIfPresent(sm, FarTerrainState.class);
+        detachIfPresent(sm, ChunkLiquidManagerState.class);
+        detachIfPresent(sm, PhysicsChunkPagerState.class);
+        detachIfPresent(sm, ChunkPagerState.class);
+        detachIfPresent(sm, ChunkManagerState.class);
+        detachIfPresent(sm, PlayerState.class);
+        detachIfPresent(sm, ChunkSaverState.class);
+    }
+
+    private static void detachIfPresent(AppStateManager sm, Class<? extends BaseAppState> type) {
+        BaseAppState state = sm.getState(type);
+        if (state != null) {
+            sm.detach(state);
+        }
+    }
+
+    public static SplashscreenState getOrAttachSplashscreen(SimpleApplication app, IalonConfig config) {
+        SplashscreenState splash = app.getStateManager().getState(SplashscreenState.class);
+        if (splash == null) {
+            splash = new SplashscreenState(config);
+            app.getStateManager().attach(splash);
+        }
+        return splash;
     }
 
     public static void configureBlocksFramework(AssetManager assetManager, IalonConfig ialonConfig) {

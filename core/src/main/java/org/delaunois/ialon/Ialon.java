@@ -20,9 +20,9 @@ package org.delaunois.ialon;
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
-import org.delaunois.ialon.blocks.BlocksConfig;
 import com.simsilica.lemur.anim.AnimationState;
 
+import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
@@ -36,10 +36,10 @@ import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
-import org.delaunois.ialon.state.WagonState;
 import org.delaunois.ialon.state.WaterState;
 import org.delaunois.ialon.state.WireframeState;
-import org.delaunois.ialon.state.WorldBuilderState;
+import org.delaunois.ialon.state.WorldMenuState;
+import org.delaunois.ialon.state.WorldSelectionState;
 
 import java.util.Optional;
 
@@ -111,13 +111,7 @@ public class Ialon extends SimpleApplication {
         IalonInitializer.setupBlockFramework(this, config);
         stateManager.attach(new AnimationState());
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
-        stateManager.attach(IalonInitializer.setupChunkSaverState(config));
-        stateManager.attach(IalonInitializer.setupPlayerState(this, config));
         stateManager.attach(IalonInitializer.setupStatsAppState(config));
-        stateManager.attach(IalonInitializer.setupChunkManager(config));
-        stateManager.attach(IalonInitializer.setupChunkPager(this, config)); // Depends on PlayerState
-        stateManager.attach(IalonInitializer.setupPhysicsChunkPager(this, config)); // Depends on PlayerState and BulletAppState
-        stateManager.attach(IalonInitializer.setupChunkLiquidManager(config));
         stateManager.attach(new LightingState(config));
         stateManager.attach(new SettingsState(config));
         stateManager.attach(new ScreenState(settings, config));
@@ -125,16 +119,14 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
         stateManager.attach(new WaterState(config)); // Animates the calm-water shader, depends on SunState + SkyState
-        if (config.isFarTerrain()) {
-            stateManager.attach(IalonInitializer.setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
-        }
-        if (config.isFarTree()) {
-            stateManager.attach(IalonInitializer.setupFarTree(config)); // Distant trees on the horizon, depends on camera + terrain generator
-        }
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
-        stateManager.attach(new WorldBuilderState(config));
+        stateManager.attach(new WorldMenuState(config)); // Create / switch worlds (uses WorldSelectionState)
+        stateManager.attach(new WorldSelectionState(config)); // Runtime world switch service
+        // Attach the world-dependent states (chunk paging, physics, far terrain, world builder) last :
+        // they are also re-attached as a group by WorldSelectionState when the player switches world.
+        IalonInitializer.attachWorldStates(this, config);
         stateManager.attach(new AnimationState());
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized
@@ -144,7 +136,7 @@ public class Ialon extends SimpleApplication {
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
-            stateManager.attach(new WagonState());
+            //stateManager.attach(new WagonState());
         }
 
         int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();

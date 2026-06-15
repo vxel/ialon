@@ -68,6 +68,20 @@ public class IalonConfig implements WorldSettings {
     private boolean finiteWorld = true;
     private int worldSizeChunks = 256; // square world side, in chunks (256 * 16 = 4096 world units)
 
+    // Identity and generation parameters of the currently loaded world. Persisted per-world in
+    // worlds/<worldId>/world.yml (see WorldParams) ; the defaults below reproduce the original single
+    // world exactly (seed 2 and the NoiseTerrainGenerator constants), so the migrated "default" world is
+    // byte-identical. Player-created worlds override these via WorldParams#applyTo before generation.
+    public static final String DEFAULT_WORLD_ID = "default";
+    public static final String WORLDS_DIR = "worlds";
+    private String worldId = DEFAULT_WORLD_ID;
+    private String worldName = "World 1";
+    private long seed = 2;
+    private float reliefAmplitude = 1f; // overall terrain height (mountains/hills) ; 1 = default relief
+    private float reliefFrequency = 1f; // density of relief features ; 1 = default
+    private float treeDensity = 0.70f; // tree chance per cell in dense woods (NoiseTerrainGenerator default)
+    private float forestPatchSize = 1f; // size of woods/clearings ; 1 = default, higher = larger patches
+
     // Far terrain : a distant low-detail heightmap horizon rendered beyond the loaded chunks.
     private boolean farTerrain = true;
     private float farTerrainFogDistance = 2500f;
@@ -211,6 +225,18 @@ public class IalonConfig implements WorldSettings {
         return location;
     }
 
+    /**
+     * Default spawn position for a world with no saved player state : centered on the origin chunk, at
+     * the terrain surface plus {@link #playerStartHeight}. Used for newly created worlds (see
+     * PlayerState#createPlayer and IalonConfigRepository).
+     */
+    public Vector3f computeSpawnLocation() {
+        return new Vector3f(
+                getChunkSize() / 2f,
+                getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + playerStartHeight,
+                getChunkSize() / 2f);
+    }
+
     public Vec3i getGridLowerBound() {
         return new Vec3i(Integer.MIN_VALUE, 0, Integer.MIN_VALUE);
     }
@@ -250,7 +276,7 @@ public class IalonConfig implements WorldSettings {
 
     public ChunkRepository getDefaultChunkRepository() {
         ZipFileRepository repository = new ZipFileRepository();
-        repository.setPath(getSavePath());
+        repository.setPath(getCurrentWorldPath());
         // Finite world : key saves/edits by canonical (wrapped) coordinates so a tile is stored once
         // and edits are consistent across the seam. 0 keeps the legacy per-(x,z) storage.
         repository.setWorldSizeChunks(finiteWorld ? worldSizeChunks : 0);
@@ -258,7 +284,24 @@ public class IalonConfig implements WorldSettings {
     }
 
     public TerrainGenerator getDefaultChunkGenerator() {
-        return new NoiseTerrainGenerator(2, this.getWaterHeight(), this.getMaxy(), this.getWorldSize());
+        NoiseTerrainGenerator generator =
+                new NoiseTerrainGenerator(seed, this.getWaterHeight(), this.getMaxy(), this.getWorldSize());
+        generator.setReliefAmplitude(reliefAmplitude);
+        generator.setReliefFrequency(reliefFrequency);
+        generator.setTreeMaxProb(treeDensity);
+        // forestPatchSize is the inverse of the noise frequency : scale the generator's default frequency
+        // so that 1 = unchanged and larger values yield larger woods/clearings.
+        generator.setForestFrequency(generator.getForestFrequency() / forestPatchSize);
+        return generator;
+    }
+
+    /**
+     * Filesystem directory of the currently loaded world : {@code savePath/worlds/<worldId>}. Each world
+     * keeps its own chunks (chunk_*.zblock), generation parameters (world.yml) and player state
+     * (player.yml) under this directory.
+     */
+    public Path getCurrentWorldPath() {
+        return savePath.resolve(WORLDS_DIR).resolve(worldId);
     }
 
     private static int clamp(int value, int min, int max) {
