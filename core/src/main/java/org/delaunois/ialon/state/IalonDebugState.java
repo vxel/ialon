@@ -59,7 +59,7 @@ import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.ChunkPager;
 
 @Slf4j
-public class IalonDebugState extends BaseAppState {
+public class IalonDebugState extends BaseAppState implements Resizable {
 
     private static final int MB = 1024 * 1024;
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
@@ -128,17 +128,29 @@ public class IalonDebugState extends BaseAppState {
         cacheSizeLabel = addField(container, "Cache size: ");
         timeLabel = addField(container, "Time: ");
 
-        container.setLocalScale(getApplication().getCamera().getHeight() / (container.getPreferredSize().getY() * 5));
-        container.setLocalTranslation(0, getApplication().getCamera().getHeight() / 2f + container.getPreferredSize().getY(), 1);
-
         grid = new Container(new SpringGridLayout(Axis.X, Axis.Y));
-        grid.setLocalTranslation((getApplication().getCamera().getWidth() - container.getPreferredSize().getX()) / 2f, getApplication().getCamera().getHeight() - 30f, 1);
+        layout(getApplication().getCamera().getWidth(), getApplication().getCamera().getHeight());
 
         InputManager inputManager = app.getInputManager();
         inputManager.addMapping(FREEZE_PAGING, new KeyTrigger(KeyInput.KEY_F8));
         inputManager.addListener(freezePagingListener, FREEZE_PAGING);
         inputManager.addMapping(MEMORY_REPORT, new KeyTrigger(KeyInput.KEY_F9));
         inputManager.addListener(memoryReportListener, MEMORY_REPORT);
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
+    }
+
+    @Override
+    public void onResize(int width, int height) {
+        layout(width, height);
+    }
+
+    private void layout(int width, int height) {
+        container.setLocalScale(height / (container.getPreferredSize().getY() * 5));
+        container.setLocalTranslation(0, height / 2f + container.getPreferredSize().getY(), 1);
+        grid.setLocalTranslation((width - container.getPreferredSize().getX()) / 2f, height - 30f, 1);
     }
 
     /**
@@ -299,6 +311,9 @@ public class IalonDebugState extends BaseAppState {
                 pager.setEnabled(true);
             }
             pagingFrozen = false;
+        }
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
         }
     }
 

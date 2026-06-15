@@ -142,6 +142,7 @@ import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
 import org.delaunois.ialon.blocks.ChunkMeshGenerator;
 import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.ui.UiHelper;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -153,7 +154,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class BlockSliderSelectionState extends BaseAppState {
+public class BlockSliderSelectionState extends BaseAppState implements Resizable {
 
     private static final String BLOCK_NAME = "blockName";
     private static final ColorRGBA BLOCK_AMBIENT_LIGHT = ColorRGBA.White.mult(.7f);
@@ -307,7 +308,6 @@ public class BlockSliderSelectionState extends BaseAppState {
             historyButton[i].setLocalTranslation(i * (buttonSize + SPACING), 0, 1);
             historyButtons.attachChild(historyButton[i]);
         }
-        historyButtons.setLocalTranslation(app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING, SCREEN_MARGIN + buttonSize, 1);
         historyButtons.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         historyButtons.addLight(new AmbientLight(BLOCK_AMBIENT_LIGHT));
 
@@ -323,13 +323,14 @@ public class BlockSliderSelectionState extends BaseAppState {
                 highlight(event.isPressed(), blockSelectionButton);
             }
         }, true);
-        blockSelectionButton.setLocalTranslation(
-                (app.getCamera().getWidth() - buttonSize) / 2.0f,
-                (float)app.getCamera().getHeight() - SCREEN_MARGIN,
-                1
-        );
         blockSelectionButton.addLight(new DirectionalLight(new Vector3f(1, -1, 1)));
         blockSelectionButton.addLight(new AmbientLight(BLOCK_AMBIENT_LIGHT));
+
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
     }
 
     private void highlight(boolean isPressed, Container button) {
@@ -342,20 +343,28 @@ public class BlockSliderSelectionState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
-    public void resize() {
+    @Override
+    public void onResize(int width, int height) {
+        // The block popup width depends on the screen width, so it is rebuilt ; the selected-block node
+        // is rebuilt too. The block button size itself is fixed (the block previews are 3D + batched).
         hideBlockMenu();
         menuBlock = createBlockTypeSelectionPopup();
         setSelectedBlockName(selectedBlockName);
-        blockSelectionButton.setLocalTranslation(
-                (app.getCamera().getWidth() - buttonSize) / 2.0f,
-                (float)app.getCamera().getHeight() - SCREEN_MARGIN,
-                1);
+        layout(width, height);
+    }
+
+    /** Positions the selection button (top-center) and the history bar (bottom-center) with a proportional margin. */
+    private void layout(int width, int height) {
+        float margin = UiHelper.screenMargin(height);
+        blockSelectionButton.setLocalTranslation((width - buttonSize) / 2.0f, height - margin, 1);
         historyButtons.setLocalTranslation(
-                app.getCamera().getWidth() / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING,
-                SCREEN_MARGIN + buttonSize,
+                width / 2f - (BLOCK_HISTORY_SIZE / 2f) * buttonSize - SPACING,
+                margin + buttonSize,
                 1);
     }
 
@@ -863,20 +872,47 @@ public class BlockSliderSelectionState extends BaseAppState {
         }
 
         public void scroll(float deltaX) {
-            if (container != null) {
-                Vector3f location = container.getLocalTranslation();
-                float min = camera.getWidth() - container.getSize().getX() - margin;
-                float newlocation = Math.max(Math.min(location.x + deltaX, margin), min);
-                container.setLocalTranslation(container.getLocalTranslation().setX(newlocation));
+            if (container == null) {
+                return;
             }
+            if (fitsViewport()) {
+                resetToResting();
+                return;
+            }
+            Vector3f location = container.getLocalTranslation();
+            float min = camera.getWidth() - container.getSize().getX() - margin;
+            float newlocation = Math.max(Math.min(location.x + deltaX, margin), min);
+            container.setLocalTranslation(container.getLocalTranslation().setX(newlocation));
         }
 
         public void scrollImpulse(float deltaX, float tpf) {
-            if (container != null) {
-                scrollEffect.setMin(camera.getWidth() - container.getSize().getX() - margin);
-                scrollEffect.setMax(margin);
-                scrollEffect.setForce(deltaX / tpf / 30);
-                container.runEffect("scroll");
+            if (container == null) {
+                return;
+            }
+            if (fitsViewport()) {
+                resetToResting();
+                return;
+            }
+            scrollEffect.setMin(camera.getWidth() - container.getSize().getX() - margin);
+            scrollEffect.setMax(margin);
+            scrollEffect.setForce(deltaX / tpf / 30);
+            container.runEffect("scroll");
+        }
+
+        /**
+         * True when the block list is narrower than the screen (minus margins) : it is then centered by
+         * its parent and there is nothing to scroll. In that case the scroll range would be inverted
+         * (min &gt; max), which used to snap the list to a wrong position and freeze the scroll.
+         */
+        private boolean fitsViewport() {
+            float min = camera.getWidth() - container.getSize().getX() - margin;
+            return min >= margin;
+        }
+
+        /** Keeps the (centered) block list at its resting position, defensively clearing any stale offset. */
+        private void resetToResting() {
+            if (container.getLocalTranslation().x != 0) {
+                container.setLocalTranslation(container.getLocalTranslation().setX(0));
             }
         }
 

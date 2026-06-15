@@ -54,7 +54,7 @@ import org.delaunois.ialon.blocks.jme.StatsView;
  *
  *  @author    Paul Speed
  */
-public class StatsAppState extends AbstractAppState {
+public class StatsAppState extends AbstractAppState implements Resizable {
 
     private Application app;
     protected StatsView statsView;
@@ -165,6 +165,19 @@ public class StatsAppState extends AbstractAppState {
         loadFpsText();
         loadStatsView();
         loadDarken();
+
+        if (stateManager.getState(ScreenState.class) != null) {
+            stateManager.getState(ScreenState.class).register(this);
+        }
+    }
+
+    @Override
+    public void onResize(int width, int height) {
+        if (fpsText != null) {
+            // FPS text is top-centered ; the stats view and darken quads are bottom-anchored (origin) and
+            // therefore do not move on resize.
+            fpsText.setLocalTranslation((width - fpsText.getLineWidth()) / 2f, height, 0);
+        }
     }
 
     /**
@@ -254,6 +267,9 @@ public class StatsAppState extends AbstractAppState {
     public void cleanup() {
         super.cleanup();
 
+        if (app != null && app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
         guiNode.detachChild(statsView);
         guiNode.detachChild(fpsText);
         guiNode.detachChild(darkenFps);

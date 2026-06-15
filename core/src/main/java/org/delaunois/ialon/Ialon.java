@@ -155,9 +155,19 @@ public class Ialon extends SimpleApplication {
     @Override
     public void restart() {
         super.restart();
-        Optional.ofNullable(stateManager.getState(ScreenState.class))
-                .ifPresent(ScreenState::checkResize);
         log.info("Restarting Ialon");
+    }
+
+    /**
+     * Native jME reshape callback : fired on window resize and on the context restart triggered by
+     * the fullscreen toggle. After letting jME resize the cameras, re-lays-out every registered GUI
+     * state via {@link ScreenState}.
+     */
+    @Override
+    public void reshape(int w, int h) {
+        super.reshape(w, h);
+        Optional.ofNullable(stateManager.getState(ScreenState.class))
+                .ifPresent(screenState -> screenState.onReshape(w, h));
     }
 
     @Override

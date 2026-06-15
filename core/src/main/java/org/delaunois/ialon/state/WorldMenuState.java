@@ -81,9 +81,8 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class WorldMenuState extends BaseAppState implements ActionListener {
+public class WorldMenuState extends BaseAppState implements ActionListener, Resizable {
 
-    private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
     private static final int MAX_WORLDS = 20;
 
@@ -121,6 +120,11 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         buttonSize = app.getCamera().getHeight() / 12;
         button = createMenuButton();
         popup = createPopup();
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
 
         // Allow loading world preview PNGs that live under the (non-classpath) save directory.
         try {
@@ -135,13 +139,8 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
     }
 
     private IconButton createMenuButton() {
-        // Placed to the right of the settings gear (which sits at width/2 + buttonSize + SPACING).
-        IconButton iconButton = UiHelper.createTextureButton(config,
-                "settings.png",
-                buttonSize,
-                app.getCamera().getWidth() / 2f + 2 * (buttonSize + SPACING),
-                app.getCamera().getHeight() - SCREEN_MARGIN
-        );
+        // Positioned by layout(...) ; placed to the right of the settings gear.
+        IconButton iconButton = UiHelper.createTextureButton(config, "settings.png", buttonSize, 0, 0);
         iconButton.background.addMouseListener(new TogglePopupMouseClickListener());
         return iconButton;
     }
@@ -617,7 +616,9 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
 
     @Override
     protected void cleanup(Application application) {
-        // Nothing to do
+        if (application.getStateManager().getState(ScreenState.class) != null) {
+            application.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
     @Override
@@ -637,11 +638,25 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         }
     }
 
-    public void resize() {
-        float x = app.getCamera().getWidth() / 2f + 2 * (buttonSize + SPACING);
-        float y = app.getCamera().getHeight() - SCREEN_MARGIN;
-        button.background.setLocalTranslation(x, y, 1);
-        button.icon.setLocalTranslation(x, y, 1);
+    @Override
+    public void onResize(int width, int height) {
+        layout(width, height);
+        // If the popup happens to be open, re-fit it (and re-pave the worlds grid) to the new size.
+        if (popup.getParent() != null) {
+            sizePopupToScreen();
+            if (gridContainer != null && gridContainer.getParent() != null) {
+                rebuildGrid();
+            }
+        }
+    }
+
+    /** Recomputes the menu-button size for the new height and repositions it (right of the settings gear). */
+    private void layout(int width, int height) {
+        buttonSize = height / 12;
+        float margin = UiHelper.screenMargin(height);
+        float x = width / 2f + 2 * (buttonSize + SPACING);
+        float y = height - margin;
+        UiHelper.resizeTextureButton(button, buttonSize, x, y);
     }
 
     @Override

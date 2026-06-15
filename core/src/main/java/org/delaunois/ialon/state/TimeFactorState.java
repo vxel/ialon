@@ -35,15 +35,15 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.ui.UiHelper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 
 @Slf4j
-public class TimeFactorState extends BaseAppState implements ActionListener {
+public class TimeFactorState extends BaseAppState implements ActionListener, Resizable {
 
-    private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
@@ -72,7 +72,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
-        buttonTimeFactor = createButton(buttonSize, app.getCamera().getWidth() / 2f - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN,
+        buttonTimeFactor = createButton(buttonSize, 0, 0,
                 new DefaultMouseListener() {
                     @Override
                     public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
@@ -86,8 +86,13 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
                         }
                     }
                 });
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
         app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
     }
 
     public void setTimeFactorIndex(int index) {
@@ -128,6 +133,9 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
     @Override
     protected void cleanup(Application app) {
         app.getInputManager().removeListener(this);
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
     @Override
@@ -150,9 +158,18 @@ public class TimeFactorState extends BaseAppState implements ActionListener {
         }
     }
 
-    public void resize() {
-        log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonTimeFactor.setLocalTranslation(app.getCamera().getWidth() / 2f - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+    @Override
+    public void onResize(int width, int height) {
+        layout(width, height);
+    }
+
+    /** Recomputes the button size for the new height, rescales it and repositions it. */
+    private void layout(int width, int height) {
+        buttonSize = height / 12;
+        float margin = UiHelper.screenMargin(height);
+        buttonTimeFactor.setPreferredSize(new Vector3f(buttonSize, buttonSize, 0));
+        timeFactorLabel.setFontSize(buttonSize / 4f);
+        buttonTimeFactor.setLocalTranslation(width / 2f - 2 * buttonSize - SPACING, height - margin, 1);
     }
 
     @Override
