@@ -42,6 +42,41 @@ uniform float m_Extent;          // world span the density map covers (same as t
 uniform vec2 m_ForestOrigin;     // terrain world translation (tile snap on the torus ; 0 otherwise)
 #endif
 
+#ifdef FAR_NOISE
+uniform float m_NoiseStrength; // amplitude of the fBm brightness variation on the distant land
+uniform float m_NoiseScale;    // spatial frequency of that variation (world units : ~1/feature-size)
+
+// Low-quality value noise + fBm (same construction as Shaders/map.frag), used only to break up the flat
+// altitude palette of the distant land into something that reads as textured relief.
+float hash21(vec2 p) {
+    p = 50.0 * fract(p * 0.3183099);
+    return fract(p.x * p.y * (p.x + p.y));
+}
+
+float vnoise(in vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f); // cubic smoothstep interpolation
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+// Rotation between octaves so the layers don't line up into a grid.
+const mat2 NOISE_ROT = mat2(0.80, 0.60, -0.60, 0.80);
+
+float fbm(vec2 p) {
+    float a;
+    a  = 0.5000 * vnoise(p); p = p * NOISE_ROT * 2.0;
+    a += 0.2500 * vnoise(p); p = p * NOISE_ROT * 2.0;
+    a += 0.1250 * vnoise(p); p = p * NOISE_ROT * 2.0;
+    a += 0.0625 * vnoise(p);
+    return a; // ~[0..1]
+}
+#endif
+
 varying vec3 vNormal;
 varying float vDist;
 varying float vHorizDist;
@@ -72,6 +107,16 @@ void main() {
     land = mix(land, m_RockColor.rgb, smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
     land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
     vec3 terrainColor = mix(seabed, land, landAmount);
+
+#ifdef FAR_NOISE
+    // Break up the flat altitude palette with a touch of fBm brightness variation, so the distant land
+    // reads as textured relief rather than a single flat colour. Land only (the flattened sea must stay
+    // calm/uniform), and faded out with distance so the far horizon doesn't shimmer -- the fog takes over
+    // there anyway. Centered on 0 (n - 0.5) so it brightens and darkens around the base palette.
+    float noiseFade = 1.0 - smoothstep(m_InnerRadius, m_InnerRadius + m_FogDistance, vDist);
+    float n = fbm(vWorldPos.xz * m_NoiseScale);
+    terrainColor *= 1.0 + (n - 0.5) * 2.0 * m_NoiseStrength * landAmount * noiseFade;
+#endif
 
 #ifdef FOREST_TINT
     // Forest tint : pull the distant grass slopes toward a dark forest green where the (seamless) density

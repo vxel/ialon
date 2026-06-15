@@ -377,17 +377,19 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         int row = 0;
 
-        // No Load button for the world already loaded : it is the current world, nothing to load.
-        if (!selIsCurrent) {
-            Button load = menuButton("Load", vw, vh);
-            load.addClickCommands(source -> {
-                // Keep the popup up : WorldSelectionState closes it once the loading screen is shown, so the
-                // in-game buttons stay blocked until then.
-                Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
-                        .ifPresent(wss -> wss.switchTo(selectedWorldId));
-            });
-            buttons.addChild(load, row++, 0);
+        // The world already loaded has nothing to load : the Load button is still created (so its row is
+        // reserved and the buttons below it keep their position), but hidden -- no command, not rendered.
+        Button load = menuButton("Load", vw, vh);
+        if (selIsCurrent) {
+            load.setCullHint(Spatial.CullHint.Always);
+        } else {
+            load.addClickCommands(source ->
+                    // Keep the popup up : WorldSelectionState closes it once the loading screen is shown, so the
+                    // in-game buttons stay blocked until then.
+                    Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
+                            .ifPresent(wss -> wss.switchTo(selectedWorldId)));
         }
+        buttons.addChild(load, row++, 0);
 
         if (selIsCurrent) {
             // For the current world : refresh its screenshot (in place of Delete, which is not allowed).
@@ -529,14 +531,17 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         int randomSeed = new Random().nextInt(10000);
         Container sliders = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         SettingsValue seed = addValue(sliders, 0, "Seed", 0, 9999, randomSeed, v -> String.valueOf(v.intValue()));
-        SettingsValue water = addValue(sliders, 1, "Water height", 10, 60, 30, v -> String.valueOf(v.intValue()));
+        SettingsValue water = addValue(sliders, 1, "Water height", 0, 60, 30, v -> String.valueOf(v.intValue()));
         SettingsValue relief = addValue(sliders, 2, "Relief", 0.3, 2.5, 1.0, v -> String.format(Locale.ENGLISH, "%.2f", v));
         SettingsValue density = addValue(sliders, 3, "Mountain density", 0.5, 2.0, 1.0, v -> String.format(Locale.ENGLISH, "%.2f", v));
         SettingsValue trees = addValue(sliders, 4, "Tree density", 0.0, 1.0, 0.70, v -> String.format(Locale.ENGLISH, "%.2f", v));
         SettingsValue woods = addValue(sliders, 5, "Woods size", 0.5, 3.0, 1.0, v -> String.format(Locale.ENGLISH, "%.2f", v));
         content.addChild(sliders, 1, 0);
 
-        Container buttons = new Container(new SpringGridLayout(Axis.X, Axis.Y, FillMode.None, FillMode.None), IALON_STYLE);
+        // Create / Cancel side by side (column 0 / column 1), with a top inset to set them apart from the
+        // sliders above. Axis.Y/Axis.X : rows stack vertically, columns sit side by side horizontally.
+        Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
+        buttons.setInsetsComponent(new InsetsComponent(6 * vh, 0, 0, 0));
         Button createBtn = new Button("Create", IALON_STYLE);
         createBtn.setFontSize(4 * vh);
         createBtn.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));

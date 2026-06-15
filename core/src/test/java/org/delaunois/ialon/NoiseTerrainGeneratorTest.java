@@ -107,6 +107,46 @@ class NoiseTerrainGeneratorTest {
     }
 
     /**
+     * Lowering the water level must only drain the basins, NOT sink the whole terrain : the hard floor
+     * (the lowland shelf) is decoupled from waterHeight. So the terrain heights at waterHeight 0 are
+     * identical to those at the default 30, and waterHeight 0 yields no water block at all.
+     */
+    @Test
+    void lowWaterDrainsBasinsWithoutSinkingTerrain() {
+        IalonConfig config = new IalonConfig();
+        NoiseTerrainGenerator wh30 = new NoiseTerrainGenerator(2, 30f, config.getMaxy(), config.getWorldSize());
+        NoiseTerrainGenerator wh0 = new NoiseTerrainGenerator(2, 0f, config.getMaxy(), config.getWorldSize());
+
+        // Terrain shape is unchanged by the water level : the per-column heights match exactly.
+        com.jme3.math.Vector3f p = new com.jme3.math.Vector3f();
+        for (int wx = -2048; wx < 2048; wx += 64) {
+            for (int wz = -2048; wz < 2048; wz += 64) {
+                org.junit.jupiter.api.Assertions.assertEquals(
+                        wh30.getHeight(p.set(wx, 0, wz)), wh0.getHeight(p.set(wx, 0, wz)), 0.001f,
+                        "terrain height must not depend on waterHeight at (" + wx + "," + wz + ")");
+            }
+        }
+
+        // And no water block is generated at waterHeight 0.
+        org.delaunois.ialon.blocks.BlockRegistry reg = BlocksConfig.getInstance().getBlockRegistry();
+        short waterSourceId = reg.get(org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE).getId();
+        short waterLiquidId = reg.get(org.delaunois.ialon.blocks.BlockIds.getName(
+                org.delaunois.ialon.blocks.BlockIds.WATER, org.delaunois.ialon.blocks.ShapeIds.LIQUID)).getId();
+        for (int x = -6; x <= 6; x++) {
+            for (int z = -6; z <= 6; z++) {
+                for (int y = 0; y < config.getGridHeight(); y++) {
+                    short[] blocks = wh0.generate(new Vec3i(x, y, z)).getBlocks();
+                    if (blocks == null) continue; // empty (air-only) chunk
+                    for (short id : blocks) {
+                        org.junit.jupiter.api.Assertions.assertTrue(id != waterSourceId && id != waterLiquidId,
+                                "no water expected at waterHeight=0");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * The relief amplitude knob must actually reshape the terrain : doubling it changes the heightmap.
      */
     @Test

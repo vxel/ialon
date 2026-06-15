@@ -91,7 +91,7 @@ public class IalonConfig implements WorldSettings {
     // the framebuffer encodes back to sRGB on output. The literal sRGB numbers below are the intended
     // on-screen colours ; setAsSrgb keeps them looking the same after the framebuffer encode. (Light
     // INTENSITIES, e.g. White * ambiantIntensity, stay raw - they are linear multipliers, not colours.)
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.50f, 0.11f, 1f); // grass / land : mean albedo of the voxel grass texture (IalonTheme/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.45f, 0.16f, 1f); // grass / land : mean albedo of the voxel grass texture (IalonTheme/grass.png) so near & far land read alike
     private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.245f, 0.421f, 0.535f, 0.92f); // teal-blue, matched to the voxel water texture (IalonTheme/water_calm.png) so near & far seas read as one body
     private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (IalonTheme/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
@@ -99,6 +99,8 @@ public class IalonConfig implements WorldSettings {
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
+    private float farTerrainNoiseStrength = 0.6f; // fBm brightness variation on the distant land, to break up the flat altitude palette (0 = flat colour, define compiled out)
+    private float farTerrainNoiseScale = 0.08f; // spatial frequency of that variation (world units : ~1/feature-size, here ~25-unit blobs)
 
     // Far trees : GPU billboards scattered on the far terrain (FarTreeState), matching the voxel woods.
     private boolean farTree = true;
