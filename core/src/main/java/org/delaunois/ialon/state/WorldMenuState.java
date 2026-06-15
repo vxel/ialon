@@ -35,12 +35,18 @@ import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
+import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.Panel;
+import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.InsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.SpringGridLayout;
+import com.simsilica.lemur.event.CursorButtonEvent;
+import com.simsilica.lemur.event.CursorEventControl;
+import com.simsilica.lemur.event.CursorMotionEvent;
+import com.simsilica.lemur.event.DefaultCursorListener;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
@@ -79,6 +85,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
 
     private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
+    private static final int MAX_WORLDS = 20;
 
     private SimpleApplication app;
     private IconButton button;
@@ -91,8 +98,18 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
     private final List<SettingsValue> activeValues = new ArrayList<>();
     // The world card currently selected ; the right-hand Load/Delete buttons act on it.
     private String selectedWorldId;
-    // Preview textures loaded into the asset cache while the popup is open, released on close.
-    private final Set<String> loadedPreviews = new HashSet<>();
+
+    // Worlds view (absolutely positioned, swipe-scrollable). The grid spans the full screen height so
+    // rows scrolled past the top/bottom fall outside the GUI camera and are clipped by the window ; the
+    // button column stays fixed on the right. content (the centred Lemur container) is used only by the
+    // create form, attached/detached as views switch.
+    private Node worldsView;
+    private Container gridContainer;
+    private float gridLeftX;
+    private float gridTopBase; // resting Y of the grid top (relative to popup top), i.e. a top margin
+    private float scrollOffset;
+    private float maxScroll;
+    private Container deleteOverlay; // modal delete-confirmation overlay, when shown
 
     public WorldMenuState(IalonConfig config) {
         this.config = config;
@@ -135,12 +152,17 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         worldPopup.setName("worldPopup");
         worldPopup.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
         UiHelper.addBackground(worldPopup, new ColorRGBA(0f, 0f, 0f, 0.8f));
-        worldPopup.addMouseListener(new TogglePopupMouseClickListener());
+        // A full-screen scroll listener : it consumes clicks (so they don't reach the game, and the popup
+        // does NOT close — closing is explicit via Close) and, since the popup spans the whole screen and
+        // sits behind the grid, it catches wheel/drag scrolling anywhere not handled by a card.
+        CursorEventControl.addListenersToSpatial(worldPopup, new CardScrollListener(null));
 
+        // content (centred) is attached lazily, only for the create form. The worlds grid uses worldsView.
         content = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         content.setInsetsComponent(new DynamicInsetsComponent(10, 50, 50, 50));
         content.addMouseListener(new IgnoreMouseClickListener());
-        worldPopup.addChild(content);
+
+        worldsView = new Node("worldsView");
         return worldPopup;
     }
 
@@ -176,8 +198,13 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
     /** Re-captures the current world's preview : hide the menu, capture the clean frame, reopen. */
     private void recaptureCurrentPreview() {
         java.nio.file.Path preview = currentPreviewPath();
+        String worldId = config.getWorldId();
         hidePopup();
-        WorldPreview.capture(app, preview, this::reallyShowPopup);
+        WorldPreview.capture(app, preview, () -> {
+            // Drop the cached (now stale) texture so the freshly captured image is reloaded.
+            WorldPreview.dropFromCache(app.getAssetManager(), worldId);
+            reallyShowPopup();
+        });
     }
 
     private void reallyShowPopup() {
@@ -208,12 +235,14 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
             setPlayerTouchEnabled(true);
         }
         activeValues.clear();
-        releasePreviews();
+        closeDeleteConfirm();
     }
 
-    private void releasePreviews() {
-        loadedPreviews.forEach(id -> WorldPreview.dropFromCache(app.getAssetManager(), id));
-        loadedPreviews.clear();
+    private void closeDeleteConfirm() {
+        if (deleteOverlay != null) {
+            deleteOverlay.removeFromParent();
+            deleteOverlay = null;
+        }
     }
 
     private void setPlayerTouchEnabled(boolean enabled) {
@@ -228,60 +257,91 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
     }
 
     /**
-     * Builds the worlds view : a grid of cards (paving left-to-right then top-to-bottom) plus a column
-     * of action buttons (Load / Delete / New world) acting on the selected card.
+     * Builds the worlds view : a swipe-scrollable grid of cards on the left (paving left-to-right then
+     * top-to-bottom) plus a fixed column of action buttons (Load / Delete-or-Update / New) on the right.
+     * The grid spans the full screen height ; rows scrolled past the top or bottom edge are clipped by
+     * the GUI camera, so no explicit clipping is needed.
      */
     private void rebuildGrid() {
-        clearContent();
-        releasePreviews();
+        showWorldsView();
         float vh = app.getCamera().getHeight() / 100f;
         float vw = app.getCamera().getWidth() / 100f;
+        float w = app.getCamera().getWidth();
+
+        worldsView.detachAllChildren();
 
         List<WorldParams> worlds = WorldRepository.listWorlds(config.getSavePath());
-        if (worlds.stream().noneMatch(w -> w.getId().equals(selectedWorldId))) {
+        if (worlds.stream().noneMatch(wp -> wp.getId().equals(selectedWorldId))) {
             selectedWorldId = config.getWorldId();
         }
 
-        Label title = new Label("Worlds", IALON_STYLE);
-        title.setFontSize(6 * vh);
-        content.addChild(title, 0, 0);
-
-        // Layout convention (as in SettingsValue) : addChild(child, rowIndex, colIndex) for a
-        // SpringGridLayout(Axis.Y, Axis.X). Grid on the left, button column on the right (same row).
-        Container body = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-
-        // Card grid : Lemur has no wrapping layout, so pave row = i / cols, col = i % cols (left-to-right
-        // then top-to-bottom).
-        float cardW = 22 * vw;
-        int cols = Math.max(1, (int) (68 * vw / cardW)); // keep ~32vw on the right for the button column
-        Container grid = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
+        // Card grid. Lemur has no wrapping layout, so pave row = i / cols, col = i % cols. Columns are
+        // sized to fit the left area, leaving ~30vw on the right for the fixed button column.
+        float cardFootprintW = 26 * vw + 4.8f * vh; // contentW + 2*(pad+border+halfGap), see createCard
+        int cols = Math.max(1, (int) ((w - 34 * vw) / cardFootprintW));
+        gridContainer = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         for (int i = 0; i < worlds.size(); i++) {
-            grid.addChild(createCard(worlds.get(i), vw, vh), i / cols, i % cols);
+            gridContainer.addChild(createCard(worlds.get(i), vw, vh), i / cols, i % cols);
         }
-        body.addChild(grid, 0, 0);
-        body.addChild(createButtonColumn(worlds, vw, vh), 0, 1);
+        // Catch drags that start on the gaps between cards (cards catch their own).
+        CursorEventControl.addListenersToSpatial(gridContainer, new CardScrollListener(null));
+        gridLeftX = 6 * vw;
+        gridTopBase = -6 * vh; // start the first row a bit below the top of the screen
+        worldsView.attachChild(gridContainer);
 
-        content.addChild(body, 1, 0);
+        // Visible band runs from the top margin down to the screen bottom ; the scroll range is the
+        // overflow beyond it.
+        float gridH = gridContainer.getPreferredSize().y;
+        maxScroll = Math.max(0, gridH - (app.getCamera().getHeight() + gridTopBase));
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        applyScroll();
+
+        // Fixed button column on the right.
+        Container right = createButtonColumn(worlds, vw, vh);
+        right.setLocalTranslation(w - 30 * vw, -8 * vh, 3);
+        worldsView.attachChild(right);
+
         sizePopupToScreen();
+    }
+
+    /** Slides the grid vertically by the current scroll offset (clamped). */
+    private void applyScroll() {
+        if (gridContainer != null) {
+            gridContainer.setLocalTranslation(gridLeftX, gridTopBase + scrollOffset, 2);
+        }
+    }
+
+    /** Shows the worlds view (worldsView attached, create-form content detached). */
+    private void showWorldsView() {
+        if (content.getParent() != null) {
+            ((Container) popup).removeChild(content);
+        }
+        if (worldsView.getParent() == null) {
+            ((Node) popup).attachChild(worldsView);
+        }
     }
 
     private Container createCard(WorldParams world, float vw, float vh) {
         boolean selected = world.getId().equals(selectedWorldId);
+        boolean current = world.getId().equals(config.getWorldId());
         float border = 0.4f * vh;   // white frame thickness
         float pad = 1.2f * vh;      // black mat between the frame and the content
         float halfGap = 0.8f * vh;  // half the gap between adjacent cards
-        float contentW = 20 * vw;
-        float previewH = 12 * vh;
-        float captionH = 5 * vh;
+        float contentW = 26 * vw;
+        float previewH = 17 * vh;
+        float captionH = 5.5f * vh;
 
         // In Lemur an InsetsComponent reveals the PARENT's background in its margin (insets are applied
         // outside the background). So the inset goes on the CHILD to expose its parent's colour :
         //   frame (white bg) > mat (black bg, inset reveals the white frame) > content (transparent,
         //   inset reveals the black mat) > preview + caption.
         // A halfGap inset on the frame reveals the popup background, spacing the cards apart.
-        // Selected world : white frame ; others : black frame (blends with the black mat, i.e. no frame).
+        // Currently loaded world : light-blue frame ; selected (but not loaded) : white frame ; others :
+        // black frame (blends with the black mat, i.e. no frame).
+        ColorRGBA frameColor = current ? new ColorRGBA(0.4f, 0.7f, 1f, 1f)
+                : (selected ? ColorRGBA.White : ColorRGBA.Black);
         Container frame = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(frame, selected ? ColorRGBA.White : ColorRGBA.Black);
+        UiHelper.addBackground(frame, frameColor);
         frame.setInsetsComponent(new InsetsComponent(halfGap, halfGap, halfGap, halfGap));
 
         Container mat = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
@@ -297,7 +357,6 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         Texture tex = WorldPreview.load(app.getAssetManager(), world.getId());
         if (tex != null) {
             preview.setBackground(new QuadBackgroundComponent(tex));
-            loadedPreviews.add(world.getId());
         }
         contentBox.addChild(preview, 0, 0);
 
@@ -309,58 +368,61 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
 
         mat.addChild(contentBox);
         frame.addChild(mat);
-        frame.addMouseListener(new SelectCardMouseListener(world.getId()));
+        CursorEventControl.addListenersToSpatial(frame, new CardScrollListener(world.getId()));
         return frame;
     }
 
     private Container createButtonColumn(List<WorldParams> worlds, float vw, float vh) {
         boolean selIsCurrent = selectedWorldId.equals(config.getWorldId());
-        Vector3f btnSize = new Vector3f(26 * vw, 8 * vh, 0);
 
         Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        // Left inset reveals the popup background, adding space between the card grid and the buttons.
-        buttons.setInsetsComponent(new InsetsComponent(0, 4 * vw, 0, 0));
         int row = 0;
 
-        Button load = new Button("Load", IALON_STYLE);
-        load.setFontSize(5 * vh);
-        load.setPreferredSize(btnSize);
+        Button load = menuButton("Load", vw, vh);
         load.setEnabled(!selIsCurrent);
         load.addClickCommands(source -> {
-            String target = selectedWorldId;
-            hidePopup();
+            // Keep the popup up : WorldSelectionState closes it once the loading screen is shown, so the
+            // in-game buttons stay blocked until then.
             Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
-                    .ifPresent(wss -> wss.switchTo(target));
+                    .ifPresent(wss -> wss.switchTo(selectedWorldId));
         });
         buttons.addChild(load, row++, 0);
 
         if (selIsCurrent) {
             // For the current world : refresh its screenshot (in place of Delete, which is not allowed).
-            Button replace = new Button("Update preview", IALON_STYLE);
-            replace.setFontSize(5 * vh);
-            replace.setPreferredSize(btnSize);
+            Button replace = menuButton("Update preview", vw, vh);
             replace.addClickCommands(source -> recaptureCurrentPreview());
             buttons.addChild(replace, row++, 0);
         } else if (worlds.size() > 1) {
-            // Delete : not the current world, and not the last remaining one.
-            Button delete = new Button("Delete", IALON_STYLE);
-            delete.setFontSize(5 * vh);
-            delete.setPreferredSize(btnSize);
-            delete.addClickCommands(source -> {
-                WorldRepository.deleteWorld(config.getSavePath(), selectedWorldId);
-                selectedWorldId = config.getWorldId();
-                app.enqueue(this::rebuildGrid);
-            });
+            // Delete : not the current world, and not the last remaining one. Asks for confirmation.
+            Button delete = menuButton("Delete", vw, vh);
+            delete.addClickCommands(source -> showDeleteConfirm(selectedWorldId));
             buttons.addChild(delete, row++, 0);
         }
 
-        Button create = new Button("New world", IALON_STYLE);
-        create.setFontSize(5 * vh);
-        create.setPreferredSize(btnSize);
-        create.addClickCommands(source -> showCreateForm());
-        buttons.addChild(create, row, 0);
+        // New world : hidden once the world limit is reached.
+        if (worlds.size() < MAX_WORLDS) {
+            Button create = menuButton("New world", vw, vh);
+            create.addClickCommands(source -> showCreateForm());
+            buttons.addChild(create, row++, 0);
+        }
+
+        Button close = menuButton("Close", vw, vh);
+        // Extra top gap to set Close apart from the world-action buttons above it.
+        close.setInsetsComponent(new InsetsComponent(9 * vh, 0, 0, 0));
+        close.addClickCommands(source -> hidePopup());
+        buttons.addChild(close, row, 0);
 
         return buttons;
+    }
+
+    /** A right-column button : fixed size, with a top inset that spaces the buttons vertically apart. */
+    private Button menuButton(String text, float vw, float vh) {
+        Button button = new Button(text, IALON_STYLE);
+        button.setFontSize(5 * vh);
+        button.setPreferredSize(new Vector3f(26 * vw, 8 * vh, 0));
+        button.setInsetsComponent(new InsetsComponent(3 * vh, 0, 0, 0));
+        return button;
     }
 
     private String formatDate(String worldId) {
@@ -371,8 +433,87 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).format(new Date(millis));
     }
 
-    private void showCreateForm() {
+    /** Switches from the worlds view to the centred content panel (create form / confirm dialog). */
+    private void useCenteredContent() {
+        if (worldsView.getParent() != null) {
+            worldsView.removeFromParent();
+        }
+        if (content.getParent() == null) {
+            ((Container) popup).addChild(content);
+        }
         clearContent();
+    }
+
+    /**
+     * Confirmation dialog before deleting a world. Shown as a modal overlay on top of the worlds popup
+     * (the grid stays visible behind, dimmed) : its own full-screen black background (alpha 0.9) consumes
+     * input so the grid behind is not interactable.
+     */
+    private void showDeleteConfirm(String worldId) {
+        float vh = app.getCamera().getHeight() / 100f;
+        float vw = app.getCamera().getWidth() / 100f;
+        Vector3f screen = new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0);
+
+        closeDeleteConfirm();
+        Container overlay = new Container(IALON_STYLE);
+        deleteOverlay = overlay;
+        overlay.setLocalTranslation(0, 0, 100); // relative to the popup : on top of the worlds view
+        UiHelper.addBackground(overlay, new ColorRGBA(0f, 0f, 0f, 0.9f));
+        overlay.addMouseListener(new IgnoreMouseClickListener());
+
+        WorldParams params = WorldRepository.loadWorldParams(config.getSavePath(), worldId);
+        String name = params != null ? params.getName() : worldId;
+
+        Container dialog = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
+        dialog.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f)); // centre in the overlay
+        // Opaque black box behind the dialog text/buttons (the margin pads the content inside the box).
+        QuadBackgroundComponent dialogBg = new QuadBackgroundComponent(ColorRGBA.Black);
+        dialogBg.setMargin(3 * vw, 2 * vh);
+        dialogBg.getMaterial().getMaterial().clearParam(UiHelper.ALPHA_DISCARD_THRESHOLD);
+        dialog.setBackground(dialogBg);
+
+        Label title = new Label("Delete \"" + name + "\" ?", IALON_STYLE);
+        title.setFontSize(6 * vh);
+        title.setTextHAlignment(HAlignment.Center);
+        title.setPreferredSize(new Vector3f(50 * vw, 8 * vh, 0)); // span the two buttons so the text centres
+        dialog.addChild(title, 0, 0);
+
+        // Buttons side by side : row 0, columns 0 and 1.
+        Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
+        Button confirm = new Button("Delete", IALON_STYLE);
+        confirm.setFontSize(5 * vh);
+        confirm.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
+        confirm.setTextHAlignment(HAlignment.Center);
+        confirm.setTextVAlignment(VAlignment.Center);
+        confirm.addClickCommands(source -> {
+            WorldRepository.deleteWorld(config.getSavePath(), worldId);
+            if (worldId.equals(selectedWorldId)) {
+                selectedWorldId = config.getWorldId();
+            }
+            closeDeleteConfirm();
+            rebuildGrid();
+        });
+        buttons.addChild(confirm, 0, 0);
+
+        Button cancel = new Button("Cancel", IALON_STYLE);
+        cancel.setFontSize(5 * vh);
+        cancel.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
+        cancel.setTextHAlignment(HAlignment.Center);
+        cancel.setTextVAlignment(VAlignment.Center);
+        cancel.addClickCommands(source -> closeDeleteConfirm());
+        buttons.addChild(cancel, 0, 1);
+        dialog.addChild(buttons, 1, 0);
+
+        overlay.addChild(dialog);
+        ((Node) popup).attachChild(overlay);
+        // Force the full-screen size AFTER attaching + adding the dialog, otherwise the layout shrinks the
+        // overlay to its content (leaving the dialog jammed top-left and the grid undimmed).
+        overlay.setPreferredSize(screen);
+        overlay.setSize(screen);
+    }
+
+    private void showCreateForm() {
+        useCenteredContent();
         float vh = app.getCamera().getHeight() / 100f;
         float vw = app.getCamera().getWidth() / 100f;
 
@@ -432,7 +573,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         params.setForestPatchSize((float) woods.getValue());
 
         WorldRepository.createWorld(config.getSavePath(), params);
-        hidePopup();
+        // Keep the popup up until the loading screen is shown (closed by WorldSelectionState).
         Optional.ofNullable(app.getStateManager().getState(WorldSelectionState.class))
                 .ifPresent(wss -> wss.switchTo(params.getId()));
     }
@@ -527,21 +668,64 @@ public class WorldMenuState extends BaseAppState implements ActionListener {
         }
     }
 
-    /** Selects the clicked world card and rebuilds the grid (updates the highlight and the buttons). */
-    private class SelectCardMouseListener extends DefaultMouseListener {
-        private final String worldId;
+    /**
+     * Drag-to-scroll + tap-to-select on a card (or, with a null worldId, on the gaps between cards).
+     * Uses Lemur's cursor events (like DragHandler) rather than the legacy MouseListener, whose move
+     * events are not reliably delivered during a touch drag. A press captures the pointer ; vertical
+     * cursor motion scrolls the grid ; on release, a near-stationary press counts as a tap and selects.
+     */
+    private class CardScrollListener extends DefaultCursorListener {
+        private final String worldId; // null = background catcher (scroll only, no selection)
+        private boolean capturing;
+        private float lastY;
+        private float dragAccum;
 
-        SelectCardMouseListener(String worldId) {
+        CardScrollListener(String worldId) {
             this.worldId = worldId;
         }
 
         @Override
-        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+        public void cursorButtonEvent(CursorButtonEvent event, Spatial target, Spatial capture) {
             event.setConsumed();
-            if (event.isPressed() && !worldId.equals(selectedWorldId)) {
-                selectedWorldId = worldId;
-                app.enqueue(WorldMenuState.this::rebuildGrid);
+            if (event.isPressed()) {
+                capturing = true;
+                lastY = event.getY();
+                dragAccum = 0;
+            } else {
+                if (capturing && dragAccum < app.getCamera().getHeight() * 0.02f
+                        && worldId != null && !worldId.equals(selectedWorldId)) {
+                    selectedWorldId = worldId;
+                    app.enqueue(WorldMenuState.this::rebuildGrid);
+                }
+                capturing = false;
             }
+        }
+
+        @Override
+        public void cursorMoved(CursorMotionEvent event, Spatial target, Spatial capture) {
+            // No scroll when there is no overflow, or when the grid isn't the current view (create form).
+            if (maxScroll <= 0 || gridContainer == null || gridContainer.getParent() == null) {
+                return;
+            }
+            // Mouse wheel : one notch scrolls a fraction of the screen (wheel down reveals lower rows).
+            int wheel = event.getScrollDelta();
+            if (wheel != 0) {
+                float step = app.getCamera().getHeight() * 0.001f;
+                scrollOffset = Math.max(0, Math.min(scrollOffset - wheel * step, maxScroll));
+                applyScroll();
+                event.setConsumed();
+                return;
+            }
+            if (!capturing) {
+                return;
+            }
+            // Drag : content follows the finger (moving up, y increases, reveals lower rows).
+            float y = event.getY();
+            float dy = y - lastY;
+            lastY = y;
+            dragAccum += Math.abs(dy);
+            scrollOffset = Math.max(0, Math.min(scrollOffset + dy, maxScroll));
+            applyScroll();
         }
     }
 }

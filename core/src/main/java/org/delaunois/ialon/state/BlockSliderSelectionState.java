@@ -17,82 +17,6 @@
 
 package org.delaunois.ialon.state;
 
-import com.jme3.app.Application;
-import com.jme3.app.SimpleApplication;
-import com.jme3.app.state.BaseAppState;
-import com.jme3.font.BitmapFont;
-import com.jme3.input.controls.TouchListener;
-import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.input.event.MouseMotionEvent;
-import com.jme3.input.event.TouchEvent;
-import com.jme3.light.AmbientLight;
-import com.jme3.light.DirectionalLight;
-import com.jme3.material.RenderState;
-import com.jme3.math.ColorRGBA;
-import com.jme3.math.FastMath;
-import com.jme3.math.Quaternion;
-import com.jme3.math.Vector3f;
-import com.jme3.renderer.Camera;
-import com.jme3.renderer.queue.RenderQueue;
-import com.jme3.scene.BatchNode;
-import com.jme3.scene.Geometry;
-import com.jme3.scene.Node;
-import com.jme3.scene.Spatial;
-import com.jme3.scene.VertexBuffer;
-import com.jme3.util.BufferUtils;
-import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.BlockIds;
-import org.delaunois.ialon.blocks.BlockRegistry;
-import org.delaunois.ialon.blocks.BlocksConfig;
-import org.delaunois.ialon.blocks.Chunk;
-import org.delaunois.ialon.blocks.ChunkMeshGenerator;
-import org.delaunois.ialon.blocks.ShapeIds;
-import com.simsilica.lemur.Axis;
-import com.simsilica.lemur.Container;
-import com.simsilica.lemur.Panel;
-import com.simsilica.lemur.anim.AbstractTween;
-import com.simsilica.lemur.anim.Animation;
-import com.simsilica.lemur.anim.Tween;
-import com.simsilica.lemur.anim.TweenAnimation;
-import com.simsilica.lemur.component.QuadBackgroundComponent;
-import com.simsilica.lemur.component.SpringGridLayout;
-import com.simsilica.lemur.core.GuiControl;
-import com.simsilica.lemur.effect.AbstractEffect;
-import com.simsilica.lemur.effect.EffectInfo;
-import com.simsilica.lemur.event.DefaultMouseListener;
-import com.simsilica.lemur.event.MouseListener;
-import com.simsilica.mathd.Vec3i;
-
-import org.delaunois.ialon.IalonBlock;
-import org.delaunois.ialon.IalonConfig;
-
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.util.Arrays;
-import java.util.Objects;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
-import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
-import static org.delaunois.ialon.blocks.ShapeIds.CUBE;
-import static org.delaunois.ialon.blocks.ShapeIds.DOUBLE_SLAB;
-import static org.delaunois.ialon.blocks.ShapeIds.FENCE;
-import static org.delaunois.ialon.blocks.ShapeIds.PLATE;
-import static org.delaunois.ialon.blocks.ShapeIds.PLATE_NORTH;
-import static org.delaunois.ialon.blocks.ShapeIds.POLE;
-import static org.delaunois.ialon.blocks.ShapeIds.PYRAMID;
-import static org.delaunois.ialon.blocks.ShapeIds.SHORT_POLE;
-import static org.delaunois.ialon.blocks.ShapeIds.SLAB;
-import static org.delaunois.ialon.blocks.ShapeIds.SQUARE;
-import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_HS;
-import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_NORTH;
-import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_EAST;
-import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
-import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
-import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_SOUTH;
 import static org.delaunois.ialon.IalonBlock.BED;
 import static org.delaunois.ialon.IalonBlock.BEDPILLOW;
 import static org.delaunois.ialon.IalonBlock.BIRCH_LEAVES;
@@ -150,7 +74,83 @@ import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
+import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
+import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
+import static org.delaunois.ialon.blocks.ShapeIds.CUBE;
+import static org.delaunois.ialon.blocks.ShapeIds.DOUBLE_SLAB;
+import static org.delaunois.ialon.blocks.ShapeIds.FENCE;
+import static org.delaunois.ialon.blocks.ShapeIds.PLATE;
+import static org.delaunois.ialon.blocks.ShapeIds.PLATE_NORTH;
+import static org.delaunois.ialon.blocks.ShapeIds.POLE;
+import static org.delaunois.ialon.blocks.ShapeIds.PYRAMID;
+import static org.delaunois.ialon.blocks.ShapeIds.SHORT_POLE;
+import static org.delaunois.ialon.blocks.ShapeIds.SLAB;
+import static org.delaunois.ialon.blocks.ShapeIds.SQUARE;
+import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_HS;
+import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_NORTH;
+import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_EAST;
+import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
+import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
+import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_SOUTH;
 import static org.delaunois.ialon.input.IalonKeyMapping.TOUCH;
+
+import com.jme3.app.Application;
+import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.BaseAppState;
+import com.jme3.font.BitmapFont;
+import com.jme3.input.controls.TouchListener;
+import com.jme3.input.event.MouseButtonEvent;
+import com.jme3.input.event.MouseMotionEvent;
+import com.jme3.input.event.TouchEvent;
+import com.jme3.light.AmbientLight;
+import com.jme3.light.DirectionalLight;
+import com.jme3.material.RenderState;
+import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
+import com.jme3.renderer.Camera;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.scene.BatchNode;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
+import com.jme3.scene.VertexBuffer;
+import com.jme3.util.BufferUtils;
+import com.simsilica.lemur.Axis;
+import com.simsilica.lemur.Container;
+import com.simsilica.lemur.Panel;
+import com.simsilica.lemur.anim.AbstractTween;
+import com.simsilica.lemur.anim.Animation;
+import com.simsilica.lemur.anim.Tween;
+import com.simsilica.lemur.anim.TweenAnimation;
+import com.simsilica.lemur.component.QuadBackgroundComponent;
+import com.simsilica.lemur.component.SpringGridLayout;
+import com.simsilica.lemur.core.GuiControl;
+import com.simsilica.lemur.effect.AbstractEffect;
+import com.simsilica.lemur.effect.EffectInfo;
+import com.simsilica.lemur.event.DefaultMouseListener;
+import com.simsilica.lemur.event.MouseListener;
+import com.simsilica.mathd.Vec3i;
+
+import org.delaunois.ialon.IalonBlock;
+import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlockRegistry;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkMeshGenerator;
+import org.delaunois.ialon.blocks.ShapeIds;
+
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.util.Arrays;
+import java.util.Objects;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class BlockSliderSelectionState extends BaseAppState {
@@ -368,6 +368,8 @@ public class BlockSliderSelectionState extends BaseAppState {
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(true);
             app.getStateManager().getState(ButtonManagerState.class).setEnabled(true);
             app.getStateManager().getState(SettingsState.class).setEnabled(true);
+            app.getStateManager().getState(WorldMenuState.class).setEnabled(true);
+            app.getStateManager().getState(TimeFactorState.class).setEnabled(true);
         }
         app.getInputManager().removeListener(scrollListener);
     }
@@ -378,6 +380,8 @@ public class BlockSliderSelectionState extends BaseAppState {
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
             app.getStateManager().getState(ButtonManagerState.class).setEnabled(false);
             app.getStateManager().getState(SettingsState.class).setEnabled(false);
+            app.getStateManager().getState(WorldMenuState.class).setEnabled(false);
+            app.getStateManager().getState(TimeFactorState.class).setEnabled(false);
             app.getInputManager().addListener(scrollListener, TOUCH);
         }
     }

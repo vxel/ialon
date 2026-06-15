@@ -160,8 +160,15 @@ public class PlaceholderControl extends AbstractControl {
     }
 
     private CollisionResult getCollisionResult() {
+        // The camera direction is computed by PlayerHeadDirectionControl, which is disabled while the
+        // world menu is open. Right after a world switch it may not have run yet, leaving a zero
+        // (non-unit) direction : skip until it is valid, otherwise Ray.setDirection asserts.
+        Vector3f camDir = playerHeadDirectionControl.getCamDir();
+        if (!camDir.isUnitVector()) {
+            return null;
+        }
         ray.setOrigin(playerHeadDirectionControl.getCamera().getLocation());
-        ray.setDirection(playerHeadDirectionControl.getCamDir());
+        ray.setDirection(camDir);
         collisionResults.clear();
         chunkNode.collideWith(ray, collisionResults);
 

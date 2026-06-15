@@ -20,15 +20,18 @@ package org.delaunois.ialon.state;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.IconComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
+import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
 
@@ -41,7 +44,6 @@ public class SplashscreenState extends BaseAppState {
     private Node splashScreen;
     private Container pbContainer;
     private Label percentLabel;
-    private ChunkPagerState chunkPagerState = null;
 
     private final IalonConfig config;
 
@@ -64,6 +66,13 @@ public class SplashscreenState extends BaseAppState {
         splashContainer.setBackground(qbc);
         splashContainer.setLocalTranslation(0, 100 * vh, 10);
         splashContainer.setName("SplashScreen");
+        // Full-screen : consume clicks so nothing behind (in-game buttons) is interactable while loading.
+        splashContainer.addMouseListener(new DefaultMouseListener() {
+            @Override
+            public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+                event.setConsumed();
+            }
+        });
         splashContainer.addChild(buildTitle());
 
         qbc = new QuadBackgroundComponent(BAR_COLOR);
@@ -87,10 +96,14 @@ public class SplashscreenState extends BaseAppState {
     @Override
     public void update(float tpf) {
         float percent = 0;
-        if (chunkPagerState == null) {
-            chunkPagerState = getStateManager().getState(ChunkPagerState.class);
-        }
-        if (chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
+        // Re-fetch every frame : on a world switch the ChunkPagerState is detached and replaced, so a
+        // cached reference would point at the old (cleared) pager and the bar would stay at 0.
+        ChunkPagerState chunkPagerState = getStateManager().getState(ChunkPagerState.class);
+        // Only count progress while a build is actually running : right after the menu shows the splash
+        // (one frame before the teardown), the OLD world is still fully loaded and would flash ~100%.
+        WorldBuilderState worldBuilderState = getStateManager().getState(WorldBuilderState.class);
+        boolean building = worldBuilderState != null && worldBuilderState.isEnabled();
+        if (building && chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
             int gridSize = config.getGridRadius() * 2 + 1;
             float total = gridSize * gridSize * (float) config.getGridHeight();
             int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
