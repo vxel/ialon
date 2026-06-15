@@ -10,10 +10,20 @@ import com.simsilica.lemur.GuiGlobals;
 
 import org.delaunois.ialon.IalonConfig;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Handles screen resize (Key F2) and mouse locking
+ * Handles screen resize, fullscreen toggle (Key F2) and mouse locking.
+ * <p>
+ * This state is the single owner of the resolution-change flow : {@link Resizable} states
+ * register themselves here during their {@code initialize()} and are re-laid-out together
+ * whenever the framebuffer is reshaped. The reshape notification is delivered by
+ * {@code Ialon.reshape(...)} (the native jME callback, fired on window resize and on the
+ * context restart triggered by the fullscreen toggle) which calls {@link #onReshape(int, int)}.
+ *
  * @author Cedric de Launois
  */
 @Slf4j
@@ -23,12 +33,18 @@ public class ScreenState extends BaseAppState implements ActionListener {
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
     private final AppSettings settings;
-    private int camHeight;
-    private int camWidth;
-    private Application app;
-    private boolean checkResize = false;
-    private boolean mouselocked = false;
     private final IalonConfig config;
+    // Registered GUI states to re-layout on a resolution change. CopyOnWrite : registration happens
+    // during state initialization while onReshape may iterate from the render thread.
+    private final List<Resizable> resizables = new CopyOnWriteArrayList<>();
+
+    private Application app;
+    private boolean mouselocked = false;
+    // Last dispatched size : reshape may fire repeatedly with an unchanged size (startup, focus/move
+    // events, wasResized polling). Re-laying-out only on a real change avoids needlessly rebuilding
+    // GUI (e.g. tearing down the open block menu mid-scroll).
+    private int lastWidth = -1;
+    private int lastHeight = -1;
 
     public ScreenState(AppSettings settings, IalonConfig config) {
         this.settings = settings;
@@ -38,8 +54,6 @@ public class ScreenState extends BaseAppState implements ActionListener {
     @Override
     protected void initialize(Application app) {
         this.app = app;
-        camHeight = app.getCamera().getHeight();
-        camWidth = app.getCamera().getWidth();
 
         app.getInputManager().addMapping(ACTION_TOGGLE_FULLSCREEN, new KeyTrigger(KeyInput.KEY_F2));
         if (!app.getInputManager().hasMapping(ACTION_SWITCH_MOUSELOCK)) {
@@ -48,30 +62,40 @@ public class ScreenState extends BaseAppState implements ActionListener {
         app.getInputManager().addListener(this, ACTION_TOGGLE_FULLSCREEN, ACTION_SWITCH_MOUSELOCK);
     }
 
-    public void checkResize() {
-        checkResize = true;
+    /**
+     * Registers a state to be laid out on every resolution change. Safe to call before this state
+     * is initialized (states register from their own {@code initialize()}).
+     */
+    public void register(Resizable resizable) {
+        if (resizable != null && !resizables.contains(resizable)) {
+            resizables.add(resizable);
+        }
     }
 
-    @Override
-    public void update(float tpf) {
-        if (checkResize && (app.getCamera().getWidth() != camWidth || app.getCamera().getHeight() != camHeight)) {
+    public void unregister(Resizable resizable) {
+        resizables.remove(resizable);
+    }
 
-            TimeFactorState timeFactorState = app.getStateManager().getState(TimeFactorState.class);
-            if (timeFactorState != null) {
-                timeFactorState.resize();
+    /**
+     * Re-lays-out every registered {@link Resizable} for the new screen size. Called by
+     * {@code Ialon.reshape(...)} on the render thread.
+     *
+     * @param width  the new GUI width
+     * @param height the new GUI height
+     */
+    public void onReshape(int width, int height) {
+        if (width == lastWidth && height == lastHeight) {
+            return;
+        }
+        lastWidth = width;
+        lastHeight = height;
+        log.info("Reshaping GUI to {}x{}", width, height);
+        for (Resizable resizable : resizables) {
+            try {
+                resizable.onResize(width, height);
+            } catch (RuntimeException e) {
+                log.warn("Resize failed for {} : {}", resizable.getClass().getSimpleName(), e.getMessage(), e);
             }
-            BlockSliderSelectionState blockSliderSelectionState = app.getStateManager().getState(BlockSliderSelectionState.class);
-            if (blockSliderSelectionState != null) {
-                blockSliderSelectionState.resize();
-            }
-            PlayerState playerState = app.getStateManager().getState(PlayerState.class);
-            if (playerState != null) {
-                playerState.resize();
-            }
-
-            checkResize = false;
-            camWidth = app.getCamera().getWidth();
-            camHeight = app.getCamera().getHeight();
         }
     }
 

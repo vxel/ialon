@@ -56,7 +56,7 @@ import org.delaunois.ialon.input.PlayerListener;
 import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
-public class PlayerState extends BaseAppState {
+public class PlayerState extends BaseAppState implements Resizable {
 
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
@@ -117,6 +117,10 @@ public class PlayerState extends BaseAppState {
         playerActionControl = playerNode.getControl(PlayerActionControl.class);
         playerWalkControl = playerNode.getControl(PlayerWalkControl.class);
         playerFlyControl = playerNode.getControl(PlayerFlyControl.class);
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
     }
 
     @Override
@@ -180,9 +184,14 @@ public class PlayerState extends BaseAppState {
         playerHeadDirectionControl.setEnabled(touchEnabled);
     }
 
-    public void resize() {
-        crossHair.setLocalTranslation((app.getCamera().getWidth() / 2f) - (crossHair.getPreferredSize().getX() / 2), (app.getCamera().getHeight() / 2f) + (crossHair.getPreferredSize().getY() / 2), crossHair.getLocalTranslation().getZ());
-        app.getStateManager().getState(ButtonManagerState.class).resize();
+    @Override
+    public void onResize(int width, int height) {
+        // The crosshair is screen-centered. ButtonManagerState resizes itself (it registers with
+        // ScreenState independently), so it must not be driven from here.
+        crossHair.setLocalTranslation(
+                (width / 2f) - (crossHair.getPreferredSize().getX() / 2),
+                (height / 2f) + (crossHair.getPreferredSize().getY() / 2),
+                crossHair.getLocalTranslation().getZ());
     }
 
     /**
@@ -277,7 +286,11 @@ public class PlayerState extends BaseAppState {
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        // PlayerState is re-attached on world switch, so it must drop its registration to avoid a stale
+        // reference being kept (and re-laid-out) by ScreenState.
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
 

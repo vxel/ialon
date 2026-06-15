@@ -48,10 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 import static org.delaunois.ialon.Ialon.IALON_STYLE;
 
 @Slf4j
-public class SettingsState extends BaseAppState implements ActionListener {
+public class SettingsState extends BaseAppState implements ActionListener, Resizable {
 
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
-    private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
 
     private SimpleApplication app;
@@ -75,20 +74,20 @@ public class SettingsState extends BaseAppState implements ActionListener {
         buttonSize = app.getCamera().getHeight() / 12;
         buttonSettings = createSettingsButton();
         popup = createPopup();
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
         if (!app.getInputManager().hasMapping(ACTION_SWITCH_MOUSELOCK)) {
             app.getInputManager().addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
         }
         app.getInputManager().addListener(this, ACTION_SWITCH_MOUSELOCK);
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
     }
 
     private IconButton createSettingsButton() {
-        IconButton iconButton = UiHelper.createTextureButton(config,
-                "gear.png",
-                buttonSize,
-                app.getCamera().getWidth() / 2f + buttonSize + SPACING,
-                app.getCamera().getHeight() - SCREEN_MARGIN
-        );
+        IconButton iconButton = UiHelper.createTextureButton(config, "gear.png", buttonSize, 0, 0);
         iconButton.background.addMouseListener(new TogglePopupMouseClickListener());
         return iconButton;
     }
@@ -171,7 +170,9 @@ public class SettingsState extends BaseAppState implements ActionListener {
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
     @Override
@@ -190,10 +191,18 @@ public class SettingsState extends BaseAppState implements ActionListener {
         }
     }
 
-    public void resize() {
-        log.info("Resizing {}", this.getClass().getSimpleName());
-        buttonSettings.background.setLocalTranslation(app.getCamera().getWidth() / 2f + buttonSize + SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
-        buttonSettings.icon.setLocalTranslation(app.getCamera().getWidth() / 2f + buttonSize + SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 1);
+    @Override
+    public void onResize(int width, int height) {
+        layout(width, height);
+    }
+
+    /** Recomputes the gear-button size for the new height and repositions it (and the full-screen popup). */
+    private void layout(int width, int height) {
+        buttonSize = height / 12;
+        float margin = UiHelper.screenMargin(height);
+        UiHelper.resizeTextureButton(buttonSettings, buttonSize, width / 2f + buttonSize + SPACING, height - margin);
+        ((Container) popup).setPreferredSize(new Vector3f(width, height, 0));
+        popup.setLocalTranslation(0, height, 100);
     }
 
     @Override

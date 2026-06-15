@@ -33,9 +33,8 @@ import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RIGHT;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 
 @Slf4j
-public class ButtonManagerState extends BaseAppState implements ActionListener {
+public class ButtonManagerState extends BaseAppState implements ActionListener, Resizable {
 
-    private static final float SCREEN_MARGIN = 30;
     private static final float SPACING = 10;
     private static final String UDK_ACTION = "ACTION";
 
@@ -83,14 +82,16 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         buttonSize = app.getCamera().getHeight() / 6;
         buttonParentNode = new Node();
 
-        buttonLeft = createTextureButton("arrowleft.png", buttonSize, SCREEN_MARGIN, SCREEN_MARGIN + buttonSize, ACTION_LEFT);
-        buttonBackward = createTextureButton("arrowdown.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize, ACTION_BACKWARD);
-        buttonForward = createTextureButton("arrowup.png", buttonSize, SCREEN_MARGIN + buttonSize + SPACING, SCREEN_MARGIN + buttonSize * 2 + SPACING, ACTION_FORWARD);
-        buttonRight = createTextureButton("arrowright.png", buttonSize, SCREEN_MARGIN + (buttonSize + SPACING) * 2, SCREEN_MARGIN + buttonSize, ACTION_RIGHT);
-        buttonJump = createTextureButton("arrowjump.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, ACTION_JUMP);
-        buttonFly = createTextureButton("flight.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_FLY);
-        buttonRemoveBlock = createTextureButton("minus.png", buttonSize, SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_REMOVE_BLOCK);
-        buttonAddBlock = createTextureButton("plus.png", buttonSize, app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, ACTION_ADD_BLOCK);
+        // Initial positions are placeholders ; layout(...) below sets the authoritative positions and is
+        // the single source of truth reused on every resolution change.
+        buttonLeft = createTextureButton("arrowleft.png", buttonSize, 0, 0, ACTION_LEFT);
+        buttonBackward = createTextureButton("arrowdown.png", buttonSize, 0, 0, ACTION_BACKWARD);
+        buttonForward = createTextureButton("arrowup.png", buttonSize, 0, 0, ACTION_FORWARD);
+        buttonRight = createTextureButton("arrowright.png", buttonSize, 0, 0, ACTION_RIGHT);
+        buttonJump = createTextureButton("arrowjump.png", buttonSize, 0, 0, ACTION_JUMP);
+        buttonFly = createTextureButton("flight.png", buttonSize, 0, 0, ACTION_FLY);
+        buttonRemoveBlock = createTextureButton("minus.png", buttonSize, 0, 0, ACTION_REMOVE_BLOCK);
+        buttonAddBlock = createTextureButton("plus.png", buttonSize, 0, 0, ACTION_ADD_BLOCK);
 
         BatchNode batchNode = new BatchNode("ButtonBatch");
         batchNode.attachChild(buttonLeft.icon);
@@ -113,11 +114,19 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         buttonParentNode.attachChild(buttonAddBlock.background);
         buttonParentNode.attachChild(buttonRemoveBlock.background);
         buttonParentNode.attachChild(buttonFly.background);
+
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
+
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).register(this);
+        }
     }
 
     @Override
     protected void cleanup(Application app) {
-        // Nothing to do
+        if (app.getStateManager().getState(ScreenState.class) != null) {
+            app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
     }
 
     @Override
@@ -161,15 +170,33 @@ public class ButtonManagerState extends BaseAppState implements ActionListener {
         }
     }
 
-    public void resize() {
-        buttonJump.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, -1);
-        buttonJump.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, SCREEN_MARGIN + buttonSize, 0);
-        buttonAddBlock.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
-        buttonAddBlock.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - buttonSize, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
-        buttonRemoveBlock.background.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
-        buttonRemoveBlock.icon.setLocalTranslation(SCREEN_MARGIN, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
-        buttonFly.background.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, -1);
-        buttonFly.icon.setLocalTranslation(app.getCamera().getWidth() - SCREEN_MARGIN - 2 * buttonSize - SPACING, app.getCamera().getHeight() - SCREEN_MARGIN, 0);
+    @Override
+    public void onResize(int width, int height) {
+        layout(width, height);
+    }
+
+    /**
+     * Positions the eight on-screen control buttons : the movement pad in the bottom-left corner, the
+     * jump button in the bottom-right, and the fly / add / remove buttons along the top. The margin to
+     * the screen edges is proportional to the height so it scales with the resolution. The button size
+     * itself is fixed (computed once at init) : the icons are batched, so re-scaling them would need a
+     * re-batch ; positions stay consistent because they use that same fixed size.
+     */
+    private void layout(int width, int height) {
+        float margin = UiHelper.screenMargin(height);
+        place(buttonLeft, margin, margin + buttonSize);
+        place(buttonBackward, margin + buttonSize + SPACING, margin + buttonSize);
+        place(buttonForward, margin + buttonSize + SPACING, margin + buttonSize * 2 + SPACING);
+        place(buttonRight, margin + (buttonSize + SPACING) * 2, margin + buttonSize);
+        place(buttonJump, width - margin - buttonSize, margin + buttonSize);
+        place(buttonFly, width - margin - 2 * buttonSize - SPACING, height - margin);
+        place(buttonRemoveBlock, margin, height - margin);
+        place(buttonAddBlock, width - margin - buttonSize, height - margin);
+    }
+
+    private void place(IconButton button, float posx, float posy) {
+        button.background.setLocalTranslation(posx, posy, -1);
+        button.icon.setLocalTranslation(posx, posy, 0);
     }
 
     private IconButton createTextureButton(String textureName, float size, float posx, float posy, String actionName) {
