@@ -44,6 +44,14 @@ public class GameSettingsDTO {
     private Float sunIntensity;
     private int timeFactorIndex = 1;
     private String currentWorldId = IalonConfig.DEFAULT_WORLD_ID;
+    // Display toggles (SettingsState). Default true to preserve the behaviour of saves written before
+    // these fields existed.
+    private boolean farTerrain = true;
+    private boolean farTree = true;
+    private float farTreeDistance = 350f;
+    private boolean showFps = true;
+    private boolean showPosition = false;
+    private int maxFramerate = IalonConfig.FPS_LIMIT_DESKTOP;
 
     public GameSettingsDTO(IalonConfig config) {
         this.gridRadius = config.getGridRadius();
@@ -51,6 +59,12 @@ public class GameSettingsDTO {
         this.sunIntensity = config.getSunIntensity();
         this.timeFactorIndex = config.getTimeFactorIndex();
         this.currentWorldId = config.getWorldId();
+        this.farTerrain = config.isFarTerrain();
+        this.farTree = config.isFarTree();
+        this.farTreeDistance = config.getFarTreeDistance();
+        this.showFps = config.isShowFps();
+        this.showPosition = config.isShowPosition();
+        this.maxFramerate = config.getMaxFramerate();
     }
 
     public void applyTo(IalonConfig config) {
@@ -62,5 +76,16 @@ public class GameSettingsDTO {
             config.setSunIntensity(sunIntensity);
         }
         config.setTimeFactorIndex(timeFactorIndex);
+        config.setFarTerrain(farTerrain);
+        config.setFarTree(farTree);
+        config.setFarTreeDistance(farTreeDistance);
+        // Far trees render with no count limit (all trees within the radius) ; 0 means "unlimited".
+        if (farTree) {
+            config.setFarTreeMaxCount(0);
+        }
+        config.setShowFps(showFps);
+        config.setShowPosition(showPosition);
+        // Only 60 or 120 are offered ; guard against out-of-range values from edited/old saves.
+        config.setMaxFramerate(maxFramerate == 60 ? 60 : IalonConfig.FPS_LIMIT_DESKTOP);
     }
 }

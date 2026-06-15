@@ -84,6 +84,9 @@ public class SplashscreenState extends BaseAppState {
         pbContainer.setLocalTranslation(25 * vw, 25 * vh, 20);
 
         percentLabel = new Label("");
+        // The splash is built before setupGui() remaps the default Lemur style font to the game font, so
+        // set it explicitly here to keep the percent readout consistent with the rest of the UI.
+        percentLabel.setFont(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
         percentLabel.setFontSize(4 * vh);
         percentLabel.setTextHAlignment(HAlignment.Center);
         percentLabel.setLocalTranslation(50 * vw - 50f, 30 * vh, 20);
@@ -110,7 +113,10 @@ public class SplashscreenState extends BaseAppState {
             percent = numPagesAttached / total;
         }
 
-        percentLabel.setText(((int)(percent * 100)) + "%");
+        int percentInt = (int) (percent * 100);
+        // Before any chunk is attached (world not building yet, or just starting) show "Loading..." rather
+        // than a stuck "0%" ; switch to the percentage as soon as progress is measurable.
+        percentLabel.setText(percentInt <= 0 ? "Loading..." : percentInt + "%");
         pbContainer.setLocalScale(percent, 1, 1);
     }
 

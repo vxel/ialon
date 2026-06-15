@@ -20,6 +20,7 @@ package org.delaunois.ialon;
 import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
+import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.anim.AnimationState;
 
 import org.delaunois.ialon.blocks.BlocksConfig;
@@ -62,6 +63,12 @@ public class Ialon extends SimpleApplication {
     @Setter
     private IalonConfig config;
 
+    // Deferred (post-splash) initialisation : the heavy world setup is delayed until the splashscreen
+    // has actually been drawn, so it appears immediately instead of after the whole init blocks the
+    // render thread. Counts simpleUpdate() calls ; the work runs once at least one frame has rendered.
+    private boolean worldInitialized = false;
+    private int splashFramesRendered = 0;
+
     public Ialon() {
         super((AppState[]) null);
         log.info("Instanciating Ialon");
@@ -101,11 +108,22 @@ public class Ialon extends SimpleApplication {
         log.info("Hardware sRGB framebuffer: {} (manual gamma encode: {})",
                 !config.isManualGammaEncode(), config.isManualGammaEncode());
 
-        stateManager.attach(new SplashscreenState(config));
-
+        // Minimal, fast setup so the splashscreen can be drawn on the very first frame. Everything heavy
+        // (atlas packing, block framework, world states, GUI styles) is deferred to initWorld(), run from
+        // simpleUpdate() once the splash has been rendered at least once.
         IalonInitializer.setupLogging();
         IalonInitializer.setupCamera(this);
         IalonInitializer.setupViewPort(this);
+        GuiGlobals.initialize(this); // required by the splashscreen's Lemur UI ; moved out of setupGui()
+        stateManager.attach(new SplashscreenState(config));
+    }
+
+    /**
+     * Heavy, world-building initialisation deferred out of {@link #simpleInitApp()} so it runs only after
+     * the splashscreen has been drawn (see {@link #simpleUpdate(float)}). Functionally identical to the
+     * original single-pass init, just delayed by one rendered frame.
+     */
+    private void initWorld() {
         IalonInitializer.setupAtlasManager(this, config);
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
@@ -144,6 +162,19 @@ public class Ialon extends SimpleApplication {
         log.info("{} block types registered", typeSize);
         log.info("{} block shapes registered", shapeSize);
         log.info("{} blocks registered", BlocksConfig.getInstance().getBlockRegistry().size());
+    }
+
+    @Override
+    public void simpleUpdate(float tpf) {
+        if (!worldInitialized) {
+            // simpleUpdate() runs before the frame is drawn, so we wait for the SECOND call : by then the
+            // first frame (with the splashscreen) has been fully rendered and the heavy init won't hide it.
+            splashFramesRendered++;
+            if (splashFramesRendered >= 2) {
+                worldInitialized = true;
+                initWorld();
+            }
+        }
     }
 
     @Override

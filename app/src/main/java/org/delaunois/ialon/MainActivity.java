@@ -18,6 +18,7 @@
 package org.delaunois.ialon;
 
 import android.os.Build;
+import android.os.Bundle;
 import android.view.View;
 
 import com.jme3.system.AppSettings;
@@ -43,6 +44,22 @@ public class MainActivity extends AndroidHarness {
         mouseEventsEnabled = true;
         screenShowTitle = false;
         frameRate = IalonConfig.FPS_LIMIT_MOBILE;
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        // The GL surface (and the app) are created inside super.onCreate, which reads the harness
+        // `frameRate` field. The full config is only loaded later in onStart, so preload just the
+        // persisted frame-rate cap here ; otherwise it would only take effect after toggling it in-game.
+        try {
+            IalonConfig config = new IalonConfig();
+            config.setSavePath(getApplicationContext().getFilesDir().toPath());
+            IalonConfigRepository.loadConfig(config);
+            this.frameRate = config.getMaxFramerate();
+        } catch (RuntimeException e) {
+            logger.log(Level.WARNING, "Could not preload frame-rate setting", e);
+        }
+        super.onCreate(savedInstanceState);
     }
 
     @SuppressWarnings("java:S1874")
@@ -84,6 +101,10 @@ public class MainActivity extends AndroidHarness {
         config.setGridRadiusMax(7);
         config.setGridRadiusMin(2);
         config.setMaxUpdatePerFrame(2);
+        // Apply the persisted frame-rate cap (toggled in the in-game settings). Keep the harness field
+        // in sync as it is what the GL surface reads.
+        this.frameRate = config.getMaxFramerate();
+        settings.setFrameRate(config.getMaxFramerate());
         ((Ialon) app).setConfig(config);
 
         super.onStart();

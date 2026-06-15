@@ -170,8 +170,8 @@ public class IalonInitializer {
     }
 
     public static void setupGui(SimpleApplication app, IalonConfig config) {
-        GuiGlobals.initialize(app);
-
+        // GuiGlobals is initialised earlier (in Ialon.simpleInitApp) so the splashscreen's Lemur UI can
+        // be built and shown before the heavy world initialisation runs.
         BitmapFont font = Optional.ofNullable(config.getFont())
                 .orElse(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
 
@@ -214,7 +214,10 @@ public class IalonInitializer {
         if (config.getFont() != null) {
             statsAppState.setFont(config.getFont());
         }
+        statsAppState.setConfig(config);
         statsAppState.setDisplayStatView(config.isDevMode());
+        statsAppState.setDisplayFps(config.isShowFps());
+        statsAppState.setDisplayPosition(config.isShowPosition());
         return statsAppState;
     }
 

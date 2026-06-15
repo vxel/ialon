@@ -39,7 +39,7 @@ public class DesktopLauncher {
         Ialon app = new Ialon(config);
 
         AppSettings settings = new AppSettings(false);
-        settings.setFrameRate(IalonConfig.FPS_LIMIT_DESKTOP);
+        settings.setFrameRate(config.getMaxFramerate());
         settings.setGammaCorrection(true);
         settings.setResizable(true);
         settings.setResolution(config.getScreenWidth(), config.getScreenHeight());

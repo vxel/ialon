@@ -226,6 +226,15 @@ public class FarTreeState extends BaseAppState {
         }
     }
 
+    /**
+     * Forces the billboard mesh to be rebuilt on the next update (e.g. after the max-tree-count setting
+     * changed), by invalidating the last build centre so the movement check triggers a rebuild.
+     */
+    public void requestRebuild() {
+        lastBuildX = Float.MAX_VALUE;
+        lastBuildZ = Float.MAX_VALUE;
+    }
+
     @Override
     protected void cleanup(Application application) {
         builder.shutdownNow();
