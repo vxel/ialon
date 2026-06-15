@@ -92,8 +92,10 @@ public class WorldPreview implements SceneProcessor {
      * WorldMenuState). The cache entry is dropped first so a freshly recaptured preview is reloaded.
      */
     public static Texture load(AssetManager assetManager, String worldId) {
+        // Let the asset manager cache the texture : the world menu rebuilds its grid on every card click,
+        // and re-decoding/re-uploading the PNGs each time was the cause of the >1s lag. The cache is
+        // invalidated only when a preview is actually recaptured (see dropFromCache).
         try {
-            assetManager.deleteFromCache(key(worldId));
             return assetManager.loadTexture(key(worldId));
         } catch (AssetNotFoundException e) {
             return null;

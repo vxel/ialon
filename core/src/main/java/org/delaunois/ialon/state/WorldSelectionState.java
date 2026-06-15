@@ -65,6 +65,14 @@ public class WorldSelectionState extends BaseAppState {
             log.warn("Cannot switch to unknown world '{}'", worldId);
             return;
         }
+        // Immediate feedback : show the loading screen and close the menu NOW, so the click feels
+        // instant. The heavy teardown/rebuild is deferred one frame so the loading screen is painted
+        // first (and its full-screen panel blocks input meanwhile).
+        IalonInitializer.getOrAttachSplashscreen(app, config).setEnabled(true);
+        WorldMenuState worldMenu = app.getStateManager().getState(WorldMenuState.class);
+        if (worldMenu != null) {
+            worldMenu.hidePopup();
+        }
         app.enqueue(() -> doSwitch(worldId));
     }
 
@@ -87,7 +95,8 @@ public class WorldSelectionState extends BaseAppState {
         config.setTerrainGenerator(null);
         IalonConfigRepository.loadWorldState(config);
 
-        // 4. Show the loading screen until the world builder re-enables the player.
+        // 4. Ensure the loading screen is up (already shown by switchTo) until the world builder
+        //    re-enables the player.
         IalonInitializer.getOrAttachSplashscreen(app, config).setEnabled(true);
 
         // 5. Build the new world.
