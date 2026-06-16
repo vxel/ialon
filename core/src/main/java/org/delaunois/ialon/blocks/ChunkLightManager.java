@@ -47,12 +47,8 @@ public class ChunkLightManager {
     @Setter
     private ChunkManager chunkManager;
 
-    // Shapes that block the light
-    private final Set<String> blockingShapes = new HashSet<>();
-
     public ChunkLightManager(WorldSettings config) {
         this.chunkManager = config.getChunkManager();
-        blockingShapes.add(ShapeIds.CUBE);
     }
 
     /**
@@ -184,12 +180,12 @@ public class ChunkLightManager {
         while (!context.lightBfsQueue.isEmpty()) {
             LightNode node = context.lightBfsQueue.poll();
             int lightLevel = node.chunk.getTorchlight(node.x, node.y, node.z);
-            propagateAddedTorchlight(node.chunk, node.x - 1, node.y, node.z, lightLevel, context);
-            propagateAddedTorchlight(node.chunk, node.x + 1, node.y, node.z, lightLevel, context);
-            propagateAddedTorchlight(node.chunk, node.x, node.y - 1, node.z, lightLevel, context);
-            propagateAddedTorchlight(node.chunk, node.x, node.y + 1, node.z, lightLevel, context);
-            propagateAddedTorchlight(node.chunk, node.x, node.y, node.z - 1, lightLevel, context);
-            propagateAddedTorchlight(node.chunk, node.x, node.y, node.z + 1, lightLevel, context);
+            propagateAddedTorchlight(node.chunk, node.x - 1, node.y, node.z, lightLevel, Direction.WEST, context);
+            propagateAddedTorchlight(node.chunk, node.x + 1, node.y, node.z, lightLevel, Direction.EAST, context);
+            propagateAddedTorchlight(node.chunk, node.x, node.y - 1, node.z, lightLevel, Direction.DOWN, context);
+            propagateAddedTorchlight(node.chunk, node.x, node.y + 1, node.z, lightLevel, Direction.UP, context);
+            propagateAddedTorchlight(node.chunk, node.x, node.y, node.z - 1, lightLevel, Direction.NORTH, context);
+            propagateAddedTorchlight(node.chunk, node.x, node.y, node.z + 1, lightLevel, Direction.SOUTH, context);
         }
 
         return context.chunkMeshUpdateRequests;
@@ -213,19 +209,24 @@ public class ChunkLightManager {
             LightNode node = context.sunlightBfsQueue.poll();
             log.debug("Propagating light add node({}, {}, {})", node.x, node.y, node.z);
             int lightLevel = node.chunk.getSunlight(node.x, node.y, node.z);
-            propagateAddedSunlight(node.chunk ,node.x - 1, node.y, node.z, lightLevel, true, context);
-            propagateAddedSunlight(node.chunk, node.x + 1, node.y, node.z, lightLevel, true, context);
-            propagateAddedSunlight(node.chunk, node.x, node.y - 1, node.z, lightLevel, false, context);
-            propagateAddedSunlight(node.chunk, node.x, node.y + 1, node.z, lightLevel, true, context);
-            propagateAddedSunlight(node.chunk, node.x, node.y, node.z - 1, lightLevel, true, context);
-            propagateAddedSunlight(node.chunk, node.x, node.y, node.z + 1, lightLevel, true, context);
+            propagateAddedSunlight(node.chunk ,node.x - 1, node.y, node.z, lightLevel, true, Direction.WEST, context);
+            propagateAddedSunlight(node.chunk, node.x + 1, node.y, node.z, lightLevel, true, Direction.EAST, context);
+            propagateAddedSunlight(node.chunk, node.x, node.y - 1, node.z, lightLevel, false, Direction.DOWN, context);
+            propagateAddedSunlight(node.chunk, node.x, node.y + 1, node.z, lightLevel, true, Direction.UP, context);
+            propagateAddedSunlight(node.chunk, node.x, node.y, node.z - 1, lightLevel, true, Direction.NORTH, context);
+            propagateAddedSunlight(node.chunk, node.x, node.y, node.z + 1, lightLevel, true, Direction.SOUTH, context);
         }
 
         return context.chunkMeshUpdateRequests;
     }
 
-    private void propagateAddedTorchlight(Chunk c, int x, int y, int z, int lightLevel, LightRunningContext context) {
+    private void propagateAddedTorchlight(Chunk c, int x, int y, int z, int lightLevel, Direction direction, LightRunningContext context) {
         Chunk chunk = c;
+
+        // Stop the light if the source block fully covers the face in the propagation direction.
+        if (isFaceBlocked(c.getBlock(x - direction.getVector().x, y - direction.getVector().y, z - direction.getVector().z), direction)) {
+            return;
+        }
 
         if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
             Vec3i location = new Vec3i(x, y, z);
@@ -241,8 +242,8 @@ public class ChunkLightManager {
             return;
         }
 
-        Block block = chunk.getBlock(x, y, z);
-        if (block != null && !block.isTransparent() && blockingShapes.contains(block.getShape())) {
+        // Stop the light if the target block fully covers the face toward the incoming light.
+        if (isFaceBlocked(chunk.getBlock(x, y, z), direction.opposite())) {
             return;
         }
 
@@ -287,8 +288,13 @@ public class ChunkLightManager {
         }
     }
 
-    private void propagateAddedSunlight(Chunk c, int x, int y, int z, int lightLevel, boolean dimLight, LightRunningContext context) {
+    private void propagateAddedSunlight(Chunk c, int x, int y, int z, int lightLevel, boolean dimLight, Direction direction, LightRunningContext context) {
         Chunk chunk = c;
+
+        // Stop the light if the source block fully covers the face in the propagation direction.
+        if (isFaceBlocked(c.getBlock(x - direction.getVector().x, y - direction.getVector().y, z - direction.getVector().z), direction)) {
+            return;
+        }
 
         if (isOutsideChunk(x, y, z) && c.getChunkResolver() != null) {
             Vec3i location = new Vec3i(x, y, z);
@@ -311,7 +317,7 @@ public class ChunkLightManager {
                 log.debug("PAS2.0 - Dimming light through transparent block at ({}, {}, {})", x, y, z);
                 dimLight = true;
 
-            } else if (blockingShapes.contains(block.getShape())) {
+            } else if (coversFace(block, direction.opposite())) {
                 log.debug("PAS2.1 - Light blocked at ({}, {}, {})", x, y, z);
                 return;
             }
@@ -383,6 +389,28 @@ public class ChunkLightManager {
         } else {
             log.debug("PRS3 - Leaving light ({}, {}, {}) at {}. NL={} LL={} D={}", x, y, z, neighborLevel, neighborLevel, lightLevel, dimLight);
         }
+    }
+
+    /**
+     * Checks if the given block stops the light on the given face, i.e. the block is opaque and its
+     * shape fully covers that face. Transparent blocks (e.g. glass) never block the light.
+     * @param block the block to test (may be null)
+     * @param direction the face to test
+     * @return true if the light must be stopped on this face
+     */
+    private static boolean isFaceBlocked(Block block, Direction direction) {
+        return block != null && !block.isTransparent() && coversFace(block, direction);
+    }
+
+    /**
+     * Checks if the shape of the given block fully covers the given face.
+     * @param block the block to test (may be null)
+     * @param direction the face to test
+     * @return true if the block's shape fully covers the face
+     */
+    private static boolean coversFace(Block block, Direction direction) {
+        return block != null
+                && BlocksConfig.getInstance().getShapeRegistry().get(block.getShape()).fullyCoversFace(direction);
     }
 
     /**
