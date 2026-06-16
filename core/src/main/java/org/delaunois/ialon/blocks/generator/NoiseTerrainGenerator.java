@@ -131,6 +131,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // terrain down. 30 = the default world's water height, keeping that world byte-identical.
     private static final float TERRAIN_BASE_LEVEL = 30f;
 
+    // Soft ceiling : peaks taller than this fraction of the world ceiling are compressed (see getHeight).
+    // Kept above the default-relief max (~0.86 of the ceiling) so the default world is left untouched.
+    private static final float PEAK_SOFT_START_RATIO = 0.88f;
+
     // Fallback world ceiling when none is supplied (mirrors the default gridHeight * chunkHeight).
     private static final int DEFAULT_WORLD_HEIGHT = 7 * 16;
 
@@ -155,6 +159,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // World ceiling (gridHeight * chunkHeight) and the derived surface altitude tier thresholds.
     private final float snowLine;
     private final float rockLine;
+    // Soft ceiling : heights above peakSoftStart are smoothly compressed so they asymptote to peakCeiling
+    // (just under the world ceiling) instead of being flat-cut at the top of the chunk grid. See getHeight.
+    private final float peakSoftStart;
+    private final float peakCeiling;
     private LayeredNoise layeredNoise;
     // Low-frequency forest-density field (tiled when worldSize > 0) and the white-noise hash used to
     // scatter trees/grass. Both are pure functions of their inputs + seed, hence thread-safe to share
@@ -210,6 +218,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         this.worldSize = worldSize;
         this.snowLine = SNOW_LINE_RATIO * worldHeight;
         this.rockLine = ROCK_LINE_RATIO * worldHeight;
+        this.peakSoftStart = PEAK_SOFT_START_RATIO * worldHeight;
+        // Leave 2 blocks of headroom under the ceiling so the highest surface always has air above it
+        // (it stays a normal surface column, never a flat-cut "full" chunk at the very top of the grid).
+        this.peakCeiling = worldHeight - 2f;
         createWorldNoise();
     }
 
@@ -567,7 +579,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                     // Cells 0/1 of the height grid hold min/max (legacy layout), not real heights.
                     continue;
                 }
-                float groundh = heights[index];
+                // The height grid is laid out as [min, max, h(0), h(1), ...], so a column's height lives at
+                // 2 + index -- the SAME slot the surface fill reads (heights[2 + gridIndex] above). Reading
+                // heights[index] instead picked the height 2 cells away in z, which on a slope put the trunk
+                // base above (or below) the actual ground -> trees floating 1 block over steep terrain.
+                float groundh = heights[2 + index];
                 int y = (int) groundh - chunkY;
                 // Trees grow only on the grassy band (treeBandOk) ; the y bounds are this chunk's vertical
                 // slice, so a tree whose base sits in another chunk of the column is skipped here.
@@ -581,8 +597,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                     continue;
                 }
 
-                // No trees on steep ground.
-                if (slopeAt(heights, index, sizez, gridSize) > SLOPE_MAX) {
+                // No trees on steep ground. Same 2 + index height-grid base as groundh above.
+                if (slopeAt(heights, 2 + index, sizez, gridSize) > SLOPE_MAX) {
                     continue;
                 }
 
@@ -944,7 +960,18 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private float getHeight(float worldX, float worldZ, Vector2f sample) {
-        return layeredNoise.evaluate(sample.set(worldX, worldZ), worldSize) + GROUND_MIN;
+        float h = layeredNoise.evaluate(sample.set(worldX, worldZ), worldSize) + GROUND_MIN;
+        // Soft ceiling : at high relief the raw noise far exceeds the world ceiling (gridHeight*chunkHeight),
+        // so peaks would be flat-cut at the top of the chunk grid. Compress everything above peakSoftStart
+        // so it asymptotes smoothly to peakCeiling (just under the ceiling) -- rounded peaks instead of a
+        // sliced plateau, applied to the voxel terrain AND the far horizon (single getHeight source). Below
+        // peakSoftStart (well above the default-relief max) this is a no-op : the default world is unchanged.
+        // C1-continuous at peakSoftStart (unit slope there), so there is no crease along the onset contour.
+        if (h > peakSoftStart) {
+            float range = peakCeiling - peakSoftStart;
+            h = peakSoftStart + range * (1f - (float) Math.exp((peakSoftStart - h) / range));
+        }
+        return h;
     }
 
     /**
