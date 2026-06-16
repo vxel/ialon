@@ -235,12 +235,17 @@ public class IalonConfig implements WorldSettings {
      * Default spawn position for a world with no saved player state : centered on the origin chunk, at
      * the terrain surface plus {@link #playerStartHeight}. Used for newly created worlds (see
      * PlayerState#createPlayer and IalonConfigRepository).
+     *
+     * <p>The surface height is sampled at the ACTUAL spawn column (not the origin) so the player never
+     * starts buried in a slope -- on steep, high-relief terrain the ground at (chunkSize/2, chunkSize/2)
+     * can be many blocks above the origin's. It is also clamped to the water line so a spawn over sea
+     * starts above the surface, not submerged.
      */
     public Vector3f computeSpawnLocation() {
-        return new Vector3f(
-                getChunkSize() / 2f,
-                getTerrainGenerator().getHeight(new Vector3f(0, 0, 0)) + playerStartHeight,
-                getChunkSize() / 2f);
+        float x = getChunkSize() / 2f;
+        float z = getChunkSize() / 2f;
+        float surface = Math.max(getTerrainGenerator().getHeight(new Vector3f(x, 0, z)), getWaterHeight());
+        return new Vector3f(x, surface + playerStartHeight, z);
     }
 
     public Vec3i getGridLowerBound() {

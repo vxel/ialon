@@ -147,6 +147,75 @@ class NoiseTerrainGeneratorTest {
     }
 
     /**
+     * The soft ceiling must keep even max-relief peaks under the world ceiling (gridHeight*chunkHeight),
+     * so they round off instead of being flat-cut at the top of the chunk grid.
+     */
+    @Test
+    void maxReliefPeaksStayUnderCeiling() {
+        IalonConfig config = new IalonConfig();
+        int ceiling = config.getMaxy();
+        NoiseTerrainGenerator gen = new NoiseTerrainGenerator(2, 30f, ceiling, config.getWorldSize());
+        gen.setReliefAmplitude(2.5f); // slider max
+        com.jme3.math.Vector3f p = new com.jme3.math.Vector3f();
+        for (int wx = -2048; wx < 2048; wx += 8) {
+            for (int wz = -2048; wz < 2048; wz += 8) {
+                float h = gen.getHeight(p.set(wx, 0, wz));
+                org.junit.jupiter.api.Assertions.assertTrue(h <= ceiling - 2f,
+                        "peak height " + h + " must stay under the ceiling " + ceiling + " at (" + wx + "," + wz + ")");
+            }
+        }
+    }
+
+    /**
+     * Trees must be rooted in the ground, never floating : the trunk base must read its column height from
+     * the same slot the surface fill uses (heights[2 + index]). A mismatch made trees float 1 block on
+     * slopes. Scans a wide area and asserts no trunk has an air gap below its lowest log.
+     */
+    @Test
+    void treesAreNeverFloating() {
+        IalonConfig config = new IalonConfig();
+        int ch = config.getChunkHeight();
+        int gh = config.getGridHeight();
+        int chunkSize = BlocksConfig.getInstance().getChunkSize().x;
+        int colH = ch * gh;
+
+        org.delaunois.ialon.blocks.BlockRegistry reg = BlocksConfig.getInstance().getBlockRegistry();
+        java.util.Set<Short> logIds = new java.util.HashSet<>();
+        for (String n : new String[]{org.delaunois.ialon.blocks.BlockIds.OAK_LOG, org.delaunois.ialon.blocks.BlockIds.BIRCH_LOG,
+                org.delaunois.ialon.blocks.BlockIds.SPRUCE_LOG, org.delaunois.ialon.blocks.BlockIds.PALM_TREE_LOG}) {
+            logIds.add(reg.get(n).getId());
+        }
+
+        NoiseTerrainGenerator gen = new NoiseTerrainGenerator(2, 30f, config.getMaxy(), config.getWorldSize());
+        int trees = 0;
+        int span = 16;
+        for (int cx = -span; cx <= span; cx++) {
+            for (int cz = -span; cz <= span; cz++) {
+                Chunk[] col = new Chunk[gh];
+                for (int cy = 0; cy < gh; cy++) col[cy] = gen.generate(new Vec3i(cx, cy, cz));
+                for (int lx = 0; lx < chunkSize; lx++) {
+                    for (int lz = 0; lz < chunkSize; lz++) {
+                        int lowestLog = -1;
+                        for (int wy = 0; wy < colH && lowestLog < 0; wy++) {
+                            org.delaunois.ialon.blocks.Block b = col[wy / ch].getBlock(lx, wy % ch, lz);
+                            if (b != null && logIds.contains(b.getId())) lowestLog = wy;
+                        }
+                        if (lowestLog < 0) continue;
+                        trees++;
+                        // The block directly below the trunk base must be solid (the surface) -- not air.
+                        org.delaunois.ialon.blocks.Block below = lowestLog > 0
+                                ? col[(lowestLog - 1) / ch].getBlock(lx, (lowestLog - 1) % ch, lz) : null;
+                        org.junit.jupiter.api.Assertions.assertNotNull(below,
+                                "floating tree (air below trunk base) at world(" + (cx * chunkSize + lx)
+                                        + "," + (cz * chunkSize + lz) + ") base=" + lowestLog);
+                    }
+                }
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(trees > 100, "expected many trees in the scanned area, got " + trees);
+    }
+
+    /**
      * The relief amplitude knob must actually reshape the terrain : doubling it changes the heightmap.
      */
     @Test
