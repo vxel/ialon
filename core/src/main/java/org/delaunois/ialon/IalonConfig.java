@@ -119,6 +119,16 @@ public class IalonConfig implements WorldSettings {
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
+
+    // Underwater view : a full-screen post-process (UnderwaterState) applied only while the camera is
+    // below waterHeight - a bluish distance fog that shortens the view range plus a gentle ripple
+    // ("eau qui bouge"). Authored sRGB, stored linear (setAsSrgb), like the other displayed colours.
+    private ColorRGBA underwaterFogColor = new ColorRGBA().setAsSrgb(0.10f, 0.30f, 0.42f, 1f); // deep blue-green
+    private float underwaterFogDistance = 80f;  // distance scale of the fog (smaller = shorter view)
+    private float underwaterFogDensity = 1.8f;   // fog thickness
+    private float underwaterDistortionAmplitude = 0.002f; // ripple strength (texCoord units)
+    private float underwaterDistortionSpeed = 1.0f;       // ripple speed
+    private float underwaterDistortionFrequency = 18f;    // ripple spatial frequency
     private float ambiantIntensity = 0.55f;
     private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;

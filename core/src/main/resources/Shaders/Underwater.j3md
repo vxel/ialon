@@ -1,0 +1,48 @@
+MaterialDef Underwater {
+
+    // Full-screen underwater post-process : view ripple (refraction) + bluish distance fog.
+    // Driven by UnderwaterFilter / UnderwaterState ; only active while the camera is submerged.
+
+    MaterialParameters {
+        // Filled automatically by the FilterPostProcessor :
+        Int BoundDrawBuffer
+        Int NumSamples
+        Int NumSamplesDepth
+        Texture2D Texture
+        Texture2D DepthTexture
+
+        // Bluish distance fog (same exp-squared model as the terrain fog) :
+        Color FogColor
+        Float FogDensity
+        Float FogDistance
+        Matrix4 ViewProjInverse
+        Vector3 CameraPosition
+
+        // View ripple / refraction :
+        Float DistortionAmplitude
+        Float DistortionSpeed
+        Float DistortionFrequency
+
+        Float Intensity // 0 = surface (no effect), 1 = fully submerged
+        Float Time      // seconds, animates the ripple
+
+        // Emulate the sRGB output encode in-shader where the hardware sRGB framebuffer is missing
+        // (Android GLES) ; on desktop the hardware does it and this define compiles out.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader GLSL310 GLSL300 GLSL150 GLSL100:   Shaders/Underwater.vert
+        FragmentShader GLSL310 GLSL300 GLSL150 GLSL100: Shaders/Underwater.frag
+
+        WorldParameters {
+        }
+
+        Defines {
+            BOUND_DRAW_BUFFER : BoundDrawBuffer
+            RESOLVE_MS : NumSamples
+            RESOLVE_DEPTH_MS : NumSamplesDepth
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

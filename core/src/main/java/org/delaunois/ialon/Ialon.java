@@ -38,6 +38,7 @@ import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
+import org.delaunois.ialon.state.UnderwaterState;
 import org.delaunois.ialon.state.WaterState;
 import org.delaunois.ialon.state.WireframeState;
 import org.delaunois.ialon.state.WorldMenuState;
@@ -138,6 +139,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
         stateManager.attach(new WaterState(config)); // Animates the calm-water shader, depends on SunState + SkyState
+        stateManager.attach(new UnderwaterState(config)); // Underwater post-process (bluish fog + ripple) when submerged, depends on SkyState
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
