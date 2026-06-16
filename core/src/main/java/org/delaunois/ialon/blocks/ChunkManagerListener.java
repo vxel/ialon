@@ -14,4 +14,11 @@ public interface ChunkManagerListener {
     void onChunkAvailable(Chunk chunk);
 
     default void onChunkFetched(Chunk chunk) {};
+
+    /**
+     * Called when a chunk is about to be unfetched (paged out of the loaded grid), while it is still
+     * available in the cache. Useful to capture the chunk's final state right before it leaves — e.g.
+     * to refresh the distant far-terrain relief for an edited chunk that becomes visible at the horizon.
+     */
+    default void onChunkUnfetched(Chunk chunk) {};
 }

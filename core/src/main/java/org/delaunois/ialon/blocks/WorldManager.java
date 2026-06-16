@@ -300,18 +300,21 @@ public class WorldManager {
     }
 
     /**
-     * Records a player edit into the far-horizon overlay : queues the edited world column for a far
-     * heightmap refresh (so the distant relief follows large-scale digging/building) and fells — or,
-     * when {@code added}, restores — the far tree billboard if the touched block is a trunk LOG at a
-     * procedural tree's anchor column. A no-op when no overlay/generator is wired (tests, non-noise
-     * generators).
+     * Records a player edit into the far-horizon overlay. Cheap : it only <b>marks the chunk column</b>
+     * as edited (so the far terrain refreshes it later, when the column is unfetched and becomes visible
+     * at the horizon — never on the edit itself, since the far terrain is hidden while the chunk is
+     * loaded) and, for a trunk LOG, fells/restores the far tree billboard. No relief scan, no mesh work.
+     * A no-op when no overlay/generator is wired (tests, non-noise generators).
      */
     private void recordEdit(Vector3f location, Block block, boolean added) {
         if (noiseGenerator == null) {
             return;
         }
-        Vec3i bl = ChunkManager.getBlockLocation(location);
+        Vec3i cl = ChunkManager.getChunkLocation(location);
+        worldEditOverlay.markColumnEdited(WorldEditOverlay.pack(cl.x, cl.z));
+
         if (block != null && isLog(block.getType())) {
+            Vec3i bl = ChunkManager.getBlockLocation(location);
             long cellKey = noiseGenerator.trunkAnchorCellKeyAt(bl.x, bl.z);
             if (cellKey != -1L) {
                 if (added) {
@@ -321,9 +324,6 @@ public class WorldManager {
                 }
             }
         }
-        // The far terrain re-measures the affected heightmap SAMPLE from the world (FarTerrainState),
-        // so we only need to flag the column that changed, in world coords (the sample is found there).
-        worldEditOverlay.addDirtyColumn(WorldEditOverlay.pack(bl.x, bl.z));
     }
 
     /**

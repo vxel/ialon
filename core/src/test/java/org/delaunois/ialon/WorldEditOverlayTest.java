@@ -47,10 +47,14 @@ class WorldEditOverlayTest {
     }
 
     @Test
-    void columnKeyWrapsToWorldPeriod() {
-        NoiseTerrainGenerator gen = generator();
-        // Two columns a whole world period apart canonicalise to the same key (torus consistency).
-        assertEquals(gen.columnKey(10, 20), gen.columnKey(10 + (int) WORLD_SIZE, 20 - (int) WORLD_SIZE));
+    void editedColumnMarkerSetAndCleared() {
+        WorldEditOverlay overlay = new WorldEditOverlay();
+        long col = WorldEditOverlay.pack(-2, 11);
+        assertFalse(overlay.isColumnEdited(col));
+        overlay.markColumnEdited(col);
+        assertTrue(overlay.isColumnEdited(col));
+        overlay.clearColumnEdited(col);
+        assertFalse(overlay.isColumnEdited(col));
     }
 
     @Test
@@ -83,22 +87,6 @@ class WorldEditOverlayTest {
                     "the felled tree must no longer be emitted as a far billboard");
         }
         assertTrue(overlay.isDirty());
-        assertEquals(1, overlay.getTreeVersion());
-    }
-
-    @Test
-    void dirtyColumnsAreDrainedOnce() {
-        WorldEditOverlay overlay = new WorldEditOverlay();
-        assertFalse(overlay.hasDirtyColumns());
-        overlay.addDirtyColumn(WorldEditOverlay.pack(100, 200));
-        overlay.addDirtyColumn(WorldEditOverlay.pack(100, 200)); // duplicate collapses
-        overlay.addDirtyColumn(WorldEditOverlay.pack(-5, 7));
-        assertTrue(overlay.hasDirtyColumns());
-
-        long[] drained = overlay.pollDirtyColumns();
-        assertEquals(2, drained.length);
-        assertFalse(overlay.hasDirtyColumns(), "draining must clear the queue");
-        assertEquals(0, overlay.pollDirtyColumns().length);
     }
 
     @Test

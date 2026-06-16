@@ -248,6 +248,9 @@ public class ChunkPager {
                 log.warn("Trying to unfetch page at location {} that isn't attached.", pageLocation);
             } else {
                 fetchedPages.remove(pageLocation);
+                // Notify (chunk still cached) so e.g. the far terrain can capture an edited chunk's
+                // final relief as it leaves the grid, then evict.
+                chunkManager.triggerListenerChunkUnfetched(page);
                 chunkManager.fastRemoveChunk(pageLocation);
                 unfetched += 1;
             }
