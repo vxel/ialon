@@ -33,18 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li><b>removed tree anchors</b> : the scatter cells whose trunk the player cut down — the far
  *       billboards skip them (see {@code NoiseTerrainGenerator#forEachTreeAnchor}).</li>
  *   <li><b>height overrides</b> : the measured ground height of a far-terrain heightmap <b>sample</b>
- *       that the player reshaped — the far heightmap is patched there (see {@code FarTerrainState}).
- *       Keyed by sample (not by the raw edited column) so the value is the ground at that exact
- *       sample : an off-sample single-block edit therefore moves nothing (sub-resolution), instead of
- *       dragging a sample to a slope-mismatched height and flashing water where there is land.</li>
+ *       the player reshaped — the far heightmap is patched there (see {@code FarTerrainState}).</li>
  * </ul>
  *
- * <p>The far renderers run partly off the render thread, so the collections are concurrent. Tree and
- * terrain edits are tracked by <b>separate</b> version counters so a relief edit does not needlessly
- * rebuild the far-tree mesh and vice versa. The transient {@link #pollDirtyColumns() dirty-column}
- * queue carries freshly-edited <i>world</i> columns to {@code FarTerrainState}, which converts each to
- * the affected sample and re-measures it from the live world. A {@link #isDirty() dirty} flag tells
- * the persistence layer there is something to save.
+ * <p>The overrides are (re)computed lazily, when an edited chunk is <i>unfetched</i> (leaves the
+ * loaded grid and becomes visible at the horizon) — never on the edit itself, since the far terrain
+ * is discarded inside the loaded grid. This class is therefore just the shared, thread-safe store ;
+ * the collections are concurrent because the far-tree mesh is built off the render thread. A
+ * {@link #isDirty() dirty} flag tells the persistence layer there is something to save.
  *
  * @author Cedric de Launois
  */
@@ -56,12 +52,15 @@ public class WorldEditOverlay {
     /** Canonical far-terrain SAMPLE column key -> measured ground height (persisted). */
     private final Map<Long, Float> heightOverrides = new ConcurrentHashMap<>();
 
-    /** Freshly edited WORLD columns awaiting a far-sample refresh (transient, not persisted). */
-    private final Set<Long> dirtyColumns = ConcurrentHashMap.newKeySet();
+    /**
+     * Chunk columns (raw {@code pack(chunkX, chunkZ)}) edited this session and not yet reflected at the
+     * horizon. Transient (not persisted) : a cheap marker set on every edit so {@code FarTerrainState}
+     * can, when such a column is unfetched, recompute its far samples — and skip the scan entirely for
+     * the untouched columns the player merely walks past. Persisted worlds rely on {@link #heightOverrides}
+     * replayed at load instead.
+     */
+    private final Set<Long> editedColumns = ConcurrentHashMap.newKeySet();
 
-    // Separate counters so a relief edit doesn't rebuild the far trees, nor a felled tree the relief.
-    private volatile int treeVersion;
-    private volatile int terrainVersion;
     // Set on every persisted change, cleared by the persistence layer once written to disk.
     private volatile boolean dirty;
 
@@ -83,7 +82,6 @@ public class WorldEditOverlay {
     /** Marks the scatter cell {@code cellKey} as cut down : its far billboard is no longer drawn. */
     public void removeTree(long cellKey) {
         if (removedTrees.add(cellKey)) {
-            treeVersion++;
             dirty = true;
         }
     }
@@ -91,7 +89,6 @@ public class WorldEditOverlay {
     /** Undoes {@link #removeTree} (e.g. a log replanted at the trunk) so the far billboard returns. */
     public void restoreTree(long cellKey) {
         if (removedTrees.remove(cellKey)) {
-            treeVersion++;
             dirty = true;
         }
     }
@@ -104,36 +101,7 @@ public class WorldEditOverlay {
         return removedTrees;
     }
 
-    /** Bumped only on tree changes ; {@code FarTreeState} rebuilds when it moves. */
-    public int getTreeVersion() {
-        return treeVersion;
-    }
-
-    // --- Relief : dirty-column queue + sample overrides ----------------------------------------------
-
-    /** Queues a freshly edited WORLD column (raw, not canonical) for a far-sample refresh. */
-    public void addDirtyColumn(long worldColumnKey) {
-        dirtyColumns.add(worldColumnKey);
-        terrainVersion++;
-    }
-
-    public boolean hasDirtyColumns() {
-        return !dirtyColumns.isEmpty();
-    }
-
-    /** Returns and clears the queued dirty world columns (drained by {@code FarTerrainState}). */
-    public long[] pollDirtyColumns() {
-        if (dirtyColumns.isEmpty()) {
-            return new long[0];
-        }
-        Long[] keys = dirtyColumns.toArray(new Long[0]);
-        long[] out = new long[keys.length];
-        for (int i = 0; i < keys.length; i++) {
-            out[i] = keys[i];
-            dirtyColumns.remove(keys[i]);
-        }
-        return out;
-    }
+    // --- Relief : sample height overrides ------------------------------------------------------------
 
     /** Records (or, with NaN, clears) the measured ground height of a canonical far-terrain sample. */
     public void putHeight(long sampleKey, float groundY) {
@@ -149,13 +117,25 @@ public class WorldEditOverlay {
         return heightOverrides;
     }
 
-    public int getTerrainVersion() {
-        return terrainVersion;
+    // --- Edited-column markers (transient) -----------------------------------------------------------
+
+    /** Flags a chunk column (raw {@code pack(chunkX, chunkZ)}) as edited, pending a far-relief refresh. */
+    public void markColumnEdited(long chunkColumnKey) {
+        editedColumns.add(chunkColumnKey);
+    }
+
+    public boolean isColumnEdited(long chunkColumnKey) {
+        return !editedColumns.isEmpty() && editedColumns.contains(chunkColumnKey);
+    }
+
+    /** Clears the marker once the column's far samples have been recomputed (on unfetch). */
+    public void clearColumnEdited(long chunkColumnKey) {
+        editedColumns.remove(chunkColumnKey);
     }
 
     // --- Change tracking -----------------------------------------------------------------------------
 
-    /** True when there is nothing to persist (the transient dirty-column queue does not count). */
+    /** True when there is nothing to persist. */
     public boolean isEmpty() {
         return removedTrees.isEmpty() && heightOverrides.isEmpty();
     }
@@ -170,13 +150,10 @@ public class WorldEditOverlay {
 
     /** Drops every edit (used when switching worlds before reloading the new world's overlay). */
     public void clear() {
-        boolean had = !isEmpty() || !dirtyColumns.isEmpty();
-        removedTrees.clear();
-        heightOverrides.clear();
-        dirtyColumns.clear();
-        if (had) {
-            treeVersion++;
-            terrainVersion++;
+        editedColumns.clear();
+        if (!isEmpty()) {
+            removedTrees.clear();
+            heightOverrides.clear();
             dirty = true;
         }
     }

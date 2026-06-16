@@ -410,6 +410,11 @@ public class ChunkManager {
         listeners.forEach(listener -> listener.onChunkFetched(chunk));
     }
 
+    /** Notifies listeners that a chunk is about to be unfetched (still cached). Called by the pager. */
+    void triggerListenerChunkUnfetched(Chunk chunk) {
+        listeners.forEach(listener -> listener.onChunkUnfetched(chunk));
+    }
+
     private void addToCache(Chunk chunk) {
         cache.put(chunk);
         chunk.setChunkResolver(cache);

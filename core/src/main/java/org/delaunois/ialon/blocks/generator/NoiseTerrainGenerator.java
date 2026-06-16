@@ -844,11 +844,6 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         return cellKey(hx, hz);
     }
 
-    /** Canonical block-column key (worldX, worldZ), for the relief height overrides. */
-    public long columnKey(int worldX, int worldZ) {
-        return WorldEditOverlay.pack(canonical(worldX), canonical(worldZ));
-    }
-
     /**
      * Picks the tree species without a biome system : spruce caps the cool highlands, palms fringe the
      * warm shore, and the middle band is broadleaf — oak or birch, chosen per wood by a low-frequency
