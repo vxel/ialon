@@ -179,7 +179,12 @@ public class IalonConfigRepository {
         }
     }
 
-    private static void saveGameSettings(IalonConfig config) {
+    /**
+     * Persists only the global game settings (game.yml), leaving the per-world player state untouched.
+     * Used by the memory guard to durably record a lowered render distance without overwriting the live
+     * player position with a possibly-stale config value (unlike {@link #saveConfig(IalonConfig)}).
+     */
+    public static void saveGameSettings(IalonConfig config) {
         Path savePath = config.getSavePath();
         if (savePath == null) {
             return;

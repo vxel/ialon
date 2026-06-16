@@ -32,6 +32,7 @@ import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.ScreenState;
+import org.delaunois.ialon.state.MemoryGuardState;
 import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SplashscreenState;
@@ -145,6 +146,9 @@ public class Ialon extends SimpleApplication {
         // Attach the world-dependent states (chunk paging, physics, far terrain, world builder) last :
         // they are also re-attached as a group by WorldSelectionState when the player switches world.
         IalonInitializer.attachWorldStates(this, config);
+        // Memory safety net : lowers the render distance under heap pressure (depends on the chunk pager
+        // attached just above). Mostly relevant on Android, harmless on desktop.
+        stateManager.attach(new MemoryGuardState(config));
         stateManager.attach(new AnimationState());
 
         IalonInitializer.setupGui(this, config); // Must be after block framework is initialized

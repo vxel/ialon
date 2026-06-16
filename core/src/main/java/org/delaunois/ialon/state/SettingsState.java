@@ -305,30 +305,48 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     }
 
     public void saveConfig() {
-        int radius = (int) gridSize.getValue();
-        boolean radiusChanged = radius != config.getGridRadius();
-        config.setGridRadius(radius);
-        int size = radius * 2 + 1;
-        BlocksConfig.getInstance().setGrid(new Vec3i(size, config.getGridHeight() * 2 + 1, size));
-        if (app != null) {
-            app.getStateManager().getState(ChunkPagerState.class).getChunkPager().updateGridSize();
-        }
+        applyRenderDistance((int) gridSize.getValue());
 
         config.setAmbiantIntensity((float)ambientIntensity.getValue());
 
         applyFarTrees((float) farTreeDistance.getValue());
+    }
+
+    /**
+     * Applies a render-distance ({@code gridRadius}) change live : updates the config (clamped to its
+     * min/max), resizes the chunk grid and re-pages, and rebuilds the far terrain / far trees that scale
+     * with the render distance. Reused by the settings popup and by the {@link MemoryGuardState} when it
+     * steps the render distance down under memory pressure. The slider widget is kept in sync so the UI
+     * reflects the (possibly clamped) value.
+     */
+    public void applyRenderDistance(int radius) {
+        boolean radiusChanged = radius != config.getGridRadius();
+        config.setGridRadius(radius);
+        int actual = config.getGridRadius(); // after clamp to [gridRadiusMin, gridRadiusMax]
+        int size = actual * 2 + 1;
+        BlocksConfig.getInstance().setGrid(new Vec3i(size, config.getGridHeight() * 2 + 1, size));
+        if (app != null) {
+            ChunkPagerState pagerState = app.getStateManager().getState(ChunkPagerState.class);
+            if (pagerState != null) {
+                pagerState.getChunkPager().updateGridSize();
+            }
+        }
 
         if (radiusChanged) {
             // The far terrain's inner-radius discard and the enclosure box both scale with the render
             // distance ; the far trees ring starts just beyond the loaded chunks too.
-            FarTerrainState farTerrainState = app.getStateManager().getState(FarTerrainState.class);
+            FarTerrainState farTerrainState = app == null ? null : app.getStateManager().getState(FarTerrainState.class);
             if (farTerrainState != null) {
                 farTerrainState.onRenderDistanceChanged();
             }
-            FarTreeState farTreeState = app.getStateManager().getState(FarTreeState.class);
+            FarTreeState farTreeState = app == null ? null : app.getStateManager().getState(FarTreeState.class);
             if (farTreeState != null) {
                 farTreeState.requestRebuild();
             }
+        }
+
+        if (gridSize != null) {
+            gridSize.setValue(actual);
         }
     }
 

@@ -17,6 +17,7 @@
 
 package org.delaunois.ialon;
 
+import android.app.ActivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -98,8 +99,17 @@ public class MainActivity extends AndroidHarness {
         config.setSaveUserSettingsOnStop(false);
         IalonConfigRepository.loadConfig(config);
         config.setDevMode(false);
-        config.setGridRadiusMax(7);
+        // Cap the render distance to what the device's Java (ART) heap can hold. The grid loads
+        // (2*gridRadius+1)^2 * gridHeight chunks, and each chunk keeps its blocks short[] + lightMap
+        // byte[] on the heap : pushing gridRadius too high on a low-RAM device throws OutOfMemoryError.
+        // largeHeap (AndroidManifest) raises that ceiling ; getLargeMemoryClass() reports the resulting
+        // heap budget so we scale the max accordingly (a flagship keeps 7, an entry-level phone is
+        // limited automatically). The runtime MemoryGuardState is the last-resort safety net.
         config.setGridRadiusMin(2);
+        config.setGridRadiusMax(maxGridRadiusForDevice());
+        // loadConfig() above clamped the persisted gridRadius against the default max (15) ; re-clamp it
+        // now against the (lower) device-specific max so a value saved on a roomier session is brought down.
+        config.setGridRadius(config.getGridRadius());
         config.setMaxUpdatePerFrame(2);
         // Apply the persisted frame-rate cap (toggled in the in-game settings). Keep the harness field
         // in sync as it is what the GL surface reads.
@@ -108,6 +118,21 @@ public class MainActivity extends AndroidHarness {
         ((Ialon) app).setConfig(config);
 
         super.onStart();
+    }
+
+    /**
+     * Maximum render distance (gridRadius) the device can afford, derived from its large-heap Java
+     * budget ({@link ActivityManager#getLargeMemoryClass()}, in MB).
+     */
+    private int maxGridRadiusForDevice() {
+        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        int heapMb = am == null ? 0 : am.getLargeMemoryClass();
+        logger.log(Level.INFO, "Device large heap class: {0} MB", heapMb);
+        if (heapMb < 128) return 5;
+        if (heapMb < 192) return 6;
+        if (heapMb < 256) return 7;
+        if (heapMb < 384) return 8;
+        return 9;
     }
 
     @Override
