@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -36,6 +37,15 @@ public class ChunkManager {
     private final ChunkRepository repository;
     private final ChunkGenerator generator;
     private final List<ChunkManagerListener> listeners = new CopyOnWriteArrayList<>();
+
+    /**
+     * Set when a chunk generation/meshing task hits an {@link OutOfMemoryError}. Chunk work runs on
+     * worker threads, so the error cannot propagate to the main loop : instead we swallow it, drop the
+     * offending chunk, and raise this flag. The memory guard (main thread) polls it via
+     * {@link #consumeMemoryPressure()} and reacts by lowering the render distance before the heap is
+     * exhausted again.
+     */
+    private final AtomicBoolean memoryPressure = new AtomicBoolean(false);
 
     @Builder
     private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize) {
@@ -136,10 +146,22 @@ public class ChunkManager {
             }
             triggerListenerChunkFetched(chunk);
             return chunk;
+        } catch (OutOfMemoryError e) {
+            memoryPressure.set(true);
+            log.warn("Out of memory while generating chunk at {} - dropping it", location);
+            return null;
         } catch (Exception e) {
             log.error("Exception while generating chunk", e);
             return null;
         }
+    }
+
+    /**
+     * Returns and clears the "a chunk task ran out of memory" flag (see {@link #memoryPressure}).
+     * Polled by the memory guard on the main thread.
+     */
+    public boolean consumeMemoryPressure() {
+        return memoryPressure.getAndSet(false);
     }
 
     public Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations) {
@@ -240,9 +262,14 @@ public class ChunkManager {
     private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers) {
         results.add(
                 requestExecutor.submit(() -> {
-                    meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
-                    if (triggers) {
-                        triggerListenerChunkAvailable(chunk);
+                    try {
+                        meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
+                        if (triggers) {
+                            triggerListenerChunkAvailable(chunk);
+                        }
+                    } catch (OutOfMemoryError e) {
+                        memoryPressure.set(true);
+                        log.warn("Out of memory while meshing chunk at {} - dropping its mesh", chunk.getLocation());
                     }
                     return chunk;
                 })
