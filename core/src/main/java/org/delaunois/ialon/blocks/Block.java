@@ -72,6 +72,14 @@ public class Block {
     private boolean torchlight;
 
     /**
+     * Flag indicating if the block counts as natural ground that shapes the terrain : when the player
+     * digs or stacks such blocks, the distant far-terrain heightmap follows. Normal building blocks
+     * (bricks, planks, cobblestone, ...) leave it false so constructions don't deform the far horizon.
+     * Set true only for the generator's surface cubes (grass, dirt, sand, rock, snow, grass_snow).
+     */
+    private boolean terrain;
+
+    /**
      * The water level (<0 does not allow water, 0 none, 6 = full, 7 = source)
      */
     @Builder.Default

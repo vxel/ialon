@@ -33,6 +33,7 @@ import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.jme.TextureAtlas;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.blocks.generator.TerrainGenerator;
@@ -122,6 +123,11 @@ public class FarTreeState extends BaseAppState {
     // float above the under-sampled relief the far terrain actually renders. Mirrors FarTerrainState.
     private float farGridStep;
 
+    // Player-edit overlay : when it changes (e.g. a tree cut down), force a rebuild so the felled
+    // billboard disappears immediately, without waiting for the player to roam a full chunk away.
+    private WorldEditOverlay editOverlay;
+    private int lastOverlayVersion = -1;
+
     public FarTreeState(IalonConfig config) {
         this.config = config;
     }
@@ -136,6 +142,7 @@ public class FarTreeState extends BaseAppState {
             return;
         }
         this.generator = (NoiseTerrainGenerator) gen;
+        this.editOverlay = config.getWorldEditOverlay();
 
         // Far-terrain heightmap grid spacing : extent / (HEIGHTMAP_SIZE - 1), with HEIGHTMAP_SIZE = 513
         // and extent = 2*worldSize on the torus (else farTerrainExtent). Must match FarTerrainState.
@@ -255,6 +262,13 @@ public class FarTreeState extends BaseAppState {
         }
 
         bindLiveColors();
+
+        // A tree was felled/restored : force a rebuild so the affected billboards refresh now, instead
+        // of waiting for the player to cross a chunk boundary. (Relief edits use a separate counter.)
+        if (editOverlay != null && editOverlay.getTreeVersion() != lastOverlayVersion) {
+            lastOverlayVersion = editOverlay.getTreeVersion();
+            requestRebuild();
+        }
 
         // Rebuild when the player has roamed more than a chunk from the last build centre : the region is
         // an annulus around the player, so it must follow them. Only one build runs at a time.

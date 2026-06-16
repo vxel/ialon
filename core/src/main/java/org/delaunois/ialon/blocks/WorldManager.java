@@ -9,6 +9,8 @@ import static org.delaunois.ialon.blocks.shapes.Liquid.LEVEL_MAX;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,12 +38,26 @@ public class WorldManager {
     @Getter
     private final ChunkLiquidManager chunkLiquidManager;
 
+    // Optional far-horizon edit overlay : records felled trees and reshaped relief so the distant
+    // (procedurally regenerated) terrain/trees honour the player's edits. Null in tests / when no
+    // NoiseTerrainGenerator is in use ; recording is then a no-op.
+    private final WorldEditOverlay worldEditOverlay;
+    private final NoiseTerrainGenerator noiseGenerator;
+
     private static final Vector3f NORTH = new Vector3f(0, 0, -1);
 
     public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager) {
+        this(chunkManager, chunkLightManager, chunkLiquidManager, null, null);
+    }
+
+    public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager,
+                        ChunkLiquidManager chunkLiquidManager, WorldEditOverlay worldEditOverlay,
+                        NoiseTerrainGenerator noiseGenerator) {
         this.chunkManager = chunkManager;
         this.chunkLightManager = chunkLightManager;
         this.chunkLiquidManager = chunkLiquidManager;
+        this.worldEditOverlay = worldEditOverlay;
+        this.noiseGenerator = noiseGenerator;
         if (chunkLiquidManager == null) {
             log.warn("No ChunkLiquidManager given. Liquid flow will not be supported.");
         }
@@ -55,6 +71,14 @@ public class WorldManager {
     }
 
     public Set<Vec3i> addBlock(Vector3f location, Block block) {
+        Set<Vec3i> result = doAddBlock(location, block);
+        if (worldEditOverlay != null && !result.isEmpty()) {
+            recordEdit(location, block, true);
+        }
+        return result;
+    }
+
+    private Set<Vec3i> doAddBlock(Vector3f location, Block block) {
         Set<Vec3i> emptyChunkSet = new LinkedHashSet<>();
         Vec3i chunkLocation = ChunkManager.getChunkLocation(location);
         Chunk chunk = chunkManager.getChunk(chunkLocation).orElse(null);
@@ -198,6 +222,16 @@ public class WorldManager {
     }
 
     public Set<Vec3i> removeBlock(Vector3f location) {
+        // Capture the block before removal so the edit recorder can tell whether a tree trunk was cut.
+        Block removed = (worldEditOverlay != null) ? getBlock(location) : null;
+        Set<Vec3i> result = doRemoveBlock(location);
+        if (worldEditOverlay != null && !result.isEmpty()) {
+            recordEdit(location, removed, false);
+        }
+        return result;
+    }
+
+    private Set<Vec3i> doRemoveBlock(Vector3f location) {
         log.info("Removing block at {}", location);
 
         if (location.y <= 1) {
@@ -263,6 +297,58 @@ public class WorldManager {
         chunkManager.requestOrderedMeshChunks(chunks);
 
         return chunks;
+    }
+
+    /**
+     * Records a player edit into the far-horizon overlay : queues the edited world column for a far
+     * heightmap refresh (so the distant relief follows large-scale digging/building) and fells — or,
+     * when {@code added}, restores — the far tree billboard if the touched block is a trunk LOG at a
+     * procedural tree's anchor column. A no-op when no overlay/generator is wired (tests, non-noise
+     * generators).
+     */
+    private void recordEdit(Vector3f location, Block block, boolean added) {
+        if (noiseGenerator == null) {
+            return;
+        }
+        Vec3i bl = ChunkManager.getBlockLocation(location);
+        if (block != null && isLog(block.getType())) {
+            long cellKey = noiseGenerator.trunkAnchorCellKeyAt(bl.x, bl.z);
+            if (cellKey != -1L) {
+                if (added) {
+                    worldEditOverlay.restoreTree(cellKey);
+                } else {
+                    worldEditOverlay.removeTree(cellKey);
+                }
+            }
+        }
+        // The far terrain re-measures the affected heightmap SAMPLE from the world (FarTerrainState),
+        // so we only need to flag the column that changed, in world coords (the sample is found there).
+        worldEditOverlay.addDirtyColumn(WorldEditOverlay.pack(bl.x, bl.z));
+    }
+
+    /**
+     * Ground height of a world column : the topmost block flagged as natural terrain (see
+     * {@link Block#isTerrain()} — grass / dirt / sand / rock / snow cubes), scanned from {@code ceiling}
+     * down. Building blocks, vegetation (logs, leaves, plants) and water are therefore ignored, so only
+     * digging/stacking actual ground reshapes the far horizon. The "+1" puts the result at the top
+     * surface, matching the generator's height convention. Returns {@link Float#NaN} when no terrain
+     * block is loaded in the column (treat as "unknown / keep the procedural height", not a hole).
+     * Used by {@code FarTerrainState} to re-measure samples.
+     */
+    public static float groundHeight(ChunkManager chunkManager, int worldX, int worldZ, int ceiling) {
+        Vector3f scan = new Vector3f();
+        for (int y = ceiling - 1; y >= 0; y--) {
+            Block b = chunkManager.getBlock(scan.set(worldX, y, worldZ)).orElse(null);
+            if (b != null && b.isTerrain()) {
+                return y + 1f;
+            }
+        }
+        return Float.NaN;
+    }
+
+    private static boolean isLog(String type) {
+        return TypeIds.OAK_LOG.equals(type) || TypeIds.BIRCH_LOG.equals(type)
+                || TypeIds.SPRUCE_LOG.equals(type) || TypeIds.PALM_TREE_LOG.equals(type);
     }
 
     public int getSunlightLevel(Vector3f location) {

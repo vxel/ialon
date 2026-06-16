@@ -40,9 +40,15 @@ import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
+import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.blocks.ChunkMeshGenerator;
 import org.delaunois.ialon.blocks.FacesMeshGenerator;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
@@ -136,6 +142,14 @@ public class FarTerrainState extends BaseAppState {
     // tracks the tile snap (a multiple of the period, so the periodic density texture stays aligned).
     private final Vector2f forestOrigin = new Vector2f();
     private boolean forestTintEnabled = false;
+    // World units between two heightmap samples (extent / (HEIGHTMAP_SIZE - 1)) ; kept so the player-edit
+    // height overrides can be converted back into the heightmap's pre-scaled units (see sampleHeightmap).
+    private float step;
+    // Player edits to the relief : each edited column is mapped to its nearest heightmap SAMPLE, which is
+    // then re-measured from the live world (so an off-sample single-block edit moves nothing — it is
+    // sub-resolution — instead of dragging a sample to a slope-mismatched height). Bound at init.
+    private WorldEditOverlay editOverlay;
+    private TerrainGenerator terrainGen;
 
     public FarTerrainState(IalonConfig config) {
         // Finite (torus) world : span 2 tiles, centered on the player's tile (see update()). With the
@@ -162,7 +176,8 @@ public class FarTerrainState extends BaseAppState {
         }
 
         // World units between two heightmap samples.
-        float step = extent / (HEIGHTMAP_SIZE - 1);
+        this.step = extent / (HEIGHTMAP_SIZE - 1);
+        float step = this.step;
         float[] heightmap = sampleHeightmap(generator, step);
 
         terrain = new TerrainQuad("FarTerrain", PATCH_SIZE, HEIGHTMAP_SIZE, heightmap);
@@ -183,6 +198,11 @@ public class FarTerrainState extends BaseAppState {
         terrain.addControl(lodControl);
 
         enclosure = createEnclosure(heightmap, step);
+
+        // Replay any persisted player edits (reshaped relief) onto the fresh procedural heightmap.
+        this.terrainGen = generator;
+        editOverlay = config.getWorldEditOverlay();
+        applyAllOverrides();
 
         log.info("Far terrain generated : {}x{} heightmap, extent {} units (step {})",
                 HEIGHTMAP_SIZE, HEIGHTMAP_SIZE, extent, step);
@@ -210,6 +230,109 @@ public class FarTerrainState extends BaseAppState {
             }
         }
         return heightmap;
+    }
+
+    /**
+     * Replays all persisted relief overrides onto the heightmap. Each override is keyed by a
+     * <b>canonical</b> heightmap sample (wrapped to the world period), so on the finite torus it is
+     * placed on every copy of its tile within the current 2-tile span ({@link TerrainQuad#setHeight}
+     * culls the out-of-grid copies itself). Called once at init / after a reload. A canonical sample
+     * maps to a tile-invariant grid cell (the tile snap is a whole number of periods), so the patches
+     * survive tile snaps untouched and only fresh edits need re-applying (see {@link #processDirtyColumns}).
+     */
+    private void applyAllOverrides() {
+        if (terrain == null || editOverlay == null || editOverlay.getHeightOverrides().isEmpty()) {
+            return;
+        }
+        List<Vector2f> xz = new ArrayList<>();
+        List<Float> heights = new ArrayList<>();
+        for (Map.Entry<Long, Float> e : editOverlay.getHeightOverrides().entrySet()) {
+            addCopies(xz, heights, WorldEditOverlay.unpackX(e.getKey()), WorldEditOverlay.unpackZ(e.getKey()), e.getValue());
+        }
+        if (!xz.isEmpty()) {
+            terrain.setHeight(xz, heights);
+        }
+    }
+
+    /**
+     * Refreshes the far heightmap for the columns the player just edited. For each, the nearest
+     * heightmap <b>sample</b> is found and re-measured from the live world (the actual top terrain
+     * block there) : if it now differs from the procedural relief the sample is overridden, otherwise
+     * the override is dropped (terrain restored). Re-measuring the sample — rather than copying the
+     * edited column's height onto it — is what keeps a single off-sample block edit from dragging a
+     * sample to a slope-mismatched height (which flashed water where there was land).
+     */
+    private void processDirtyColumns() {
+        long[] cols = editOverlay.pollDirtyColumns();
+        if (cols.length == 0 || terrain == null) {
+            return;
+        }
+        ChunkManager cm = config.getChunkManager();
+        int ceiling = config.getMaxy();
+        List<Vector2f> xz = new ArrayList<>();
+        List<Float> heights = new ArrayList<>();
+        Vector3f scratch = new Vector3f();
+        for (long col : cols) {
+            int wx = WorldEditOverlay.unpackX(col);
+            int wz = WorldEditOverlay.unpackZ(col);
+            // Nearest heightmap sample to the edited column, in world coords for the current tile.
+            float sx = tileOffsetX + Math.round((wx - tileOffsetX) / step) * step;
+            float sz = tileOffsetZ + Math.round((wz - tileOffsetZ) / step) * step;
+            float measured = (cm != null) ? WorldManager.groundHeight(cm, Math.round(sx), Math.round(sz), ceiling) : Float.NaN;
+            if (Float.isNaN(measured)) {
+                continue; // the sample's column isn't loaded : keep whatever height is there
+            }
+            float procedural = terrainGen.getHeight(scratch.set(sx, 0f, sz));
+            long key = sampleKey(sx, sz);
+            float applied;
+            if (Math.abs(measured - procedural) > 0.5f) {
+                editOverlay.putHeight(key, measured);
+                applied = measured;
+            } else {
+                editOverlay.putHeight(key, Float.NaN); // back to the procedural relief : drop the override
+                applied = procedural;
+            }
+            addCopies(xz, heights, sx, sz, applied);
+        }
+        if (!xz.isEmpty()) {
+            terrain.setHeight(xz, heights);
+        }
+    }
+
+    /**
+     * Appends the terrain-local {@code setHeight} entries for a world position : the value (pre-scaled
+     * {@code worldHeight / step}, matching {@link #sampleHeightmap}) at every copy of that position
+     * within the current 2-tile span. The xz are terrain-local because {@code setHeight} ignores the
+     * world translation (unlike {@code getHeight}) ; out-of-grid copies are culled by {@code setHeight}.
+     */
+    private void addCopies(List<Vector2f> xz, List<Float> heights, float worldX, float worldZ, float worldHeight) {
+        float w = config.getWorldSize();
+        float hy = worldHeight / step;
+        if (w > 0f) {
+            int kx0 = Math.round((tileOffsetX - worldX) / w);
+            int kz0 = Math.round((tileOffsetZ - worldZ) / w);
+            for (int kx = kx0 - 1; kx <= kx0 + 1; kx++) {
+                for (int kz = kz0 - 1; kz <= kz0 + 1; kz++) {
+                    xz.add(new Vector2f((worldX + kx * w) - tileOffsetX, (worldZ + kz * w) - tileOffsetZ));
+                    heights.add(hy);
+                }
+            }
+        } else {
+            xz.add(new Vector2f(worldX - tileOffsetX, worldZ - tileOffsetZ));
+            heights.add(hy);
+        }
+    }
+
+    /** Canonical key (wrapped to the world period) identifying a heightmap sample across tiles. */
+    private long sampleKey(float sampleWorldX, float sampleWorldZ) {
+        int x = Math.round(sampleWorldX);
+        int z = Math.round(sampleWorldZ);
+        float w = config.getWorldSize();
+        if (w > 0f) {
+            x = Math.floorMod(x, (int) w);
+            z = Math.floorMod(z, (int) w);
+        }
+        return WorldEditOverlay.pack(x, z);
     }
 
     private Material createMaterial() {
@@ -475,6 +598,12 @@ public class FarTerrainState extends BaseAppState {
                     }
                 }
             }
+        }
+
+        // Refresh the distant heightmap for any freshly edited columns (cut trees are handled by
+        // FarTreeState ; here we re-measure the affected samples from the world).
+        if (editOverlay != null && editOverlay.hasDirtyColumns()) {
+            processDirtyColumns();
         }
 
         // The enclosure follows the CAMERA (not the world tile) at a radius within the far clip plane,

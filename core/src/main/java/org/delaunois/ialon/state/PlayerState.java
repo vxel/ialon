@@ -52,6 +52,8 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.delaunois.ialon.blocks.ChunkLightManager;
+import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 import org.delaunois.ialon.input.PlayerListener;
 import org.delaunois.ialon.blocks.WorldManager;
 
@@ -103,11 +105,16 @@ public class PlayerState extends BaseAppState implements Resizable {
         camera = app.getCamera();
         crossHair = createCrossHair();
         wagon = createWagon();
+        TerrainGenerator gen = config.getTerrainGenerator();
+        NoiseTerrainGenerator noiseGen = (gen instanceof NoiseTerrainGenerator) ? (NoiseTerrainGenerator) gen : null;
         worldManager = new WorldManager(
                 config.getChunkManager(),
                 new ChunkLightManager(config),
                 Optional.ofNullable(app.getStateManager().getState(ChunkLiquidManagerState.class))
-                        .map(ChunkLiquidManagerState::getChunkLiquidManager).orElse(null)
+                        .map(ChunkLiquidManagerState::getChunkLiquidManager).orElse(null),
+                // Far-horizon edit overlay : only the noise generator scatters trees / has a far horizon.
+                noiseGen != null ? config.getWorldEditOverlay() : null,
+                noiseGen
         );
 
         playerNode = createPlayer(app, config, worldManager);

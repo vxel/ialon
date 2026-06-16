@@ -379,6 +379,8 @@ public class IalonInitializer {
                     .transparent(block.isTransparent())
                     .usingMultipleImages(block.isMultitexture())
                     .torchlight(block.isTorchlight())
+                    // Only the CUBE form of a natural-ground type shapes the far terrain (not its slabs/stairs).
+                    .terrain(block.isTerrain())
                     .build());
         } else {
             for (byte waterLevel : block.getWaterLevels()) {
