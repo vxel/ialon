@@ -535,7 +535,13 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             for (int z = minz; z <= maxz; z++) {
                 int index = (z - minz) + rowx;
                 float h = getHeight(worldOffsetX + x, worldOffsetZ + z, sample);
-                heights[index] = h;
+                // The height grid lives at [2, 2 + gridSize) -- the SAME slot every reader uses
+                // (heights[2 + gridIndex] in the surface fill and generateTrees). Writing heights[index]
+                // here stored it 2 slots too early, so readers picked the height 2 cells away in z : on a
+                // slope that put a tree's base (and its whole canopy) at the wrong height, and near a chunk
+                // z-edge the +2 wrapped into another row, so neighbouring chunks placed the same tree's
+                // canopy at different heights -> orphaned "floating" leaves.
+                heights[2 + index] = h;
                 heights[densityBase + index] = densityAt(worldOffsetX + x, worldOffsetZ + z, sample);
                 if (h < min) {
                     min = h;
