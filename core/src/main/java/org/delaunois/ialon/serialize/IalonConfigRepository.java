@@ -78,6 +78,7 @@ public class IalonConfigRepository {
             worldParams.applyTo(config);
         }
 
+        WorldEditOverlayRepository.load(config.getCurrentWorldPath(), config.getWorldEditOverlay());
         loadPlayerState(config);
     }
 
@@ -87,6 +88,7 @@ public class IalonConfigRepository {
      * runtime, after the new world id has been set on the config.
      */
     public static void loadWorldState(IalonConfig config) {
+        WorldEditOverlayRepository.load(config.getCurrentWorldPath(), config.getWorldEditOverlay());
         WorldParams worldParams = WorldRepository.loadWorldParams(config.getSavePath(), config.getWorldId());
         if (worldParams != null) {
             worldParams.applyTo(config);
@@ -161,6 +163,7 @@ public class IalonConfigRepository {
         if (!savePlayerStateDTO(new PlayerStateDTO(config), config)) {
             log.error("Could not properly save User Settings");
         }
+        WorldEditOverlayRepository.save(config.getCurrentWorldPath(), config.getWorldEditOverlay());
     }
 
     private static GameSettingsDTO loadGameSettings(IalonConfig config) {

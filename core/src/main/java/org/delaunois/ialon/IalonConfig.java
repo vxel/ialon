@@ -12,6 +12,7 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.ChunkRepository;
 import org.delaunois.ialon.blocks.TextureAtlasManager;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.WorldSettings;
 import org.delaunois.ialon.blocks.ZipFileRepository;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
@@ -186,6 +187,9 @@ public class IalonConfig implements WorldSettings {
     private ChunkManager chunkManager;
     private ChunkRepository chunkRepository;
     private TerrainGenerator terrainGenerator;
+    // Player edits the far horizon must honour (felled trees / reshaped relief). One instance per config,
+    // populated from the world's save by WorldEditOverlayRepository when the world is opened.
+    private final WorldEditOverlay worldEditOverlay = new WorldEditOverlay();
     private final TextureAtlasManager textureAtlasManager = new TextureAtlasManager();
     private BitmapFont font;
 
@@ -313,6 +317,8 @@ public class IalonConfig implements WorldSettings {
         // forestPatchSize is the inverse of the noise frequency : scale the generator's default frequency
         // so that 1 = unchanged and larger values yield larger woods/clearings.
         generator.setForestFrequency(generator.getForestFrequency() / forestPatchSize);
+        // Bind the per-world edit overlay so the far horizon honours felled trees / reshaped relief.
+        generator.setWorldEditOverlay(worldEditOverlay);
         return generator;
     }
 

@@ -32,6 +32,7 @@ import org.delaunois.ialon.blocks.Chunk;
 import org.delaunois.ialon.blocks.ChunkLightManager;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.fastnoise.FastNoise;
 import org.delaunois.ialon.blocks.fastnoise.LayeredNoise;
 import org.delaunois.ialon.blocks.fastnoise.NoiseLayer;
@@ -172,6 +173,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // of a random species per tree. Tiled like the others.
     private NoiseLayer speciesNoise;
     private FastNoise scatterNoise;
+    // Player edits the far-horizon renderers must honour (felled trees / reshaped relief). Null until a
+    // world is opened ; consulted only by the chunk-free far paths (forEachTreeAnchor), never by the
+    // voxel chunk generation (edited chunks are loaded from the save, not regenerated).
+    private WorldEditOverlay worldEditOverlay;
     private final Map<Long, float[]> heightsCache =
             Collections.synchronizedMap(new HeightsCache(HEIGHTS_CACHE_CAPACITY));
 
@@ -232,6 +237,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     public void setWorldSize(float worldSize) {
         this.worldSize = worldSize;
         heightsCache.clear();
+    }
+
+    public WorldEditOverlay getWorldEditOverlay() {
+        return worldEditOverlay;
+    }
+
+    /** Binds the per-world edit overlay so the far horizon reflects felled trees / reshaped relief. */
+    public void setWorldEditOverlay(WorldEditOverlay worldEditOverlay) {
+        this.worldEditOverlay = worldEditOverlay;
     }
 
     private void resolveBlocks() {
@@ -550,7 +564,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
         // One scatter cell per TREE_CELL_SIZE blocks. On the torus the hash wraps every 'cellsAcross'
         // cells (~worldSize) so the scatter stays seamless; 0 means the infinite (non-tiling) world.
-        int cellsAcross = worldSize > 0 ? Math.max(1, Math.round(worldSize / TREE_CELL_SIZE)) : 0;
+        int cellsAcross = cellsAcross();
         Vector2f sample = new Vector2f(); // reused for the per-tree species noise lookup
 
         // Cells whose jittered position can fall inside the canopy-extended chunk footprint.
@@ -659,7 +673,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     public void forEachTreeAnchor(int minX, int maxX, int minZ, int maxZ, TreeAnchorConsumer out) {
         // Same per-cell scatter as generateTrees : one candidate per TREE_CELL_SIZE cell, hash wrapping
         // every 'cellsAcross' cells on the torus so the placement is seamless at the world seam.
-        int cellsAcross = worldSize > 0 ? Math.max(1, Math.round(worldSize / TREE_CELL_SIZE)) : 0;
+        int cellsAcross = cellsAcross();
         Vector2f sample = new Vector2f();
 
         int minCellX = Math.floorDiv(minX, TREE_CELL_SIZE);
@@ -671,6 +685,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
                 int hx = cellsAcross > 0 ? Math.floorMod(cellX, cellsAcross) : cellX;
                 int hz = cellsAcross > 0 ? Math.floorMod(cellZ, cellsAcross) : cellZ;
+
+                // The player cut this tree down : skip its far billboard (cheap check, before the noise).
+                if (worldEditOverlay != null && worldEditOverlay.isTreeRemoved(cellKey(hx, hz))) {
+                    continue;
+                }
 
                 int worldX = cellX * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_X) * TREE_CELL_SIZE);
                 int worldZ = cellZ * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_Z) * TREE_CELL_SIZE);
@@ -763,6 +782,65 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     /** Wrap a world coordinate into the tiling period so per-column scatter is seamless on the torus. */
     private int canonical(int worldCoord) {
         return worldSize > 0 ? Math.floorMod(worldCoord, (int) worldSize) : worldCoord;
+    }
+
+    // --- World-edit overlay keys --------------------------------------------------------------------
+    // The far renderers and WorldManager share these so an edit is keyed identically wherever it is
+    // recorded or consulted. All keys are CANONICAL (wrapped to the world period) so a torus tile is
+    // recorded once and the edit shows in every copy of that tile, like the chunk saves.
+
+    /** Number of scatter cells across the world period (0 = infinite world). Single source for the scatter. */
+    private int cellsAcross() {
+        return worldSize > 0 ? Math.max(1, Math.round(worldSize / TREE_CELL_SIZE)) : 0;
+    }
+
+    /** Packs the canonical scatter-cell hash coords into the overlay's tree key. */
+    private long cellKey(int hx, int hz) {
+        return WorldEditOverlay.pack(hx, hz);
+    }
+
+    /** Canonical scatter-cell key of the cell that contains the column (worldX, worldZ). */
+    public long treeCellKey(int worldX, int worldZ) {
+        int across = cellsAcross();
+        int cellX = Math.floorDiv(worldX, TREE_CELL_SIZE);
+        int cellZ = Math.floorDiv(worldZ, TREE_CELL_SIZE);
+        int hx = across > 0 ? Math.floorMod(cellX, across) : cellX;
+        int hz = across > 0 ? Math.floorMod(cellZ, across) : cellZ;
+        return cellKey(hx, hz);
+    }
+
+    /**
+     * If a procedural tree's trunk base occupies EXACTLY the column (worldX, worldZ), returns its
+     * canonical scatter-cell key ; otherwise {@code -1}. Re-applies the same scatter / jitter /
+     * altitude / density / slope rules as {@link #forEachTreeAnchor}, so only a real tree's trunk
+     * matches. The jitter never leaves the cell, so the containing cell is recovered by flooring the
+     * column to {@link #TREE_CELL_SIZE}. Used by {@code WorldManager} to fell the far billboard when
+     * the player chops a trunk log.
+     */
+    public long trunkAnchorCellKeyAt(int worldX, int worldZ) {
+        int across = cellsAcross();
+        int cellX = Math.floorDiv(worldX, TREE_CELL_SIZE);
+        int cellZ = Math.floorDiv(worldZ, TREE_CELL_SIZE);
+        int hx = across > 0 ? Math.floorMod(cellX, across) : cellX;
+        int hz = across > 0 ? Math.floorMod(cellZ, across) : cellZ;
+        int anchorX = cellX * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_X) * TREE_CELL_SIZE);
+        int anchorZ = cellZ * TREE_CELL_SIZE + (int) (hash01(hx, hz, CH_JITTER_Z) * TREE_CELL_SIZE);
+        if (anchorX != worldX || anchorZ != worldZ) {
+            return -1L; // not the trunk column of this cell's tree
+        }
+        Vector2f sample = new Vector2f();
+        float groundh = getHeight(anchorX, anchorZ, sample);
+        if (!treeBandOk(groundh)
+                || !treeKept(hx, hz, densityAt(anchorX, anchorZ, sample))
+                || farSlope(anchorX, anchorZ, groundh, sample) > SLOPE_MAX) {
+            return -1L; // no tree is actually scattered here
+        }
+        return cellKey(hx, hz);
+    }
+
+    /** Canonical block-column key (worldX, worldZ), for the relief height overrides. */
+    public long columnKey(int worldX, int worldZ) {
+        return WorldEditOverlay.pack(canonical(worldX), canonical(worldZ));
     }
 
     /**

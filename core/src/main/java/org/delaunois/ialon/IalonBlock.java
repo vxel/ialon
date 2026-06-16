@@ -23,6 +23,11 @@ import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.WaterLevel;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public enum IalonBlock {
 
     WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_WEST, ShapeIds.PLATE_EAST),
@@ -107,6 +112,12 @@ public enum IalonBlock {
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
 
+    // Natural-ground block types : their CUBE form shapes the far-terrain heightmap when the player
+    // digs/builds (see Block#terrain). These are exactly the surface cubes the generator lays down ;
+    // every other (building) block leaves the distant relief untouched.
+    private static final Set<String> TERRAIN_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            TypeIds.GRASS, TypeIds.GRASS_SNOW, TypeIds.SNOW, TypeIds.DIRT, TypeIds.ROCK, TypeIds.SAND)));
+
     private final String name;
     private final String type;
     private final boolean solid;
@@ -179,5 +190,10 @@ public enum IalonBlock {
 
     public boolean isTorchlight() {
         return torchlight;
+    }
+
+    /** True for the natural-ground types whose CUBE form shapes the far terrain (see {@link Block#isTerrain()}). */
+    public boolean isTerrain() {
+        return TERRAIN_TYPES.contains(type);
     }
 }
