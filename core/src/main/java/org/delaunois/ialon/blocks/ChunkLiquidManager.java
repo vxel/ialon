@@ -41,11 +41,15 @@ public class ChunkLiquidManager {
 
     private final WorldSettings config;
     private final ChunkManager chunkManager;
+    // Used to clear a fire block's torchlight when water floods (extinguishes) it. A private instance
+    // is fine : the light state lives in the chunks, and ChunkLightManager keeps no cross-call state.
+    private final ChunkLightManager chunkLightManager;
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
 
     public ChunkLiquidManager(WorldSettings config) {
         this.chunkManager = config.getChunkManager();
+        this.chunkLightManager = new ChunkLightManager(config);
         this.config = config;
     }
 
@@ -313,6 +317,7 @@ public class ChunkLiquidManager {
 
         if (!dims) {
             log.debug("PL3 - Flowing vertically in ({}, {}, {}) to {}", x, y, z, liquidLevel);
+            block = extinguishFireIfPresent(block, chunk, x, y, z, context);
             setLiquid(block, chunk, new Vec3i(x, y, z), LEVEL_MAX);
             liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, LEVEL_MAX));
             return true;
@@ -324,6 +329,7 @@ public class ChunkLiquidManager {
                 log.debug("PL4 - Flowing horizontally in ({}, {}, {}) to {}. PL={} LL={}", x, y, z, liquidLevel - 1, previousLiquidLevel, liquidLevel);
             }
 
+            block = extinguishFireIfPresent(block, chunk, x, y, z, context);
             setLiquid(block, chunk, new Vec3i(x, y, z), liquidLevel - 1);
             liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, liquidLevel - 1));
 
@@ -368,6 +374,24 @@ public class ChunkLiquidManager {
             context.chunkMeshUpdateRequests.add(chunk.getLocation().add(0, 0, -1));
         }
 
+    }
+
+    /**
+     * Extinguishes a fire block that water is about to flow into : removes the flame and clears its
+     * torchlight (otherwise the propagated light would linger after the block is gone). The freed cell
+     * is then filled with water by the caller (setLiquid with a null existing block). Any block that is
+     * not fire is returned unchanged.
+     *
+     * @return the (possibly removed) block : {@code null} when a fire was extinguished, else the input
+     */
+    private Block extinguishFireIfPresent(Block block, Chunk chunk, int x, int y, int z, LiquidRunningContext context) {
+        if (block == null || !TypeIds.FIRE.equals(block.getType())) {
+            return block;
+        }
+        Vec3i location = new Vec3i(x, y, z);
+        context.chunkMeshUpdateRequests.addAll(chunkLightManager.removeTorchlight(location, chunk));
+        chunk.removeBlock(location);
+        return null;
     }
 
     /**
