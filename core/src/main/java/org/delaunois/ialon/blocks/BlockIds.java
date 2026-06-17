@@ -66,6 +66,7 @@ public interface BlockIds {
     String WINDOW = TypeIds.WINDOW;
 
     String ITEM_GRASS = TypeIds.ITEM_GRASS;
+    String FIRE = TypeIds.FIRE;
 
     String SCALE = TypeIds.SCALE;
     String RAIL = TypeIds.RAIL;

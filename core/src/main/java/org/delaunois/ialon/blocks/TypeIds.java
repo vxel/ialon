@@ -41,4 +41,5 @@ public interface TypeIds {
     String RAIL_CURVED = "rail_curved";
     String RAIL_SLOPE = "rail_slope";
     String PHANTOM = "phantom";
+    String FIRE = "fire";
 }

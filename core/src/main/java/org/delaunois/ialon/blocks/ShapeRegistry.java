@@ -3,6 +3,7 @@ package org.delaunois.ialon.blocks;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import org.delaunois.ialon.blocks.shapes.Billboard;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Cube;
 import org.delaunois.ialon.blocks.shapes.Fence;
@@ -119,6 +120,8 @@ public class ShapeRegistry {
         registerWater();
 
         registerCrossPlane();
+
+        registerBillboard();
 
         registerFences();
     }
@@ -246,6 +249,10 @@ public class ShapeRegistry {
 
     private void registerCrossPlane() {
         register(ShapeIds.CROSS_PLANE, new CrossPlane());
+    }
+
+    private void registerBillboard() {
+        register(ShapeIds.BILLBOARD, new Billboard());
     }
 
     private void registerFloatingCubes() {

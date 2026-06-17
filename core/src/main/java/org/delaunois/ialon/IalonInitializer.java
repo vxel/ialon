@@ -21,6 +21,7 @@ import com.jme3.scene.Node;
 import com.jme3.texture.Texture;
 import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.BlocksTheme;
@@ -358,7 +359,11 @@ public class IalonInitializer {
     public static void registerIalonBlocks() {
         Collection<String> types = BlocksConfig.getInstance().getTypeRegistry().getAll();
         for (IalonBlock block : IalonBlock.values()) {
-            if (!types.contains(block.getType())) {
+            // Fire is not registered as a regular type : it is rendered by a dedicated procedural shader
+            // (see FacesMeshGenerator#getFireMaterial), not by an atlas texture. Skipping registration
+            // keeps it out of the texture atlas so its shape UVs are left untouched (raw 0..1 per plane)
+            // for the flame shader to use directly.
+            if (!types.contains(block.getType()) && !TypeIds.FIRE.equals(block.getType())) {
                 BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
             }
 
