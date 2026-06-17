@@ -37,6 +37,7 @@ import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
 import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
 import static org.delaunois.ialon.IalonBlock.DIRT;
 import static org.delaunois.ialon.IalonBlock.DRAWERS;
+import static org.delaunois.ialon.IalonBlock.FIRE;
 import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
 import static org.delaunois.ialon.IalonBlock.GRAVEL;
@@ -75,6 +76,7 @@ import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
 import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
+import static org.delaunois.ialon.blocks.ShapeIds.BILLBOARD;
 import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
 import static org.delaunois.ialon.blocks.ShapeIds.CUBE;
 import static org.delaunois.ialon.blocks.ShapeIds.DOUBLE_SLAB;
@@ -203,6 +205,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(ITEM_SEAWEED, CROSS_PLANE),
             getName(ITEM_MUSHROOM, CROSS_PLANE),
             getName(ITEM_SUNFLOWER, CROSS_PLANE),
+            getName(FIRE, BILLBOARD),
             getName(COLOR_BLACK, CUBE),
             getName(COLOR_BLUE, CUBE),
             getName(COLOR_CYAN, CUBE),
@@ -408,8 +411,13 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     }
 
     private void setSelectedBlockName(String blockName) {
-        if (blockName == null) {
-            log.info("Block is null !");
+        // Fall back to the default when the name is missing OR no longer resolves to a registered
+        // block (e.g. a persisted selection referencing a block that was renamed/removed) — otherwise
+        // the unknown name would yield a null preview node and crash on attach.
+        if (blockName == null || BlocksConfig.getInstance().getBlockRegistry().get(blockName) == null) {
+            if (blockName != null) {
+                log.warn("Unknown selected block {}, falling back to default", blockName);
+            }
             blockName = getName(GRASS, CUBE);
         }
 
@@ -454,7 +462,13 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
 
     private Node updateBlockNode(Node nodeToRemove, String blockNameToAdd) {
         Block block = BlocksConfig.getInstance().getBlockRegistry().get(blockNameToAdd);
-        Node node =  createBlockNode(block, buttonSize, blockNameToAdd);
+        Node node = createBlockNode(block, buttonSize, blockNameToAdd);
+        if (node == null) {
+            // Unknown/stale block name (e.g. a renamed block in a history slot) : keep the existing
+            // node rather than attaching a null child.
+            log.warn("Cannot build preview node for unknown block {}", blockNameToAdd);
+            return nodeToRemove;
+        }
         updateBlockNode(nodeToRemove, node);
         return node;
     }
@@ -717,6 +731,14 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
                     geometry.setLocalTranslation(size / 1.5f, -size / 2.2f, 0);
                     geometry.rotate(new Quaternion().fromAngleAxis(toRadians(25), Vector3f.UNIT_X));
                     geometry.rotate(new Quaternion().fromAngleAxis(toRadians(-45), Vector3f.UNIT_Y));
+                    break;
+                case BILLBOARD:
+                    // The fire billboard is expanded toward the camera in its vertex shader, so it is
+                    // already face-on (no rotation needed). Its size is a world-unit material param ;
+                    // override it to GUI pixels for the icon, and keep the material's own cull mode
+                    // (Off) so the quad is not culled (the default branch would force Back culling).
+                    geometry.setLocalTranslation(size / 2f, -size / 2f, 0);
+                    geometry.getMaterial().setFloat("Size", size / 2f);
                     break;
                 default:
                     geometry.setLocalTranslation(size / 2f, -size / 2f, 0);

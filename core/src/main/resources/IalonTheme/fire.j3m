@@ -1,0 +1,11 @@
+Material fire : Blocks/MatDefs/Fire.j3md {
+    MaterialParameters {
+        Speed : 1.0
+        ManualSrgb : false
+    }
+    AdditionalRenderState {
+        Blend Alpha
+        FaceCull Off
+        DepthWrite Off
+    }
+}

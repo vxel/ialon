@@ -152,4 +152,8 @@ public interface ShapeIds {
 
     String CROSS_PLANE = "cross_plane";
 
+    // A camera-facing billboard quad (expanded toward the camera in the vertex shader). Only
+    // meaningful with a billboard shader ; used by the fire block.
+    String BILLBOARD = "billboard";
+
 }

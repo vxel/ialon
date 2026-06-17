@@ -18,6 +18,7 @@ import com.jme3.scene.shape.Box;
 import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Shape;
+import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Pyramid;
 import org.delaunois.ialon.blocks.shapes.Stairs;
@@ -35,9 +36,14 @@ public class PlaceholderControl extends AbstractControl {
 
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
     private static final float UPDATE_TIME = 0.1f;
+    private static final float MAX_REACH = 20f;
 
     private final CollisionResults collisionResults = new CollisionResults();
     private final Ray ray = new Ray();
+    // Scratch reused by the billboard grid-march (runs every UPDATE_TIME, not in the render loop).
+    private final Vector3f marchPoint = new Vector3f();
+    private final Vector3f marchNormal = new Vector3f();
+    private final CollisionResult billboardCollision = new CollisionResult();
     private final SimpleApplication app;
 
     @Setter
@@ -172,13 +178,55 @@ public class PlaceholderControl extends AbstractControl {
         collisionResults.clear();
         chunkNode.collideWith(ray, collisionResults);
 
+        CollisionResult geomResult = null;
         for (CollisionResult collisionResult : collisionResults) {
             if (collisionResult.getGeometry().getMaterial().getName() != null &&
                     !collisionResult.getGeometry().getMaterial().getName().contains("water")) {
-                return collisionResult;
+                geomResult = collisionResult;
+                break;
             }
         }
 
+        // Billboard blocks (e.g. fire) collapse all their vertices to the block centre in the render
+        // mesh — they have no CPU-side triangles, so the ray above passes straight through them. Walk
+        // the world grid along the ray (up to the first solid hit, or the max reach) to catch them,
+        // so they can be selected/removed just like a regular cross-plane block.
+        float maxDist = geomResult != null ? geomResult.getDistance() : MAX_REACH;
+        CollisionResult billboardResult = getBillboardHit(ray.getOrigin(), ray.getDirection(), maxDist);
+        return billboardResult != null ? billboardResult : geomResult;
+    }
+
+    /**
+     * Marches the world grid along the ray and returns a synthetic collision on the first billboard
+     * block (e.g. fire) found within {@code maxDist}, or {@code null}. The contact point is placed at
+     * the cell centre (so the same floor-based block lookup the rest of the code uses resolves it),
+     * and the contact normal is the face the ray entered through (for adjacent placement).
+     */
+    private CollisionResult getBillboardHit(Vector3f origin, Vector3f direction, float maxDist) {
+        float scale = BlocksConfig.getInstance().getBlockScale();
+        float step = 0.1f * scale;
+        Vec3i previousCell = null;
+        for (float d = 0; d <= maxDist; d += step) {
+            marchPoint.set(direction).multLocal(d).addLocal(origin);
+            Vec3i cell = ChunkManager.getBlockLocation(marchPoint);
+            if (cell.equals(previousCell)) {
+                continue;
+            }
+            Block block = worldManager.getBlock(marchPoint);
+            if (block != null && ShapeIds.BILLBOARD.equals(block.getShape())) {
+                marchNormal.set(0, 1, 0);
+                if (previousCell != null) {
+                    marchNormal.set(previousCell.x - cell.x, previousCell.y - cell.y, previousCell.z - cell.z);
+                    marchNormal.normalizeLocal();
+                }
+                billboardCollision.setContactPoint(new Vector3f(
+                        (cell.x + 0.5f) * scale, (cell.y + 0.5f) * scale, (cell.z + 0.5f) * scale));
+                billboardCollision.setContactNormal(marchNormal.clone());
+                billboardCollision.setDistance(d);
+                return billboardCollision;
+            }
+            previousCell = cell;
+        }
         return null;
     }
 

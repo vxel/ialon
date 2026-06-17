@@ -1,0 +1,36 @@
+MaterialDef Fire {
+
+    MaterialParameters {
+
+        // Animation speed multiplier of the procedural flame (1.0 = nominal).
+        Float Speed
+
+        // World-space size of the billboard quad (one block in-world ; overridden to pixels in the
+        // GUI block-selection preview).
+        Float Size
+
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        // No lighting : the flame is fully emissive (fire is a light source), so we don't need the
+        // SinglePass lighting globals. Only the clock (Time) and the camera transforms are used : the
+        // quad is a camera-facing billboard expanded in the vertex shader.
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Fire.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Fire.frag
+
+        WorldParameters {
+            ViewProjectionMatrix
+            ViewMatrix
+            WorldMatrix
+            Time
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+
+}

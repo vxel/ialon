@@ -1,5 +1,7 @@
 package org.delaunois.ialon.blocks;
 
+import com.jme3.bounding.BoundingBox;
+import com.jme3.bounding.BoundingVolume;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
@@ -42,6 +44,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final String CHUNK_MESH_TYPE_WATER = "water";
     // Flat calm-water surface : its own mesh/material (a flat colour, no texture), greedy-merged.
     private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
+    // Fire : its own mesh/material rendered by a procedural flame shader (no atlas texture).
+    private static final String CHUNK_MESH_TYPE_FIRE = "fire";
     // Water shapes that do NOT emit their top face, one per liquid level : used for calm-surface cells
     // whose flat top is produced instead by the greedy calm-water mesher. Their sides/bottom keep the
     // normal textured look. Only SOURCE water (level 5) is calm-rendered ; flowing water keeps its
@@ -58,6 +62,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private final WorldSettings config;
     // Built lazily and reused : the flat-colour, alpha-blended material of the calm water surface.
     private Material calmWaterMaterial;
+    // Built lazily and reused : the procedural flame material shared by every fire geometry.
+    private Material fireMaterial;
 
     /**
      * Per-thread pool of reusable {@link ChunkMesh} buffers. Meshing runs on a fixed thread pool
@@ -650,6 +656,25 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     }
 
     /**
+     * The procedural flame material, shared by every fire geometry. Each fire block is a single
+     * camera-facing billboard quad expanded in the vertex shader (Fire.j3md), filled by a
+     * self-contained noise-based flame shader animated by the engine clock (g_Time) — there is no
+     * atlas texture and no per-frame uniform push. The flame area is alpha-blended and emissive (it
+     * ignores the voxel light level since fire is a light source). {@code synchronized} because chunk
+     * meshing runs on worker threads.
+     */
+    public synchronized Material getFireMaterial() {
+        if (fireMaterial == null) {
+            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/fire.j3m");
+            mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
+            // Billboard size = one block in world units.
+            mat.setFloat("Size", BlocksConfig.getInstance().getBlockScale());
+            fireMaterial = mat;
+        }
+        return fireMaterial;
+    }
+
+    /**
      * Greedy-meshes the solid full cubes of the chunk into the collision mesh : coplanar exposed
      * cube faces are merged into the largest possible rectangles, drastically reducing the triangle
      * count of the physics shape. Safe because the collision mesh carries no UVs/normals/colors, so
@@ -803,6 +828,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (block.getType().equals(TypeIds.WATER)) {
             return CHUNK_MESH_TYPE_WATER;
         }
+        if (block.getType().equals(TypeIds.FIRE)) {
+            return CHUNK_MESH_TYPE_FIRE;
+        }
         return CHUNK_MESH_TYPE_GENERIC;
     }
 
@@ -881,6 +909,19 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 geometry.setMaterial(getCalmWaterMaterial());
                 geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
                 break;
+            case CHUNK_MESH_TYPE_FIRE:
+                geometry.setMaterial(getFireMaterial());
+                geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
+                // Draw fire AFTER the calm-water surface (layers 2 & 3) in the layer-sorted Transparent
+                // bucket, so the emissive flame is not over-painted by the water it stands in/next to.
+                // Fire keeps depth-testing (water writes depth), so the part of the flame actually
+                // behind the water surface is still correctly hidden.
+                LayerComparator.setLayer(geometry, 3);
+                // The billboard quads collapse all 4 corners to the block centre, so the bound
+                // auto-computed from the positions has no corner extent : grow it by one block so the
+                // camera-expanded quad is never wrongly frustum-culled at chunk edges.
+                expandBound(mesh, BlocksConfig.getInstance().getBlockScale());
+                break;
             case CHUNK_MESH_TYPE_GENERIC:
                 typeRegistry.applyGenericMaterial(geometry);
                 geometry.getMaterial().setBoolean("ManualSrgb", config.isManualGammaEncode());
@@ -890,6 +931,22 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         }
 
         return geometry;
+    }
+
+    /**
+     * Grows the mesh's (axis-aligned) bound by {@code margin} on every axis. Used by the fire
+     * billboard, whose vertices all collapse to the block centre and whose final on-screen extent
+     * only exists after the vertex shader expands the quad toward the camera.
+     */
+    private void expandBound(Mesh mesh, float margin) {
+        BoundingVolume bv = mesh.getBound();
+        if (bv instanceof BoundingBox) {
+            BoundingBox bb = (BoundingBox) bv;
+            bb.setXExtent(bb.getXExtent() + margin);
+            bb.setYExtent(bb.getYExtent() + margin);
+            bb.setZExtent(bb.getZExtent() + margin);
+            mesh.setBound(bb);
+        }
     }
 
     /**
