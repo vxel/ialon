@@ -206,6 +206,15 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
+        // Fire cannot be placed inside water : the target cell would be flooded.
+        if (TypeIds.FIRE.equals(block.getType())) {
+            Block target = worldManager.getBlock(location);
+            if (target != null && TypeIds.WATER.equals(target.getType())) {
+                log.info("Can't place fire in water");
+                return;
+            }
+        }
+
         if (TypeIds.WATER.equals(block.getType())) {
             Vector3f tmp = placeholderControl.getRemovePlaceholder().getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
             Block previousBlock = worldManager.getBlock(tmp);
