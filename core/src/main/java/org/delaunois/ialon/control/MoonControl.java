@@ -59,16 +59,30 @@ public class MoonControl extends AbstractControl {
         long now = System.currentTimeMillis();
         if (lastUpdate == 0 || now - lastUpdate > sunControl.getUpdateThreshold()) {
             lastUpdate = now;
-            float time = config.getTime() + FastMath.PI;
-            float height = FastMath.sin(time);
-            float x = FastMath.cos(time) * 100f;
-            float z = FastMath.sin(time) * 100f;
-            float y = height * config.getSunAmplitude() * 10f;
-            position.set(x, y, z);
+            updateMoonPosition();
         }
 
         spatial.setLocalTranslation((cam.getLocation().add(position)));
         spatial.lookAt(cam.getLocation(), Vector3f.UNIT_Y);
+    }
+
+    /**
+     * Recomputes the moon position immediately, bypassing the update throttle. Call this after the time
+     * of day is changed abruptly (e.g. switching worlds) so the moon does not linger on the previous
+     * world's position until the throttle elapses.
+     */
+    public void forceUpdate() {
+        updateMoonPosition();
+        lastUpdate = System.currentTimeMillis();
+    }
+
+    private void updateMoonPosition() {
+        float time = config.getTime() + FastMath.PI;
+        float height = FastMath.sin(time);
+        float x = FastMath.cos(time) * 100f;
+        float z = FastMath.sin(time) * 100f;
+        float y = height * config.getSunAmplitude() * 10f;
+        position.set(x, y, z);
     }
 
     @Override

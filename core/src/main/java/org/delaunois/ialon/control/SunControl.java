@@ -121,6 +121,18 @@ public class SunControl extends AbstractControl {
         // Nothing to do
     }
 
+    /**
+     * Recomputes the sun position and lighting immediately, bypassing the update throttle. Call this
+     * after the time of day is changed abruptly (e.g. switching worlds), otherwise the sun, lighting
+     * and (via {@link #getSunHeight()}) the sky would linger on the previous time until the throttle
+     * elapses.
+     */
+    public void forceUpdate() {
+        updateSunPosition();
+        updateSunLight();
+        lastUpdate = System.currentTimeMillis();
+    }
+
     public void toggleTimeRun() {
         this.setEnabled(!this.isEnabled());
     }

@@ -58,28 +58,44 @@ public class SkyControl extends AbstractControl {
         long now = System.currentTimeMillis();
         if (this.sunControl != null && (lastUpdate == 0 || now - lastUpdate > getUpdateThreshold())) {
             lastUpdate = now;
-
-            float sunHeight = sunControl.getSunHeight();
-            float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
-
-            if (sunHeight > 0) {
-                color.interpolateLocal(config.getSkyEveningColor(), config.getSkyDayColor(), shift);
-                groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundDayColor(), shift);
-            } else {
-                color.interpolateLocal(config.getSkyEveningColor(), config.getSkyNightColor(), shift);
-                groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundNightColor(), shift);
-            }
-
-            Material mat = ((Geometry) spatial).getMaterial();
-            mat.setColor("Color", color);
-
-            // Direction (camera -> sun) and glow intensity for the sky shader's horizon glow. The glow
-            // peaks when the sun is near the horizon (sunrise/sunset) and vanishes at noon / deep night.
-            sunDir.set(sunControl.getPosition()).normalizeLocal();
-            mat.setVector3("SunDirection", sunDir);
-            float glow = FastMath.clamp(1f - FastMath.abs(sunHeight) * 3f, 0f, 1f);
-            mat.setFloat("GlowStrength", glow);
+            updateSky();
         }
+    }
+
+    /**
+     * Recomputes the sky colour and horizon glow immediately, bypassing the update throttle. Call this
+     * after the time of day is changed abruptly (e.g. switching worlds) : the throttle is unbounded for
+     * a slow time factor, so otherwise the sky would stay on the previous world's day/night colour for
+     * several seconds. The caller must refresh the sun first so {@link SunControl#getSunHeight()} is current.
+     */
+    public void forceUpdate() {
+        if (sunControl != null && spatial != null) {
+            updateSky();
+            lastUpdate = System.currentTimeMillis();
+        }
+    }
+
+    private void updateSky() {
+        float sunHeight = sunControl.getSunHeight();
+        float shift = FastMath.clamp(FastMath.pow(sunHeight * 2, 4), 0, 1);
+
+        if (sunHeight > 0) {
+            color.interpolateLocal(config.getSkyEveningColor(), config.getSkyDayColor(), shift);
+            groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundDayColor(), shift);
+        } else {
+            color.interpolateLocal(config.getSkyEveningColor(), config.getSkyNightColor(), shift);
+            groundColor.interpolateLocal(config.getGroundEveningColor(), config.getGroundNightColor(), shift);
+        }
+
+        Material mat = ((Geometry) spatial).getMaterial();
+        mat.setColor("Color", color);
+
+        // Direction (camera -> sun) and glow intensity for the sky shader's horizon glow. The glow
+        // peaks when the sun is near the horizon (sunrise/sunset) and vanishes at noon / deep night.
+        sunDir.set(sunControl.getPosition()).normalizeLocal();
+        mat.setVector3("SunDirection", sunDir);
+        float glow = FastMath.clamp(1f - FastMath.abs(sunHeight) * 3f, 0f, 1f);
+        mat.setFloat("GlowStrength", glow);
     }
 
     /**

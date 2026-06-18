@@ -95,6 +95,12 @@ public class WorldSelectionState extends BaseAppState {
         config.setTerrainGenerator(null);
         IalonConfigRepository.loadWorldState(config);
 
+        // 3b. The sun/sky/moon controls persist across the switch and throttle their updates (the sky's
+        //     throttle is unbounded for a slow time factor), so the abrupt time jump would otherwise leave
+        //     the sky on the previous world's day/night colour for several seconds. Force them to recompute
+        //     for the newly loaded time, in dependency order (sky reads the sun's height).
+        refreshSkyForNewTime();
+
         // 4. Ensure the loading screen is up (already shown by switchTo) until the world builder
         //    re-enables the player.
         IalonInitializer.getOrAttachSplashscreen(app, config).setEnabled(true);
@@ -102,6 +108,26 @@ public class WorldSelectionState extends BaseAppState {
         // 5. Build the new world.
         IalonInitializer.attachWorldStates(app, config);
         log.info("Switched to world '{}'", worldId);
+    }
+
+    /**
+     * Recomputes the sun, sky and moon for the freshly loaded world time so the sky colour, lighting and
+     * celestial bodies match the new world's time of day on the very next frame instead of lagging behind
+     * their (throttled) periodic updates. The sun must be refreshed before the sky, which reads its height.
+     */
+    private void refreshSkyForNewTime() {
+        SunState sunState = app.getStateManager().getState(SunState.class);
+        if (sunState != null) {
+            sunState.getSunControl().forceUpdate();
+        }
+        SkyState skyState = app.getStateManager().getState(SkyState.class);
+        if (skyState != null) {
+            skyState.getSkyControl().forceUpdate();
+        }
+        MoonState moonState = app.getStateManager().getState(MoonState.class);
+        if (moonState != null) {
+            moonState.getMoonControl().forceUpdate();
+        }
     }
 
     @Override
