@@ -250,6 +250,13 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
                 .ifPresent(SettingsState::showPopup);
     }
 
+    /** Closes the worlds menu and enters photo mode (owned by {@link PhotoModeState}). */
+    private void openPhotoMode() {
+        hidePopup();
+        Optional.ofNullable(app.getStateManager().getState(PhotoModeState.class))
+                .ifPresent(PhotoModeState::enter);
+    }
+
     private void closeDeleteConfirm() {
         if (deleteOverlay != null) {
             deleteOverlay.removeFromParent();
@@ -428,6 +435,11 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         Button settings = menuButton("Global Settings", vw, vh);
         settings.addClickCommands(source -> openSettings());
         buttons.addChild(settings, row++, 0);
+
+        // Photo mode : closes this menu and hides all UI for a clean screenshot of the world.
+        Button photo = menuButton("Photo Mode", vw, vh);
+        photo.addClickCommands(source -> openPhotoMode());
+        buttons.addChild(photo, row++, 0);
 
         Button close = menuButton("Close", vw, vh);
         // Extra top gap to set Close apart from the world-action buttons above it.

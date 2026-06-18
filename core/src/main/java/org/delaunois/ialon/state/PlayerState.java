@@ -191,6 +191,23 @@ public class PlayerState extends BaseAppState implements Resizable {
         playerHeadDirectionControl.setEnabled(touchEnabled);
     }
 
+    /**
+     * Hides (or restores) the in-world HUD : the crosshair and the block placement/removal wireframe.
+     * Used by the photo mode to take a clean screenshot. The placeholder control only attaches/detaches
+     * its geometries in its periodic update, so disabling it freezes the current state : the two
+     * placeholder geometries are therefore removed explicitly when hiding.
+     */
+    public void setHudHidden(boolean hidden) {
+        crossHair.setCullHint(hidden ? Spatial.CullHint.Always : Spatial.CullHint.Inherit);
+        if (placeholderControl != null) {
+            placeholderControl.setEnabled(!hidden);
+            if (hidden) {
+                placeholderControl.getRemovePlaceholder().removeFromParent();
+                placeholderControl.getAddPlaceholder().removeFromParent();
+            }
+        }
+    }
+
     @Override
     public void onResize(int width, int height) {
         // The crosshair is screen-centered. ButtonManagerState resizes itself (it registers with
