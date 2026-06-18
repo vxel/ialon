@@ -46,6 +46,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.PlaceholderControl;
+import org.delaunois.ialon.ui.UiHelper;
 
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
@@ -114,7 +115,7 @@ public class IalonDebugState extends BaseAppState implements Resizable {
 
         container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.Even, FillMode.Even));
 
-        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
 

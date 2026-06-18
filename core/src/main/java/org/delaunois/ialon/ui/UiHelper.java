@@ -48,14 +48,37 @@ public class UiHelper {
         button.background.setLocalTranslation(posx, posy, -1);
     }
 
-    public static void addBackground(Panel panel) {
-        addBackground(panel, new ColorRGBA(0f, 0, 0, 0.5f));
-    }
-
-    public static void addBackground(Panel panel, ColorRGBA colorRGBA) {
-        QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(colorRGBA);
+    public static void addBackground(Panel panel, ColorRGBA colorRGBA, IalonConfig config) {
+        QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(overlayColor(colorRGBA, config));
         quadBackgroundComponent.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         panel.setBackground(quadBackgroundComponent);
+    }
+
+    /**
+     * Adjusts the alpha of a translucent black UI overlay so it darkens the scene by the same perceived
+     * amount on Android as on desktop.
+     *
+     * <p>Desktop renders through a hardware sRGB framebuffer, so GL alpha-blends in LINEAR space : a black
+     * overlay of alpha {@code a} darkens the (sRGB-displayed) backdrop by a factor {@code (1-a)^(1/2.2)}.
+     * Android has no hardware sRGB framebuffer (see {@link IalonConfig#isManualGammaEncode()}) ; the world
+     * shaders write already-sRGB-encoded colours into a plain framebuffer, so GL blends in sRGB space and
+     * the same overlay darkens the backdrop by {@code (1-a)} — noticeably more, which is why the popup /
+     * button backgrounds looked darker on Android. To reproduce the desktop appearance we lower the alpha
+     * to {@code a' = 1 - (1-a)^(1/2.2)} when manual gamma encoding is active.</p>
+     *
+     * <p>Exact for black overlays (the only translucent UI backgrounds here). Opaque or fully transparent
+     * colours, and the desktop path, are returned unchanged.</p>
+     *
+     * @param colorRGBA the intended overlay colour (must be black for an exact match)
+     * @param config    the config holding the {@code manualGammaEncode} flag
+     * @return a colour with platform-corrected alpha (a copy when adjusted, the input otherwise)
+     */
+    public static ColorRGBA overlayColor(ColorRGBA colorRGBA, IalonConfig config) {
+        if (!config.isManualGammaEncode() || colorRGBA.a <= 0f || colorRGBA.a >= 1f) {
+            return colorRGBA;
+        }
+        return new ColorRGBA(colorRGBA.r, colorRGBA.g, colorRGBA.b,
+                1f - (float) Math.pow(1f - colorRGBA.a, 1f / 2.2f));
     }
 
     public static IconButton createTextureButton(IalonConfig config, String textureName, float size, float posx, float posy) {
@@ -78,13 +101,31 @@ public class UiHelper {
         // Background
         iconButton.background = new Panel();
         iconButton.background.setPreferredSize(new Vector3f(size, size, 0));
-        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(ALPHA_DISCARD_THRESHOLD);
         iconButton.background.setBackground(background);
         iconButton.background.setLocalTranslation(posx, posy, -1);
 
         return iconButton;
+    }
+
+    /**
+     * Positions two header buttons at the top corners of a full-screen popup, level with the title : the
+     * left one against the left edge (screen margin in), the right one against the right edge. Both tops
+     * are placed at the same screen margin as the title's top spacer, so they line up with the title.
+     * Uses the popup-local convention (origin at the top-left, +x right, -y down) — the same one the
+     * worlds grid uses. The buttons must have a preferred size set (the right one is placed from its width).
+     *
+     * @param left   the top-left button (e.g. Back)
+     * @param right  the top-right button (e.g. Close)
+     * @param width  the popup / screen width
+     * @param height the popup / screen height
+     */
+    public static void placeCornerButtons(Panel left, Panel right, float width, float height) {
+        float margin = screenMargin(height);
+        left.setLocalTranslation(margin, -margin, 10);
+        right.setLocalTranslation(width - margin - right.getPreferredSize().x, -margin, 10);
     }
 
     public static class IconButton {

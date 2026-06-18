@@ -17,6 +17,8 @@
 
 package org.delaunois.ialon.state;
 
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
+
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
@@ -38,8 +40,6 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.ui.UiHelper;
 
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 
 @Slf4j
 public class TimeFactorState extends BaseAppState implements ActionListener, Resizable {
@@ -111,7 +111,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener, Res
     private Container createButton(float size, float posx, float posy, MouseListener listener) {
         Container buttonContainer = new Container();
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
-        QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
         buttonContainer.setBackground(background);
