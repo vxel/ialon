@@ -145,7 +145,7 @@ void main() {
     // water opaque when looking straight down from high up (where the seabed IS there, right below).
     float aboveWater = step(vWorldPos.y, g_CameraPosition.y);
     float horizDist = distance(g_CameraPosition.xz, vWorldPos.xz);
-    float farOpaque = smoothstep(50.0, 80.0, horizDist);
+    float farOpaque = smoothstep(30.0, 60.0, horizDist);
     // Angle-based opacity : opaque unless looking fairly steeply DOWN (where the ray hits the seabed
     // right below and we want to see it). ndv = dot(up, viewDir) -> ~1 looking straight down, ~0 grazing.
     // A sharp ramp (sharper than the Fresnel) closes the medium/grazing angles where the ray shoots far

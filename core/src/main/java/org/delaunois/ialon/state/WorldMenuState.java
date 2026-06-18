@@ -91,6 +91,9 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     private int buttonSize;
     private Node popup;
     private Container content;
+    // Create-form header buttons, shown at the popup's top corners only while the create form is open.
+    private Button createBack;
+    private Button createClose;
 
     private final IalonConfig config;
     // SettingsValue sliders shown on the create form, polled each frame so their value labels track.
@@ -139,8 +142,9 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     }
 
     private IconButton createMenuButton() {
-        // Positioned by layout(...) ; placed to the right of the settings gear.
-        IconButton iconButton = UiHelper.createTextureButton(config, "settings.png", buttonSize, 0, 0);
+        // The single top-of-screen button : the gear icon opens this worlds menu (which now also hosts
+        // the global settings, reached via the "Settings" button in the menu).
+        IconButton iconButton = UiHelper.createTextureButton(config, "gear.png", buttonSize, 0, 0);
         iconButton.background.addMouseListener(new TogglePopupMouseClickListener());
         return iconButton;
     }
@@ -150,15 +154,17 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         worldPopup.setLocalTranslation(0, app.getCamera().getHeight(), 100);
         worldPopup.setName("worldPopup");
         worldPopup.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
-        UiHelper.addBackground(worldPopup, new ColorRGBA(0f, 0f, 0f, 0.8f));
+        UiHelper.addBackground(worldPopup, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
         // A full-screen scroll listener : it consumes clicks (so they don't reach the game, and the popup
         // does NOT close — closing is explicit via Close) and, since the popup spans the whole screen and
         // sits behind the grid, it catches wheel/drag scrolling anywhere not handled by a card.
         CursorEventControl.addListenersToSpatial(worldPopup, new CardScrollListener(null));
 
         // content (centred) is attached lazily, only for the create form. The worlds grid uses worldsView.
+        // Horizontally centred ; vertically anchored to a fixed top margin (top inset 0, slack to bottom)
+        // so the title sits at the same height as the settings popup regardless of content height.
         content = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        content.setInsetsComponent(new DynamicInsetsComponent(10, 50, 50, 50));
+        content.setInsetsComponent(new DynamicInsetsComponent(0, 50, 50, 50));
         content.addMouseListener(new IgnoreMouseClickListener());
 
         worldsView = new Node("worldsView");
@@ -237,6 +243,13 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         closeDeleteConfirm();
     }
 
+    /** Closes the worlds menu and opens the global settings popup (owned by {@link SettingsState}). */
+    private void openSettings() {
+        hidePopup();
+        Optional.ofNullable(app.getStateManager().getState(SettingsState.class))
+                .ifPresent(SettingsState::showPopup);
+    }
+
     private void closeDeleteConfirm() {
         if (deleteOverlay != null) {
             deleteOverlay.removeFromParent();
@@ -310,11 +323,12 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
     }
 
-    /** Shows the worlds view (worldsView attached, create-form content detached). */
+    /** Shows the worlds view (worldsView attached, create-form content + its corner buttons detached). */
     private void showWorldsView() {
         if (content.getParent() != null) {
             ((Container) popup).removeChild(content);
         }
+        detachCreateFormCornerButtons();
         if (worldsView.getParent() == null) {
             ((Node) popup).attachChild(worldsView);
         }
@@ -340,11 +354,11 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         ColorRGBA frameColor = current ? new ColorRGBA(0.4f, 0.7f, 1f, 1f)
                 : (selected ? ColorRGBA.White : ColorRGBA.Black);
         Container frame = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(frame, frameColor);
+        UiHelper.addBackground(frame, frameColor, config);
         frame.setInsetsComponent(new InsetsComponent(halfGap, halfGap, halfGap, halfGap));
 
         Container mat = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(mat, ColorRGBA.Black);
+        UiHelper.addBackground(mat, ColorRGBA.Black, config);
         mat.setInsetsComponent(new InsetsComponent(border, border, border, border));
 
         Container contentBox = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
@@ -410,6 +424,11 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             buttons.addChild(create, row++, 0);
         }
 
+        // Global settings : closes this menu and opens the settings popup.
+        Button settings = menuButton("Global Settings", vw, vh);
+        settings.addClickCommands(source -> openSettings());
+        buttons.addChild(settings, row++, 0);
+
         Button close = menuButton("Close", vw, vh);
         // Extra top gap to set Close apart from the world-action buttons above it.
         close.setInsetsComponent(new InsetsComponent(9 * vh, 0, 0, 0));
@@ -461,7 +480,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         Container overlay = new Container(IALON_STYLE);
         deleteOverlay = overlay;
         overlay.setLocalTranslation(0, 0, 100); // relative to the popup : on top of the worlds view
-        UiHelper.addBackground(overlay, new ColorRGBA(0f, 0f, 0f, 0.9f));
+        UiHelper.addBackground(overlay, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
         overlay.addMouseListener(new IgnoreMouseClickListener());
 
         WorldParams params = WorldRepository.loadWorldParams(config.getSavePath(), worldId);
@@ -520,9 +539,26 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         float vh = app.getCamera().getHeight() / 100f;
         float vw = app.getCamera().getWidth() / 100f;
 
+        // Fixed top margin (same as the screen-edge margin used by the top buttons) so the title sits at a
+        // constant height, matching the settings popup.
+        Panel topSpacer = new Panel();
+        topSpacer.setBackground(null);
+        topSpacer.setPreferredSize(new Vector3f(1, UiHelper.screenMargin(app.getCamera().getHeight()), 0));
+        content.addChild(topSpacer, 0, 0);
+
+        // Title, centered horizontally within its cell (the widest column 0 child) by the
+        // DynamicInsetsComponent, with a small spacer row below it.
         Label title = new Label("New world", IALON_STYLE);
         title.setFontSize(4 * vh);
-        content.addChild(title, 0, 0);
+        title.setColor(ColorRGBA.White);
+        title.setTextHAlignment(HAlignment.Center);
+        title.setInsetsComponent(new DynamicInsetsComponent(0, 0.5f, 0, 0.5f));
+        content.addChild(title, 1, 0);
+
+        Panel titleSpacer = new Panel();
+        titleSpacer.setBackground(null);
+        titleSpacer.setPreferredSize(new Vector3f(1, 3 * vh, 0));
+        content.addChild(titleSpacer, 2, 0);
 
         // The name is assigned automatically ("World N", first free number) — no text input (awkward on
         // Android, and the screenshot preview already distinguishes worlds).
@@ -536,25 +572,68 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         SettingsValue density = addValue(sliders, 3, "Mountain density", 0.5, 2.0, 1.0, v -> String.format(Locale.ENGLISH, "%.2f", v));
         SettingsValue trees = addValue(sliders, 4, "Tree density", 0.0, 1.0, 0.70, v -> String.format(Locale.ENGLISH, "%.2f", v));
         SettingsValue woods = addValue(sliders, 5, "Woods size", 0.5, 3.0, 1.0, v -> String.format(Locale.ENGLISH, "%.2f", v));
-        content.addChild(sliders, 1, 0);
+        content.addChild(sliders, 3, 0);
 
-        // Create / Cancel side by side (column 0 / column 1), with a top inset to set them apart from the
-        // sliders above. Axis.Y/Axis.X : rows stack vertically, columns sit side by side horizontally.
+        // Empty spacer row : vertical margin between the sliders and the buttons.
+        Panel spacer = new Panel();
+        spacer.setBackground(null);
+        spacer.setPreferredSize(new Vector3f(1, 6 * vh, 0));
+        content.addChild(spacer, 4, 0);
+
+        // Only the primary action stays at the bottom (centered) : Create. Back/Close live at the top
+        // corners (see below). The DynamicInsetsComponent centers the button within its cell.
         Container buttons = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        buttons.setInsetsComponent(new InsetsComponent(6 * vh, 0, 0, 0));
+        buttons.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
         Button createBtn = new Button("Create", IALON_STYLE);
         createBtn.setFontSize(4 * vh);
         createBtn.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
+        createBtn.setTextHAlignment(HAlignment.Center);
+        createBtn.setTextVAlignment(VAlignment.Center);
         createBtn.addClickCommands(source -> createAndPlay(seed, water, relief, density, trees, woods));
         buttons.addChild(createBtn, 0, 0);
+        content.addChild(buttons, 5, 0);
 
-        Button cancel = new Button("Cancel", IALON_STYLE);
-        cancel.setFontSize(4 * vh);
-        cancel.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
-        cancel.addClickCommands(source -> rebuildGrid());
-        buttons.addChild(cancel, 0, 1);
-        content.addChild(buttons, 2, 0);
+        showCreateFormCornerButtons();
         sizePopupToScreen();
+    }
+
+    /**
+     * Shows the create-form header buttons at the popup's top corners (level with the title) : Back (left)
+     * returns to the worlds list, Close (right) returns to the game. Created lazily, then attached and
+     * positioned. Removed again by {@link #showWorldsView()} when leaving the create form.
+     */
+    private void showCreateFormCornerButtons() {
+        float vh = app.getCamera().getHeight() / 100f;
+        if (createBack == null) {
+            createBack = new Button("Back", IALON_STYLE);
+            createBack.setTextVAlignment(VAlignment.Center);
+            createBack.addClickCommands(source -> rebuildGrid());
+            createClose = new Button("Close", IALON_STYLE);
+            createClose.setTextVAlignment(VAlignment.Center);
+            createClose.addClickCommands(source -> hidePopup());
+        }
+        sizeCornerButton(createBack, vh);
+        sizeCornerButton(createClose, vh);
+        ((Node) popup).attachChild(createBack);
+        ((Node) popup).attachChild(createClose);
+        UiHelper.placeCornerButtons(createBack, createClose,
+                app.getCamera().getWidth(), app.getCamera().getHeight());
+    }
+
+    private void detachCreateFormCornerButtons() {
+        if (createBack != null) {
+            createBack.removeFromParent();
+            createClose.removeFromParent();
+        }
+    }
+
+    /**
+     * Sizes a corner header button : font only, no fixed width, so the button hugs its text. That lets
+     * {@link UiHelper#placeCornerButtons} sit it flush in the corner (its real width is then known), so
+     * Back hugs the left edge and Close hugs the right edge at the same margin.
+     */
+    private void sizeCornerButton(Button button, float vh) {
+        button.setFontSize(4 * vh);
     }
 
     private SettingsValue addValue(Container container, int row, String title, double min, double max,
@@ -654,14 +733,21 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             if (gridContainer != null && gridContainer.getParent() != null) {
                 rebuildGrid();
             }
+            // Reposition the create-form corner buttons if the create form is the current view.
+            if (createBack != null && createBack.getParent() != null) {
+                float vh = height / 100f;
+                sizeCornerButton(createBack, vh);
+                sizeCornerButton(createClose, vh);
+                UiHelper.placeCornerButtons(createBack, createClose, width, height);
+            }
         }
     }
 
-    /** Recomputes the menu-button size for the new height and repositions it (right of the settings gear). */
+    /** Recomputes the menu-button size for the new height and repositions it (the single top button). */
     private void layout(int width, int height) {
         buttonSize = height / 12;
         float margin = UiHelper.screenMargin(height);
-        float x = width / 2f + 2 * (buttonSize + SPACING);
+        float x = width / 2f + buttonSize + SPACING;
         float y = height - margin;
         UiHelper.resizeTextureButton(button, buttonSize, x, y);
     }

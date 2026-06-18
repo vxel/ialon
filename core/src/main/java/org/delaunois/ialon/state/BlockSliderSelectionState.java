@@ -557,7 +557,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         Panel background = new Panel();
         background.setName("BlockButtonBackground");
         background.setPreferredSize(new Vector3f(app.getCamera().getWidth(), blockButtonSize * BLOCK_ROWS, 0));
-        QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(new ColorRGBA(0f, 0, 0, 0.5f));
+        QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0f, 0, 0, 0.6f), config));
         quadBackgroundComponent.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
         background.setBackground(quadBackgroundComponent);
         background.setLocalTranslation(0, posy, -1f);
@@ -643,7 +643,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             Panel background = new Panel();
             background.setName("SubBlockButtonBackground");
             background.setPreferredSize(new Vector3f(app.getCamera().getWidth(), blockButtonSize, 0));
-            QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(new ColorRGBA(0f, 0, 0, 0.5f));
+            QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0f, 0, 0, 0.6f), config));
             quadBackgroundComponent.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
             background.setBackground(quadBackgroundComponent);
             background.setLocalTranslation(0, posy, -1f);
@@ -673,7 +673,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
 
         if (withBackground) {
-            QuadBackgroundComponent background = new QuadBackgroundComponent(new ColorRGBA(0, 0, 0, 0.5f));
+            QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
             // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
             background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
             buttonContainer.setBackground(background);

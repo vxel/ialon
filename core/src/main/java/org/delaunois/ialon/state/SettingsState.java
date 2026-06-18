@@ -20,7 +20,9 @@ package org.delaunois.ialon.state;
 import static org.delaunois.ialon.Ialon.IALON_STYLE;
 
 import com.jme3.app.Application;
+import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.AppState;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
@@ -35,6 +37,7 @@ import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
 import com.simsilica.lemur.HAlignment;
+import com.simsilica.lemur.Label;
 import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.DynamicInsetsComponent;
@@ -46,9 +49,9 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.ui.UiHelper;
-import org.delaunois.ialon.ui.UiHelper.IconButton;
 
 import java.util.Locale;
+import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,13 +59,12 @@ import lombok.extern.slf4j.Slf4j;
 public class SettingsState extends BaseAppState implements ActionListener, Resizable {
 
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
-    private static final float SPACING = 10;
 
     private SimpleApplication app;
-    private IconButton buttonSettings;
-    private int buttonSize;
     private boolean isMouseLocked = false;
     private Node popup;
+    private Button cornerBack;
+    private Button cornerClose;
 
     private final IalonConfig config;
     private static final int FAR_TREE_MAX_DISTANCE = 1000;
@@ -75,6 +77,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     private SettingsToggle showFps;
     private SettingsToggle showPosition;
     private SettingsToggle maxFramerate;
+    private SettingsToggle devMode;
 
     public SettingsState(IalonConfig config) {
         this.config = config;
@@ -83,8 +86,6 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     @Override
     public void initialize(Application app) {
         this.app = (SimpleApplication) app;
-        buttonSize = app.getCamera().getHeight() / 12;
-        buttonSettings = createSettingsButton();
         popup = createPopup();
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
@@ -98,28 +99,24 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         }
     }
 
-    private IconButton createSettingsButton() {
-        IconButton iconButton = UiHelper.createTextureButton(config, "gear.png", buttonSize, 0, 0);
-        iconButton.background.addMouseListener(new TogglePopupMouseClickListener());
-        return iconButton;
-    }
-
     private Node createPopup() {
         Container settingsPopup = new Container(IALON_STYLE);
         settingsPopup.setLocalTranslation(0, app.getCamera().getHeight(), 100);
         settingsPopup.setName("settingsPopup");
         settingsPopup.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
-        UiHelper.addBackground(settingsPopup, new ColorRGBA(0f, 0f, 0f, 0.8f));
+        UiHelper.addBackground(settingsPopup, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
         // Consume background clicks (so they don't reach the game) but do NOT close the popup :
         // closing is done only via the Close button.
         settingsPopup.addMouseListener(new IgnoreMouseClickListener());
 
-        float vw = app.getCamera().getWidth() / 100f;
         float vh = app.getCamera().getHeight() / 100f;
 
-        // The whole block (settings rows + Close button) is centered on screen by this wrapper.
+        // The whole block is centered horizontally and anchored to a fixed top margin (top inset 0, all
+        // vertical slack pushed to the bottom) so the title sits at the same height regardless of how much
+        // content there is — matching the world-menu popup. A fixed top spacer (added as row 0) provides
+        // that top margin.
         Container content = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        content.setInsetsComponent(new DynamicInsetsComponent(10, 50, 50, 50));
+        content.setInsetsComponent(new DynamicInsetsComponent(0, 50, 50, 50));
         content.addMouseListener(new IgnoreMouseClickListener());
 
         Container container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
@@ -164,6 +161,9 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         maxFramerate = new SettingsToggle("Max FPS", app.getCamera(),
                 config.getMaxFramerate() >= 120, this::setHighFramerate, "120", "60");
 
+        devMode = new SettingsToggle("Debug mode", app.getCamera(),
+                config.isDevMode(), this::setDevModeEnabled);
+
         gridSize.addToContainer(container, 0);
         ambientIntensity.addToContainer(container, 1);
         sunIntensity.addToContainer(container, 2);
@@ -172,28 +172,45 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         showFps.addToContainer(container, 5);
         showPosition.addToContainer(container, 6);
         maxFramerate.addToContainer(container, 7);
+        devMode.addToContainer(container, 8);
 
-        content.addChild(container, 0, 0);
+        // Fixed top margin (same as the screen-edge margin used by the top buttons) so the title sits at a
+        // constant height.
+        Panel topSpacer = new Panel();
+        topSpacer.setBackground(null);
+        topSpacer.setPreferredSize(new Vector3f(1, UiHelper.screenMargin(app.getCamera().getHeight()), 0));
+        content.addChild(topSpacer, 0, 0);
 
-        // Empty spacer row : vertical margin between the settings and the Close button. The default
-        // Lemur panel background is cleared so it stays invisible.
-        Panel spacer = new Panel();
-        spacer.setBackground(null);
-        spacer.setPreferredSize(new Vector3f(1, 6 * vh, 0));
-        content.addChild(spacer, 1, 0);
+        // Title, centered horizontally within its cell (the widest column 0 child) by the
+        // DynamicInsetsComponent, with a small spacer row below it.
+        Label title = new Label("Global Settings", IALON_STYLE);
+        title.setFontSize(4 * vh);
+        title.setColor(ColorRGBA.White);
+        title.setTextHAlignment(HAlignment.Center);
+        title.setInsetsComponent(new DynamicInsetsComponent(0, 0.5f, 0, 0.5f));
+        content.addChild(title, 1, 0);
 
-        // Close button : its cell spans the full settings width (the widest column 0 child), and the
-        // DynamicInsetsComponent centers the button within that cell, i.e. horizontally on screen.
-        Button close = new Button("Close", IALON_STYLE);
-        close.setFontSize(4 * vh);
-        close.setPreferredSize(new Vector3f(25 * vw, 8 * vh, 0));
-        close.setTextHAlignment(HAlignment.Center);
-        close.setTextVAlignment(VAlignment.Center);
-        close.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
-        close.addClickCommands(source -> hidePopup());
-        content.addChild(close, 2, 0);
+        Panel titleSpacer = new Panel();
+        titleSpacer.setBackground(null);
+        titleSpacer.setPreferredSize(new Vector3f(1, 3 * vh, 0));
+        content.addChild(titleSpacer, 2, 0);
+
+        content.addChild(container, 3, 0);
 
         settingsPopup.addChild(content);
+
+        // Header buttons at the popup's top corners, level with the title (positioned by layout()) :
+        // Back (left) returns to the worlds menu, Close (right) returns to the game. No bottom buttons.
+        cornerBack = new Button("Back", IALON_STYLE);
+        cornerBack.setTextVAlignment(VAlignment.Center);
+        cornerBack.addClickCommands(source -> backToWorldMenu());
+        settingsPopup.attachChild(cornerBack);
+
+        cornerClose = new Button("Close", IALON_STYLE);
+        cornerClose.setTextVAlignment(VAlignment.Center);
+        cornerClose.addClickCommands(source -> hidePopup());
+        settingsPopup.attachChild(cornerClose);
+
         return settingsPopup;
     }
 
@@ -281,11 +298,37 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         }
     }
 
-    public void togglePopup() {
-        if (popup.getParent() == null) {
-            showPopup();
+    /**
+     * Toggles developer/debug mode live : attaches the debug overlays + hotkeys (axes, debug HUD, jME
+     * debug keys, wireframe toggle) and the detailed stat view when on, detaches them when off. Mirrors the
+     * startup-time attachment in {@link org.delaunois.ialon.Ialon}. Runtime-only : not persisted, so it
+     * defaults back to off on restart.
+     */
+    private void setDevModeEnabled(boolean enabled) {
+        config.setDevMode(enabled);
+        StatsAppState stats = app.getStateManager().getState(StatsAppState.class);
+        if (stats != null) {
+            stats.setDisplayStatView(enabled);
+        }
+        if (enabled) {
+            if (app.getStateManager().getState(IalonDebugState.class) == null) {
+                app.getStateManager().attach(new AxesDebugState());
+                app.getStateManager().attach(new IalonDebugState(config));
+                app.getStateManager().attach(new DebugKeysAppState());
+                app.getStateManager().attach(new WireframeState());
+            }
         } else {
-            hidePopup();
+            detachState(AxesDebugState.class);
+            detachState(IalonDebugState.class);
+            detachState(DebugKeysAppState.class);
+            detachState(WireframeState.class);
+        }
+    }
+
+    private <T extends AppState> void detachState(Class<T> type) {
+        T state = app.getStateManager().getState(type);
+        if (state != null) {
+            app.getStateManager().detach(state);
         }
     }
 
@@ -294,6 +337,13 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
             app.getGuiNode().attachChild(popup);
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
         }
+    }
+
+    /** Closes the settings popup and reopens the worlds menu (owned by {@link WorldMenuState}). */
+    private void backToWorldMenu() {
+        hidePopup();
+        Optional.ofNullable(app.getStateManager().getState(WorldMenuState.class))
+                .ifPresent(WorldMenuState::showPopup);
     }
 
     public void hidePopup() {
@@ -359,18 +409,12 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
 
     @Override
     protected void onEnable() {
-        if (buttonSettings.background.getParent() == null) {
-            app.getGuiNode().attachChild(buttonSettings.background);
-            app.getGuiNode().attachChild(buttonSettings.icon);
-        }
+        // No own button anymore : the popup is opened from WorldMenuState's "Settings" button.
     }
 
     @Override
     protected void onDisable() {
-        if (buttonSettings.background.getParent() != null) {
-            app.getGuiNode().detachChild(buttonSettings.background);
-            app.getGuiNode().detachChild(buttonSettings.icon);
-        }
+        // No own button anymore.
     }
 
     @Override
@@ -378,13 +422,23 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         layout(width, height);
     }
 
-    /** Recomputes the gear-button size for the new height and repositions it (and the full-screen popup). */
+    /** Re-fits the full-screen popup to the new screen size and repositions the corner header buttons. */
     private void layout(int width, int height) {
-        buttonSize = height / 12;
-        float margin = UiHelper.screenMargin(height);
-        UiHelper.resizeTextureButton(buttonSettings, buttonSize, width / 2f + buttonSize + SPACING, height - margin);
         ((Container) popup).setPreferredSize(new Vector3f(width, height, 0));
         popup.setLocalTranslation(0, height, 100);
+        float vh = height / 100f;
+        sizeCornerButton(cornerBack, vh);
+        sizeCornerButton(cornerClose, vh);
+        UiHelper.placeCornerButtons(cornerBack, cornerClose, width, height);
+    }
+
+    /**
+     * Sizes a corner header button : font only, no fixed width, so the button hugs its text. That lets
+     * {@link UiHelper#placeCornerButtons} sit it flush in the corner (its real width is then known), so
+     * Back hugs the left edge and Close hugs the right edge at the same margin.
+     */
+    private void sizeCornerButton(Button button, float vh) {
+        button.setFontSize(4 * vh);
     }
 
     @Override
@@ -405,16 +459,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         showFps.update();
         showPosition.update();
         maxFramerate.update();
-    }
-
-    private class TogglePopupMouseClickListener extends DefaultMouseListener {
-        @Override
-        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-            event.setConsumed();
-            if (event.isPressed()) {
-                togglePopup();
-            }
-        }
+        devMode.update();
     }
 
     private class IgnoreMouseClickListener extends DefaultMouseListener {
