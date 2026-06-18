@@ -76,6 +76,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     private SettingsToggle farTerrain;
     private SettingsToggle showFps;
     private SettingsToggle showPosition;
+    private SettingsToggle minimap;
     private SettingsToggle maxFramerate;
     private SettingsToggle devMode;
 
@@ -158,6 +159,9 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         showPosition = new SettingsToggle("Show position", app.getCamera(),
                 config.isShowPosition(), this::setShowPositionEnabled);
 
+        minimap = new SettingsToggle("Minimap", app.getCamera(),
+                config.isShowMinimap(), this::setMinimapEnabled);
+
         maxFramerate = new SettingsToggle("Max FPS", app.getCamera(),
                 config.getMaxFramerate() >= 120, this::setHighFramerate, "120", "60");
 
@@ -171,8 +175,9 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         farTreeDistance.addToContainer(container, 4);
         showFps.addToContainer(container, 5);
         showPosition.addToContainer(container, 6);
-        maxFramerate.addToContainer(container, 7);
-        devMode.addToContainer(container, 8);
+        minimap.addToContainer(container, 7);
+        maxFramerate.addToContainer(container, 8);
+        devMode.addToContainer(container, 9);
 
         // Fixed top margin (same as the screen-edge margin used by the top buttons) so the title sits at a
         // constant height.
@@ -285,6 +290,23 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         StatsAppState stats = app.getStateManager().getState(StatsAppState.class);
         if (stats != null) {
             stats.setDisplayPosition(enabled);
+        }
+    }
+
+    /**
+     * Shows or hides the top-down far-terrain minimap ({@link MinimapState}), attaching it on demand. The
+     * minimap reuses the far terrain's heightmap when present, else samples the generator itself, so it
+     * works whether or not the far terrain is enabled.
+     */
+    private void setMinimapEnabled(boolean enabled) {
+        config.setShowMinimap(enabled);
+        MinimapState state = app.getStateManager().getState(MinimapState.class);
+        if (state == null) {
+            if (enabled) {
+                app.getStateManager().attach(IalonInitializer.setupMinimap(config));
+            }
+        } else {
+            state.setEnabled(enabled);
         }
     }
 
@@ -458,6 +480,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         farTerrain.update();
         showFps.update();
         showPosition.update();
+        minimap.update();
         maxFramerate.update();
         devMode.update();
     }

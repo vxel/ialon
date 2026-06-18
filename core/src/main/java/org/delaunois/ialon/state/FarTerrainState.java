@@ -98,12 +98,18 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     private static final float ENCLOSURE_OFFSET = 0f;
 
     private final IalonConfig config;
+    @Getter
     private final float extent;
 
     private SimpleApplication app;
 
     @Getter
     private TerrainQuad terrain;
+
+    // The procedural heightmap (HEIGHTMAP_SIZE^2, heights pre-divided by step) sampled at init. Kept so the
+    // minimap (MinimapState) can reuse it for its top-down view instead of re-sampling the generator.
+    @Getter
+    private float[] heightmap;
 
     // Closed box sealing the world from below (open top : the heightfield is the lid). Built once, it
     // follows the camera at a radius inside the far clip plane so the horizon is always enclosed in
@@ -148,6 +154,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     private boolean forestTintEnabled = false;
     // World units between two heightmap samples (extent / (HEIGHTMAP_SIZE - 1)) ; kept so the player-edit
     // height overrides can be converted back into the heightmap's pre-scaled units (see sampleHeightmap).
+    @Getter
     private float step;
     // Player edits to the relief : each edited column is mapped to its nearest heightmap SAMPLE, which is
     // then re-measured from the live world (so an off-sample single-block edit moves nothing — it is
@@ -183,6 +190,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         this.step = extent / (HEIGHTMAP_SIZE - 1);
         float step = this.step;
         float[] heightmap = sampleHeightmap(generator, step);
+        this.heightmap = heightmap;
 
         terrain = new TerrainQuad("FarTerrain", PATCH_SIZE, HEIGHTMAP_SIZE, heightmap);
         material = createMaterial();

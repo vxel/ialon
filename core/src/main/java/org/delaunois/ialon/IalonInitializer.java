@@ -42,6 +42,7 @@ import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.ChunkSaverState;
 import org.delaunois.ialon.state.FarTerrainState;
 import org.delaunois.ialon.state.FarTreeState;
+import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.PhysicsChunkPagerState;
 import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.SplashscreenState;
@@ -94,6 +95,10 @@ public class IalonInitializer {
 
     public static AppState setupFarTree(IalonConfig config) {
         return new FarTreeState(config);
+    }
+
+    public static AppState setupMinimap(IalonConfig config) {
+        return new MinimapState(config);
     }
 
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {
@@ -299,6 +304,10 @@ public class IalonInitializer {
         if (config.isFarTree()) {
             sm.attach(setupFarTree(config)); // Distant trees, depends on camera + terrain generator
         }
+        if (config.isShowMinimap()) {
+            // After FarTerrain : the minimap reuses its heightmap (both initialise this frame, in attach order).
+            sm.attach(setupMinimap(config));
+        }
         sm.attach(new WorldBuilderState(config)); // Depends on PlayerState + the pagers
     }
 
@@ -310,6 +319,7 @@ public class IalonInitializer {
     public static void detachWorldStates(SimpleApplication app) {
         AppStateManager sm = app.getStateManager();
         detachIfPresent(sm, WorldBuilderState.class);
+        detachIfPresent(sm, MinimapState.class);
         detachIfPresent(sm, FarTreeState.class);
         detachIfPresent(sm, FarTerrainState.class);
         detachIfPresent(sm, ChunkLiquidManagerState.class);
