@@ -136,6 +136,7 @@ public class IalonConfig implements WorldSettings {
 
     private boolean showFps = true; // on-screen FPS counter (StatsAppState)
     private boolean showPosition = false; // on-screen world position, top-left (StatsAppState)
+    private boolean showMinimap = true; // on-screen top-down far-terrain minimap (MinimapState)
     private int maxFramerate = FPS_LIMIT_DESKTOP; // frame rate cap ; toggled between 60 and 120 in the settings (battery on mobile)
 
     private ColorRGBA skyColor = new ColorRGBA().setAsSrgb(100 / 255f, 172 / 255f, 255 / 255f, 1f);

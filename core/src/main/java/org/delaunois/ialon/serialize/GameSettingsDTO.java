@@ -51,6 +51,7 @@ public class GameSettingsDTO {
     private float farTreeDistance = 350f;
     private boolean showFps = true;
     private boolean showPosition = false;
+    private boolean showMinimap = true;
     private int maxFramerate = IalonConfig.FPS_LIMIT_DESKTOP;
 
     public GameSettingsDTO(IalonConfig config) {
@@ -64,6 +65,7 @@ public class GameSettingsDTO {
         this.farTreeDistance = config.getFarTreeDistance();
         this.showFps = config.isShowFps();
         this.showPosition = config.isShowPosition();
+        this.showMinimap = config.isShowMinimap();
         this.maxFramerate = config.getMaxFramerate();
     }
 
@@ -85,6 +87,7 @@ public class GameSettingsDTO {
         }
         config.setShowFps(showFps);
         config.setShowPosition(showPosition);
+        config.setShowMinimap(showMinimap);
         // Only 60 or 120 are offered ; guard against out-of-range values from edited/old saves.
         config.setMaxFramerate(maxFramerate == 60 ? 60 : IalonConfig.FPS_LIMIT_DESKTOP);
     }
