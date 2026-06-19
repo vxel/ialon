@@ -17,9 +17,12 @@
 
 package org.delaunois.ialon.state;
 
+import static org.delaunois.ialon.Ialon.IALON_STYLE;
+
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.ColorRGBA;
@@ -29,6 +32,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.shape.Quad;
 import com.jme3.texture.Image;
@@ -36,6 +40,11 @@ import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
+import com.simsilica.lemur.Button;
+import com.simsilica.lemur.Container;
+import com.simsilica.lemur.VAlignment;
+import com.simsilica.lemur.event.DefaultMouseListener;
+import com.simsilica.lemur.event.MouseEventControl;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
@@ -66,17 +75,37 @@ public class MinimapState extends BaseAppState implements Resizable {
     private static final float SPACING = 10f;
     // Baked minimap texture resolution. Small : it is a thumbnail, and the source heightmap is coarser still.
     private static final int TEX_SIZE = 192;
+    // Higher resolution baked once for the enlarged popup map, so it isn't blurry when scaled up. Baked
+    // lazily on first open (slight one-time cost). ~3 MB at RGBA8 — negligible against the app footprint.
+    private static final int POPUP_TEX_SIZE = 768;
     // Player marker size as a fraction of the minimap side.
     private static final float MARKER_RATIO = 0.16f;
     // Dark frame thickness as a fraction of the whole footprint (min 2px). The frame is inside the footprint :
     // frame + map together occupy exactly the Jump button size.
     private static final float BORDER_RATIO = 0.04f;
 
+    // Fraction of the large popup map side used for the player marker (smaller than MARKER_RATIO since the
+    // popup map is much bigger than the thumbnail).
+    private static final float POPUP_MARKER_RATIO = 0.05f;
+    // Side of the large popup map as a fraction of the smaller screen dimension (leaving room for margins).
+    private static final float POPUP_MAP_RATIO = 0.75f;
+
     private final IalonConfig config;
     private SimpleApplication app;
 
     private Node minimapNode;
     private Node marker;
+    private Texture2D mapTex;
+
+    // Full-screen popup showing the minimap in large, opened by clicking the thumbnail. Built lazily.
+    private Container minimapPopup;
+    private Node popupMarker;
+    private Button popupClose;
+    // Cached popup-local placement of the big map (its bottom-left corner and side), so update() can place
+    // the popup marker without recomputing the layout each frame.
+    private float popupMapLeft;
+    private float popupMapBottom;
+    private float popupMapSide;
 
     // Fixed footprint of the whole widget (frame included) : the Jump button height (camera height / 6),
     // computed once at init and kept across resolution changes — exactly like the control buttons (only the
@@ -109,7 +138,7 @@ public class MinimapState extends BaseAppState implements Resizable {
         this.torus = worldSize > 0f;
         this.worldExtent = torus ? worldSize : config.getFarTerrainExtent();
 
-        Texture2D mapTex = bakeTexture();
+        mapTex = bakeTexture(TEX_SIZE);
         if (mapTex == null) {
             log.warn("No terrain data available : minimap disabled");
             return;
@@ -139,6 +168,10 @@ public class MinimapState extends BaseAppState implements Resizable {
         marker = createMarker(mapSize * MARKER_RATIO);
         minimapNode.attachChild(marker);
 
+        // Clicking the thumbnail opens the large minimap popup. Consume the event so it doesn't fall
+        // through to the game (look/place) behind the widget.
+        MouseEventControl.addListenersToSpatial(minimapNode, new OpenPopupMouseListener());
+
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
         if (app.getStateManager().getState(ScreenState.class) != null) {
@@ -162,6 +195,7 @@ public class MinimapState extends BaseAppState implements Resizable {
 
     @Override
     protected void onDisable() {
+        hidePopup();
         if (minimapNode != null && minimapNode.getParent() != null) {
             minimapNode.removeFromParent();
         }
@@ -196,12 +230,21 @@ public class MinimapState extends BaseAppState implements Resizable {
         float angle = FastMath.atan2(dir.x, dir.z);
         tmpRot.fromAngleAxis(-angle, Vector3f.UNIT_Z);
         marker.setLocalRotation(tmpRot);
+
+        // Same tracking on the large popup marker while the popup is open (same (u, v) over the big map).
+        if (popupMarker != null && minimapPopup != null && minimapPopup.getParent() != null) {
+            popupMarker.setLocalTranslation(popupMapLeft + u * popupMapSide, popupMapBottom + v * popupMapSide, 2f);
+            popupMarker.setLocalRotation(tmpRot);
+        }
     }
 
     @Override
     public void onResize(int width, int height) {
         if (minimapNode != null) {
             layout(width, height);
+        }
+        if (minimapPopup != null) {
+            layoutPopup(width, height);
         }
     }
 
@@ -220,6 +263,109 @@ public class MinimapState extends BaseAppState implements Resizable {
     }
 
     /**
+     * Opens the large minimap popup, building it on first use. Disables player touch input (like the
+     * settings / world-menu popups) so the game doesn't react to clicks behind the popup.
+     */
+    private void showPopup() {
+        if (minimapPopup == null) {
+            createPopup();
+        }
+        if (minimapPopup.getParent() == null) {
+            app.getGuiNode().attachChild(minimapPopup);
+            setPlayerTouchEnabled(false);
+        }
+    }
+
+    /** Closes the large minimap popup (no-op if not open) and re-enables player touch input. */
+    private void hidePopup() {
+        if (minimapPopup != null && minimapPopup.getParent() != null) {
+            minimapPopup.removeFromParent();
+            setPlayerTouchEnabled(true);
+        }
+    }
+
+    private void setPlayerTouchEnabled(boolean enabled) {
+        PlayerState playerState = app.getStateManager().getState(PlayerState.class);
+        if (playerState != null) {
+            playerState.setTouchEnabled(enabled);
+        }
+    }
+
+    /**
+     * Builds the full-screen popup : a translucent dark backdrop (same as the settings / world-menu popups),
+     * a large square map reusing the already-baked terrain texture, a player marker tracked live in
+     * {@link #update}, and a "Close" button in the top-right corner. Built once, lazily.
+     */
+    private void createPopup() {
+        int width = app.getCamera().getWidth();
+        int height = app.getCamera().getHeight();
+
+        minimapPopup = new Container(IALON_STYLE);
+        minimapPopup.setName("minimapPopup");
+        minimapPopup.setLocalTranslation(0, height, 100);
+        minimapPopup.setPreferredSize(new Vector3f(width, height, 0));
+        UiHelper.addBackground(minimapPopup, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
+        // Clicking the backdrop (beside the enlarged map) closes the popup ; the click is consumed either
+        // way so it doesn't reach the game.
+        minimapPopup.addMouseListener(new CloseOnClickListener());
+
+        // Large map on a higher-resolution bake (so it isn't blurry when enlarged), falling back to the
+        // thumbnail texture if that bake fails. A unit quad scaled in layoutPopup() so resolution changes
+        // don't rebuild the mesh. Clicks on the map itself are consumed (so they don't bubble up to the
+        // backdrop and close the popup).
+        Texture2D popupTex = bakeTexture(POPUP_TEX_SIZE);
+        Material mapMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        mapMat.setTexture("ColorMap", popupTex != null ? popupTex : mapTex);
+        Geometry bigMap = new Geometry("MinimapPopupMap", new Quad(1, 1));
+        bigMap.setMaterial(mapMat);
+        MouseEventControl.addListenersToSpatial(bigMap, new IgnoreMouseClickListener());
+        minimapPopup.attachChild(bigMap);
+
+        // Close button, top-right corner, level with where popup titles sit.
+        popupClose = new Button("Close", IALON_STYLE);
+        popupClose.setTextVAlignment(VAlignment.Center);
+        popupClose.addClickCommands(source -> hidePopup());
+        minimapPopup.attachChild(popupClose);
+
+        layoutPopup(width, height);
+    }
+
+    /**
+     * (Re)positions the popup contents for the given screen size : centers and scales the big map, rebuilds
+     * the (size-dependent) player marker, and places the Close button in the top-right corner. Uses the
+     * popup-local convention (origin at the top-left, +x right, -y down) — the popup container is translated
+     * to {@code (0, height)}.
+     */
+    private void layoutPopup(int width, int height) {
+        minimapPopup.setPreferredSize(new Vector3f(width, height, 0));
+        minimapPopup.setLocalTranslation(0, height, 100);
+
+        popupMapSide = Math.min(width, height) * POPUP_MAP_RATIO;
+        // Center on screen : screen center (width/2, height/2) maps to popup-local (width/2, -height/2).
+        popupMapLeft = width * 0.5f - popupMapSide * 0.5f;
+        popupMapBottom = -height * 0.5f - popupMapSide * 0.5f;
+
+        Geometry bigMap = (Geometry) minimapPopup.getChild("MinimapPopupMap");
+        bigMap.setLocalScale(popupMapSide, popupMapSide, 1f);
+        // Just in front of the container backdrop (the marker sits one step further, see update()).
+        bigMap.setLocalTranslation(popupMapLeft, popupMapBottom, 1f);
+
+        // The marker geometry is built at a fixed pixel size, so rebuild it when the map side changes.
+        if (popupMarker != null) {
+            popupMarker.removeFromParent();
+        }
+        popupMarker = createMarker(popupMapSide * POPUP_MARKER_RATIO);
+        // The marker sits over the map : consume its clicks too so they don't bubble up and close the popup.
+        MouseEventControl.addListenersToSpatial(popupMarker, new IgnoreMouseClickListener());
+        minimapPopup.attachChild(popupMarker);
+
+        float vh = height / 100f;
+        popupClose.setFontSize(4 * vh);
+        float margin = UiHelper.screenMargin(height);
+        popupClose.setLocalTranslation(width - margin - popupClose.getPreferredSize().x, -margin, 10);
+    }
+
+    /**
      * Builds the player marker : an <b>outlined</b> (unfilled) arrow pointing +Y by default, plus a small
      * filled dot at the origin marking the player's exact position. The marker is translated to that exact
      * position and rotated to the view heading in {@link #update}.
@@ -227,9 +373,9 @@ public class MinimapState extends BaseAppState implements Resizable {
     private Node createMarker(float size) {
         Node node = new Node("MinimapMarker");
         // Like the baked texture, sRGB-encode the solid colour on Android so it isn't shown too dark.
-        ColorRGBA color = encodeSrgb(new ColorRGBA(1f, 0.15f, 0.15f, 1f));
+        ColorRGBA color = encodeSrgb(new ColorRGBA(1f, 0f, 0f, 1f));
         float h = size;
-        float w = size * 0.7f;
+        float w = size * 0.8f;
 
         // Arrow outline : the triangle's three edges drawn as lines (not a filled face).
         float[] verts = {
@@ -266,7 +412,7 @@ public class MinimapState extends BaseAppState implements Resizable {
      * texel is coloured by altitude with the same palette as {@code FarTerrain.frag} (terrain colour only —
      * no lighting / fog / reflection). Returns {@code null} if no terrain source is available.
      */
-    private Texture2D bakeTexture() {
+    private Texture2D bakeTexture(int texSize) {
         FarTerrainState far = app.getStateManager().getState(FarTerrainState.class);
         float[] heights = far != null ? far.getHeightmap() : null;
         int hmSize = heights != null ? (int) Math.round(Math.sqrt(heights.length)) : 0;
@@ -291,13 +437,13 @@ public class MinimapState extends BaseAppState implements Resizable {
         // palette would display far too dark. Pre-encode the texels to sRGB here in that case. On desktop the
         // hardware framebuffer does the encode, so we keep the texels linear. (See memory: srgb-color-pipeline.)
         boolean manualSrgb = config.isManualGammaEncode();
-        ByteBuffer data = BufferUtils.createByteBuffer(TEX_SIZE * TEX_SIZE * 4);
+        ByteBuffer data = BufferUtils.createByteBuffer(texSize * texSize * 4);
         Vector3f sample = new Vector3f();
         ColorRGBA c = new ColorRGBA();
-        for (int j = 0; j < TEX_SIZE; j++) {
-            float v = (j + 0.5f) / TEX_SIZE;
-            for (int i = 0; i < TEX_SIZE; i++) {
-                float u = (i + 0.5f) / TEX_SIZE;
+        for (int j = 0; j < texSize; j++) {
+            float v = (j + 0.5f) / texSize;
+            for (int i = 0; i < texSize; i++) {
+                float u = (i + 0.5f) / texSize;
                 float height;
                 if (heights != null) {
                     height = sampleHeightmap(heights, hmSize, hmStep, u, v);
@@ -319,7 +465,7 @@ public class MinimapState extends BaseAppState implements Resizable {
         // wire. Desktop : linear bytes + the hardware sRGB framebuffer encodes on output. Android : bytes
         // pre-encoded to sRGB above + no framebuffer encode. Both paths display the same shade as the far
         // terrain. (See memory: srgb-color-pipeline.)
-        Image img = new Image(Image.Format.RGBA8, TEX_SIZE, TEX_SIZE, data, ColorSpace.Linear);
+        Image img = new Image(Image.Format.RGBA8, texSize, texSize, data, ColorSpace.Linear);
         Texture2D tex = new Texture2D(img);
         tex.setMagFilter(Texture.MagFilter.Bilinear);
         tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
@@ -413,5 +559,35 @@ public class MinimapState extends BaseAppState implements Resizable {
     /** Floating-point floor-mod : the non-negative remainder of {@code x / w} (for {@code w > 0}). */
     private static float floorModF(float x, float w) {
         return x - (float) Math.floor(x / w) * w;
+    }
+
+    /** Opens the large minimap popup when the thumbnail is pressed ; consumes the click either way. */
+    private class OpenPopupMouseListener extends DefaultMouseListener {
+        @Override
+        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+            event.setConsumed();
+            if (event.isPressed()) {
+                showPopup();
+            }
+        }
+    }
+
+    /** Closes the popup when its backdrop (beside the map) is pressed ; consumes the click either way. */
+    private class CloseOnClickListener extends DefaultMouseListener {
+        @Override
+        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+            event.setConsumed();
+            if (event.isPressed()) {
+                hidePopup();
+            }
+        }
+    }
+
+    /** Consumes clicks on the map / marker so they don't bubble up to the backdrop and close the popup. */
+    private static class IgnoreMouseClickListener extends DefaultMouseListener {
+        @Override
+        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
+            event.setConsumed();
+        }
     }
 }

@@ -41,8 +41,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * "Photo Mode" : hides every UI element (control buttons, block selector + history, crosshair, world
- * menu gear button, FPS overlay and the block placement/removal wireframe) so the player can take a
- * clean screenshot of the world alone. The mode is exited automatically on the next touch/click.
+ * menu gear button, minimap, FPS overlay and the block placement/removal wireframe) so the player can
+ * take a clean screenshot of the world alone. The mode is exited automatically on the next touch/click.
  *
  * <p>The mode is entered via {@link #enter()} (called by the "Photo Mode" button of
  * {@link WorldMenuState}). It disables the UI-owning AppStates (reusing their existing
@@ -63,6 +63,7 @@ public class PhotoModeState extends BaseAppState implements Resizable {
             BlockSliderSelectionState.class,
             WorldMenuState.class,
             TimeFactorState.class,
+            MinimapState.class,
             IalonDebugState.class,
             StatsAppState.class
     };
