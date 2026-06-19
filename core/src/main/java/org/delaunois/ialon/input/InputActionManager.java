@@ -28,6 +28,12 @@ public class InputActionManager {
 
     public void triggerAction(String actionName, boolean isPressed) {
         Mapping mapping = mappings.get(actionName);
+        // No mapping means no listener is currently registered for this action (e.g. a control button is
+        // tapped during a teardown / world-switch, after its listeners were removed but while it is still
+        // pickable for a frame). Firing an unlistened action is a no-op, like jME's InputManager — not a crash.
+        if (mapping == null) {
+            return;
+        }
         for (ActionListener listener : mapping.listeners) {
             listener.onAction(mapping.name, isPressed, 0);
         }
