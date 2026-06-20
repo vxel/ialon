@@ -59,7 +59,7 @@ public final class WorldEditOverlayRepository {
      * overlay first, so switching worlds never carries edits over. A missing file is a normal
      * (newly-created or never-edited) world : the overlay is simply left empty.
      */
-    public static void load(Path worldPath, WorldEditOverlay overlay) {
+    public static synchronized void load(Path worldPath, WorldEditOverlay overlay) {
         if (worldPath == null || overlay == null) {
             return;
         }
@@ -89,8 +89,12 @@ public final class WorldEditOverlayRepository {
         }
     }
 
-    /** Writes the overlay to {@code worldPath/edits.dat} only when it has unsaved changes. */
-    public static void save(Path worldPath, WorldEditOverlay overlay) {
+    /**
+     * Writes the overlay to {@code worldPath/edits.dat} only when it has unsaved changes.
+     * {@code synchronized} (with {@link #load}) so a live save on the chunk-saver thread and a
+     * checkpoint save on the main thread never write the file concurrently and tear it.
+     */
+    public static synchronized void save(Path worldPath, WorldEditOverlay overlay) {
         if (worldPath == null || overlay == null || !overlay.isDirty()) {
             return;
         }
