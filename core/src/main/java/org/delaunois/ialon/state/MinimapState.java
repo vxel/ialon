@@ -24,6 +24,7 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
@@ -42,6 +43,8 @@ import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
+import com.simsilica.lemur.HAlignment;
+import com.simsilica.lemur.Label;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseEventControl;
@@ -52,6 +55,7 @@ import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.nio.ByteBuffer;
+import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -89,18 +93,23 @@ public class MinimapState extends BaseAppState implements Resizable {
     private static final float POPUP_MARKER_RATIO = 0.05f;
     // Side of the large popup map as a fraction of the smaller screen dimension (leaving room for margins).
     private static final float POPUP_MAP_RATIO = 0.75f;
+    // Period (seconds) of the player-position dot's sinusoidal alpha pulse.
+    private static final float DOT_PULSE_PERIOD = 2f;
 
     private final IalonConfig config;
     private SimpleApplication app;
 
     private Node minimapNode;
-    private Node marker;
+    private Geometry marker;     // camera-heading triangle (compass needle riding the inscribed circle)
+    private Node positionDot;    // player's exact position on the map
     private Texture2D mapTex;
 
     // Full-screen popup showing the minimap in large, opened by clicking the thumbnail. Built lazily.
     private Container minimapPopup;
-    private Node popupMarker;
+    private Geometry popupMarker;
+    private Node popupDot;
     private Button popupClose;
+    private Label popupTitle;   // live player-position readout, centred above the big map
     // Cached popup-local placement of the big map (its bottom-left corner and side), so update() can place
     // the popup marker without recomputing the layout each frame.
     private float popupMapLeft;
@@ -121,6 +130,13 @@ public class MinimapState extends BaseAppState implements Resizable {
     // Reusable temporaries (no per-frame allocation in update()).
     private final Vector3f tmpDir = new Vector3f();
     private final Quaternion tmpRot = new Quaternion();
+    private final ColorRGBA tmpDotColor = new ColorRGBA(1f, 1f, 1f, 1f);
+
+    // Materials of the (white) position dots, whose alpha is pulsed each frame ; popupDotMat is rebuilt
+    // with the popup map on resize. Accumulated time driving the sine pulse.
+    private Material dotMat;
+    private Material popupDotMat;
+    private float pulseTime;
 
     public MinimapState(IalonConfig config) {
         this.config = config;
@@ -163,10 +179,13 @@ public class MinimapState extends BaseAppState implements Resizable {
         mapQuad.setLocalTranslation(border, border, 0);
         minimapNode.attachChild(mapQuad);
 
-        // Player marker : an outlined arrow pointing +Y (up) by default ; update() rotates it to the view
-        // heading and places it over the player's exact position (the dot at its centre).
+        // Camera-heading triangle (white, filled) that rides the minimap's inscribed circle near the edge,
+        // plus a dot at the player's exact position. Both are placed each frame in update().
         marker = createMarker(mapSize * MARKER_RATIO);
+        positionDot = createDot(mapSize * MARKER_RATIO * 0.4f);
+        dotMat = ((Geometry) positionDot.getChild("MinimapDot")).getMaterial();
         minimapNode.attachChild(marker);
+        minimapNode.attachChild(positionDot);
 
         // Clicking the thumbnail opens the large minimap popup. Consume the event so it doesn't fall
         // through to the game (look/place) behind the widget.
@@ -223,19 +242,60 @@ public class MinimapState extends BaseAppState implements Resizable {
             u = clamp01(p.x / worldExtent + 0.5f);
             v = clamp01(p.z / worldExtent + 0.5f);
         }
-        marker.setLocalTranslation(border + u * mapSize, border + v * mapSize, 1f);
 
-        // Heading : camera forward projected on XZ. The marker points +Y (towards +Z on the map) at angle 0.
+        // View heading : camera forward projected on XZ, normalised (u along +X, v along +Z). The triangle
+        // points +Y by default ; this rotation turns +Y onto that direction so the tip points where the
+        // camera looks, and the same (dxn, dzn) pushes it out onto the inscribed circle (see placeHeading).
         Vector3f dir = app.getCamera().getDirection(tmpDir);
+        float len = FastMath.sqrt(dir.x * dir.x + dir.z * dir.z);
+        float dxn = len > 1e-4f ? dir.x / len : 0f;
+        float dzn = len > 1e-4f ? dir.z / len : 1f;
         float angle = FastMath.atan2(dir.x, dir.z);
         tmpRot.fromAngleAxis(-angle, Vector3f.UNIT_Z);
-        marker.setLocalRotation(tmpRot);
 
-        // Same tracking on the large popup marker while the popup is open (same (u, v) over the big map).
+        // Position dot : white, with a sinusoidal alpha pulse (period DOT_PULSE_PERIOD), so it gently
+        // blinks. alpha = (1 + sin) / 2 sweeps the full [0,1] range.
+        pulseTime += tpf;
+        float alpha = 0.5f + 0.5f * FastMath.sin(FastMath.TWO_PI * pulseTime / DOT_PULSE_PERIOD);
+        tmpDotColor.a = alpha;
+        dotMat.setColor("Color", tmpDotColor);
+
+        // Thumbnail : dot at the player's position, heading triangle on the inscribed circle near the edge.
+        positionDot.setLocalTranslation(border + u * mapSize, border + v * mapSize, 1f);
+        placeHeading(marker, border + mapSize * 0.5f, border + mapSize * 0.5f, mapSize, mapSize * MARKER_RATIO, dxn, dzn, 1f);
+
+        // Same on the large popup while it is open.
         if (popupMarker != null && minimapPopup != null && minimapPopup.getParent() != null) {
-            popupMarker.setLocalTranslation(popupMapLeft + u * popupMapSide, popupMapBottom + v * popupMapSide, 2f);
-            popupMarker.setLocalRotation(tmpRot);
+            float pcx = popupMapLeft + popupMapSide * 0.5f;
+            float pcy = popupMapBottom + popupMapSide * 0.5f;
+            popupDotMat.setColor("Color", tmpDotColor);
+            popupDot.setLocalTranslation(popupMapLeft + u * popupMapSide, popupMapBottom + v * popupMapSide, 2f);
+            placeHeading(popupMarker, pcx, pcy, popupMapSide, popupMapSide * POPUP_MARKER_RATIO, dxn, dzn, 2f);
+
+            // Title : live player position, centred over the map width, just above its top edge.
+            popupTitle.setText(formatPosition(p));
+            Vector3f ps = popupTitle.getPreferredSize();
+            float mapTop = popupMapBottom + popupMapSide;
+            popupTitle.setLocalTranslation(pcx - ps.x * 0.5f, mapTop + popupMapSide * 0.04f + ps.y, 10);
         }
+    }
+
+    /** Formats the player's world position as a one-line title, e.g. {@code "X 123   Y 64   Z -45"}. */
+    private static String formatPosition(Vector3f p) {
+        return String.format(Locale.ENGLISH, "X %d   Y %d   Z %d",
+                Math.round(p.x), Math.round(p.y), Math.round(p.z));
+    }
+
+    /**
+     * Places the heading triangle on the minimap's inscribed circle : from the map centre {@code (cx, cy)},
+     * pushed out along the (normalised) view direction by half the map side — less half the marker, so the
+     * triangle's tip just reaches the edge rather than poking past it — and rotated to point outward.
+     */
+    private void placeHeading(Geometry tri, float cx, float cy, float side, float markerSize,
+                              float dxn, float dzn, float z) {
+        float radius = side * 0.5f - markerSize * 0.5f;
+        tri.setLocalTranslation(cx + dxn * radius, cy + dzn * radius, z);
+        tri.setLocalRotation(tmpRot);
     }
 
     @Override
@@ -327,14 +387,20 @@ public class MinimapState extends BaseAppState implements Resizable {
         popupClose.addClickCommands(source -> hidePopup());
         minimapPopup.attachChild(popupClose);
 
+        // Title : the live player position, centred above the map (text + placement set in update/layout).
+        popupTitle = new Label("", IALON_STYLE);
+        popupTitle.setColor(ColorRGBA.White);
+        popupTitle.setTextHAlignment(HAlignment.Center);
+        minimapPopup.attachChild(popupTitle);
+
         layoutPopup(width, height);
     }
 
     /**
      * (Re)positions the popup contents for the given screen size : centers and scales the big map, rebuilds
-     * the (size-dependent) player marker, and places the Close button in the top-right corner. Uses the
-     * popup-local convention (origin at the top-left, +x right, -y down) — the popup container is translated
-     * to {@code (0, height)}.
+     * the (size-dependent) heading triangle + position dot, and places the Close button in the top-right
+     * corner. Uses the popup-local convention (origin at the top-left, +x right, -y down) — the popup
+     * container is translated to {@code (0, height)}.
      */
     private void layoutPopup(int width, int height) {
         minimapPopup.setPreferredSize(new Vector3f(width, height, 0));
@@ -350,59 +416,75 @@ public class MinimapState extends BaseAppState implements Resizable {
         // Just in front of the container backdrop (the marker sits one step further, see update()).
         bigMap.setLocalTranslation(popupMapLeft, popupMapBottom, 1f);
 
-        // The marker geometry is built at a fixed pixel size, so rebuild it when the map side changes.
+        // The marker / dot are built at a fixed pixel size, so rebuild them when the map side changes.
         if (popupMarker != null) {
             popupMarker.removeFromParent();
         }
+        if (popupDot != null) {
+            popupDot.removeFromParent();
+        }
         popupMarker = createMarker(popupMapSide * POPUP_MARKER_RATIO);
-        // The marker sits over the map : consume its clicks too so they don't bubble up and close the popup.
+        popupDot = createDot(popupMapSide * POPUP_MARKER_RATIO * 0.4f);
+        popupDotMat = ((Geometry) popupDot.getChild("MinimapDot")).getMaterial();
+        // They sit over the map : consume their clicks too so they don't bubble up and close the popup.
         MouseEventControl.addListenersToSpatial(popupMarker, new IgnoreMouseClickListener());
+        MouseEventControl.addListenersToSpatial(popupDot, new IgnoreMouseClickListener());
         minimapPopup.attachChild(popupMarker);
+        minimapPopup.attachChild(popupDot);
 
         float vh = height / 100f;
         popupClose.setFontSize(4 * vh);
         float margin = UiHelper.screenMargin(height);
         popupClose.setLocalTranslation(width - margin - popupClose.getPreferredSize().x, -margin, 10);
+
+        // Title font ; its text and centred placement (over the map width, just above it) are set in update().
+        popupTitle.setFontSize(4 * vh);
     }
 
     /**
-     * Builds the player marker : an <b>outlined</b> (unfilled) arrow pointing +Y by default, plus a small
-     * filled dot at the origin marking the player's exact position. The marker is translated to that exact
-     * position and rotated to the view heading in {@link #update}.
+     * Builds the camera-heading marker : a <b>filled white</b> triangle pointing +Y by default. In
+     * {@link #update} it is rotated to the view heading and pushed out onto the minimap's inscribed circle
+     * (see {@link #placeHeading}), so it rides near the edge like a compass needle pointing where you look.
      */
-    private Node createMarker(float size) {
-        Node node = new Node("MinimapMarker");
+    private Geometry createMarker(float size) {
         // Like the baked texture, sRGB-encode the solid colour on Android so it isn't shown too dark.
-        ColorRGBA color = encodeSrgb(new ColorRGBA(1f, 0f, 0f, 1f));
-        float h = size;
+        ColorRGBA color = encodeSrgb(ColorRGBA.White);
+        float h = size * 0.5f;
         float w = size * 0.8f;
 
-        // Arrow outline : the triangle's three edges drawn as lines (not a filled face).
+        // Filled triangle face (a single tri ; face culling off so winding never hides it).
         float[] verts = {
                 0f, h * 0.5f, 0f,         // tip
                 -w * 0.5f, -h * 0.5f, 0f, // bottom-left
                 w * 0.5f, -h * 0.5f, 0f   // bottom-right
         };
-        Mesh outline = new Mesh();
-        outline.setMode(Mesh.Mode.Lines);
-        outline.setBuffer(VertexBuffer.Type.Position, 3, verts);
-        outline.setBuffer(VertexBuffer.Type.Index, 2, new short[]{0, 1, 1, 2, 2, 0});
-        outline.updateBound();
-        Material outlineMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        outlineMat.setColor("Color", color);
-        Geometry arrow = new Geometry("MinimapMarkerArrow", outline);
-        arrow.setMaterial(outlineMat);
-        node.attachChild(arrow);
+        Mesh tri = new Mesh();
+        tri.setBuffer(VertexBuffer.Type.Position, 3, verts);
+        tri.setBuffer(VertexBuffer.Type.Index, 3, new short[]{0, 1, 2});
+        tri.updateBound();
+        Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", color);
+        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        Geometry geom = new Geometry("MinimapMarker", tri);
+        geom.setMaterial(mat);
+        return geom;
+    }
 
-        // Precise position : a tiny filled dot at the marker origin (the player's exact location).
-        float d = Math.max(2f, size * 0.16f);
-        Material dotMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        dotMat.setColor("Color", color);
-        Geometry dot = new Geometry("MinimapMarkerDot", new Quad(d, d));
-        dot.setMaterial(dotMat);
-        dot.setLocalTranslation(-d * 0.5f, -d * 0.5f, 0.01f);
-        node.attachChild(dot);
-
+    /**
+     * Builds the player-position dot : a small <b>white</b> square centred on the node origin (so
+     * {@link #update} can place it directly at the player's map coordinate). Alpha-blended : its alpha is
+     * pulsed sinusoidally each frame in {@link #update}. The diameter is clamped to at least 2 px.
+     */
+    private Node createDot(float diameter) {
+        float d = Math.max(2f, diameter);
+        Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", new ColorRGBA(1f, 1f, 1f, 1f));
+        mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
+        Geometry quad = new Geometry("MinimapDot", new Quad(d, d));
+        quad.setMaterial(mat);
+        quad.setLocalTranslation(-d * 0.5f, -d * 0.5f, 0f); // centre the quad on the node origin
+        Node node = new Node("MinimapDotNode");
+        node.attachChild(quad);
         return node;
     }
 
