@@ -15,18 +15,30 @@ class DoorHingeTest {
 
     @Test
     void doorHingesOnTheSideItOpensOnto() {
-        assertEquals(Direction.WEST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.PLATE_NORTH));
-        assertEquals(Direction.EAST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.PLATE_SOUTH));
-        assertEquals(Direction.SOUTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.PLATE_EAST));
-        assertEquals(Direction.NORTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.PLATE_WEST));
+        assertEquals(Direction.WEST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.DOOR_NORTH));
+        assertEquals(Direction.EAST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.DOOR_SOUTH));
+        assertEquals(Direction.SOUTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.DOOR_EAST));
+        assertEquals(Direction.NORTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, ShapeIds.DOOR_WEST));
     }
 
     @Test
     void doorRightHingesOnTheOppositeSide() {
         // Same closed shape as DOOR but the mirror hinge — opposite jamb (enables double-leaf doors).
-        assertEquals(Direction.EAST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.PLATE_NORTH));
-        assertEquals(Direction.WEST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.PLATE_SOUTH));
-        assertEquals(Direction.NORTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.PLATE_EAST));
-        assertEquals(Direction.SOUTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.PLATE_WEST));
+        assertEquals(Direction.EAST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.DOOR_NORTH));
+        assertEquals(Direction.WEST, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.DOOR_SOUTH));
+        assertEquals(Direction.NORTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.DOOR_EAST));
+        assertEquals(Direction.SOUTH, WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, ShapeIds.DOOR_WEST));
+    }
+
+    @Test
+    void hingeDependsOnlyOnHingeSuffixNotOnLook() {
+        // The hinge is read from the _left/_right suffix, so any look behaves like the default one.
+        for (String shape : new String[]{
+                ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST}) {
+            assertEquals(WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT, shape),
+                    WorldManager.doorHingeNeighbour(TypeIds.DOOR_LEFT_METAL, shape));
+            assertEquals(WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT, shape),
+                    WorldManager.doorHingeNeighbour(TypeIds.DOOR_RIGHT_METAL, shape));
+        }
     }
 }

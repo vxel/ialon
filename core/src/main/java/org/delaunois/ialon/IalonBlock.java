@@ -23,9 +23,6 @@ import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.WaterLevel;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 public enum IalonBlock {
@@ -110,17 +107,20 @@ public enum IalonBlock {
     DRAWERS("drawers", true, false, true, ShapeIds.CUBE),
     BED("bed", true, false, true, ShapeIds.SLAB),
     BEDPILLOW("bedpillow", true, false, true, ShapeIds.SLAB),
-    PHANTOM("phantom", true, true, false, ShapeIds.CUBE),
+    PHANTOM(TypeIds.PHANTOM, true, true, false, ShapeIds.CUBE),
 
-    // Door : a thin vertical Plate. Open/closed status is encoded purely by the plate orientation
-    // (closed = panel across the passage ; open = the same panel rotated 90° against the jamb). The
-    // four side orientations are registered ; the toggle (see WorldManager#toggleDoor) rotates 90°.
-    // DOOR and DOOR_RIGHT are visually identical but hinge around opposite vertical edges, so two
-    // coplanar leaves can hinge on opposite jambs to form a double-leaf door.
     DOOR_LEFT(TypeIds.DOOR_LEFT, true, false, false,
-            ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST),
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
     DOOR_RIGHT(TypeIds.DOOR_RIGHT, true, false, false,
-            ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST),
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
+    DOOR_LEFT_METAL(TypeIds.DOOR_LEFT_METAL, true, false, false,
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
+    DOOR_RIGHT_METAL(TypeIds.DOOR_RIGHT_METAL, true, false, false,
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
+    DOOR_LEFT_GLASS(TypeIds.DOOR_LEFT_GLASS, true, false, false,
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
+    DOOR_RIGHT_GLASS(TypeIds.DOOR_RIGHT_GLASS, true, false, false,
+            ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST),
 
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
@@ -128,8 +128,7 @@ public enum IalonBlock {
     // Natural-ground block types : their CUBE form shapes the far-terrain heightmap when the player
     // digs/builds (see Block#terrain). These are exactly the surface cubes the generator lays down ;
     // every other (building) block leaves the distant relief untouched.
-    private static final Set<String> TERRAIN_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            TypeIds.GRASS, TypeIds.GRASS_SNOW, TypeIds.SNOW, TypeIds.DIRT, TypeIds.ROCK, TypeIds.SAND)));
+    private static final Set<String> TERRAIN_TYPES = Set.of(TypeIds.GRASS, TypeIds.GRASS_SNOW, TypeIds.SNOW, TypeIds.DIRT, TypeIds.ROCK, TypeIds.SAND);
 
     private final String name;
     private final String type;

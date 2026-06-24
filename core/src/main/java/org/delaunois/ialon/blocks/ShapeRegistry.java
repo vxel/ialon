@@ -6,6 +6,7 @@ import com.jme3.math.Vector3f;
 import org.delaunois.ialon.blocks.shapes.Billboard;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Cube;
+import org.delaunois.ialon.blocks.shapes.Door;
 import org.delaunois.ialon.blocks.shapes.Fence;
 import org.delaunois.ialon.blocks.shapes.FloatingCube;
 import org.delaunois.ialon.blocks.shapes.Liquid;
@@ -115,6 +116,8 @@ public class ShapeRegistry {
 
         registerPlates();
 
+        registerDoors();
+
         registerCuboids();
 
         registerWater();
@@ -137,6 +140,14 @@ public class ShapeRegistry {
         register(ShapeIds.PLATE_EAST, new Slab(0, 0.1f, Direction.EAST));
         register(ShapeIds.PLATE_SOUTH, new Slab(0, 0.1f, Direction.SOUTH));
         register(ShapeIds.PLATE_WEST, new Slab(0, 0.1f, Direction.WEST));
+    }
+
+    private void registerDoors() {
+        // Same thin-plate geometry as the side plates, but textured upright in every orientation.
+        register(ShapeIds.DOOR_NORTH, new Door(0, 0.1f, Direction.NORTH));
+        register(ShapeIds.DOOR_EAST, new Door(0, 0.1f, Direction.EAST));
+        register(ShapeIds.DOOR_SOUTH, new Door(0, 0.1f, Direction.SOUTH));
+        register(ShapeIds.DOOR_WEST, new Door(0, 0.1f, Direction.WEST));
     }
 
     private void registerStairs() {

@@ -89,6 +89,13 @@ public interface ShapeIds {
     String PLATE_WEST = "plate_west";
     String[] ALL_PLATES = {PLATE, PLATE_DOWN, PLATE_NORTH, PLATE_EAST, PLATE_SOUTH, PLATE_WEST};
 
+    // Door panel : same thin vertical geometry as the side plates, but textured upright in every
+    // orientation (see the Door shape). Only the 4 horizontal orientations are used by doors.
+    String DOOR_NORTH = "door_north";
+    String DOOR_EAST = "door_east";
+    String DOOR_SOUTH = "door_south";
+    String DOOR_WEST = "door_west";
+
     String SQUARE = "square_up";
     String SQUARE_DOWN = "square_down";
     String SQUARE_NORTH = "square_north";

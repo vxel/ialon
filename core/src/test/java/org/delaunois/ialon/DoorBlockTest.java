@@ -9,6 +9,7 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.Shape;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.WorldManager;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,10 +33,12 @@ class DoorBlockTest {
 
         // The level-0 suffixed names are what both the inventory (local getName) and
         // WorldManager#toggleDoor / #orientateBlockDoor build via BlockIds.getName(type, shape, 0).
-        // Both door types (DOOR and the mirror-hinge DOOR_RIGHT) must resolve in all 4 orientations.
-        for (String type : new String[]{TypeIds.DOOR_LEFT, TypeIds.DOOR_RIGHT}) {
+        // Every door type (default look + the metal example, each with both hinges) must resolve in
+        // all 4 orientations.
+        for (String type : new String[]{
+                TypeIds.DOOR_LEFT, TypeIds.DOOR_RIGHT, TypeIds.DOOR_LEFT_METAL, TypeIds.DOOR_RIGHT_METAL}) {
             for (String shape : new String[]{
-                    ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST}) {
+                    ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST}) {
                 String name = type + "-" + shape + "-0";
                 Block door = registry.get(name);
                 assertNotNull(door, "Door block should be registered: " + name);
@@ -46,25 +49,39 @@ class DoorBlockTest {
     }
 
     /**
-     * A vertical Plate must cover only the wall face it is flush against — never the floor (DOWN) — so
-     * it does not hide the top face of the block beneath it (the "hole under the door" bug). The
-     * dominant {@code plate_up} (and {@code slab}) must still cover DOWN as before.
+     * The door framework is generic over the look prefix : any {@code <look>_door_<hinge>} type is a
+     * door, regardless of the look (default, metal, or any added later). Non-door types are rejected.
      */
     @Test
-    void verticalPlateDoesNotCoverFloor() {
+    void isDoorRecognisesEveryLook() {
+        assertTrue(WorldManager.isDoor(TypeIds.DOOR_LEFT));
+        assertTrue(WorldManager.isDoor(TypeIds.DOOR_RIGHT));
+        assertTrue(WorldManager.isDoor(TypeIds.DOOR_LEFT_METAL));
+        assertTrue(WorldManager.isDoor(TypeIds.DOOR_RIGHT_METAL));
+        assertTrue(WorldManager.isDoor("door_left_oak"), "any look suffix must be accepted");
+
+        assertFalse(WorldManager.isDoor(TypeIds.OAK_PLANKS));
+        assertFalse(WorldManager.isDoor("metal1"));
+        assertFalse(WorldManager.isDoor(null));
+    }
+
+    /**
+     * A vertical door/plate panel must cover only the wall face it is flush against — never the floor
+     * (DOWN) — so it does not hide the top face of the block beneath it (the "hole under the door"
+     * bug). The dominant {@code plate_up} / {@code slab} must still cover DOWN as before.
+     */
+    @Test
+    void verticalPanelDoesNotCoverFloor() {
         IalonConfig config = new IalonConfig();
         IalonInitializer.configureBlocksFramework(new DesktopAssetManager(true), config);
 
-        // The four side plates each cover their own wall face, and crucially NOT the floor.
-        Shape plateNorth = BlocksConfig.getInstance().getShapeRegistry().get(ShapeIds.PLATE_NORTH);
-        assertFalse(plateNorth.fullyCoversFace(Direction.DOWN),
-                "plate_north must not cover DOWN (would hole the block below)");
-        assertFalse(plateNorth.fullyCoversFace(Direction.UP), "plate_north must not cover UP");
-
+        // Each side door/plate covers only its own wall face, and crucially NOT the floor or ceiling.
         for (String s : new String[]{
+                ShapeIds.DOOR_NORTH, ShapeIds.DOOR_SOUTH, ShapeIds.DOOR_EAST, ShapeIds.DOOR_WEST,
                 ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST}) {
-            Shape plate = BlocksConfig.getInstance().getShapeRegistry().get(s);
-            assertFalse(plate.fullyCoversFace(Direction.DOWN), s + " must not cover DOWN");
+            Shape panel = BlocksConfig.getInstance().getShapeRegistry().get(s);
+            assertFalse(panel.fullyCoversFace(Direction.DOWN), s + " must not cover DOWN");
+            assertFalse(panel.fullyCoversFace(Direction.UP), s + " must not cover UP");
         }
 
         // Regression guard : a floor slab still covers DOWN exactly as before.
