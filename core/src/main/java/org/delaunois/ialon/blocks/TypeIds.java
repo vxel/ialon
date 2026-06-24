@@ -44,4 +44,8 @@ public interface TypeIds {
     String FIRE = "fire";
     String DOOR_LEFT = "door_left";
     String DOOR_RIGHT = "door_right";
+    String DOOR_LEFT_METAL = "door_left_metal";
+    String DOOR_RIGHT_METAL = "door_right_metal";
+    String DOOR_LEFT_GLASS = "door_left_glass";
+    String DOOR_RIGHT_GLASS = "door_right_glass";
 }

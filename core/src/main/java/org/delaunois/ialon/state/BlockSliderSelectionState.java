@@ -37,6 +37,7 @@ import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
 import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
 import static org.delaunois.ialon.IalonBlock.DIRT;
 import static org.delaunois.ialon.IalonBlock.DOOR_LEFT;
+import static org.delaunois.ialon.IalonBlock.DOOR_LEFT_GLASS;
 import static org.delaunois.ialon.IalonBlock.DRAWERS;
 import static org.delaunois.ialon.IalonBlock.FIRE;
 import static org.delaunois.ialon.IalonBlock.GRASS;
@@ -51,6 +52,7 @@ import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
 import static org.delaunois.ialon.IalonBlock.METAL4;
 import static org.delaunois.ialon.IalonBlock.METAL5;
+import static org.delaunois.ialon.IalonBlock.DOOR_LEFT_METAL;
 import static org.delaunois.ialon.IalonBlock.MOSSY_COBBLESTONE;
 import static org.delaunois.ialon.IalonBlock.MOSSY_STONE_BRICKS;
 import static org.delaunois.ialon.IalonBlock.OAK_LEAVES;
@@ -80,6 +82,7 @@ import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 import static org.delaunois.ialon.blocks.ShapeIds.BILLBOARD;
 import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
 import static org.delaunois.ialon.blocks.ShapeIds.CUBE;
+import static org.delaunois.ialon.blocks.ShapeIds.DOOR_NORTH;
 import static org.delaunois.ialon.blocks.ShapeIds.DOUBLE_SLAB;
 import static org.delaunois.ialon.blocks.ShapeIds.FENCE;
 import static org.delaunois.ialon.blocks.ShapeIds.PLATE;
@@ -222,7 +225,9 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(OVEN, CUBE),
             getName(BED, SLAB),
             getName(BEDPILLOW, SLAB),
-            getName(DOOR_LEFT, PLATE_NORTH),
+            getName(DOOR_LEFT, DOOR_NORTH),
+            getName(DOOR_LEFT_METAL, DOOR_NORTH),
+            getName(DOOR_LEFT_GLASS, DOOR_NORTH),
     };
 
     private static final String[] SHAPES = {

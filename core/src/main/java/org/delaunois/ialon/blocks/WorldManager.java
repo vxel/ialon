@@ -47,6 +47,9 @@ public class WorldManager {
 
     private static final Vector3f NORTH = new Vector3f(0, 0, -1);
 
+    // Door type naming convention : "door_<hinge>_<look>" (default look = "door_left"/"door_right").
+    private static final String DOOR_PREFIX = "door";
+
     public WorldManager(ChunkManager chunkManager, ChunkLightManager chunkLightManager, ChunkLiquidManager chunkLiquidManager) {
         this(chunkManager, chunkLightManager, chunkLiquidManager, null, null);
     }
@@ -168,7 +171,7 @@ public class WorldManager {
 
         } else if (isDoor(block.getType())) {
             // Place the door closed, facing the player (otherwise clicking the ground would lay it flat)
-            return orientateBlockDoor(blockLocation, camDirection);
+            return orientateBlockDoor(block.getType(), blockLocation, camDirection);
 
         } else {
             return orientateBlockDefault(block, blockLocation, direction);
@@ -180,17 +183,22 @@ public class WorldManager {
      * with its <b>hinge against an existing solid block</b> when there is one, so the door opens flat
      * against the wall. The closed panel always uses the same orientation for a given passage axis, so
      * two doors placed side by side stay <b>coplanar</b> (a double-leaf door) ; only the hinge side
-     * varies - encoded by the door type (DOOR_LEFT vs DOOR_RIGHT, which pivot around opposite edges). We
-     * pick the type whose hinge abuts a solid neighbour.
+     * varies - encoded by the door type ({@code door_left_<look>} vs {@code door_right_<look>}, which
+     * pivot around opposite edges). We keep the selected door's look and pick the hinge whose edge abuts
+     * a solid neighbour.
+     *
+     * @param selectedType the type of the door block being placed (any {@code door_<hinge>_<look>})
      */
-    public Block orientateBlockDoor(Vector3f blockLocation, Vector3f camDirection) {
+    public Block orientateBlockDoor(String selectedType, Vector3f blockLocation, Vector3f camDirection) {
         // mult(1f) copies : camDirection is the live, per-frame head direction vector ; do not mutate it.
         boolean facingNorthSouth = Math.abs(camDirection.mult(1f).setY(0).normalizeLocal().dot(NORTH)) > 0.5f;
         // A single, fixed closed orientation per passage axis keeps both leaves of a double door coplanar.
-        String shape = facingNorthSouth ? ShapeIds.PLATE_NORTH : ShapeIds.PLATE_EAST;
+        String shape = facingNorthSouth ? ShapeIds.DOOR_NORTH : ShapeIds.DOOR_EAST;
 
-        String type = TypeIds.DOOR_LEFT;
-        for (String candidate : new String[]{TypeIds.DOOR_LEFT, TypeIds.DOOR_RIGHT}) {
+        // Choose the hinge (left/right variant of this same look) whose edge abuts a wall.
+        String look = doorLookSuffix(selectedType);
+        String type = leftType(look);
+        for (String candidate : new String[]{leftType(look), rightType(look)}) {
             Vec3i hinge = doorHingeNeighbour(candidate, shape).getVector();
             if (isSolidWall(blockLocation.add(hinge.x, hinge.y, hinge.z))) {
                 type = candidate;
@@ -212,14 +220,37 @@ public class WorldManager {
         return Shape.getFaceDirection(Direction.DOWN, openDirection);
     }
 
-    /** The {@link Direction} encoded in a door plate shape id, e.g. {@code "plate_north"} -> NORTH. */
+    /** The {@link Direction} encoded in a door shape id, e.g. {@code "door_north"} -> NORTH. */
     private static Direction doorShapeDirection(String shape) {
         return Direction.valueOf(shape.substring(shape.indexOf('_') + 1).toUpperCase(Locale.ROOT));
     }
 
-    /** True for both door types (DOOR and its mirror-hinge variant DOOR_RIGHT). */
+    /**
+     * True for any door type, of any look. Door types follow the convention {@code door_<hinge>_<look>}
+     * with {@code <hinge>} = left|right (the default look has no suffix : {@code door_left} /
+     * {@code door_right}), so they are all recognised by a simple {@code startsWith("door")}.
+     */
     public static boolean isDoor(String type) {
-        return TypeIds.DOOR_LEFT.equals(type) || TypeIds.DOOR_RIGHT.equals(type);
+        return type != null && type.startsWith(DOOR_PREFIX);
+    }
+
+    /** True for a right-hinged door type ({@code door_right_<look>}). */
+    private static boolean isRightHinged(String type) {
+        return type.startsWith(TypeIds.DOOR_RIGHT);
+    }
+
+    /** The look suffix of a door type : everything after the {@code door_<hinge>} prefix ("" for the default look). */
+    private static String doorLookSuffix(String type) {
+        String hingePrefix = isRightHinged(type) ? TypeIds.DOOR_RIGHT : TypeIds.DOOR_LEFT;
+        return type.substring(hingePrefix.length());
+    }
+
+    private static String leftType(String lookSuffix) {
+        return TypeIds.DOOR_LEFT + lookSuffix;
+    }
+
+    private static String rightType(String lookSuffix) {
+        return TypeIds.DOOR_RIGHT + lookSuffix;
     }
 
     /** A solid block that can host a door hinge : any solid block that is not itself a door. */
@@ -340,19 +371,19 @@ public class WorldManager {
     }
 
     /**
-     * The 90° hinge swap between a door's closed and open Plate orientations (its own inverse).
+     * The 90° hinge swap between a door's closed and open orientations (its own inverse).
      * DOOR_LEFT and DOOR_RIGHT pivot around opposite vertical edges :
      * DOOR_LEFT pairs north&lt;-&gt;east / south&lt;-&gt;west,
      * DOOR_RIGHT pairs north&lt;-&gt;west / south&lt;-&gt;east.
      * Two coplanar leaves (same closed shape) of the two types therefore open onto opposite jambs.
      */
     private static String toggledDoorShape(String type, String shape) {
-        boolean rightHinged = TypeIds.DOOR_RIGHT.equals(type);
+        boolean rightHinged = isRightHinged(type);
         return switch (shape) {
-            case ShapeIds.PLATE_NORTH -> rightHinged ? ShapeIds.PLATE_WEST : ShapeIds.PLATE_EAST;
-            case ShapeIds.PLATE_EAST -> rightHinged ? ShapeIds.PLATE_SOUTH : ShapeIds.PLATE_NORTH;
-            case ShapeIds.PLATE_SOUTH -> rightHinged ? ShapeIds.PLATE_EAST : ShapeIds.PLATE_WEST;
-            case ShapeIds.PLATE_WEST -> rightHinged ? ShapeIds.PLATE_NORTH : ShapeIds.PLATE_SOUTH;
+            case ShapeIds.DOOR_NORTH -> rightHinged ? ShapeIds.DOOR_WEST : ShapeIds.DOOR_EAST;
+            case ShapeIds.DOOR_EAST -> rightHinged ? ShapeIds.DOOR_SOUTH : ShapeIds.DOOR_NORTH;
+            case ShapeIds.DOOR_SOUTH -> rightHinged ? ShapeIds.DOOR_EAST : ShapeIds.DOOR_WEST;
+            case ShapeIds.DOOR_WEST -> rightHinged ? ShapeIds.DOOR_NORTH : ShapeIds.DOOR_SOUTH;
             default -> shape;
         };
     }
