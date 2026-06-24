@@ -18,12 +18,12 @@
     <logger name="org.delaunois.ialon.blocks.BlockRegistry" level="error"/>
     <logger name="org.delaunois.ialon" level="info"/>
     <logger name="org.delaunois.jme.AndroidHarness" level="info"/>
-    <logger name="org.delaunois.ialon.ChunkManager" level="error"/>
+    <logger name="org.delaunois.ialon.blocks.ChunkManager" level="error"/>
     <logger name="org.delaunois.ialon.state.ChunkSaverState" level="error"/>
-    <logger name="org.delaunois.ialon.ChunkPager" level="warn"/>
-    <logger name="org.delaunois.ialon.PhysicsChunkPager" level="error"/>
-    <logger name="org.delaunois.ialon.ChunkLightManager" level="info"/>
-    <logger name="org.delaunois.ialon.ChunkLiquidManager" level="info"/>
+    <logger name="org.delaunois.ialon.blocks.ChunkPager" level="warn"/>
+    <logger name="org.delaunois.ialon.blocks.PhysicsChunkPager" level="error"/>
+    <logger name="org.delaunois.ialon.blocks.ChunkLightManager" level="info"/>
+    <logger name="org.delaunois.ialon.blocks.ChunkLiquidManager" level="info"/>
     <logger name="org.delaunois.ialon.state.PlayerState" level="info"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
     <logger name="com.jme3.input.InputManager" level="info"/>

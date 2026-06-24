@@ -31,7 +31,6 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
-import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
@@ -59,6 +58,7 @@ import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 import org.delaunois.ialon.control.MoonControl;
 import org.delaunois.ialon.control.SkyControl;
+import org.delaunois.ialon.control.ThrottledTerrainLodControl;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -205,8 +205,10 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         terrain.setLocalTranslation(0f, config.getFarTerrainVerticalOffset(), 0f);
         terrain.setShadowMode(RenderQueue.ShadowMode.Off);
 
-        // Distance-based LOD : reduces far patches' triangle count.
-        TerrainLodControl lodControl = new TerrainLodControl(terrain, app.getCamera());
+        // Distance-based LOD : reduces far patches' triangle count. Throttled so the LOD recompute (which
+        // runs on the main thread inside updateLogicalState) only fires every so many units of travel,
+        // instead of on every camera move -- otherwise it causes intermittent movement hitches.
+        ThrottledTerrainLodControl lodControl = new ThrottledTerrainLodControl(terrain, app.getCamera());
         terrain.addControl(lodControl);
 
         enclosure = createEnclosure(heightmap, step);

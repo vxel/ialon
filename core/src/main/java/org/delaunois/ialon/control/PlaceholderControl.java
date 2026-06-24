@@ -189,6 +189,13 @@ public class PlaceholderControl extends AbstractControl {
         }
         ray.setOrigin(playerHeadDirectionControl.getCamera().getLocation());
         ray.setDirection(camDir);
+        // Bound the pick ray to the interaction reach. Without a limit the ray is infinite, so collideWith
+        // runs the (expensive) per-triangle BIH traversal on EVERY chunk the ray crosses across the whole
+        // world -- the cause of intermittent ~25ms updateLogicalState hitches while moving/looking around.
+        // jME's BIHTree honours Ray.limit (it clamps the traversal to [tMin, min(tMax, limit)]), so chunks
+        // beyond MAX_REACH cost only their O(1) bounding-box test. A block can't be targeted past MAX_REACH
+        // anyway (maxDist is clamped to it below), so the picking result is unchanged.
+        ray.setLimit(MAX_REACH);
         collisionResults.clear();
         chunkNode.collideWith(ray, collisionResults);
 

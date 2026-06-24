@@ -28,7 +28,9 @@ import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
+import org.delaunois.ialon.state.HitchProfilerState;
 import org.delaunois.ialon.state.IalonDebugState;
+import org.delaunois.ialon.state.TimingNode;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.ScreenState;
@@ -76,12 +78,24 @@ public class Ialon extends SimpleApplication {
         super((AppState[]) null);
         log.info("Instanciating Ialon");
         config = new IalonConfig();
+        maybeInstallTimingNodes();
     }
 
     public Ialon(IalonConfig config) {
         super((AppState[]) null);
         log.info("Instanciating Ialon");
         this.config = config;
+        maybeInstallTimingNodes();
+    }
+
+    // When the hitch profiler is enabled (-Dialon.hitch), swap the plain root/gui nodes for TimingNodes
+    // so HitchProfilerState can split the SpatialUpdate step into world-vs-HUD and controls-vs-bounds.
+    // Must run before start()/initialize() attaches rootNode/guiNode to the viewports.
+    private void maybeInstallTimingNodes() {
+        if (System.getProperty("ialon.hitch") != null) {
+            rootNode = new TimingNode("Root Node");
+            guiNode = new TimingNode("Gui Node");
+        }
     }
 
     @Override
@@ -163,6 +177,14 @@ public class Ialon extends SimpleApplication {
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
             //stateManager.attach(new WagonState());
+        }
+
+        // Opt-in render-thread hitch profiler : -Dialon.hitch=<ms> logs each frame whose work exceeds
+        // <ms>, attributing the spike to a phase (update vs render), GC, and chunk-page churn.
+        String hitch = System.getProperty("ialon.hitch");
+        if (hitch != null) {
+            long thresholdMs = hitch.trim().isEmpty() ? 15L : Long.parseLong(hitch.trim());
+            stateManager.attach(new HitchProfilerState(thresholdMs));
         }
 
         int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();

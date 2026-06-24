@@ -46,6 +46,20 @@ test {
     useJUnitPlatform()
 }
 
+// Renders a single off-screen screenshot of the world via the support ScreenshotHarness and writes a
+// PNG, then exits. Needs a display (real or Xvfb) and a GL driver (Mesa software GL is fine). Example :
+//   ./gradlew :core:screenshot                       # default island vantage -> core/build/screenshots/
+//   ./gradlew :core:screenshot --args="out.png"      # custom output path
+tasks.register('screenshot', JavaExec) {
+    group = 'verification'
+    description = 'Render an off-screen screenshot of the world (support.ScreenshotHarness).'
+    mainClass = 'org.delaunois.ialon.support.ScreenshotHarness'
+    classpath = sourceSets.test.runtimeClasspath
+    // Run from the repo root so 'core/build/...' output paths (and asset-relative lookups, matching the
+    // other support harnesses) resolve the same way whether invoked as :core:screenshot or from root.
+    workingDir = rootProject.projectDir
+}
+
 jacocoTestReport {
     reports {
         xml.required = true
