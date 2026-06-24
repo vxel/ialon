@@ -185,7 +185,7 @@ public class PhysicsChunkPager {
             } else {
                 detachPage(page);
                 attachedPages.remove(pageLocation);
-                log.info("{} physic page detached", pageLocation);
+                log.debug("{} physic page detached", pageLocation);
                 removed += 1;
             }
 
@@ -198,7 +198,7 @@ public class PhysicsChunkPager {
         }
 
         if (removed > 0) {
-            log.info("{} pages removed", removed);
+            log.debug("{} pages removed", removed);
         }
     }
 
@@ -228,7 +228,7 @@ public class PhysicsChunkPager {
         }
 
         if (attached > 0) {
-            log.info("{} physic pages sent to create", attached);
+            log.debug("{} physic pages sent to create", attached);
         }
     }
 
@@ -241,7 +241,7 @@ public class PhysicsChunkPager {
             // detach the old page if any
             PhysicsRigidBody oldPage = attachedPages.remove(page.location);
             if (oldPage != null) {
-                log.info("{} physic page detached", page.location);
+                log.debug("{} physic page detached", page.location);
                 detachPage(oldPage);
             }
 
@@ -250,7 +250,7 @@ public class PhysicsChunkPager {
             if (node != null) {
                 attachPage(node);
                 attachedPages.put(page.location, node);
-                log.info("{} physic page attached", page.location);
+                log.debug("{} physic page attached", page.location);
                 attached += 1;
             }
 
@@ -263,21 +263,21 @@ public class PhysicsChunkPager {
         }
 
         if (attached > 0) {
-            log.info("{} physic pages attached (+{})", getAttachedPages().size(), attached);
+            log.debug("{} physic pages attached (+{})", getAttachedPages().size(), attached);
         }
     }
 
     protected void createPage(Chunk chunk) {
         Vec3i chunkLocation = chunk.getLocation();
         if (!ready && chunkLocation.x == centerPage.x && chunkLocation.y <= centerPage.y && chunkLocation.z == centerPage.z) {
-            log.info("Physic page {} is ready", chunk.getLocation());
+            log.debug("Physic page {} is ready", chunk.getLocation());
             ready = true;
         }
 
         if (chunk.getCollisionMesh() == null || chunk.getCollisionMesh().getTriangleCount() < 1 || physicsSpace == null) {
             if (attachedPages.containsKey(chunk.getLocation())) {
                 // Remove the page
-                log.info("Collision mesh is empty for physic page {}. Requesting detach.", chunk.getLocation());
+                log.debug("Collision mesh is empty for physic page {}. Requesting detach.", chunk.getLocation());
                 pagesToDetach.offer(chunk.getLocation());
             }
             return;

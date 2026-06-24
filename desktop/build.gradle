@@ -23,6 +23,22 @@ test {
     useJUnitPlatform()
 }
 
+// Launch the desktop game (there is no application plugin). Example:
+//   ./gradlew :desktop:run
+//   ./gradlew :desktop:run -Phitch=15     # enable the render-thread hitch profiler (threshold ms)
+tasks.register('run', JavaExec) {
+    group = 'application'
+    description = 'Launch the desktop game (org.delaunois.ialon.DesktopLauncher).'
+    mainClass = 'org.delaunois.ialon.DesktopLauncher'
+    classpath = sourceSets.main.runtimeClasspath
+    // Run from the repo root: ./save (worlds) and the native libs that jME/Minie extract & load
+    // (libbulletjme.so, liblwjgl64.so, libopenal64.so) all live there.
+    workingDir = rootProject.projectDir
+    if (project.hasProperty('hitch')) {
+        systemProperty 'ialon.hitch', project.property('hitch')
+    }
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17

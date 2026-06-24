@@ -76,6 +76,12 @@ public class ChunkPager {
     @Getter
     private final Map<Vec3i, Chunk> fetchedPages = new ConcurrentHashMap<>();
 
+    // Cumulative count of scene-graph page mutations (attach + detach). Used by profiling/diagnostics
+    // to tell a genuinely idle frame (delta 0) from one that re-meshed a chunk in place (detach+attach,
+    // net child count 0) — the latter still dirties the chunk node and forces a world-bound refresh.
+    @Getter
+    private long pageOps;
+
     private final Queue<Chunk> pagesToAttach = new ConcurrentLinkedQueue<>();
     private final Queue<Vec3i> pagesToDetach = new ConcurrentLinkedQueue<>();
     private final Queue<Vec3i> pagesToUnfetch = new ConcurrentLinkedQueue<>();
@@ -234,6 +240,7 @@ public class ChunkPager {
         }
 
         if (removed > 0) {
+            pageOps += removed;
             log.trace("{} pages removed", removed);
         }
     }
@@ -297,6 +304,7 @@ public class ChunkPager {
         }
 
         if (attached > 0) {
+            pageOps += attached;
             log.trace("{} pages attached", attached);
         }
     }
