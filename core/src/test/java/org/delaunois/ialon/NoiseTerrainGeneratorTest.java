@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 /**
@@ -77,6 +79,33 @@ class NoiseTerrainGeneratorTest {
             assertArrayEquals(a.getBlocks(), b.getBlocks(),
                     "vegetation/terrain must match across the +W seam at y=" + y);
         }
+    }
+
+    /**
+     * The minimap's "modified column" key must wrap to the world period on the torus (so an edit shows in
+     * every copy of a tile, recorded once) and stay raw on an infinite world.
+     */
+    @Test
+    void modifiedColumnKeyWrapsToTheTorusPeriod() {
+        IalonConfig config = new IalonConfig();
+        float w = config.getWorldSize(); // 4096 (finite)
+        int across = (int) (w / BlocksConfig.getInstance().getChunkSize().x);
+        NoiseTerrainGenerator torus =
+                new NoiseTerrainGenerator(2, config.getWaterHeight(), config.getMaxy(), w);
+
+        // A column and its twin one full period away collapse to the same canonical key.
+        assertEquals(torus.modifiedColumnKey(3, -5),
+                torus.modifiedColumnKey(3 + across, -5 + 2 * across));
+        // Canonical coordinates are wrapped into [0, across).
+        long key = torus.modifiedColumnKey(-1, across);
+        assertEquals(across - 1, WorldEditOverlay.unpackX(key));
+        assertEquals(0, WorldEditOverlay.unpackZ(key));
+
+        // Infinite world (worldSize 0) : no wrapping, raw coordinates preserved.
+        NoiseTerrainGenerator infinite = new NoiseTerrainGenerator(2, config.getWaterHeight());
+        long raw = infinite.modifiedColumnKey(-7, 9);
+        assertEquals(-7, WorldEditOverlay.unpackX(raw));
+        assertEquals(9, WorldEditOverlay.unpackZ(raw));
     }
 
     /**

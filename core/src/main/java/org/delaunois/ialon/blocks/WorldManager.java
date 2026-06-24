@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -165,9 +166,66 @@ public class WorldManager {
             // Turn the rail in the direction of the cam
             return orientateBlockRail(camDirection);
 
+        } else if (isDoor(block.getType())) {
+            // Place the door closed, facing the player (otherwise clicking the ground would lay it flat)
+            return orientateBlockDoor(blockLocation, camDirection);
+
         } else {
             return orientateBlockDefault(block, blockLocation, direction);
         }
+    }
+
+    /**
+     * Orientates a door at placement time : a <b>closed</b> panel barring the passage the player faces,
+     * with its <b>hinge against an existing solid block</b> when there is one, so the door opens flat
+     * against the wall. The closed panel always uses the same orientation for a given passage axis, so
+     * two doors placed side by side stay <b>coplanar</b> (a double-leaf door) ; only the hinge side
+     * varies - encoded by the door type (DOOR_LEFT vs DOOR_RIGHT, which pivot around opposite edges). We
+     * pick the type whose hinge abuts a solid neighbour.
+     */
+    public Block orientateBlockDoor(Vector3f blockLocation, Vector3f camDirection) {
+        // mult(1f) copies : camDirection is the live, per-frame head direction vector ; do not mutate it.
+        boolean facingNorthSouth = Math.abs(camDirection.mult(1f).setY(0).normalizeLocal().dot(NORTH)) > 0.5f;
+        // A single, fixed closed orientation per passage axis keeps both leaves of a double door coplanar.
+        String shape = facingNorthSouth ? ShapeIds.PLATE_NORTH : ShapeIds.PLATE_EAST;
+
+        String type = TypeIds.DOOR_LEFT;
+        for (String candidate : new String[]{TypeIds.DOOR_LEFT, TypeIds.DOOR_RIGHT}) {
+            Vec3i hinge = doorHingeNeighbour(candidate, shape).getVector();
+            if (isSolidWall(blockLocation.add(hinge.x, hinge.y, hinge.z))) {
+                type = candidate;
+                break;
+            }
+        }
+        return BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(type, shape, 0));
+    }
+
+    /**
+     * The neighbour cell a closed door (of the given type and orientation) hinges against. The door
+     * opens onto the wall its toggle partner lies flush against, so the hinge is on that side. Derived
+     * from the engine geometry (flush face of the open partner) rather than hard-coded, so it can never
+     * silently invert.
+     */
+    static Direction doorHingeNeighbour(String type, String closedShape) {
+        Direction openDirection = doorShapeDirection(toggledDoorShape(type, closedShape));
+        // Door plates are thin and bottom-flush (startY == -0.5), so their flush face is the rotated DOWN face.
+        return Shape.getFaceDirection(Direction.DOWN, openDirection);
+    }
+
+    /** The {@link Direction} encoded in a door plate shape id, e.g. {@code "plate_north"} -> NORTH. */
+    private static Direction doorShapeDirection(String shape) {
+        return Direction.valueOf(shape.substring(shape.indexOf('_') + 1).toUpperCase(Locale.ROOT));
+    }
+
+    /** True for both door types (DOOR and its mirror-hinge variant DOOR_RIGHT). */
+    public static boolean isDoor(String type) {
+        return TypeIds.DOOR_LEFT.equals(type) || TypeIds.DOOR_RIGHT.equals(type);
+    }
+
+    /** A solid block that can host a door hinge : any solid block that is not itself a door. */
+    private boolean isSolidWall(Vector3f location) {
+        Block b = chunkManager.getBlock(location).orElse(null);
+        return b != null && b.isSolid() && !isDoor(b.getType());
     }
 
     public Block orientateBlockScale(Block block, Vector3f blockLocation, Direction direction) {
@@ -219,6 +277,84 @@ public class WorldManager {
             block = orientedBlock;
         }
         return block;
+    }
+
+    /**
+     * Opens or closes a door : swaps the targeted door block's Plate orientation by 90° (the hinge
+     * rotation north&lt;-&gt;east / south&lt;-&gt;west) and applies the same swap to the <b>whole contiguous
+     * vertical run</b> of door blocks above and below it, so a door several blocks tall toggles as one.
+     * No-op (empty set) when the location is not a door. Returns the chunks to re-mesh.
+     */
+    public Set<Vec3i> toggleDoor(Vector3f location) {
+        Block target = getBlock(location);
+        if (target == null || !isDoor(target.getType())) {
+            return Collections.emptySet();
+        }
+
+        Vec3i base = ChunkManager.getBlockLocation(location);
+
+        // Scan the whole contiguous vertical run of door blocks.
+        int yMin = base.y;
+        while (isDoorAt(base.x, yMin - 1, base.z)) {
+            yMin--;
+        }
+        int yMax = base.y;
+        while (isDoorAt(base.x, yMax + 1, base.z)) {
+            yMax++;
+        }
+
+        Set<Vec3i> chunks = new LinkedHashSet<>();
+        Vector3f loc = new Vector3f();
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
+        for (int y = yMin; y <= yMax; y++) {
+            loc.set(base.x, y, base.z);
+            Chunk chunk = chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).orElse(null);
+            if (chunk == null) {
+                continue;
+            }
+            Vec3i local = chunk.toLocalLocation(ChunkManager.getBlockLocation(loc));
+            Block door = chunk.getBlock(local);
+            if (door == null || !isDoor(door.getType())) {
+                continue;
+            }
+            Block toggled = registry.get(BlockIds.getName(
+                    door.getType(), toggledDoorShape(door.getType(), door.getShape()), 0));
+            if (toggled == null || Objects.equals(toggled, door)) {
+                continue;
+            }
+            chunk.addBlock(local, toggled);
+            chunks.add(chunk.getLocation());
+            chunks.addAll(getAdjacentChunks(chunk, local, chunkSize));
+        }
+
+        if (!chunks.isEmpty()) {
+            chunkManager.requestOrderedMeshChunks(chunks);
+        }
+        return chunks;
+    }
+
+    private boolean isDoorAt(int x, int y, int z) {
+        Block b = chunkManager.getBlock(new Vector3f(x, y, z)).orElse(null);
+        return b != null && isDoor(b.getType());
+    }
+
+    /**
+     * The 90° hinge swap between a door's closed and open Plate orientations (its own inverse).
+     * DOOR_LEFT and DOOR_RIGHT pivot around opposite vertical edges :
+     * DOOR_LEFT pairs north&lt;-&gt;east / south&lt;-&gt;west,
+     * DOOR_RIGHT pairs north&lt;-&gt;west / south&lt;-&gt;east.
+     * Two coplanar leaves (same closed shape) of the two types therefore open onto opposite jambs.
+     */
+    private static String toggledDoorShape(String type, String shape) {
+        boolean rightHinged = TypeIds.DOOR_RIGHT.equals(type);
+        return switch (shape) {
+            case ShapeIds.PLATE_NORTH -> rightHinged ? ShapeIds.PLATE_WEST : ShapeIds.PLATE_EAST;
+            case ShapeIds.PLATE_EAST -> rightHinged ? ShapeIds.PLATE_SOUTH : ShapeIds.PLATE_NORTH;
+            case ShapeIds.PLATE_SOUTH -> rightHinged ? ShapeIds.PLATE_EAST : ShapeIds.PLATE_WEST;
+            case ShapeIds.PLATE_WEST -> rightHinged ? ShapeIds.PLATE_NORTH : ShapeIds.PLATE_SOUTH;
+            default -> shape;
+        };
     }
 
     public Set<Vec3i> removeBlock(Vector3f location) {
@@ -302,7 +438,7 @@ public class WorldManager {
     /**
      * Records a player edit into the far-horizon overlay. Cheap : it only <b>marks the chunk column</b>
      * as edited (so the far terrain refreshes it later, when the column is unfetched and becomes visible
-     * at the horizon — never on the edit itself, since the far terrain is hidden while the chunk is
+     * at the horizon - never on the edit itself, since the far terrain is hidden while the chunk is
      * loaded) and, for a trunk LOG, fells/restores the far tree billboard. No relief scan, no mesh work.
      * A no-op when no overlay/generator is wired (tests, non-noise generators).
      */
@@ -311,7 +447,11 @@ public class WorldManager {
             return;
         }
         Vec3i cl = ChunkManager.getChunkLocation(location);
+        // Transient marker (raw key) : the far terrain refreshes this column's relief at unfetch.
         worldEditOverlay.markColumnEdited(WorldEditOverlay.pack(cl.x, cl.z));
+        // Persisted marker (canonical key) : any edit, terrain OR building, so the minimap can show
+        // where the player has built. Cheap : a single set add, deduplicated, written once per column.
+        worldEditOverlay.markModifiedColumn(noiseGenerator.modifiedColumnKey(cl.x, cl.z));
 
         if (block != null && isLog(block.getType())) {
             Vec3i bl = ChunkManager.getBlockLocation(location);

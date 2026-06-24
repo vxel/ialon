@@ -805,6 +805,18 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         return WorldEditOverlay.pack(hx, hz);
     }
 
+    /**
+     * Canonical chunk-column key (wrapped to the world period, in chunks) for the world-edit overlay's
+     * "modified columns" set — so a torus tile is recorded once and shows in every copy of that tile.
+     */
+    public long modifiedColumnKey(int chunkX, int chunkZ) {
+        if (worldSize > 0) {
+            int across = Math.max(1, Math.round(worldSize / BlocksConfig.getInstance().getChunkSize().x));
+            return WorldEditOverlay.pack(Math.floorMod(chunkX, across), Math.floorMod(chunkZ, across));
+        }
+        return WorldEditOverlay.pack(chunkX, chunkZ);
+    }
+
     /** Canonical scatter-cell key of the cell that contains the column (worldX, worldZ). */
     public long treeCellKey(int worldX, int worldZ) {
         int across = cellsAcross();

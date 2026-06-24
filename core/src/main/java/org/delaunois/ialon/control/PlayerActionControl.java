@@ -1,5 +1,11 @@
 package org.delaunois.ialon.control;
 
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ADD_BLOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_DEBUG_CHUNK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FLY;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ACTION_OBJECT;
+
 import com.jme3.app.SimpleApplication;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.math.Vector3f;
@@ -8,23 +14,18 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
-import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.Direction;
-import org.delaunois.ialon.blocks.ShapeIds;
-import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.Direction;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.WorldManager;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ADD_BLOCK;
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_DEBUG_CHUNK;
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FLY;
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
-import org.delaunois.ialon.blocks.ChunkManager;
-import org.delaunois.ialon.blocks.WorldManager;
 
 @Slf4j
 public class PlayerActionControl extends AbstractControl implements ActionListener {
@@ -32,6 +33,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     private static final String[] ACTIONS = new String[]{
             ACTION_ADD_BLOCK,
             ACTION_REMOVE_BLOCK,
+            ACTION_ACTION_OBJECT,
             ACTION_FLY,
             ACTION_DEBUG_CHUNK
     };
@@ -121,6 +123,9 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
                 break;
             case ACTION_REMOVE_BLOCK:
                 removeBlock(isPressed);
+                break;
+            case ACTION_ACTION_OBJECT:
+                toggleDoor(isPressed);
                 break;
             case ACTION_FLY:
                 toogleFly(isPressed);
@@ -246,6 +251,24 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
 
     private void removeBlockTask(Vector3f blockLocation) {
         worldManager.removeBlock(blockLocation);
+    }
+
+    public void toggleDoor(boolean isPressed) {
+        if (!isPressed) {
+            return;
+        }
+
+        log.info("Action : toggleDoor triggered");
+
+        if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {
+            log.info("Not toggling. No placeholder.");
+            return;
+        }
+
+        final Vector3f blockLocation = placeholderControl.getRemovePlaceholder()
+                .getWorldTranslation()
+                .subtract(0.5f, 0.5f, 0.5f);
+        app.enqueue(() -> worldManager.toggleDoor(blockLocation));
     }
 
     public void actionDebugChunks(boolean isPressed) {

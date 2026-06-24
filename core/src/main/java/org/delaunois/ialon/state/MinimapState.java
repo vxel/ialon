@@ -50,12 +50,16 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseEventControl;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -96,6 +100,10 @@ public class MinimapState extends BaseAppState implements Resizable {
     // Period (seconds) of the player-position dot's sinusoidal alpha pulse.
     private static final float DOT_PULSE_PERIOD = 2f;
 
+    // Tint (and its opacity) blended over the baked terrain to mark a chunk column the player has edited.
+    private static final ColorRGBA EDIT_MARKER_COLOR = new ColorRGBA(1f, 0f, 0f, 1f); //new ColorRGBA(0.85f, 0.22f, 0.10f, 1f);
+    private static final float EDIT_MARKER_ALPHA = 0.5f;
+
     private final IalonConfig config;
     private SimpleApplication app;
 
@@ -103,6 +111,19 @@ public class MinimapState extends BaseAppState implements Resizable {
     private Geometry marker;     // camera-heading triangle (compass needle riding the inscribed circle)
     private Node positionDot;    // player's exact position on the map
     private Texture2D mapTex;
+    private Texture2D popupMapTex; // the popup's higher-res bake, kept so its edit markers stay in sync
+
+    // Modified-chunk markers : the persisted overlay set is the source of truth ; markedColumns are the
+    // ones already tinted into the textures (so a repaint never double-blends the same column), and
+    // lastModifiedCount lets update() detect new edits with a single O(1) size compare per frame.
+    private WorldEditOverlay editOverlay;
+    private final Set<Long> markedColumns = new HashSet<>();
+    private int lastModifiedCount;
+    private boolean manualSrgb;
+    private int markerR; // EDIT_MARKER_COLOR quantised to bytes the same way the bake encodes texels
+    private int markerG;
+    private int markerB;
+    private int chunkSizeX;
 
     // Full-screen popup showing the minimap in large, opened by clicking the thumbnail. Built lazily.
     private Container minimapPopup;
@@ -193,6 +214,17 @@ public class MinimapState extends BaseAppState implements Resizable {
 
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
+        // Modified-chunk markers : encode the tint to bytes once (matching bakeTexture's encoding), then
+        // paint the columns already on disk into the freshly baked thumbnail. Live edits are picked up in
+        // update(). manualSrgb / chunkSizeX cached for paintColumn (no per-edit lookups).
+        this.manualSrgb = config.isManualGammaEncode();
+        this.markerR = toByte(EDIT_MARKER_COLOR.r, manualSrgb) & 0xFF;
+        this.markerG = toByte(EDIT_MARKER_COLOR.g, manualSrgb) & 0xFF;
+        this.markerB = toByte(EDIT_MARKER_COLOR.b, manualSrgb) & 0xFF;
+        this.chunkSizeX = BlocksConfig.getInstance().getChunkSize().x;
+        this.editOverlay = config.getWorldEditOverlay();
+        refreshEditMarkers();
+
         if (app.getStateManager().getState(ScreenState.class) != null) {
             app.getStateManager().getState(ScreenState.class).register(this);
         }
@@ -229,6 +261,10 @@ public class MinimapState extends BaseAppState implements Resizable {
         if (p == null) {
             return;
         }
+
+        // Cheap per-frame check : tint any chunk column edited since last frame. The texture is otherwise
+        // static, so this is the only thing that ever changes it (no per-frame rebake, no extra draw call).
+        refreshEditMarkers();
         // Player position -> map UV. Same (u, v) convention as bakeTexture(), which samples the relief
         // CENTERED on the origin (world [-extent/2, +extent/2) -> u,v in [0,1]) : u along +X (east, right),
         // v along +Z (south, up). The +0.5 shift puts the origin at the map center. On the torus the shifted
@@ -373,9 +409,16 @@ public class MinimapState extends BaseAppState implements Resizable {
         // thumbnail texture if that bake fails. A unit quad scaled in layoutPopup() so resolution changes
         // don't rebuild the mesh. Clicks on the map itself are consumed (so they don't bubble up to the
         // backdrop and close the popup).
-        Texture2D popupTex = bakeTexture(POPUP_TEX_SIZE);
+        popupMapTex = bakeTexture(POPUP_TEX_SIZE);
+        if (popupMapTex != null && !markedColumns.isEmpty()) {
+            // The popup bake is fresh : replay the edit tints already shown on the thumbnail.
+            for (long key : markedColumns) {
+                paintColumn(popupMapTex, POPUP_TEX_SIZE, key);
+            }
+            popupMapTex.getImage().setUpdateNeeded();
+        }
         Material mapMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        mapMat.setTexture("ColorMap", popupTex != null ? popupTex : mapTex);
+        mapMat.setTexture("ColorMap", popupMapTex != null ? popupMapTex : mapTex);
         Geometry bigMap = new Geometry("MinimapPopupMap", new Quad(1, 1));
         bigMap.setMaterial(mapMat);
         MouseEventControl.addListenersToSpatial(bigMap, new IgnoreMouseClickListener());
@@ -552,6 +595,83 @@ public class MinimapState extends BaseAppState implements Resizable {
         tex.setMagFilter(Texture.MagFilter.Bilinear);
         tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
         return tex;
+    }
+
+    /**
+     * Tints every chunk column the player has edited (the persisted {@link WorldEditOverlay#getModifiedColumns()}
+     * set) onto the baked minimap texture(s). Incremental and idempotent : only columns not already painted are
+     * blended, so calling it every frame is cheap — the usual case is a single O(1) size compare that finds
+     * nothing new (the set only grows during play). It mutates the existing texture in place ({@code
+     * setUpdateNeeded} re-uploads it), so there is no rebake and no extra geometry / draw call.
+     */
+    private void refreshEditMarkers() {
+        if (editOverlay == null || mapTex == null) {
+            return;
+        }
+        Set<Long> modified = editOverlay.getModifiedColumns();
+        int n = modified.size();
+        if (n == lastModifiedCount) {
+            return;
+        }
+        lastModifiedCount = n;
+        boolean thumbChanged = false;
+        boolean popupChanged = false;
+        for (long key : modified) {
+            if (markedColumns.add(key)) {
+                paintColumn(mapTex, TEX_SIZE, key);
+                thumbChanged = true;
+                if (popupMapTex != null) {
+                    paintColumn(popupMapTex, POPUP_TEX_SIZE, key);
+                    popupChanged = true;
+                }
+            }
+        }
+        if (thumbChanged) {
+            mapTex.getImage().setUpdateNeeded();
+        }
+        if (popupChanged) {
+            popupMapTex.getImage().setUpdateNeeded();
+        }
+    }
+
+    /**
+     * Blends the edit tint over the texels covering one chunk column in a baked map texture. The column's
+     * world centre maps to {@code (u, v)} with the SAME convention as {@link #bakeTexture}/the player marker,
+     * so the tint lands exactly where the column sits on the map. A sub-pixel chunk (the thumbnail spans the
+     * whole world) still tints at least its centre texel ; on the larger popup a chunk covers a few texels.
+     * On the torus the texel indices wrap with the map period, matching the seamless relief.
+     */
+    private void paintColumn(Texture2D tex, int texSize, long key) {
+        float worldX = (WorldEditOverlay.unpackX(key) + 0.5f) * chunkSizeX;
+        float worldZ = (WorldEditOverlay.unpackZ(key) + 0.5f) * chunkSizeX;
+        float u = torus ? floorModF(worldX / worldExtent + 0.5f, 1f) : clamp01(worldX / worldExtent + 0.5f);
+        float v = torus ? floorModF(worldZ / worldExtent + 0.5f, 1f) : clamp01(worldZ / worldExtent + 0.5f);
+        int cx = (int) (u * texSize);
+        int cy = (int) (v * texSize);
+        int r = Math.max(0, (int) (chunkSizeX / worldExtent * texSize * 0.5f));
+        ByteBuffer data = tex.getImage().getData(0);
+        for (int dj = -r; dj <= r; dj++) {
+            for (int di = -r; di <= r; di++) {
+                int i = cx + di;
+                int j = cy + dj;
+                if (torus) {
+                    i = Math.floorMod(i, texSize);
+                    j = Math.floorMod(j, texSize);
+                } else if (i < 0 || i >= texSize || j < 0 || j >= texSize) {
+                    continue;
+                }
+                int idx = (j * texSize + i) * 4;
+                data.put(idx, blendByte(data.get(idx), markerR));
+                data.put(idx + 1, blendByte(data.get(idx + 1), markerG));
+                data.put(idx + 2, blendByte(data.get(idx + 2), markerB));
+            }
+        }
+    }
+
+    /** Blends a stored texel channel byte toward the marker channel byte by {@link #EDIT_MARKER_ALPHA}. */
+    private static byte blendByte(byte base, int marker) {
+        int b = base & 0xFF;
+        return (byte) Math.round(b + (marker - b) * EDIT_MARKER_ALPHA);
     }
 
     /**

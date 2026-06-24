@@ -112,6 +112,16 @@ public enum IalonBlock {
     BEDPILLOW("bedpillow", true, false, true, ShapeIds.SLAB),
     PHANTOM("phantom", true, true, false, ShapeIds.CUBE),
 
+    // Door : a thin vertical Plate. Open/closed status is encoded purely by the plate orientation
+    // (closed = panel across the passage ; open = the same panel rotated 90° against the jamb). The
+    // four side orientations are registered ; the toggle (see WorldManager#toggleDoor) rotates 90°.
+    // DOOR and DOOR_RIGHT are visually identical but hinge around opposite vertical edges, so two
+    // coplanar leaves can hinge on opposite jambs to form a double-leaf door.
+    DOOR_LEFT(TypeIds.DOOR_LEFT, true, false, false,
+            ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST),
+    DOOR_RIGHT(TypeIds.DOOR_RIGHT, true, false, false,
+            ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_EAST, ShapeIds.PLATE_WEST),
+
     WHITE_LIGHT(TypeIds.WHITE_LIGHT, true, false, false, true,
             ShapeIds.SHORT_POLE, ShapeIds.SHORT_POLE_DOWN, ShapeIds.SHORT_POLE_EAST, ShapeIds.SHORT_POLE_WEST, ShapeIds.SHORT_POLE_SOUTH, ShapeIds.SHORT_POLE_NORTH);
 
