@@ -29,6 +29,7 @@ public class IalonKeyMapping {
     public static final String ACTION_TOGGLE_TIME_RUN = "toggle-time-run";
     public static final String ACTION_ADD_BLOCK = "add-block";
     public static final String ACTION_REMOVE_BLOCK = "remove-block";
+    public static final String ACTION_ACTION_OBJECT = "toggle_object";
     public static final String ACTION_DEBUG_CHUNK = "debug-chunk";
     public static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
@@ -47,6 +48,7 @@ public class IalonKeyMapping {
         inputManager.addMapping(ACTION_RESET_CAM, new KeyTrigger(KeyInput.KEY_R));
         inputManager.addMapping(ACTION_TOGGLE_TIME_RUN, new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping(ACTION_ADD_BLOCK, new KeyTrigger(KeyInput.KEY_RETURN));
+        inputManager.addMapping(ACTION_ACTION_OBJECT, new KeyTrigger(KeyInput.KEY_T));
         inputManager.addMapping(ACTION_REMOVE_BLOCK, new KeyTrigger(KeyInput.KEY_DELETE));
         inputManager.addMapping(ACTION_LEFT, new KeyTrigger(KeyInput.KEY_Q));
         inputManager.addMapping(ACTION_RIGHT, new KeyTrigger(KeyInput.KEY_D));

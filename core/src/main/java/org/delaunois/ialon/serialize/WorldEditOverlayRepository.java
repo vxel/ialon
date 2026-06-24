@@ -49,7 +49,10 @@ public final class WorldEditOverlayRepository {
     // v2 : the relief overrides are now keyed by far-terrain SAMPLE and measured at the sample (v1
     // stored the edited column's height and slammed it onto the nearest sample -> water on slopes, and
     // a failed scan wrote height 0 = deep water). v1 files are intentionally discarded on load.
-    private static final int FORMAT_VERSION = 2;
+    // v3 : appends the modified-column set (any edit, for the minimap). Read backward-compatibly : a v2
+    // file simply has no such section (the set stays empty) ; its trees/heights are still loaded.
+    private static final int FORMAT_VERSION = 3;
+    private static final int MIN_FORMAT_VERSION = 2;
 
     private WorldEditOverlayRepository() {
     }
@@ -60,6 +63,8 @@ public final class WorldEditOverlayRepository {
      * (newly-created or never-edited) world : the overlay is simply left empty.
      */
     public static synchronized void load(Path worldPath, WorldEditOverlay overlay) {
+        long start = System.currentTimeMillis();
+        log.info("Loading world overlay");
         if (worldPath == null || overlay == null) {
             return;
         }
@@ -69,7 +74,9 @@ public final class WorldEditOverlayRepository {
             return;
         }
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-            if (in.readInt() != MAGIC || in.readInt() != FORMAT_VERSION) {
+            int magic = in.readInt();
+            int version = in.readInt();
+            if (magic != MAGIC || version < MIN_FORMAT_VERSION || version > FORMAT_VERSION) {
                 log.warn("Ignoring unrecognised world-edit overlay file {}", file);
                 return;
             }
@@ -82,8 +89,16 @@ public final class WorldEditOverlayRepository {
                 long key = in.readLong();
                 overlay.putHeight(key, in.readFloat());
             }
+            int columns = 0;
+            if (version >= 3) {
+                columns = in.readInt();
+                for (int i = 0; i < columns; i++) {
+                    overlay.markModifiedColumn(in.readLong());
+                }
+            }
             overlay.clearDirty(); // freshly loaded == in sync with disk
-            log.info("Loaded world-edit overlay : {} felled trees, {} height overrides", trees, heights);
+            log.info("Loaded world-edit overlay in {}ms : {} felled trees, {} height overrides, {} modified columns",
+                    System.currentTimeMillis() - start, trees, heights, columns);
         } catch (IOException e) {
             log.warn("Could not load world-edit overlay {}", file, e);
         }
@@ -95,6 +110,8 @@ public final class WorldEditOverlayRepository {
      * checkpoint save on the main thread never write the file concurrently and tear it.
      */
     public static synchronized void save(Path worldPath, WorldEditOverlay overlay) {
+        long start = System.currentTimeMillis();
+        log.info("Saving world overlay");
         if (worldPath == null || overlay == null || !overlay.isDirty()) {
             return;
         }
@@ -113,10 +130,15 @@ public final class WorldEditOverlayRepository {
                     out.writeLong(e.getKey());
                     out.writeFloat(e.getValue());
                 }
+                out.writeInt(overlay.getModifiedColumns().size());
+                for (long key : overlay.getModifiedColumns()) {
+                    out.writeLong(key);
+                }
             }
             overlay.clearDirty();
         } catch (IOException e) {
             log.error("Could not save world-edit overlay {}", file, e);
         }
+        log.info("World overlay in {}ms", System.currentTimeMillis() - start);
     }
 }

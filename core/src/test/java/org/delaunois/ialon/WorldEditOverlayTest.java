@@ -2,9 +2,12 @@ package org.delaunois.ialon;
 
 import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
+import org.delaunois.ialon.serialize.WorldEditOverlayRepository;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -87,6 +90,45 @@ class WorldEditOverlayTest {
                     "the felled tree must no longer be emitted as a far billboard");
         }
         assertTrue(overlay.isDirty());
+    }
+
+    @Test
+    void modifiedColumnIsRecordedOnceAndMarksDirty() {
+        WorldEditOverlay overlay = new WorldEditOverlay();
+        long col = WorldEditOverlay.pack(7, -3);
+        assertTrue(overlay.isEmpty());
+        assertFalse(overlay.isDirty());
+
+        overlay.markModifiedColumn(col);
+        assertTrue(overlay.getModifiedColumns().contains(col));
+        assertFalse(overlay.isEmpty());
+        assertTrue(overlay.isDirty());
+
+        overlay.clearDirty();
+        overlay.markModifiedColumn(col); // already recorded -> no-op, stays clean
+        assertFalse(overlay.isDirty());
+        assertEquals(1, overlay.getModifiedColumns().size());
+    }
+
+    @Test
+    void repositoryRoundTripsAllThreeOverlays(@TempDir Path worldPath) {
+        WorldEditOverlay saved = new WorldEditOverlay();
+        saved.removeTree(WorldEditOverlay.pack(10, 20));
+        saved.putHeight(WorldEditOverlay.pack(48, 64), 42f);
+        saved.markModifiedColumn(WorldEditOverlay.pack(-2, 5));
+        saved.markModifiedColumn(WorldEditOverlay.pack(100, 100));
+
+        WorldEditOverlayRepository.save(worldPath, saved);
+
+        WorldEditOverlay loaded = new WorldEditOverlay();
+        WorldEditOverlayRepository.load(worldPath, loaded);
+
+        assertTrue(loaded.isTreeRemoved(WorldEditOverlay.pack(10, 20)));
+        assertEquals(42f, loaded.getHeightOverrides().get(WorldEditOverlay.pack(48, 64)));
+        assertEquals(2, loaded.getModifiedColumns().size());
+        assertTrue(loaded.getModifiedColumns().contains(WorldEditOverlay.pack(-2, 5)));
+        assertTrue(loaded.getModifiedColumns().contains(WorldEditOverlay.pack(100, 100)));
+        assertFalse(loaded.isDirty(), "a freshly loaded overlay is in sync with disk");
     }
 
     @Test

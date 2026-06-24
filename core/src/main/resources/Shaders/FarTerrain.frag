@@ -91,15 +91,22 @@ void main() {
         discard;
     }
 
-    // Altitude in generator/world-block space : the mesh is nudged up by m_HeightOffset, so undo that
-    // here. NB : the sea geometry is flattened to the water line in the vertex shader, but vHeight still
-    // carries the TRUE (submerged) height, which is what drives the coastal gradient below.
-    float height = vHeight - m_HeightOffset;
-    float landAmount = smoothstep(m_WaterHeight, m_WaterHeight, height);
+    // Two heights here, both in generator/world-block space (the mesh is nudged up by m_HeightOffset, so
+    // undo that). The GEOMETRIC height (vWorldPos.y, the flattened mesh) is waterline-flat on the sea and
+    // the real relief on land ; the TRUE generator height (vHeight, pre-flatten) still carries the
+    // submerged depth. Drive the land/water split AND the land palette from the GEOMETRIC height : the
+    // steep shore ramp -- a quad joining a flattened-sea sample to a high land sample -- rises above the
+    // water line immediately, so it reads as land at once. Driving the split from the true (pre-flatten)
+    // height instead placed the boundary partway UP that ramp (the deeper the neighbouring sea, the
+    // higher), so the sea colour visibly climbed the foot of the hills. The true height is kept only for
+    // the underwater depth gradient below.
+    float trueHeight = vHeight - m_HeightOffset;
+    float height = vWorldPos.y - m_HeightOffset;
+    float landAmount = smoothstep(m_WaterHeight, m_WaterHeight + 1.0, height);
     float waterness = 1.0 - landAmount;
 
     // Coastal gradient : sand at the shoreline shallows -> dark-blue seabed with depth (like the voxels).
-    float depth = clamp(m_WaterHeight - height, 0.0, 1.0);
+    float depth = clamp(m_WaterHeight - trueHeight, 0.0, 1.0);
     vec3 seabed = mix(m_SandColor.rgb, m_SeabedColor.rgb, depth);
     // Sand fringe : the shore is sand for ~2 units above the water, then grass/land.
     vec3 land = mix(m_SandColor.rgb, m_BaseColor.rgb, smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height));

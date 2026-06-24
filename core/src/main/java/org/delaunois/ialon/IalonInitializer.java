@@ -19,23 +19,27 @@ import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 import com.jme3.texture.Texture;
-import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.BlockIds;
-import org.delaunois.ialon.blocks.TypeIds;
-import org.delaunois.ialon.blocks.BlockRegistry;
-import org.delaunois.ialon.blocks.BlocksConfig;
-import org.delaunois.ialon.blocks.BlocksTheme;
-import org.delaunois.ialon.blocks.ShapeIds;
-import org.delaunois.ialon.blocks.TypeRegistry;
-import org.delaunois.ialon.blocks.TextureAtlasManager;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlockRegistry;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.BlocksTheme;
+import org.delaunois.ialon.blocks.ChunkPager;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.PhysicsChunkPager;
+import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TextureAtlasManager;
+import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.TypeRegistry;
 import org.delaunois.ialon.blocks.jme.BitmapFontLoader;
 import org.delaunois.ialon.blocks.jme.LayerComparator;
+import org.delaunois.ialon.input.IalonKeyMapping;
 import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
 import org.delaunois.ialon.state.ChunkPagerState;
@@ -56,10 +60,6 @@ import java.util.Collection;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
-import org.delaunois.ialon.blocks.ChunkPager;
-import org.delaunois.ialon.blocks.FacesMeshGenerator;
-import org.delaunois.ialon.input.IalonKeyMapping;
-import org.delaunois.ialon.blocks.PhysicsChunkPager;
 
 @Slf4j
 public class IalonInitializer {
@@ -140,7 +140,8 @@ public class IalonInitializer {
                 "Textures/plus.png",
                 "Textures/gear.png",
                 "Textures/settings.png",
-                "Textures/trash.png"
+                "Textures/trash.png",
+                "Textures/action.png"
         };
 
         for (String texPath : noMiptexPaths) {

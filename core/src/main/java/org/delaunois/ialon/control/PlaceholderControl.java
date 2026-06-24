@@ -19,6 +19,7 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Shape;
 import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Pyramid;
 import org.delaunois.ialon.blocks.shapes.Stairs;
@@ -128,6 +129,7 @@ public class PlaceholderControl extends AbstractControl {
     private void updatePlaceholders(CollisionResult result) {
         if (result == null || result.getDistance() >= 20) {
             removePlaceholder.removeFromParent();
+            updateActionButton(null);
             return;
         }
 
@@ -140,6 +142,7 @@ public class PlaceholderControl extends AbstractControl {
         }
 
         Block b = worldManager.getBlock(localTranslation);
+        updateActionButton(b);
         Shape shape = b == null ? null : BlocksConfig.getInstance().getShapeRegistry().get(b.getShape());
 
         if ((shape instanceof Wedge
@@ -163,6 +166,17 @@ public class PlaceholderControl extends AbstractControl {
         Vec3i placingLocation = ChunkManager.getNeighbourBlockLocation(result);
         addPlaceholder.setLocalTranslation(placingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale()));
         addPlaceholderLocation.set(addPlaceholder.getLocalTranslation());
+    }
+
+    /**
+     * Shows the on-screen "Action" button only while the targeted block is a door. Called each
+     * placeholder tick (0.1 s), so it stays cheap : a type compare plus a state lookup.
+     */
+    private void updateActionButton(Block b) {
+        ButtonManagerState buttonManager = app.getStateManager().getState(ButtonManagerState.class);
+        if (buttonManager != null) {
+            buttonManager.setActionButtonVisible(b != null && WorldManager.isDoor(b.getType()));
+        }
     }
 
     private CollisionResult getCollisionResult() {

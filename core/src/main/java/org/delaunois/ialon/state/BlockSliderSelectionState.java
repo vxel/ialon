@@ -36,6 +36,7 @@ import static org.delaunois.ialon.IalonBlock.COLOR_RED2;
 import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
 import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
 import static org.delaunois.ialon.IalonBlock.DIRT;
+import static org.delaunois.ialon.IalonBlock.DOOR_LEFT;
 import static org.delaunois.ialon.IalonBlock.DRAWERS;
 import static org.delaunois.ialon.IalonBlock.FIRE;
 import static org.delaunois.ialon.IalonBlock.GRASS;
@@ -221,6 +222,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(OVEN, CUBE),
             getName(BED, SLAB),
             getName(BEDPILLOW, SLAB),
+            getName(DOOR_LEFT, PLATE_NORTH),
     };
 
     private static final String[] SHAPES = {

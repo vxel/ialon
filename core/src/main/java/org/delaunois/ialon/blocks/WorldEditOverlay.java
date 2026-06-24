@@ -53,6 +53,14 @@ public class WorldEditOverlay {
     private final Map<Long, Float> heightOverrides = new ConcurrentHashMap<>();
 
     /**
+     * Canonical chunk-column keys ({@code pack(chunkX, chunkZ)}, wrapped to the world period) the player
+     * has edited — placed/removed ANY block, terrain or building, unlike {@link #heightOverrides} which
+     * only tracks ground reshaping. Persisted, write-once-per-column (never removed : a column stays
+     * "modified" even if the edit is reverted). The minimap tints these to show where the player has built.
+     */
+    private final Set<Long> modifiedColumns = ConcurrentHashMap.newKeySet();
+
+    /**
      * Chunk columns (raw {@code pack(chunkX, chunkZ)}) edited this session and not yet reflected at the
      * horizon. Transient (not persisted) : a cheap marker set on every edit so {@code FarTerrainState}
      * can, when such a column is unfetched, recompute its far samples — and skip the scan entirely for
@@ -117,6 +125,19 @@ public class WorldEditOverlay {
         return heightOverrides;
     }
 
+    // --- Modified-column markers (persisted, for the minimap) ----------------------------------------
+
+    /** Records a canonical chunk column as edited by the player (no-op if already recorded). */
+    public void markModifiedColumn(long chunkColumnKey) {
+        if (modifiedColumns.add(chunkColumnKey)) {
+            dirty = true;
+        }
+    }
+
+    public Set<Long> getModifiedColumns() {
+        return modifiedColumns;
+    }
+
     // --- Edited-column markers (transient) -----------------------------------------------------------
 
     /** Flags a chunk column (raw {@code pack(chunkX, chunkZ)}) as edited, pending a far-relief refresh. */
@@ -137,7 +158,7 @@ public class WorldEditOverlay {
 
     /** True when there is nothing to persist. */
     public boolean isEmpty() {
-        return removedTrees.isEmpty() && heightOverrides.isEmpty();
+        return removedTrees.isEmpty() && heightOverrides.isEmpty() && modifiedColumns.isEmpty();
     }
 
     public boolean isDirty() {
@@ -154,6 +175,7 @@ public class WorldEditOverlay {
         if (!isEmpty()) {
             removedTrees.clear();
             heightOverrides.clear();
+            modifiedColumns.clear();
             dirty = true;
         }
     }

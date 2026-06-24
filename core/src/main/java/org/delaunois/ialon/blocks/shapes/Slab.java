@@ -200,14 +200,16 @@ public class Slab implements Shape {
     }
 
     public boolean fullyCoversFace(Direction direction) {
-        switch (Shape.getOppositeYawFaceDirection(direction, this.direction)) {
-            case DOWN:
-                return this.startY == -0.5f;
-            case UP:
-                return this.startY == 0.5f;
-            default:
-                return false;
-        }
+        // A slab spans the full cell cross-section in the two axes perpendicular to its thickness, so it
+        // fully covers exactly the world face its flush boundary plane lies on. The local bottom plane
+        // (y = startY) is flush with the cell boundary when startY == -0.5, the local top plane
+        // (y = endY) when endY == 0.5 ; getFaceDirection maps those local faces through the shape's
+        // rotation to their actual world direction. (The previous getOppositeYawFaceDirection-based
+        // logic only modelled yaw rotations and was wrong for the tilted NORTH/SOUTH/EAST/WEST/DOWN
+        // orientations — e.g. a plate_north wrongly reported covering DOWN, hiding the face of the
+        // block beneath it. For the dominant UP orientation the result is unchanged.)
+        return (startY == -0.5f && Shape.getFaceDirection(Direction.DOWN, this.direction) == direction)
+                || (endY == 0.5f && Shape.getFaceDirection(Direction.UP, this.direction) == direction);
     }
 
     private void enlightFace(Vec3i location, Direction face, Chunk chunk, ChunkMesh chunkMesh) {

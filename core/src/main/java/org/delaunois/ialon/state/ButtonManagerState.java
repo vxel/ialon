@@ -31,6 +31,7 @@ import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_LEFT;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RIGHT;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ACTION_OBJECT;
 
 @Slf4j
 public class ButtonManagerState extends BaseAppState implements ActionListener, Resizable {
@@ -65,6 +66,14 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
     @Getter
     private IconButton buttonFly;
 
+    // Contextual "Action" button (open/close a door). Unlike the others its icon is NOT batched, so it
+    // can be shown/hidden on its own : icon + background live in actionButtonNode, attached to
+    // buttonParentNode only while a door is targeted (driven by PlaceholderControl).
+    @Getter
+    private IconButton buttonAction;
+    private final Node actionButtonNode = new Node("ActionButton");
+    private boolean actionButtonVisible = false;
+
     private int buttonSize;
     private SimpleApplication app;
     private final ScreenButtonMouseListener screenButtonMouseListener;
@@ -92,6 +101,9 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         buttonFly = createTextureButton("flight.png", buttonSize, 0, 0, ACTION_FLY);
         buttonRemoveBlock = createTextureButton("minus.png", buttonSize, 0, 0, ACTION_REMOVE_BLOCK);
         buttonAddBlock = createTextureButton("plus.png", buttonSize, 0, 0, ACTION_ADD_BLOCK);
+        buttonAction = createTextureButton("action.png", buttonSize, 0, 0, ACTION_ACTION_OBJECT);
+        actionButtonNode.attachChild(buttonAction.icon);
+        actionButtonNode.attachChild(buttonAction.background);
 
         BatchNode batchNode = new BatchNode("ButtonBatch");
         batchNode.attachChild(buttonLeft.icon);
@@ -190,8 +202,26 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         place(buttonRight, margin + (buttonSize + SPACING) * 2, margin + buttonSize);
         place(buttonJump, width - margin - buttonSize, margin + buttonSize);
         place(buttonFly, width - margin - 2 * buttonSize - SPACING, height - margin);
+        place(buttonAction, width - margin - 3 * buttonSize - 2 * SPACING, height - margin);
         place(buttonRemoveBlock, margin, height - margin);
         place(buttonAddBlock, width - margin - buttonSize, height - margin);
+    }
+
+    /**
+     * Shows or hides the contextual "Action" (door open/close) button. Driven by
+     * {@code PlaceholderControl} : visible only while the player's cursor targets a door block.
+     * Cheap and idempotent — only attaches/detaches the (un-batched) action button node.
+     */
+    public void setActionButtonVisible(boolean visible) {
+        if (visible == actionButtonVisible) {
+            return;
+        }
+        actionButtonVisible = visible;
+        if (visible) {
+            buttonParentNode.attachChild(actionButtonNode);
+        } else {
+            actionButtonNode.removeFromParent();
+        }
     }
 
     private void place(IconButton button, float posx, float posy) {
