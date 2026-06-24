@@ -349,6 +349,13 @@ public class WorldManager {
             if (door == null || !isDoor(door.getType())) {
                 continue;
             }
+            // Toggle to the DRY variant (level 0). The cell must not keep its pass-through water :
+            // a door whose supplying side is the one it now blocks would otherwise stay an orphaned
+            // reservoir and re-feed the cut-off side (water then only drained when the source was on
+            // the open side). Dried, the cell only refills from an uncovered, genuinely-sourced face.
+            // (The generic addBlock pipeline can't be reused here : it preserves the water level, which
+            // is right for a fence but leaves a door's stale pass-through water in place.)
+            int previousLevel = door.getLiquidLevel();
             Block toggled = registry.get(BlockIds.getName(
                     door.getType(), toggledDoorShape(door.getType(), door.getShape()), 0));
             if (toggled == null || Objects.equals(toggled, door)) {
@@ -357,6 +364,17 @@ public class WorldManager {
             chunk.addBlock(local, toggled);
             chunks.add(chunk.getLocation());
             chunks.addAll(getAdjacentChunks(chunk, local, chunkSize));
+
+            // Re-evaluate the surrounding liquid : recede the water the cell carried (a closed door then
+            // blocks the re-flow, so the cut-off side drains as if a full block were placed), then
+            // re-flow from the remaining sources (an open door lets water back through). Processed and
+            // re-meshed by the liquid manager's own steps, exactly like add/removeBlock.
+            if (chunkLiquidManager != null) {
+                if (previousLevel > 0) {
+                    chunkLiquidManager.unflow(chunk, local, previousLevel);
+                }
+                chunkLiquidManager.flowLiquid(loc);
+            }
         }
 
         if (!chunks.isEmpty()) {
@@ -714,7 +732,7 @@ public class WorldManager {
         if (ShapeIds.CUBE.equals(block.getShape())) {
             chunk.addBlock(blockLocationInsideChunk, block);
             if (chunkLiquidManager != null) {
-                chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+                chunkLiquidManager.unflow(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
             }
         } else {
             String blockName = BlockIds.getName(block.getType(), block.getShape(), Block.LIQUID_SOURCE);
@@ -745,7 +763,7 @@ public class WorldManager {
                     || shape.fullyCoversFace(Direction.SOUTH)
                     || shape.fullyCoversFace(Direction.EAST)
                     || shape.fullyCoversFace(Direction.WEST))) {
-                chunkLiquidManager.removeSource(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+                chunkLiquidManager.unflow(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
                 chunkLiquidManager.flowLiquid(location);
             }
         }
