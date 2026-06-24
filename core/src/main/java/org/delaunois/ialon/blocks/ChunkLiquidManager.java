@@ -79,14 +79,17 @@ public class ChunkLiquidManager {
     }
 
     /**
-     * Remove the liquid source at the given location. This will trigger the liquid simulation
-     * that will remove the liquid originating from this liquid source.
-     * @param chunk the chunk where the source was located
-     * @param blockLocationInsideChunk the location of the source
+     * Starts a liquid <b>removal</b> (un-flow) cascade from the given cell at the given level : the
+     * simulation recedes the liquid originating here. Used both when a real liquid source is removed
+     * and when a placed/changed block displaces or cuts off liquid (the cascade is level-based, not
+     * source-specific — hence the name).
+     * @param chunk the chunk where the cell is located
+     * @param blockLocationInsideChunk the cell to recede from
+     * @param liquidLevel the level to recede (e.g. the level the cell was carrying)
      */
-    public void removeSource(Chunk chunk, Vec3i blockLocationInsideChunk, int liquidLevel) {
+    public void unflow(Chunk chunk, Vec3i blockLocationInsideChunk, int liquidLevel) {
         if (log.isDebugEnabled()) {
-            log.debug("Removing liquid source at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
+            log.debug("Unflowing liquid at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
         }
 
         liquidRemovalBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, liquidLevel));
@@ -97,7 +100,7 @@ public class ChunkLiquidManager {
             Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(location)));
             Block block = chunk.getBlock(blockLocationInsideChunk);
             if (block != null) {
-                removeSource(chunk, blockLocationInsideChunk, LEVEL_MAX);
+                unflow(chunk, blockLocationInsideChunk, LEVEL_MAX);
             }
         });
     }
