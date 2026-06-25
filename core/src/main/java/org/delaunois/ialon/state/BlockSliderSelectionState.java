@@ -48,7 +48,6 @@ import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
 import static org.delaunois.ialon.IalonBlock.ITEM_MUSHROOM;
 import static org.delaunois.ialon.IalonBlock.ITEM_SEAWEED;
 import static org.delaunois.ialon.IalonBlock.ITEM_SUNFLOWER;
-import static org.delaunois.ialon.IalonBlock.LAVA;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
@@ -79,6 +78,7 @@ import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
+import static org.delaunois.ialon.blocks.BlockIds.LAVA_SOURCE;
 import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 import static org.delaunois.ialon.blocks.ShapeIds.BILLBOARD;
 import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
@@ -185,7 +185,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(PALM_TREE_LOG, CUBE),
             getName(PALM_TREE_PLANKS, CUBE),
             getName(ROCK, CUBE),
-            getName(LAVA, CUBE),
+            LAVA_SOURCE,
             getName(OAK_LOG, CUBE),
             getName(OAK_PLANKS, CUBE),
             getName(SAND, CUBE),

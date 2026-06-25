@@ -451,7 +451,7 @@ public class WorldManager {
 
             chunk.addBlock(blockLocationInsideChunk,
                     BlocksConfig.getInstance().getBlockRegistry()
-                            .get(BlockIds.getName(TypeIds.WATER, shapeId)));
+                            .get(BlockIds.getName(liquidTypeOf(previousBlock), shapeId)));
 
             if (chunkLiquidManager != null) {
                 chunkLiquidManager.flowLiquid(location);
@@ -684,9 +684,30 @@ public class WorldManager {
         return block != null && block.isSolid();
     }
 
+    private static boolean isLiquid(Block block) {
+        return block != null && block.getLiquidLevel() > 0;
+    }
+
+    private static boolean isLiquidSource(Block block) {
+        return block != null && block.isLiquidSource();
+    }
+
+    /**
+     * The liquid type a liquid-bearing block belongs to. A block is lava only when its own type is
+     * lava (lava occupies pure cells, so it never rides a structural block) ; every other
+     * liquid-bearing block — pure water or a structure logged with water — counts as water.
+     */
+    private static String liquidTypeOf(Block block) {
+        return TypeIds.LAVA.equals(block.getType()) ? TypeIds.LAVA : TypeIds.WATER;
+    }
+
+    private static boolean isWaterSource(Block block) {
+        return block != null && block.isLiquidSource() && TypeIds.WATER.equals(block.getType());
+    }
+
     private Set<Vec3i> addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
         chunk.addBlock(blockLocationInsideChunk, block);
-        if (WATER_SOURCE.equals(block.getName()) && chunkLiquidManager != null) {
+        if (isLiquidSource(block) && chunkLiquidManager != null) {
             chunkLiquidManager.addSource(chunk, blockLocationInsideChunk);
         }
 
@@ -694,13 +715,29 @@ public class WorldManager {
     }
 
     private Set<Vec3i> addBlockInWater(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk, Vector3f location) {
-        if (WATER_SOURCE.equals(block.getName())) {
-            return addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
+        String prevLiquidType = liquidTypeOf(previousBlock);
 
-        } else if (WATER_SOURCE.equals(previousBlock.getName())) {
+        if (isLiquidSource(block)) {
+            // Placing a liquid source where another liquid already is : the two liquids are
+            // incompatible, so a source of a different liquid is refused (no mixing).
+            if (!liquidTypeOf(block).equals(prevLiquidType)) {
+                log.info("Incompatible liquids : cannot place {} source in {}", liquidTypeOf(block), prevLiquidType);
+                return new LinkedHashSet<>();
+            }
+            return addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
+        }
+
+        // Placing a non-liquid block where there is LAVA : lava occupies pure cells only (it does not
+        // co-habit with structural blocks), so the lava is displaced — the block is placed dry and the
+        // lava recedes.
+        if (TypeIds.LAVA.equals(prevLiquidType)) {
+            return addBlockDisplacingLiquid(block, previousBlock, chunk, blockLocationInsideChunk, location);
+        }
+
+        if (previousBlock.isLiquidSource()) {
             return addBlockInSourceWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
 
-        } else if (TypeIds.WATER.equals(previousBlock.getType())) {
+        } else if (isLiquid(previousBlock)) {
             return addBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk, location);
 
         } else {
@@ -710,10 +747,25 @@ public class WorldManager {
         }
     }
 
+    /**
+     * Places a (non-liquid) block where lava currently is : lava does not co-habit with structural
+     * blocks (pure-cell rule), so the lava block is overwritten (placed "dry") and the surrounding
+     * lava is told to recede / re-flow. Mirrors how a cube dropped on a water source displaces it.
+     */
+    private Set<Vec3i> addBlockDisplacingLiquid(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk, Vector3f location) {
+        chunk.addBlock(blockLocationInsideChunk, block);
+        if (chunkLiquidManager != null) {
+            chunkLiquidManager.unflow(chunk, blockLocationInsideChunk, previousBlock.getLiquidLevel());
+            chunkLiquidManager.flowLiquid(location);
+        }
+        return updateChunksAfterAddBlock(block, chunk, blockLocationInsideChunk);
+    }
+
     private Set<Vec3i> addSourceBlockInWaterLocation(Block block, Block previousBlock, Chunk chunk, Vec3i blockLocationInsideChunk) {
-        // 3.1 Adding a source where there is already non-source water
-        if (!TypeIds.WATER.equals(previousBlock.getType())) {
-            // 3.1.1 If a non water block exists there, add source water to it
+        // 3.1 Adding a source where there is already non-source liquid (of the SAME type — incompatible
+        // types are refused upstream).
+        if (!TypeIds.WATER.equals(previousBlock.getType()) && !TypeIds.LAVA.equals(previousBlock.getType())) {
+            // 3.1.1 If a non liquid (structural) block exists there, log the source liquid into it
             String blockName = BlockIds.getName(previousBlock.getType(), previousBlock.getShape(), Block.LIQUID_SOURCE);
             block = BlocksConfig.getInstance().getBlockRegistry().get(blockName);
             if (block == null) {
@@ -825,8 +877,10 @@ public class WorldManager {
             updatedChunks.addAll(removeBlock(aroundLocation));
         }
 
-        if ((south != null && south.isLiquidSource() && north != null && north.isLiquidSource())
-                || (west != null && west.isLiquidSource() && east != null && east.isLiquidSource())) {
+        // Auto-bridge a WATER source between two opposite water sources. Kept water-only : lava sources
+        // do not auto-merge (the WATER_SOURCE block below would be wrong for lava anyway).
+        if ((isWaterSource(south) && isWaterSource(north))
+                || (isWaterSource(west) && isWaterSource(east))) {
             updatedChunks.addAll(addBlock(blockLocation, BlocksConfig.getInstance().getBlockRegistry().get(WATER_SOURCE)));
         }
 

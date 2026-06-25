@@ -25,34 +25,38 @@ import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 
+import com.jme3.math.Vector3f;
+import com.simsilica.mathd.Vec3i;
+
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.blocks.shapes.Liquid;
 import org.delaunois.ialon.control.SkyControl;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Applies an underwater post-process (bluish distance fog + view ripple) whenever the camera dips
- * below the water surface ({@link IalonConfig#getWaterHeight()}). The effect lives in a
+ * Applies a full-screen liquid post-process (distance fog + view ripple) whenever the camera (eye) is
+ * inside a liquid block — water (bluish) or lava (orange). The effect lives in a
  * {@link FilterPostProcessor} carrying a single {@link UnderwaterFilter}.
  *
- * The FilterPostProcessor adds a full-screen render-to-texture pass, so to keep it free above water
- * (important on the Android target) it is only attached to the main viewport while the camera is
- * submerged and removed as soon as it surfaces. The filter's {@link UnderwaterFilter#setIntensity}
- * ramps over a small {@link #FADE_BAND} just below the surface so the effect fades in smoothly
- * instead of popping on at the exact water line.
+ * Detection is per-block (the actual block at the camera position), not based on the global water
+ * height : this is correct inside caves below sea level (you can be under the water line without being
+ * in water) and is what lets the same effect serve both water and lava.
  *
- * The fog colour tracks the day/night cycle : the authored underwater hue (kept bluish) is
- * brightness-modulated by {@link SkyControl#getColor()} (white at noon, dark at night), resolved
- * lazily and refreshed at the slow sky cadence, mirroring {@link WaterState}.
+ * The FilterPostProcessor adds a full-screen render-to-texture pass, so to keep it free above the
+ * surface (important on the Android target) it is only attached to the main viewport while the camera
+ * is submerged and removed as soon as it surfaces.
+ *
+ * The water fog colour tracks the day/night cycle (brightness-modulated by {@link SkyControl#getColor()},
+ * mirroring {@link WaterState}) ; the lava fog stays a constant emissive orange.
  */
 @Slf4j
 public class UnderwaterState extends BaseAppState {
 
-    // Submersion depth (world units) over which the effect ramps from 0 to full strength.
-    private static final float FADE_BAND = 5f;
-    // Camera must rise this far above the surface before the processor is detached (hysteresis,
-    // avoids attach/detach thrash when bobbing exactly at the water line).
-    private static final float SURFACE_MARGIN = 0.5f;
     private static final long COLOR_UPDATE_THRESHOLD_MS = 200;
 
     private final IalonConfig config;
@@ -64,6 +68,9 @@ public class UnderwaterState extends BaseAppState {
     private SkyControl skyControl;
     private boolean rendering = false;
     private long lastColorUpdate = 0;
+    // The liquid type the camera is currently submerged in (null when not submerged). Drives the fog
+    // colour/params : water (blue, day/night modulated) vs lava (orange, emissive — no night darkening).
+    private String currentLiquidType = null;
 
     public UnderwaterState(IalonConfig config) {
         this.config = config;
@@ -104,23 +111,65 @@ public class UnderwaterState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
+        // Per-block detection : the effect is on only when the camera (eye) is actually INSIDE a liquid
+        // cell, regardless of the global water height. This is correct in caves below sea level (you
+        // can be under the water line without being in water) and is what enables the lava variant.
         Camera cam = app.getCamera();
-        float depth = config.getWaterHeight() - cam.getLocation().y;
+        Vector3f eye = cam.getLocation();
+        Block block = config.getChunkManager() == null
+                ? null
+                : config.getChunkManager().getBlock(eye).orElse(null);
 
-        if (depth > 0) {
-            attach();
-            float intensity = Math.min(depth / FADE_BAND, 1f);
-            filter.setIntensity(intensity);
-            updateFogColor();
-
-        } else if (depth < -SURFACE_MARGIN) {
+        if (block == null || block.getLiquidLevel() <= 0 || eye.y >= liquidSurfaceY(eye, block)) {
+            // Not in a liquid cell, or the eye is above the actual liquid surface inside the cell
+            // (a liquid block only fills part of its cell : full = cell top, source ~0.8, lower levels
+            // less — so the cell top is above the surface and must NOT trigger the effect).
             detach();
+            currentLiquidType = null;
+            return;
         }
+
+        String type = TypeIds.LAVA.equals(block.getType()) ? TypeIds.LAVA : TypeIds.WATER;
+        if (!type.equals(currentLiquidType)) {
+            currentLiquidType = type;
+            configureFilterFor(type);
+            lastColorUpdate = 0; // force an immediate fog-colour refresh on liquid change
+        }
+
+        attach();
+        filter.setIntensity(1f);
+        updateFogColor();
     }
 
     /**
-     * Brightness-modulate the authored underwater hue by the sky day/night level so the fog darkens
-     * at night. Throttled to the slow sky colour cadence (the sky control updates infrequently).
+     * World-space Y of the liquid surface inside the cell the given world position falls in. A liquid
+     * block at grid {@code gy} spans world {@code [gy*scale, (gy+1)*scale]} and its top sits at
+     * {@code (gy + 0.5 + topOffset(level)) * scale} (full = cell top, source ~0.8, lower levels less).
+     */
+    private float liquidSurfaceY(Vector3f worldPos, Block block) {
+        float scale = BlocksConfig.getInstance().getBlockScale();
+        Vec3i cell = ChunkManager.getBlockLocation(worldPos);
+        return (cell.y + 0.5f + Liquid.topOffset(block.getLiquidLevel())) * scale;
+    }
+
+    /** Sets the per-liquid fog distance/density (lava is denser / shorter-range than water). */
+    private void configureFilterFor(String type) {
+        if (TypeIds.LAVA.equals(type)) {
+            filter.setFogDistance(config.getLavaFogDistance());
+            filter.setFogDensity(config.getLavaFogDensity());
+        } else {
+            filter.setFogDistance(config.getUnderwaterFogDistance());
+            filter.setFogDensity(config.getUnderwaterFogDensity());
+        }
+        filter.setDistortionAmplitude(config.getUnderwaterDistortionAmplitude());
+        filter.setDistortionSpeed(config.getUnderwaterDistortionSpeed());
+        filter.setDistortionFrequency(config.getUnderwaterDistortionFrequency());
+    }
+
+    /**
+     * Refreshes the fog colour. Water is brightness-modulated by the sky day/night level (white at
+     * noon, dark at night) ; lava is emissive, so its orange stays constant. Throttled to the slow sky
+     * colour cadence.
      */
     private void updateFogColor() {
         long now = System.currentTimeMillis();
@@ -128,6 +177,12 @@ public class UnderwaterState extends BaseAppState {
             return;
         }
         lastColorUpdate = now;
+
+        if (TypeIds.LAVA.equals(currentLiquidType)) {
+            fogColor.set(config.getLavaFogColor());
+            filter.setFogColor(fogColor);
+            return;
+        }
 
         if (skyControl == null) {
             SkyState skyState = getStateManager().getState(SkyState.class);
