@@ -42,6 +42,7 @@ public interface TypeIds {
     String RAIL_SLOPE = "rail_slope";
     String PHANTOM = "phantom";
     String FIRE = "fire";
+    String LAVA = "lava";
     String DOOR_LEFT = "door_left";
     String DOOR_RIGHT = "door_right";
     String DOOR_LEFT_METAL = "door_left_metal";

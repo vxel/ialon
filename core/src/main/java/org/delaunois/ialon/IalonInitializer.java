@@ -370,11 +370,13 @@ public class IalonInitializer {
     public static void registerIalonBlocks() {
         Collection<String> types = BlocksConfig.getInstance().getTypeRegistry().getAll();
         for (IalonBlock block : IalonBlock.values()) {
-            // Fire is not registered as a regular type : it is rendered by a dedicated procedural shader
-            // (see FacesMeshGenerator#getFireMaterial), not by an atlas texture. Skipping registration
-            // keeps it out of the texture atlas so its shape UVs are left untouched (raw 0..1 per plane)
-            // for the flame shader to use directly.
-            if (!types.contains(block.getType()) && !TypeIds.FIRE.equals(block.getType())) {
+            // Fire and lava are not registered as regular types : they are rendered by dedicated
+            // procedural shaders (see FacesMeshGenerator#getFireMaterial / #getLavaMaterial), not by an
+            // atlas texture. Skipping registration keeps them out of the texture atlas so their shape
+            // UVs are left untouched (raw, padded per face) for the procedural shaders to use directly.
+            if (!types.contains(block.getType())
+                    && !TypeIds.FIRE.equals(block.getType())
+                    && !TypeIds.LAVA.equals(block.getType())) {
                 BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
             }
 

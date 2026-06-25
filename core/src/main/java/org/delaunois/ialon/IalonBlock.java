@@ -66,6 +66,11 @@ public enum IalonBlock {
 
     ROCK(TypeIds.ROCK, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
+    // Solid, opaque, light-emitting (torchlight) cube whose faces are rendered by a dedicated
+    // procedural molten-lava shader (Lava.j3md) instead of an atlas texture. For now the lava does
+    // not flow — it behaves as a normal solid block.
+    LAVA(TypeIds.LAVA, true, false, false, true, ShapeIds.CUBE),
+
     PALM_TREE_LOG(TypeIds.PALM_TREE_LOG, true, false, true, IalonShapeSet.STANDARD_SHAPES_NO_STAIRS.getShapes()),
     PALM_TREE_PLANKS(TypeIds.PALM_TREE_PLANKS, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     PALM_TREE_LEAVES(TypeIds.PALM_TREE_LEAVES, true, true, false, ShapeIds.CUBE),

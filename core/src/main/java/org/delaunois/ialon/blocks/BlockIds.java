@@ -67,6 +67,7 @@ public interface BlockIds {
 
     String ITEM_GRASS = TypeIds.ITEM_GRASS;
     String FIRE = TypeIds.FIRE;
+    String LAVA = TypeIds.LAVA;
 
     String SCALE = TypeIds.SCALE;
     String DOOR = TypeIds.DOOR_LEFT;

@@ -48,6 +48,7 @@ import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
 import static org.delaunois.ialon.IalonBlock.ITEM_MUSHROOM;
 import static org.delaunois.ialon.IalonBlock.ITEM_SEAWEED;
 import static org.delaunois.ialon.IalonBlock.ITEM_SUNFLOWER;
+import static org.delaunois.ialon.IalonBlock.LAVA;
 import static org.delaunois.ialon.IalonBlock.METAL1;
 import static org.delaunois.ialon.IalonBlock.METAL2;
 import static org.delaunois.ialon.IalonBlock.METAL3;
@@ -184,6 +185,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(PALM_TREE_LOG, CUBE),
             getName(PALM_TREE_PLANKS, CUBE),
             getName(ROCK, CUBE),
+            getName(LAVA, CUBE),
             getName(OAK_LOG, CUBE),
             getName(OAK_PLANKS, CUBE),
             getName(SAND, CUBE),
@@ -724,6 +726,13 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             node = chunk.getNode();
             node.setName(name);
             Geometry geometry = (Geometry) node.getChild(0).clone();
+
+            // Procedural materials (e.g. lava) sample world position for a seamless cross-block look.
+            // The preview batches the quad with a BatchNode that bakes vertex positions into pixel
+            // space, so switch such materials to their per-face UV mode to fill the icon correctly.
+            if (geometry.getMaterial().getMaterialDef().getMaterialParam("UseUv") != null) {
+                geometry.getMaterial().setBoolean("UseUv", true);
+            }
 
             geometry.setLocalScale(size / 2f);
             geometry.setQueueBucket(RenderQueue.Bucket.Gui);
