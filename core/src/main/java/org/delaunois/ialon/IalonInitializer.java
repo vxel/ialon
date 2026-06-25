@@ -257,6 +257,7 @@ public class IalonInitializer {
         chunkPager.setGridLowerBounds(config.getGridLowerBound());
         chunkPager.setGridUpperBounds(config.getGridUpperBound());
         chunkPager.setMaxUpdatePerFrame(100);
+        chunkPager.setCaveCullingEnabled(config.isChunkCaveCulling());
         playerState.addListener(chunkPager::setLocation);
 
         return new ChunkPagerState(chunkPager);

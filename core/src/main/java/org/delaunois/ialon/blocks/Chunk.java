@@ -40,6 +40,28 @@ public class Chunk {
     private static final ColorRGBA LAVA_COLOR_FILTER = ColorRGBA.fromRGBA255(255, 100, 40, 1);
     private static final String WATER_BLOCK = "water-liquid";
 
+    /**
+     * Bitset value meaning every one of the 15 unordered pairs of the 6 chunk faces is connected
+     * (a fully see-through chunk). Used as the safe default before {@link #computeFaceConnectivity()}
+     * has run and for empty / unmeshable chunks.
+     */
+    public static final short CONNECT_ALL = (short) 0x7FFF;
+
+    /**
+     * Scene-graph {@code userData} key under which a meshed chunk node carries its
+     * {@link #getFaceConnectivity()} (stored as an {@code Integer}) for the renderer's cave-culling
+     * visibility graph.
+     */
+    public static final String USERDATA_FACE_CONNECTIVITY = "ialon.faceConnectivity";
+
+    // Per-thread scratch for the connectivity flood-fill : a region-id buffer and a BFS index queue,
+    // both sized to the chunk volume. Reused across chunks meshed on the same worker thread so the
+    // flood-fill allocates nothing on the (CPU-critical) meshing path.
+    private static final ThreadLocal<int[]> REGION_SCRATCH =
+            ThreadLocal.withInitial(() -> new int[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+    private static final ThreadLocal<int[]> FLOOD_QUEUE_SCRATCH =
+            ThreadLocal.withInitial(() -> new int[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+
     // a one dimensional array is quicker to lookup blocks then a 3n array
     private short[] blocks;
 
@@ -60,6 +82,15 @@ public class Chunk {
      * its neighbours : a chunk full of a transparent type (e.g. water) is full but NOT an occluder.
      */
     private boolean fullyOpaque;
+
+    /**
+     * Visibility-graph bitset for cave culling. For each of the 15 unordered pairs of the 6 chunk
+     * faces, a set bit means sight can pass straight through the chunk from one face to the other
+     * (through air / transparent / non-cube cells). Recomputed by {@link #computeFaceConnectivity()}
+     * whenever the chunk is (re)meshed. Defaults to {@link #CONNECT_ALL} (nothing occludes) so a
+     * not-yet-computed chunk never wrongly hides what is behind it.
+     */
+    private short faceConnectivity = CONNECT_ALL;
 
     /**
      * Wheter this chunk was loaded (false) or generated (true)
@@ -676,6 +707,144 @@ public class Chunk {
      */
     public static boolean isInsideChunk(int x, int y, int z) {
         return x >= 0 && x < CHUNK_SIZE.x && y >= 0 && y < CHUNK_SIZE.y && z >= 0 && z < CHUNK_SIZE.z;
+    }
+
+    /**
+     * Recomputes {@link #getFaceConnectivity()} : a flood-fill over the non-occluding cells (air,
+     * liquids, glass, non-cube shapes — everything except a full opaque cube) that records, for each
+     * unordered pair of the 6 chunk faces, whether sight can travel straight through the chunk from
+     * one to the other. This is the per-chunk node of the renderer's cave-culling visibility graph.
+     * One pass over the block array (plus a flood-fill that visits each see-through cell once); meant
+     * to be called on the meshing worker thread whenever the chunk node is (re)built.
+     */
+    public void computeFaceConnectivity() {
+        if (blocks == null || empty) {
+            // Nothing occludes : sight passes through every face pair.
+            faceConnectivity = CONNECT_ALL;
+            return;
+        }
+
+        final int sx = CHUNK_SIZE.x;
+        final int sy = CHUNK_SIZE.y;
+        final int sz = CHUNK_SIZE.z;
+        final int volume = sx * sy * sz;
+        final int[] region = REGION_SCRATCH.get();
+        final int[] queue = FLOOD_QUEUE_SCRATCH.get();
+        Arrays.fill(region, 0, volume, -1);
+
+        short connectivity = 0;
+        int nextRegion = 0;
+        for (int x = 0; x < sx; x++) {
+            for (int y = 0; y < sy; y++) {
+                for (int z = 0; z < sz; z++) {
+                    int index = calculateIndex(x, y, z);
+                    if (region[index] != -1 || isOccluder(blocks[index])) {
+                        continue;
+                    }
+
+                    // Flood-fill this connected component of see-through cells, accumulating the set
+                    // of chunk faces it touches.
+                    int faceBits = 0;
+                    int head = 0;
+                    int tail = 0;
+                    queue[tail++] = index;
+                    region[index] = nextRegion;
+                    while (head < tail) {
+                        int ci = queue[head++];
+                        int cz = ci % sz;
+                        int tmp = ci / sz;
+                        int cy = tmp % sy;
+                        int cx = tmp / sy;
+                        faceBits |= faceBitsOf(cx, cy, cz, sx, sy, sz);
+                        tail = visitFloodNeighbour(cx - 1, cy, cz, sx, sy, sz, region, queue, tail, nextRegion);
+                        tail = visitFloodNeighbour(cx + 1, cy, cz, sx, sy, sz, region, queue, tail, nextRegion);
+                        tail = visitFloodNeighbour(cx, cy - 1, cz, sx, sy, sz, region, queue, tail, nextRegion);
+                        tail = visitFloodNeighbour(cx, cy + 1, cz, sx, sy, sz, region, queue, tail, nextRegion);
+                        tail = visitFloodNeighbour(cx, cy, cz - 1, sx, sy, sz, region, queue, tail, nextRegion);
+                        tail = visitFloodNeighbour(cx, cy, cz + 1, sx, sy, sz, region, queue, tail, nextRegion);
+                    }
+                    nextRegion++;
+                    connectivity |= pairsOf(faceBits);
+                }
+            }
+        }
+        faceConnectivity = connectivity;
+    }
+
+    private int visitFloodNeighbour(int x, int y, int z, int sx, int sy, int sz,
+                                    int[] region, int[] queue, int tail, int regionId) {
+        if (x < 0 || x >= sx || y < 0 || y >= sy || z < 0 || z >= sz) {
+            return tail;
+        }
+        int index = calculateIndex(x, y, z);
+        if (region[index] != -1 || isOccluder(blocks[index])) {
+            return tail;
+        }
+        region[index] = regionId;
+        queue[tail] = index;
+        return tail + 1;
+    }
+
+    /**
+     * A cell occludes sight only if it holds a full opaque cube : everything else (air, liquids,
+     * glass, slabs, stairs, billboards...) lets the visibility flood-fill pass through. Mirrors the
+     * opaque full-cube fast path of {@link #isFaceVisible(Block, Direction, Block)}.
+     */
+    private static boolean isOccluder(short id) {
+        if (id == 0) {
+            return false;
+        }
+        Block b = REGISTRY.get(id);
+        return b != null && !b.isTransparent() && ShapeIds.CUBE.equals(b.getShape());
+    }
+
+    /** Bitset (indexed by {@link Direction#ordinal()}) of the chunk faces the given cell lies on. */
+    private static int faceBitsOf(int x, int y, int z, int sx, int sy, int sz) {
+        int bits = 0;
+        if (y == sy - 1) bits |= 1 << Direction.UP.ordinal();
+        if (y == 0)      bits |= 1 << Direction.DOWN.ordinal();
+        if (x == 0)      bits |= 1 << Direction.WEST.ordinal();
+        if (x == sx - 1) bits |= 1 << Direction.EAST.ordinal();
+        if (z == sz - 1) bits |= 1 << Direction.SOUTH.ordinal();
+        if (z == 0)      bits |= 1 << Direction.NORTH.ordinal();
+        return bits;
+    }
+
+    /** Connectivity bits for every unordered pair of faces present in the given face bitset. */
+    private static short pairsOf(int faceBits) {
+        short bits = 0;
+        for (int a = 0; a < 6; a++) {
+            if ((faceBits & (1 << a)) == 0) {
+                continue;
+            }
+            for (int b = a + 1; b < 6; b++) {
+                if ((faceBits & (1 << b)) != 0) {
+                    bits |= (short) (1 << pairBit(a, b));
+                }
+            }
+        }
+        return bits;
+    }
+
+    /** Maps an unordered pair of face ordinals (0..5) to its bit index in the 15-bit connectivity mask. */
+    private static int pairBit(int a, int b) {
+        if (a > b) {
+            int t = a;
+            a = b;
+            b = t;
+        }
+        return a * 5 - (a * (a - 1)) / 2 + (b - a - 1);
+    }
+
+    /**
+     * Tests, for a chunk with the given {@link #getFaceConnectivity()} bitset, whether sight can
+     * pass straight through it between faces {@code a} and {@code b}.
+     */
+    public static boolean isConnected(short connectivity, @NonNull Direction a, @NonNull Direction b) {
+        if (a == b) {
+            return true;
+        }
+        return (connectivity & (1 << pairBit(a.ordinal(), b.ordinal()))) != 0;
     }
 
     /**

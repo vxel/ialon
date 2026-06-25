@@ -439,9 +439,22 @@ public class WorldManager {
         }
 
         int lvl = previousBlock.getLiquidLevel();
-        if (lvl > 0) {
-            // Optimisation : if removing a block in water, apply directly the water level
-            // of the block location
+        boolean removedPureLiquid = TypeIds.WATER.equals(previousBlock.getType())
+                || TypeIds.LAVA.equals(previousBlock.getType());
+
+        if (removedPureLiquid) {
+            // Removing the liquid itself (a source or a pure water/lava cell) : recede the whole flow
+            // it fed instead of re-creating it. A source recedes everything downstream (LEVEL_MAX) ;
+            // a flowing cell recedes only the lower-level flow below it. unflow also re-flows from any
+            // remaining source to refill the gap (so digging a flowing cell next to a source refills).
+            if (chunkLiquidManager != null) {
+                chunkLiquidManager.unflow(chunk, blockLocationInsideChunk,
+                        previousBlock.isLiquidSource() ? LEVEL_MAX : lvl);
+            }
+
+        } else if (lvl > 0) {
+            // Optimisation : removing a structural block logged with liquid (e.g. a fence post under
+            // water) leaves pure liquid behind at the same level — the liquid co-habiting the block.
             String shapeId = ShapeIds.LIQUID;
 
             if (lvl < LEVEL_MAX) {

@@ -116,6 +116,9 @@ public class IalonConfig implements WorldSettings {
 
     private float waterHeight = 30;
     private boolean greedyCalmWater = true;
+    // Cave culling : hide chunks the camera cannot see through the chunk visibility graph
+    // (behind walls, underground). Minecraft-style advanced occlusion culling.
+    private boolean chunkCaveCulling = true;
     private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;

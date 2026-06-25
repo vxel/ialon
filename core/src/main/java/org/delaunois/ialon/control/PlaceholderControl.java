@@ -201,8 +201,10 @@ public class PlaceholderControl extends AbstractControl {
 
         CollisionResult geomResult = null;
         for (CollisionResult collisionResult : collisionResults) {
-            if (collisionResult.getGeometry().getMaterial().getName() != null &&
-                    !collisionResult.getGeometry().getMaterial().getName().contains("water")) {
+            String materialName = collisionResult.getGeometry().getMaterial().getName();
+            // Skip liquid surfaces (water and lava) so the ray stops on the first SOLID block : a liquid
+            // block is placed/removed against that solid hit, exactly like water.
+            if (materialName != null && !materialName.contains("water") && !materialName.contains("lava")) {
                 geomResult = collisionResult;
                 break;
             }
