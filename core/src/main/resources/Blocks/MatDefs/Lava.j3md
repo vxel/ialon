@@ -1,0 +1,40 @@
+MaterialDef Lava {
+
+    MaterialParameters {
+
+        // Animation speed multiplier of the procedural lava flow (1.0 = nominal).
+        Float Speed
+
+        // Zoom of the molten pattern (1.0 = one pattern unit per world/UV unit).
+        Float Scale
+
+        // Use the per-face UV instead of the seamless world-space triplanar mapping. Only the block-
+        // selection preview sets this (its BatchNode bakes vertex positions, so world position is
+        // meaningless there). In-world it stays false so the pattern flows seamlessly across blocks.
+        Boolean UseUv
+
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        // No lighting : lava is fully emissive (it is a light source), so we don't need the lighting
+        // globals — only the clock (Time) and the standard transform. The molten pattern is computed
+        // procedurally per fragment from the face UV.
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Lava.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Blocks/Shaders/Lava.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldMatrix
+            Time
+        }
+
+        Defines {
+            USE_UV : UseUv
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+
+}

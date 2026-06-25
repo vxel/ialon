@@ -1,0 +1,10 @@
+Material lava : Blocks/MatDefs/Lava.j3md {
+    MaterialParameters {
+        Speed : 1.0
+        Scale : 1.0
+        ManualSrgb : false
+    }
+    AdditionalRenderState {
+        FaceCull Back
+    }
+}

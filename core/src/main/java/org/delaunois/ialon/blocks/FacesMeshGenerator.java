@@ -46,6 +46,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
     // Fire : its own mesh/material rendered by a procedural flame shader (no atlas texture).
     private static final String CHUNK_MESH_TYPE_FIRE = "fire";
+    // Lava : its own mesh/material rendered by a procedural molten-lava shader (no atlas texture).
+    private static final String CHUNK_MESH_TYPE_LAVA = "lava";
     // Water shapes that do NOT emit their top face, one per liquid level : used for calm-surface cells
     // whose flat top is produced instead by the greedy calm-water mesher. Their sides/bottom keep the
     // normal textured look. Only SOURCE water (level 5) is calm-rendered ; flowing water keeps its
@@ -64,6 +66,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private Material calmWaterMaterial;
     // Built lazily and reused : the procedural flame material shared by every fire geometry.
     private Material fireMaterial;
+    // Built lazily and reused : the procedural molten-lava material shared by every lava geometry.
+    private Material lavaMaterial;
 
     /**
      * Per-thread pool of reusable {@link ChunkMesh} buffers. Meshing runs on a fixed thread pool
@@ -675,6 +679,22 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     }
 
     /**
+     * The procedural molten-lava material, shared by every lava geometry. Lava is a normal opaque
+     * cube whose faces are filled by a self-contained noise-based shader (Lava.j3md) animated by the
+     * engine clock (g_Time) — there is no atlas texture and no per-frame uniform push. The block is
+     * fully emissive (it ignores the voxel light level since lava is a light source). {@code
+     * synchronized} because chunk meshing runs on worker threads.
+     */
+    public synchronized Material getLavaMaterial() {
+        if (lavaMaterial == null) {
+            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/lava.j3m");
+            mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
+            lavaMaterial = mat;
+        }
+        return lavaMaterial;
+    }
+
+    /**
      * Greedy-meshes the solid full cubes of the chunk into the collision mesh : coplanar exposed
      * cube faces are merged into the largest possible rectangles, drastically reducing the triangle
      * count of the physics shape. Safe because the collision mesh carries no UVs/normals/colors, so
@@ -831,6 +851,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (block.getType().equals(TypeIds.FIRE)) {
             return CHUNK_MESH_TYPE_FIRE;
         }
+        if (block.getType().equals(TypeIds.LAVA)) {
+            return CHUNK_MESH_TYPE_LAVA;
+        }
         return CHUNK_MESH_TYPE_GENERIC;
     }
 
@@ -921,6 +944,11 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 // auto-computed from the positions has no corner extent : grow it by one block so the
                 // camera-expanded quad is never wrongly frustum-culled at chunk edges.
                 expandBound(mesh, BlocksConfig.getInstance().getBlockScale());
+                break;
+            case CHUNK_MESH_TYPE_LAVA:
+                // Solid, opaque, emissive cube : keep the default Opaque bucket (no blending, depth
+                // written) — only the material differs from a normal atlas block.
+                geometry.setMaterial(getLavaMaterial());
                 break;
             case CHUNK_MESH_TYPE_GENERIC:
                 typeRegistry.applyGenericMaterial(geometry);
