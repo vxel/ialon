@@ -26,9 +26,11 @@ import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.Statistics;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.texture.Image;
 import org.delaunois.ialon.blocks.Block;
@@ -49,7 +51,10 @@ import org.delaunois.ialon.control.PlaceholderControl;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.lang.management.BufferPoolMXBean;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,6 +75,11 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     // Debug toggle (F9) : logs a detailed memory breakdown (heap, off-heap direct buffers, chunk
     // meshes, chunk data arrays, collision meshes, texture atlas) to measure where RAM actually goes.
     private static final String MEMORY_REPORT = "ialon_debug_memory_report";
+    // Hypothetical far-batching parameters, used ONLY to estimate the draw-call reduction in the
+    // render report (not wired to any actual batching yet) : chunks within this Chebyshev distance of
+    // the player stay individual, farther ones would be merged per REPORT_REGION_SIZE^3 region.
+    private static final int REPORT_NEAR_RADIUS = 3;
+    private static final int REPORT_REGION_SIZE = 4;
 
     private boolean pagingFrozen = false;
     private final ActionListener freezePagingListener = (name, isPressed, tpf) -> {
@@ -102,6 +112,20 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     private float updateTime = 0.25f;
     private float curTime = 1;
     private final IalonConfig config;
+
+    // Allocation / GC-pressure sampling : updated every `updateTime` in update(), printed by F9.
+    // Reflection (com.sun getThreadAllocatedBytes) + java.lang.management GC beans, all guarded so an
+    // Android runtime lacking them simply reports "n/a". -1 = not yet sampled / unsupported.
+    private boolean allocInit = false;
+    private ThreadMXBean threadMXBean;
+    private Method allocMethod;          // com.sun.management.ThreadMXBean#getThreadAllocatedBytes(long[])
+    private long allocSampleNanos = 0;
+    private long allocSampleBytes = -1;
+    private long gcSampleCount = -1;
+    private long gcSampleTimeMs = -1;
+    private double allocRateMBs = -1;    // total bytes allocated across all threads, MB/s
+    private double gcPerSec = -1;
+    private double gcMsPerSec = -1;
 
     public IalonDebugState(IalonConfig config) {
         this.config = config;
@@ -194,16 +218,58 @@ public class IalonDebugState extends BaseAppState implements Resizable {
             }
         }
 
-        // Loaded chunk render meshes (the geometries attached to the scene).
+        // Loaded chunk render meshes (the geometries attached to the scene), classified near/far around
+        // the player to estimate what far-chunk batching could collapse (see REPORT_* constants).
         long renderMeshBytes = 0;
         long geometryCount = 0;
         long vertexCount = 0;
+        int culledGeoms = 0;
+        int nearGeoms = 0;
+        int farGeoms = 0;
+        int nearChunks = 0;
+        int farChunks = 0;
+        java.util.Set<Vec3i> farRegions = new java.util.HashSet<>();
         Map<Vec3i, Node> attachedPages = chunkPager.getAttachedPages();
-        for (Node page : attachedPages.values()) {
+        Vec3i center = chunkPager.getCenterPage();
+        for (Map.Entry<Vec3i, Node> entry : attachedPages.entrySet()) {
+            Vec3i loc = entry.getKey();
+            Node page = entry.getValue();
+            int pageGeoms = 0;
             for (Geometry geom : collectGeometries(page)) {
                 renderMeshBytes += meshBytes(geom.getMesh());
                 geometryCount++;
                 vertexCount += geom.getMesh().getVertexCount();
+                pageGeoms++;
+            }
+            if (page.getLocalCullHint() == Spatial.CullHint.Always) {
+                culledGeoms += pageGeoms;
+            }
+            int dist = center == null ? 0 : Math.max(Math.abs(loc.x - center.x),
+                    Math.max(Math.abs(loc.y - center.y), Math.abs(loc.z - center.z)));
+            if (dist <= REPORT_NEAR_RADIUS) {
+                nearGeoms += pageGeoms;
+                nearChunks++;
+            } else {
+                farGeoms += pageGeoms;
+                farChunks++;
+                farRegions.add(new Vec3i(Math.floorDiv(loc.x, REPORT_REGION_SIZE),
+                        Math.floorDiv(loc.y, REPORT_REGION_SIZE),
+                        Math.floorDiv(loc.z, REPORT_REGION_SIZE)));
+            }
+        }
+
+        // Engine draw-call counters for the last rendered frame (all sources : chunks, sky, far
+        // terrain, GUI). Requires statistics enabled (StatsAppState / showFps does so).
+        int drawObjects = -1;
+        int drawTriangles = -1;
+        Statistics stats = getApplication().getRenderer().getStatistics();
+        if (stats != null) {
+            String[] statLabels = stats.getLabels();
+            if (statLabels != null) {
+                int[] statData = new int[statLabels.length];
+                stats.getData(statData);
+                drawObjects = stat(statLabels, statData, "Objects");
+                drawTriangles = stat(statLabels, statData, "Triangles");
             }
         }
 
@@ -233,6 +299,13 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         Image atlas = config.getTextureAtlasManager().getDiffuseMap().getImage();
         long atlasBytes = (long) atlas.getWidth() * atlas.getHeight() * 4;
 
+        String allocStr = allocRateMBs < 0
+                ? "n/a (unsupported runtime)"
+                : String.format(Locale.US, "%.1f MB/s", allocRateMBs);
+        String gcStr = gcPerSec < 0
+                ? "n/a"
+                : String.format(Locale.US, "%.2f collections/s, %.1f ms/s in pauses", gcPerSec, gcMsPerSec);
+
         log.info(String.format(Locale.US,
                 "%n=== MEMORY REPORT ===%n"
                 + "Heap used (live, post-GC) %6.1f MB / %.0f MB max  (was %.1f MB before GC = garbage)%n"
@@ -243,6 +316,13 @@ public class IalonDebugState extends BaseAppState implements Resizable {
                 + "  blocks short[] ........ %6.1f MB%n"
                 + "  lightMap byte[] ....... %6.1f MB%n"
                 + "Texture atlas (diffuse) . %6.1f MB  (%dx%d ABGR8, +~33%% mips on GPU)%n"
+                + "%n=== RENDER REPORT ===%n"
+                + "Draw calls (engine) ..... %d objects, %d triangles  (last frame; -1 = stats off)%n"
+                + "Chunk geometries ........ %d total  (%d cave-culled)%n"
+                + "  near (<=%d) ........... %d geoms / %d chunks  (kept individual)%n"
+                + "  far  (> %d) ........... %d geoms / %d chunks  -> ~%d regions of %d^3 (far-batch target)%n"
+                + "Alloc rate (all threads)  %s%n"
+                + "GC ...................... %s%n"
                 + "=====================",
                 mb(heapUsed), mb(heapMax), mb(heapUsedBeforeGc),
                 mb(directUsed), directCount,
@@ -251,11 +331,106 @@ public class IalonDebugState extends BaseAppState implements Resizable {
                 mb(blockBytes + lightBytes), nonEmptyChunks, cachedChunks, fetchedChunks,
                 mb(blockBytes),
                 mb(lightBytes),
-                mb(atlasBytes), atlas.getWidth(), atlas.getHeight()));
+                mb(atlasBytes), atlas.getWidth(), atlas.getHeight(),
+                drawObjects, drawTriangles,
+                geometryCount, culledGeoms,
+                REPORT_NEAR_RADIUS, nearGeoms, nearChunks,
+                REPORT_NEAR_RADIUS, farGeoms, farChunks, farRegions.size(), REPORT_REGION_SIZE,
+                allocStr, gcStr));
     }
 
     private static double mb(long bytes) {
         return bytes / (double) MB;
+    }
+
+    /**
+     * Samples the JVM-wide allocation rate (bytes/s across all threads) and GC frequency/pause over
+     * the interval since the previous call, into the {@code allocRateMBs}/{@code gcPerSec}/
+     * {@code gcMsPerSec} fields. Cheap (a handful of MXBean reads) and fully guarded : a runtime
+     * lacking the HotSpot allocation counter or {@code java.lang.management} just leaves the rates at
+     * -1 ("n/a"). The explicit {@code System.gc()} in the F9 report can perturb the single sample that
+     * immediately follows a press, not the one shown by the press itself.
+     */
+    private void sampleAllocAndGc() {
+        try {
+            if (!allocInit) {
+                allocInit = true;
+                threadMXBean = ManagementFactory.getThreadMXBean();
+                try {
+                    // Resolve the method on the EXPORTED interface (com.sun.management.ThreadMXBean), not on
+                    // the impl class : the impl lives in the non-exported com.sun.management.internal package,
+                    // so invoking a Method taken from it fails with IllegalAccessException under JPMS (17+).
+                    Class<?> sunBean = Class.forName("com.sun.management.ThreadMXBean");
+                    allocMethod = sunBean.getMethod("getThreadAllocatedBytes", long[].class);
+                    try {
+                        sunBean.getMethod("setThreadAllocatedMemoryEnabled", boolean.class).invoke(threadMXBean, true);
+                    } catch (Throwable ignore) {
+                        // best-effort : the counter is enabled by default on HotSpot
+                    }
+                } catch (Throwable t) {
+                    allocMethod = null; // not HotSpot (e.g. Android) : allocation rate stays n/a
+                }
+            }
+
+            long now = System.nanoTime();
+            long allocNow = totalAllocatedBytes();
+            long gcCountNow = 0;
+            long gcTimeNow = 0;
+            for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long c = gc.getCollectionCount();
+                long t = gc.getCollectionTime();
+                if (c > 0) gcCountNow += c;
+                if (t > 0) gcTimeNow += t;
+            }
+
+            if (allocSampleNanos != 0) {
+                double secs = (now - allocSampleNanos) / 1e9;
+                if (secs > 0) {
+                    if (allocNow >= 0 && allocSampleBytes >= 0) {
+                        allocRateMBs = (allocNow - allocSampleBytes) / secs / (double) MB;
+                    }
+                    gcPerSec = (gcCountNow - gcSampleCount) / secs;
+                    gcMsPerSec = (gcTimeNow - gcSampleTimeMs) / secs;
+                }
+            }
+            allocSampleNanos = now;
+            allocSampleBytes = allocNow;
+            gcSampleCount = gcCountNow;
+            gcSampleTimeMs = gcTimeNow;
+        } catch (Throwable t) {
+            // Never let diagnostics break the update loop.
+            log.debug("Alloc/GC sampling unavailable", t);
+        }
+    }
+
+    /** Sum of bytes allocated by all live threads (HotSpot counter), or -1 if unsupported. */
+    private long totalAllocatedBytes() {
+        if (allocMethod == null) {
+            return -1;
+        }
+        try {
+            long[] ids = threadMXBean.getAllThreadIds();
+            long[] bytes = (long[]) allocMethod.invoke(threadMXBean, (Object) ids);
+            long sum = 0;
+            for (long b : bytes) {
+                if (b > 0) {
+                    sum += b;
+                }
+            }
+            return sum;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    /** Looks up a named counter in the engine {@link Statistics} data, or -1 if absent. */
+    private static int stat(String[] labels, int[] data, String name) {
+        for (int i = 0; i < labels.length; i++) {
+            if (labels[i].equals(name)) {
+                return data[i];
+            }
+        }
+        return -1;
     }
 
     /** Sums the byte size of all vertex/index buffers of a mesh (capacity x component size). */
@@ -343,6 +518,8 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         }
 
         curTime = 0;
+
+        sampleAllocAndGc();
 
         // The world-dependent states are torn down and rebuilt on a world switch (WorldSelectionState),
         // so re-resolve them here instead of trusting the references cached at initialize() : otherwise
