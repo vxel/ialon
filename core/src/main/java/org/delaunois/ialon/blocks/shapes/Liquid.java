@@ -10,6 +10,7 @@ import org.delaunois.ialon.blocks.ChunkMesh;
 import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.Shape;
 import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.blocks.BlockNeighborhood;
@@ -364,9 +365,23 @@ public class Liquid implements Shape {
         }
         if (neighbour.getLiquidLevel() > 0) {
             Block center = neighborhood.getCenterBlock();
-            return center == null || !center.getType().equals(neighbour.getType());
+            // Compare the LIQUID type of the two cells, not the block type : a non-liquid structure
+            // co-habiting water (a submerged torch / ladder / seaweed) keeps its own block type while
+            // the liquid filling its cell is water. Comparing block types here would treat that water
+            // as "different" from the neighbouring water and emit the shared face from both sides —
+            // two coplanar water quads that z-fight (the diagonal moiré seen around objects in water).
+            return center == null || !liquidType(center).equals(liquidType(neighbour));
         }
         return neighbour.isTransparent() || !ShapeIds.CUBE.equals(neighbour.getShape());
+    }
+
+    /**
+     * The type of the liquid filling a cell, independent of the (possibly structural) block occupying
+     * it. Lava never co-habits a structural block (pure-cell rule), so any liquid-carrying block whose
+     * own type is not lava holds water. Mirrors {@code WorldManager#liquidTypeOf}.
+     */
+    private static String liquidType(Block block) {
+        return TypeIds.LAVA.equals(block.getType()) ? TypeIds.LAVA : TypeIds.WATER;
     }
 
 }

@@ -203,6 +203,10 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // position the node
         node.setLocalTranslation(chunk.getWorldLocation());
 
+        // carry the face-connectivity bitset (cave-culling visibility graph) on the node
+        chunk.computeFaceConnectivity();
+        node.setUserData(Chunk.USERDATA_FACE_CONNECTIVITY, chunk.getFaceConnectivity() & 0xFFFF);
+
         if (log.isTraceEnabled()) {
             log.trace("Total chunk node generation took {}ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
         }
@@ -249,7 +253,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     @Override
     public void createAndSetNodeAndCollisionMesh(Chunk chunk) {
         if (chunk.isEmpty()) {
-            chunk.setNode(new EmptyNode());
+            chunk.setNode(emptyNodeWithConnectivity(chunk));
             chunk.setCollisionMesh(null);
             return;
         }
@@ -308,7 +312,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         meshMap.forEach((type, chunkMesh) -> createGeometryAndAttach(type, chunkMesh, node));
 
         if (node.getVertexCount() == 0) {
-            chunk.setNode(new EmptyNode());
+            chunk.setNode(emptyNodeWithConnectivity(chunk));
             chunk.setCollisionMesh(null);
             return;
         }
@@ -323,6 +327,11 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         // greedy-mesh the solid full cubes into the collision mesh (merges coplanar exposed faces),
         // reusing the visibility mask populated by the render pass above.
         addCubeCollisionMesh(chunk, collisionMesh, visibilityMask, volume);
+
+        // compute the chunk's face-connectivity bitset (cave-culling visibility graph) and carry it
+        // on the node so the renderer's BFS can read it without a chunk lookup.
+        chunk.computeFaceConnectivity();
+        node.setUserData(Chunk.USERDATA_FACE_CONNECTIVITY, chunk.getFaceConnectivity() & 0xFFFF);
 
         // set the node and collision mesh on the chunk
         chunk.setNode(node);
@@ -886,6 +895,17 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 position,
                 length
         );
+    }
+
+    /**
+     * Builds the {@link EmptyNode} used for a chunk that renders nothing, carrying its (all-connected)
+     * face-connectivity bitset as userData so the cave-culling BFS still propagates visibility through it.
+     */
+    private static EmptyNode emptyNodeWithConnectivity(Chunk chunk) {
+        chunk.computeFaceConnectivity();
+        EmptyNode emptyNode = new EmptyNode();
+        emptyNode.setUserData(Chunk.USERDATA_FACE_CONNECTIVITY, chunk.getFaceConnectivity() & 0xFFFF);
+        return emptyNode;
     }
 
     private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {

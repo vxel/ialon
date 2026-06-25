@@ -69,31 +69,84 @@ class LavaFlowTest extends BaseSceneryTest {
     }
 
     @Test
-    void lavaDoesNotCohabitWithStructuralBlocks() {
+    void removingLavaSourceRecedesTheWholeFlow() {
         init("lava-ut1");
 
         for (int x = 3; x <= 9; x++) {
             addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
         }
 
-        // A non-solid structural block (cross-plane grass) in the lava's path.
+        // A lava source that flows out horizontally.
+        addBlock(BlockIds.LAVA_SOURCE, 5, Y, Z);
+        waitAllLiquidEnd();
+        assertEquals(TypeIds.LAVA, blockAt(5, Y, Z).getType(), "lava source placed");
+        assertNotNull(blockAt(6, Y, Z), "lava flowed out before removal");
+
+        // Removing the source with the delete button must clear the source AND recede the flow it fed.
+        worldManager.removeBlock(new Vector3f(5, Y, Z));
+        waitAllLiquidEnd();
+
+        assertNull(blockAt(5, Y, Z), "the removed lava source is gone");
+        assertNull(blockAt(6, Y, Z), "the lava it fed has receded");
+        assertNull(blockAt(7, Y, Z), "the lava it fed has receded");
+    }
+
+    @Test
+    void lavaDestroysNonSolidItems() {
+        init("lava-ut1");
+
+        for (int x = 3; x <= 9; x++) {
+            addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
+        }
+
+        // A non-solid item (cross-plane grass) in the lava's path : lava must burn it away and flow on.
         String itemGrass = BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0);
         addBlock(itemGrass, 7, Y, Z);
 
         addBlock(BlockIds.LAVA_SOURCE, 5, Y, Z);
         waitAllLiquidEnd();
 
-        // Lava flowed up to the structure...
-        assertEquals(TypeIds.LAVA, blockAt(6, Y, Z).getType(), "lava reaches the cell before the structure");
+        // Lava flowed up to the item...
+        assertEquals(TypeIds.LAVA, blockAt(6, Y, Z).getType(), "lava reaches the cell before the item");
 
-        // ...but does NOT enter the structural cell (pure-cell rule) : it stays the dry grass block.
-        Block structure = blockAt(7, Y, Z);
-        assertNotNull(structure, "the structural block is still there");
-        assertEquals(TypeIds.ITEM_GRASS, structure.getType(), "structure type preserved");
-        assertEquals(0, structure.getLiquidLevel(), "no lava logged into the structural block");
+        // ...destroyed it (the cell is now lava, not grass)...
+        Block destroyed = blockAt(7, Y, Z);
+        assertNotNull(destroyed, "the item cell is now occupied by lava");
+        assertEquals(TypeIds.LAVA, destroyed.getType(), "lava replaced the destroyed item");
 
-        // ...and lava did not leak past the structure.
-        assertNull(blockAt(8, Y, Z), "lava must not flow past the structure");
+        // ...and flowed past where the item used to be.
+        Block past = blockAt(8, Y, Z);
+        assertNotNull(past, "lava should have flowed past the destroyed item");
+        assertEquals(TypeIds.LAVA, past.getType(), "the cell past the item is lava");
+    }
+
+    @Test
+    void lavaStopsAgainstSolidBlocks() {
+        init("lava-ut1");
+
+        for (int x = 3; x <= 9; x++) {
+            addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
+        }
+
+        // A solid block (a cobblestone slab, which allows liquid levels) in the lava's path : lava must
+        // NOT co-habit with it (pure-cell rule) and must NOT destroy it (only non-solid items burn).
+        String solidSlab = BlockIds.getName(TypeIds.COBBLESTONE, ShapeIds.SLAB, 0);
+        addBlock(solidSlab, 7, Y, Z);
+
+        addBlock(BlockIds.LAVA_SOURCE, 5, Y, Z);
+        waitAllLiquidEnd();
+
+        // Lava flowed up to the solid block...
+        assertEquals(TypeIds.LAVA, blockAt(6, Y, Z).getType(), "lava reaches the cell before the solid block");
+
+        // ...but does NOT enter its cell and does NOT destroy it.
+        Block solid = blockAt(7, Y, Z);
+        assertNotNull(solid, "the solid block is still there");
+        assertEquals(TypeIds.COBBLESTONE, solid.getType(), "solid block type preserved");
+        assertEquals(0, solid.getLiquidLevel(), "no lava logged into the solid block");
+
+        // ...and lava did not leak past it.
+        assertNull(blockAt(8, Y, Z), "lava must not flow past the solid block");
     }
 
     @Test

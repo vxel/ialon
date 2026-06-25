@@ -342,6 +342,10 @@ public class ChunkLiquidManager {
         }
 
         Block block = chunk.getBlock(x, y, z);
+        // Whether the flowing lava is about to destroy a non-solid item (grass, flower, ...) it flows
+        // into. Decided in the type-check below, acted on at flow-commit (so the item is only removed
+        // when the lava actually spreads into the cell, not when it merely reaches it).
+        boolean lavaConsumesItem = false;
         if (block != null) {
             if (block.getLiquidLevel() == Block.LIQUID_DISABLED) {
                 // Block does not allow liquid to flow
@@ -362,12 +366,19 @@ public class ChunkLiquidManager {
             boolean targetIsLiquid = block.getLiquidLevel() > 0;
             String targetLiquidType = liquidTypeOf(block);
             if (TypeIds.LAVA.equals(flowingType)) {
-                // Lava only occupies pure lava cells : it flows into empty cells (block == null, handled
-                // below) or cells already holding lava, and stops against anything else — structural
-                // blocks (no co-habitation, unlike water) and any other liquid (incompatibility).
+                // Lava only occupies pure lava cells. It flows into empty cells (block == null, handled
+                // below) or cells already holding lava. Anything else either burns away or blocks it :
+                //  - a non-solid, non-liquid item (grass, seaweed, mushroom, flower, fire, ...) is
+                //    destroyed and the lava flows into the freed cell ;
+                //  - a solid block (no co-habitation, unlike water) or any other liquid (water — no
+                //    mixing) stops the lava.
                 if (!(targetIsLiquid && TypeIds.LAVA.equals(targetLiquidType))) {
-                    log.debug("PL2.3 - Lava stops against {} at ({}, {}, {})", block.getType(), x, y, z);
-                    return false;
+                    if (!block.isSolid() && !targetIsLiquid) {
+                        lavaConsumesItem = true;
+                    } else {
+                        log.debug("PL2.3 - Lava stops against {} at ({}, {}, {})", block.getType(), x, y, z);
+                        return false;
+                    }
                 }
             } else if (targetIsLiquid && !flowingType.equals(targetLiquidType)) {
                 // Water meeting a different liquid (lava) : the flow stops at the boundary, no mixing.
@@ -382,7 +393,7 @@ public class ChunkLiquidManager {
 
         if (!dims) {
             log.debug("PL3 - Flowing vertically in ({}, {}, {}) to {}", x, y, z, liquidLevel);
-            block = extinguishFireIfPresent(block, chunk, x, y, z, context);
+            block = clearObstructingBlock(block, chunk, x, y, z, lavaConsumesItem, context);
             setLiquid(block, chunk, new Vec3i(x, y, z), LEVEL_MAX, flowingType);
             flowQueue(flowingType).offer(new LiquidNode(chunk, x, y, z, LEVEL_MAX));
             return true;
@@ -394,7 +405,7 @@ public class ChunkLiquidManager {
                 log.debug("PL4 - Flowing horizontally in ({}, {}, {}) to {}. PL={} LL={}", x, y, z, liquidLevel - 1, previousLiquidLevel, liquidLevel);
             }
 
-            block = extinguishFireIfPresent(block, chunk, x, y, z, context);
+            block = clearObstructingBlock(block, chunk, x, y, z, lavaConsumesItem, context);
             setLiquid(block, chunk, new Vec3i(x, y, z), liquidLevel - 1, flowingType);
             flowQueue(flowingType).offer(new LiquidNode(chunk, x, y, z, liquidLevel - 1));
 
@@ -442,19 +453,24 @@ public class ChunkLiquidManager {
     }
 
     /**
-     * Extinguishes a fire block that water is about to flow into : removes the flame and clears its
-     * torchlight (otherwise the propagated light would linger after the block is gone). The freed cell
-     * is then filled with water by the caller (setLiquid with a null existing block). Any block that is
-     * not fire is returned unchanged.
+     * Clears a block standing in the way of a liquid that is about to flow into its cell, so the freed
+     * cell can be filled by the caller (setLiquid with a null existing block). Two cases are removed :
+     *  - a fire block, for any flowing liquid : water (and lava) extinguish flames ;
+     *  - any non-solid item, when {@code lavaConsumesItem} is set : lava burns away grass, seaweed,
+     *    mushrooms, flowers, ... it flows into.
+     * Torchlight is cleared first for light-emitting blocks (e.g. fire), otherwise the propagated light
+     * would linger after the block is gone. Any block that should stay is returned unchanged.
      *
-     * @return the (possibly removed) block : {@code null} when a fire was extinguished, else the input
+     * @return the (possibly removed) block : {@code null} when the block was cleared, else the input
      */
-    private Block extinguishFireIfPresent(Block block, Chunk chunk, int x, int y, int z, LiquidRunningContext context) {
-        if (block == null || !TypeIds.FIRE.equals(block.getType())) {
+    private Block clearObstructingBlock(Block block, Chunk chunk, int x, int y, int z, boolean lavaConsumesItem, LiquidRunningContext context) {
+        if (block == null || (!lavaConsumesItem && !TypeIds.FIRE.equals(block.getType()))) {
             return block;
         }
         Vec3i location = new Vec3i(x, y, z);
-        context.chunkMeshUpdateRequests.addAll(chunkLightManager.removeTorchlight(location, chunk));
+        if (block.isTorchlight()) {
+            context.chunkMeshUpdateRequests.addAll(chunkLightManager.removeTorchlight(location, chunk));
+        }
         chunk.removeBlock(location);
         return null;
     }
