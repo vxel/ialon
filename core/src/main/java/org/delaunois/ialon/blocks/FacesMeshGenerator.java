@@ -68,6 +68,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private Material fireMaterial;
     // Built lazily and reused : the procedural molten-lava material shared by every lava geometry.
     private Material lavaMaterial;
+    // Built lazily and reused : the flat translucent-orange material for the inside faces of lava.
+    private Material lavaInsideMaterial;
 
     /**
      * Per-thread pool of reusable {@link ChunkMesh} buffers. Meshing runs on a fixed thread pool
@@ -384,11 +386,15 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             }
         }
 
-        // add water if any : a NON-water block carrying liquid (e.g. a pole/mushroom/structure placed in
+        // add water if any : a NON-liquid block carrying liquid (e.g. a pole/mushroom/structure placed in
         // water). Its water fills the cell around the block's own shape. The exposed flat top, if any, is
         // routed to the calm mesher too (same as a water block) so structures in water keep the reflective
-        // surface instead of a textured matte patch ; the sides stay textured.
-        if (block.getLiquidLevel() > 0 && !Objects.equals(block.getType(), TypeIds.WATER)) {
+        // surface instead of a textured matte patch ; the sides stay textured. Pure liquid blocks (water
+        // AND lava) are excluded : they are meshed by their own type path above. Lava never co-habits a
+        // structural block (pure-cell rule), so a structure logged with liquid is always water.
+        if (block.getLiquidLevel() > 0
+                && !Objects.equals(block.getType(), TypeIds.WATER)
+                && !Objects.equals(block.getType(), TypeIds.LAVA)) {
             mesh = meshMap.computeIfAbsent(TypeIds.WATER, pool::acquireRender);
             Shape noTop = flagCalmTopIfExposed(block, blockLocation, neighborhood, pool, chunkSize);
             if (noTop != null) {
@@ -695,6 +701,19 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     }
 
     /**
+     * The flat, translucent-orange material used for the INSIDE faces of lava (seen when the player is
+     * submerged). Shared by every lava geometry. {@code synchronized} because chunk meshing runs on
+     * worker threads.
+     */
+    public synchronized Material getLavaInsideMaterial() {
+        if (lavaInsideMaterial == null) {
+            // Flat translucent orange (Unshaded) — no procedural shader, no sRGB param needed.
+            lavaInsideMaterial = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/lava_inside.j3m");
+        }
+        return lavaInsideMaterial;
+    }
+
+    /**
      * Greedy-meshes the solid full cubes of the chunk into the collision mesh : coplanar exposed
      * cube faces are merged into the largest possible rectangles, drastically reducing the triangle
      * count of the physics shape. Safe because the collision mesh carries no UVs/normals/colors, so
@@ -893,6 +912,19 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 node.attachChild(geometry);
                 node.attachChild(inside);
 
+            } else if (CHUNK_MESH_TYPE_LAVA.equals(type)) {
+                // Lava is opaque from the outside (molten shader, back-face culled, Opaque bucket — set
+                // on `geometry` by createGeometry) but translucent orange from the inside (when the
+                // player is submerged). We reuse the same mesh as a front-face-culled clone with a flat
+                // translucent-orange material in the Transparent bucket : the opaque outside faces write
+                // depth, so the inside copy only shows where the camera is actually within the lava.
+                node.attachChild(geometry);
+                Geometry inside = geometry.clone();
+                inside.setMaterial(getLavaInsideMaterial());
+                inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+                inside.setQueueBucket(RenderQueue.Bucket.Transparent);
+                node.attachChild(inside);
+
             } else {
                 node.attachChild(geometry);
             }
@@ -946,8 +978,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                 expandBound(mesh, BlocksConfig.getInstance().getBlockScale());
                 break;
             case CHUNK_MESH_TYPE_LAVA:
-                // Solid, opaque, emissive cube : keep the default Opaque bucket (no blending, depth
-                // written) — only the material differs from a normal atlas block.
+                // Flowing lava (liquid shapes). Outside face : opaque, emissive molten shader in the
+                // default Opaque bucket (writes depth). The translucent inside face is added as a clone
+                // in createGeometryAndAttach.
                 geometry.setMaterial(getLavaMaterial());
                 break;
             case CHUNK_MESH_TYPE_GENERIC:

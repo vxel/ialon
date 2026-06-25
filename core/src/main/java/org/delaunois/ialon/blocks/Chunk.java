@@ -36,6 +36,8 @@ public class Chunk {
     private static final Vec3i CHUNK_SIZE = BlocksConfig.getInstance().getChunkSize();
     private static final BlockRegistry REGISTRY = BlocksConfig.getInstance().getBlockRegistry();
     private static final ColorRGBA WATER_COLOR_FILTER = ColorRGBA.fromRGBA255(52, 160, 255, 1);
+    // Blocks adjacent to / submerged in lava are tinted molten red instead of water blue.
+    private static final ColorRGBA LAVA_COLOR_FILTER = ColorRGBA.fromRGBA255(255, 100, 40, 1);
     private static final String WATER_BLOCK = "water-liquid";
 
     // a one dimensional array is quicker to lookup blocks then a 3n array
@@ -619,7 +621,8 @@ public class Chunk {
             if (bId > 0) {
                 Block block = REGISTRY.get(bId);
                 if (block.getLiquidLevel() == Block.LIQUID_FULL || (block.getLiquidLevel() > 0 && face == Direction.UP)) {
-                    lightColor = color;
+                    // Lava tints red, every other liquid (water) keeps the passed-in blue filter.
+                    lightColor = TypeIds.LAVA.equals(block.getType()) ? LAVA_COLOR_FILTER : color;
                 }
             }
         }

@@ -66,10 +66,18 @@ public enum IalonBlock {
 
     ROCK(TypeIds.ROCK, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
 
-    // Solid, opaque, light-emitting (torchlight) cube whose faces are rendered by a dedicated
-    // procedural molten-lava shader (Lava.j3md) instead of an atlas texture. For now the lava does
-    // not flow — it behaves as a normal solid block.
-    LAVA(TypeIds.LAVA, true, false, false, true, ShapeIds.CUBE),
+    // Lava : a SECOND liquid type, mirroring water (non-solid, transparent for face culling, flowing
+    // levels + source). It is light-emitting (torchlight) and its faces are rendered by the dedicated
+    // procedural molten-lava shader (Lava.j3md), not an atlas texture. Lava only ever occupies pure
+    // lava cells (it does not co-habit with structural blocks), so the block type alone disambiguates
+    // it from water — no extra per-block liquid-type storage is needed.
+    LAVA1(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID1), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID1, Block.LIQUID_LEVEL1),
+    LAVA2(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID2), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID2, Block.LIQUID_LEVEL2),
+    LAVA3(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID3), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID3, Block.LIQUID_LEVEL3),
+    LAVA4(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID4), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID4, Block.LIQUID_LEVEL4),
+    LAVA5(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID5), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID5, Block.LIQUID_LEVEL5),
+    LAVA(BlockIds.getName(TypeIds.LAVA, ShapeIds.LIQUID), TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID, Block.LIQUID_FULL),
+    LAVA_SOURCE(BlockIds.LAVA_SOURCE, TypeIds.LAVA, false, true, false, true, ShapeIds.LIQUID5, Block.LIQUID_SOURCE),
 
     PALM_TREE_LOG(TypeIds.PALM_TREE_LOG, true, false, true, IalonShapeSet.STANDARD_SHAPES_NO_STAIRS.getShapes()),
     PALM_TREE_PLANKS(TypeIds.PALM_TREE_PLANKS, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
@@ -167,12 +175,16 @@ public enum IalonBlock {
     }
 
     IalonBlock(String name, String type, boolean solid, boolean transparent, boolean multitexture, String shape, byte waterLevel) {
+        this(name, type, solid, transparent, multitexture, false, shape, waterLevel);
+    }
+
+    IalonBlock(String name, String type, boolean solid, boolean transparent, boolean multitexture, boolean torchlight, String shape, byte waterLevel) {
         this.name = name;
         this.type = type;
         this.transparent = transparent;
         this.solid = solid;
         this.multitexture = multitexture;
-        this.torchlight = false;
+        this.torchlight = torchlight;
         this.shapes = new String[]{ shape };
         this.waterLevels = new byte[]{ waterLevel };
     }

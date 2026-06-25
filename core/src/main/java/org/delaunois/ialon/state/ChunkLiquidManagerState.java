@@ -42,6 +42,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
     private final ChunkLiquidManager chunkLiquidManager;
 
     private float elapsed = 0;
+    private float elapsedLava = 0;
     private final IalonConfig config;
 
     public ChunkLiquidManagerState(IalonConfig config) {
@@ -71,6 +72,7 @@ public class ChunkLiquidManagerState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
+        // Water (and shared liquid recession) on its own cadence.
         elapsed += tpf;
         int queueSize = chunkLiquidManager.queueSize();
         if (elapsed > (1 / config.getWaterSimulationSpeed()) && queueSize > 0) {
@@ -82,6 +84,20 @@ public class ChunkLiquidManagerState extends BaseAppState {
                 chunkLiquidManager.updateChunkMesh(updatedChunks);
             }
             elapsed = 0;
+        }
+
+        // Lava on its own, slower cadence (config.lavaSimulationSpeed < waterSimulationSpeed).
+        elapsedLava += tpf;
+        int lavaQueueSize = chunkLiquidManager.lavaQueueSize();
+        if (elapsedLava > (1 / config.getLavaSimulationSpeed()) && lavaQueueSize > 0) {
+            Set<Vec3i> updatedChunks = new HashSet<>();
+            for (int i = 0; i < lavaQueueSize; i ++) {
+                updatedChunks.addAll(chunkLiquidManager.stepLava());
+            }
+            if (!updatedChunks.isEmpty()) {
+                chunkLiquidManager.updateChunkMesh(updatedChunks);
+            }
+            elapsedLava = 0;
         }
     }
 

@@ -120,6 +120,8 @@ public class IalonConfig implements WorldSettings {
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
+    // Lava flows like water but slower : its own (lower) simulation cadence. See ChunkLiquidManagerState.
+    private float lavaSimulationSpeed = 1.5f;
 
     // Underwater view : a full-screen post-process (UnderwaterState) applied only while the camera is
     // below waterHeight - a bluish distance fog that shortens the view range plus a gentle ripple
@@ -130,6 +132,12 @@ public class IalonConfig implements WorldSettings {
     private float underwaterDistortionAmplitude = 0.002f; // ripple strength (texCoord units)
     private float underwaterDistortionSpeed = 1.0f;       // ripple speed
     private float underwaterDistortionFrequency = 18f;    // ripple spatial frequency
+
+    // In-lava view : same full-screen post-process as underwater but a dense, near-opaque orange fog
+    // (you can barely see when submerged in lava). Authored sRGB, stored linear (setAsSrgb).
+    private ColorRGBA lavaFogColor = new ColorRGBA().setAsSrgb(0.85f, 0.28f, 0.06f, 1f); // molten orange
+    private float lavaFogDistance = 6f;    // very short view range inside lava
+    private float lavaFogDensity = 3.0f;   // thick fog
     private float ambiantIntensity = 0.55f;
     private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;

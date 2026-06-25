@@ -44,8 +44,27 @@ public class ChunkLiquidManager {
     // Used to clear a fire block's torchlight when water floods (extinguishes) it. A private instance
     // is fine : the light state lives in the chunks, and ChunkLightManager keeps no cross-call state.
     private final ChunkLightManager chunkLightManager;
+    // Flow queues are split per liquid type so the simulation can be paced independently (lava flows
+    // slower than water — see ChunkLiquidManagerState). The removal (un-flow) queue is shared : it is
+    // level-based, type-agnostic, and driven by the water cadence.
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
+    private final Queue<LiquidNode> lavaBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
+
+    /** The flow queue feeding the given liquid type (lava has its own, slower-paced queue). */
+    private Queue<LiquidNode> flowQueue(String liquidType) {
+        return TypeIds.LAVA.equals(liquidType) ? lavaBfsQueue : liquidBfsQueue;
+    }
+
+    /**
+     * The liquid TYPE a liquid-bearing block belongs to : lava only when the block's own type is lava
+     * (lava occupies pure cells), otherwise water. A structural block logged with water keeps its own
+     * type (e.g. {@code birch_log}) but its liquid is water — so we must derive the liquid type here
+     * rather than read {@code block.getType()} directly.
+     */
+    private static String liquidTypeOf(Block block) {
+        return block != null && TypeIds.LAVA.equals(block.getType()) ? TypeIds.LAVA : TypeIds.WATER;
+    }
 
     public ChunkLiquidManager(WorldSettings config) {
         this.chunkManager = config.getChunkManager();
@@ -55,6 +74,10 @@ public class ChunkLiquidManager {
 
     public int queueSize() {
         return liquidRemovalBfsQueue.isEmpty() ? liquidBfsQueue.size() : liquidRemovalBfsQueue.size();
+    }
+
+    public int lavaQueueSize() {
+        return lavaBfsQueue.size();
     }
 
     /**
@@ -68,7 +91,9 @@ public class ChunkLiquidManager {
             log.debug("Adding liquid source at ({}, {}, {}) in chunk {}", blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, this);
         }
 
-        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
+        // The source block was just placed by the caller : route the flow to the queue of its type.
+        Block source = chunk.getBlock(blockLocationInsideChunk);
+        flowQueue(liquidTypeOf(source)).offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, LEVEL_MAX - 1));
     }
 
     public void addSource(Vector3f location) {
@@ -129,7 +154,7 @@ public class ChunkLiquidManager {
                     Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));
                     Block block = chunk.getBlock(blockLocationInsideChunk);
                     if (block != null && block.getLiquidLevel() > 0) {
-                        liquidBfsQueue.offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, getLiquidLevel(block)));
+                        flowQueue(liquidTypeOf(block)).offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, getLiquidLevel(block)));
                     }
                 }));
     }
@@ -138,11 +163,21 @@ public class ChunkLiquidManager {
         LiquidRunningContext context = new LiquidRunningContext();
         if (config.getSimulateLiquidFlowModel() == 1) {
             if (!stepUnFlow(context))
-                stepFlow(context);
+                stepFlow(liquidBfsQueue, context);
         } else {
             stepUnFlow(context);
-            stepFlow(context);
+            stepFlow(liquidBfsQueue, context);
         }
+        return context.chunkMeshUpdateRequests;
+    }
+
+    /**
+     * Advances the lava flow by one node. Lava has its own queue so it can be paced slower than water
+     * (see ChunkLiquidManagerState). Recession (un-flow) is handled by the shared {@link #step()}.
+     */
+    public Set<Vec3i> stepLava() {
+        LiquidRunningContext context = new LiquidRunningContext();
+        stepFlow(lavaBfsQueue, context);
         return context.chunkMeshUpdateRequests;
     }
 
@@ -163,8 +198,8 @@ public class ChunkLiquidManager {
         return true;
     }
 
-    private void stepFlow(LiquidRunningContext context) {
-        LiquidNode node = liquidBfsQueue.poll();
+    private void stepFlow(Queue<LiquidNode> queue, LiquidRunningContext context) {
+        LiquidNode node = queue.poll();
         if (node == null) {
             return;
         }
@@ -172,12 +207,21 @@ public class ChunkLiquidManager {
         log.debug("stepFlow: Processing liquid node({}, {}, {})", node.x, node.y, node.z);
 
         int liquidLevel = getLiquidLevel(node.chunk, node.x, node.y, node.z);
-        if (liquidLevel > 0 && !propagateLiquid(node, Direction.DOWN, liquidLevel, false, context)) {
+        if (liquidLevel <= 0) {
+            return;
+        }
+
+        // The liquid type currently flowing : drives empty-cell creation and the incompatibility rule.
+        // Derived as the LIQUID type (water/lava), not the raw block type — a structure logged with
+        // water keeps its own type but flows water.
+        String flowingType = liquidTypeOf(node.chunk.getBlock(node.x, node.y, node.z));
+
+        if (!propagateLiquid(node, Direction.DOWN, liquidLevel, false, flowingType, context)) {
             // If the liquid can't propagate downwards, try horizontally
-            propagateLiquid(node, Direction.WEST, liquidLevel, true, context);
-            propagateLiquid(node, Direction.EAST, liquidLevel, true, context);
-            propagateLiquid(node, Direction.NORTH, liquidLevel, true, context);
-            propagateLiquid(node, Direction.SOUTH, liquidLevel, true, context);
+            propagateLiquid(node, Direction.WEST, liquidLevel, true, flowingType, context);
+            propagateLiquid(node, Direction.EAST, liquidLevel, true, flowingType, context);
+            propagateLiquid(node, Direction.NORTH, liquidLevel, true, flowingType, context);
+            propagateLiquid(node, Direction.SOUTH, liquidLevel, true, flowingType, context);
         }
     }
 
@@ -248,7 +292,7 @@ public class ChunkLiquidManager {
 
         if ((!dims && previousLiquidLevel == LEVEL_MAX) || previousLiquidLevel > 0 && previousLiquidLevel < liquidLevel) {
             log.debug("PRL2 - Setting liquid ({}, {}, {}) to {}. PL={} LL={} D={}", x, y, z, 0, previousLiquidLevel, liquidLevel, dims);
-            setLiquid(block, chunk, new Vec3i(x, y, z), 0);
+            setLiquid(block, chunk, new Vec3i(x, y, z), 0, block == null ? null : liquidTypeOf(block));
             liquidRemovalBfsQueue.offer(new LiquidNode(chunk, x, y, z, previousLiquidLevel));
             return true;
 
@@ -257,7 +301,7 @@ public class ChunkLiquidManager {
             // Add it to the update queue, so it can propagate to fill in the gaps
             // left behind by this removal. We should update the lightBfsQueue after
             // the lightRemovalBfsQueue is empty.
-            liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, previousLiquidLevel));
+            flowQueue(liquidTypeOf(block)).offer(new LiquidNode(chunk, x, y, z, previousLiquidLevel));
 
         } else {
             log.debug("PRL3 - Stop unflowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
@@ -265,7 +309,7 @@ public class ChunkLiquidManager {
         return false;
     }
 
-    private boolean propagateLiquid(LiquidNode node, Direction direction, int liquidLevel, boolean dims, LiquidRunningContext context) {
+    private boolean propagateLiquid(LiquidNode node, Direction direction, int liquidLevel, boolean dims, String flowingType, LiquidRunningContext context) {
         Vec3i dir = direction.getVector();
         Chunk chunk = node.chunk;
         int x = node.x + dir.x;
@@ -314,6 +358,24 @@ public class ChunkLiquidManager {
                 log.debug("PL2.2 - Liquid blocked by face at ({}, {}, {})", x, y, z);
                 return false;
             }
+
+            boolean targetIsLiquid = block.getLiquidLevel() > 0;
+            String targetLiquidType = liquidTypeOf(block);
+            if (TypeIds.LAVA.equals(flowingType)) {
+                // Lava only occupies pure lava cells : it flows into empty cells (block == null, handled
+                // below) or cells already holding lava, and stops against anything else — structural
+                // blocks (no co-habitation, unlike water) and any other liquid (incompatibility).
+                if (!(targetIsLiquid && TypeIds.LAVA.equals(targetLiquidType))) {
+                    log.debug("PL2.3 - Lava stops against {} at ({}, {}, {})", block.getType(), x, y, z);
+                    return false;
+                }
+            } else if (targetIsLiquid && !flowingType.equals(targetLiquidType)) {
+                // Water meeting a different liquid (lava) : the flow stops at the boundary, no mixing.
+                // (A structural block logged with water has targetLiquidType == water, so water still
+                // flows through it — co-habitation is preserved.)
+                log.debug("PL2.4 - {} stops against {} at ({}, {}, {})", flowingType, block.getType(), x, y, z);
+                return false;
+            }
         }
 
         updateChunkMeshUpdateRequests(chunk, x, y, z, context);
@@ -321,8 +383,8 @@ public class ChunkLiquidManager {
         if (!dims) {
             log.debug("PL3 - Flowing vertically in ({}, {}, {}) to {}", x, y, z, liquidLevel);
             block = extinguishFireIfPresent(block, chunk, x, y, z, context);
-            setLiquid(block, chunk, new Vec3i(x, y, z), LEVEL_MAX);
-            liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, LEVEL_MAX));
+            setLiquid(block, chunk, new Vec3i(x, y, z), LEVEL_MAX, flowingType);
+            flowQueue(flowingType).offer(new LiquidNode(chunk, x, y, z, LEVEL_MAX));
             return true;
         }
 
@@ -333,8 +395,8 @@ public class ChunkLiquidManager {
             }
 
             block = extinguishFireIfPresent(block, chunk, x, y, z, context);
-            setLiquid(block, chunk, new Vec3i(x, y, z), liquidLevel - 1);
-            liquidBfsQueue.offer(new LiquidNode(chunk, x, y, z, liquidLevel - 1));
+            setLiquid(block, chunk, new Vec3i(x, y, z), liquidLevel - 1, flowingType);
+            flowQueue(flowingType).offer(new LiquidNode(chunk, x, y, z, liquidLevel - 1));
 
         } else {
             log.debug("PL5 - Stop flowing in ({}, {}, {}). PL={} LL={}", x, y, z, previousLiquidLevel, liquidLevel);
@@ -404,13 +466,15 @@ public class ChunkLiquidManager {
      * @param relativeBlockLocation the location of the block inside the chunk
      * @param level the liquid level
      */
-    private void setLiquid(Block existingBlock, Chunk chunk, Vec3i relativeBlockLocation, int level) {
+    private void setLiquid(Block existingBlock, Chunk chunk, Vec3i relativeBlockLocation, int level, String flowingType) {
         if (level <= 0) {
             // No more liquid
             level = 0;
         }
 
-        if (existingBlock == null || TypeIds.WATER.equals(existingBlock.getType())) {
+        // Empty cell, or a cell already holding the SAME liquid type : (re)create / clear it with the
+        // flowing type. (flowingType may be null on a level-0 removal of an empty cell.)
+        if (existingBlock == null || (flowingType != null && flowingType.equals(existingBlock.getType()))) {
             if (level <= 0) {
                 chunk.removeBlock(relativeBlockLocation);
 
@@ -424,7 +488,7 @@ public class ChunkLiquidManager {
 
                 chunk.addBlock(relativeBlockLocation,
                         BlocksConfig.getInstance().getBlockRegistry()
-                                .get(BlockIds.getName(TypeIds.WATER, shapeId)));
+                                .get(BlockIds.getName(flowingType, shapeId)));
             }
 
         } else if (existingBlock.getLiquidLevel() != Block.LIQUID_DISABLED) {

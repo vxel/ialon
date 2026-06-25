@@ -355,13 +355,16 @@ public class Liquid implements Shape {
 
 
     private boolean isLiquidFaceVisible(BlockNeighborhood neighborhood, Direction direction) {
-        // A liquid face is always visible excepted if the neighbour is also liquid
+        // A liquid face is always visible except against a neighbouring liquid OF THE SAME TYPE.
+        // A different liquid (water vs lava) keeps the boundary face so the two don't visually bleed
+        // into one another (they never mix — the flow stops at the boundary).
         Block neighbour = neighborhood.getNeighbour(direction);
         if (neighbour == null) {
             return true;
         }
         if (neighbour.getLiquidLevel() > 0) {
-            return false;
+            Block center = neighborhood.getCenterBlock();
+            return center == null || !center.getType().equals(neighbour.getType());
         }
         return neighbour.isTransparent() || !ShapeIds.CUBE.equals(neighbour.getShape());
     }

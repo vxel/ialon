@@ -73,8 +73,9 @@ public class PlayerCharacterControl extends CharacterControl {
         // navigation control. Example : if the player is flying, entering water does not
         // have the same effect as if the player is walking
         if (block != null) {
-            if (!underWater && block.getName().contains("water")) {
-                log.info("In water");
+            if (!underWater && block.getLiquidLevel() > 0) {
+                // Any liquid (water OR lava) makes the player swim — same buoyancy physics.
+                log.info("In liquid {}", block.getType());
                 underWater = true;
 
             } else if (!onScale && TypeIds.SCALE.equals(block.getType())) {
