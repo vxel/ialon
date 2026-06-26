@@ -203,7 +203,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
         }
 
         // No longer in a rail block
-        log.info("No more rail block below");
+        log.debug("No more rail block below");
         stop();
     }
 
@@ -214,7 +214,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
             updateHeadDirection();
             currentDirection.set(railDirection).setY(0).normalizeLocal();
             if (headDir.setY(0).normalizeLocal().dot(currentDirection) < -0.75f) {
-                log.info("Reverse rail direction");
+                log.debug("Reverse rail direction");
                 stop();
                 forward = false;
             }
@@ -223,7 +223,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
             updateHeadDirection();
             currentDirection.set(railDirection).setY(0).normalizeLocal();
             if (headDir.setY(0).normalizeLocal().dot(currentDirection) > 0.75f) {
-                log.info("Reverse rail direction");
+                log.debug("Reverse rail direction");
                 stop();
                 backward = false;
             }
@@ -379,7 +379,7 @@ public class PlayerRailControl extends AbstractControl implements ActionListener
     }
 
     public void stop() {
-        log.info("Stop rail move");
+        log.debug("Stop rail move");
         speed = config.getPlayerRailSpeed();
         acceleration = 0;
         railDirection.set(0, 0, 0);

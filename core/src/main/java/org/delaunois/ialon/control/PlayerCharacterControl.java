@@ -75,20 +75,20 @@ public class PlayerCharacterControl extends CharacterControl {
         if (block != null) {
             if (!underWater && block.getLiquidLevel() > 0) {
                 // Any liquid (water OR lava) makes the player swim — same buoyancy physics.
-                log.info("In liquid {}", block.getType());
+                log.debug("In liquid {}", block.getType());
                 underWater = true;
 
             } else if (!onScale && TypeIds.SCALE.equals(block.getType())) {
-                log.info("On scale");
+                log.debug("On scale");
                 onScale = true;
             }
 
         } else if (underWater) {
-            log.info("Out of water");
+            log.debug("Out of water");
             underWater = false;
 
         } else if (onScale) {
-            log.info("Out of scale");
+            log.debug("Out of scale");
             onScale = false;
         }
     }

@@ -112,12 +112,12 @@ public class PlayerFlyControl extends AbstractControl implements ActionListener 
 
         move.zero();
         if (enabled) {
-            log.info("Flying");
+            log.debug("Flying");
             config.getInputActionManager().addListener(this, ACTIONS);
             playerCharacterControl.setFallSpeed(0);
             left = right = forward = backward = false;
         } else {
-            log.info("Not Flying");
+            log.debug("Not Flying");
             config.getInputActionManager().removeListener(this);
             if (playerCharacterControl.isUnderWater()) {
                 playerCharacterControl.setFallSpeed(config.getWaterGravity());

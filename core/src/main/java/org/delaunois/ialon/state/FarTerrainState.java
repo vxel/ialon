@@ -31,6 +31,7 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
+import com.jme3.terrain.geomipmap.NormalRecalcControl;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
@@ -105,6 +106,13 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
 
     @Getter
     private TerrainQuad terrain;
+
+    // The far-terrain LOD machinery is dropped after a short warmup (-1 = done). The LOD recompute and
+    // jME's auto-added NormalRecalcControl both run on the MAIN thread on every LOD change (the dominant
+    // updateLogicalState hitch while moving — confirmed by an on-device A/B). On a distant, periodic
+    // backdrop that follows the player, the LOD + normals can stay frozen at their warmup-computed values
+    // (imperceptible), so once computed we remove both controls and pay that cost zero further times.
+    private int farLodWarmup = 0;
 
     // The procedural heightmap (HEIGHTMAP_SIZE^2, heights pre-divided by step) sampled at init. Kept so the
     // minimap (MinimapState) can reuse it for its top-down view instead of re-sampling the generator.
@@ -646,6 +654,19 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
 
     @Override
     public void update(float tpf) {
+        // After a couple of frames (so the LOD + normals have been computed once), drop both far-terrain
+        // mesh controls : the backdrop then keeps that fixed LOD/normals, removing the recurrent
+        // main-thread LOD-apply + normal-recompute hitch (see field doc).
+        if (farLodWarmup >= 0 && terrain != null) {
+            if (farLodWarmup >= 2) {
+                terrain.removeControl(ThrottledTerrainLodControl.class);
+                terrain.removeControl(NormalRecalcControl.class);
+                farLodWarmup = -1;
+            } else {
+                farLodWarmup++;
+            }
+        }
+
         // Finite (torus) world : follow the player so the horizon is always around them. The relief is
         // periodic with the world size, so snapping the mesh to the nearest multiple of that period
         // keeps it perfectly aligned with the voxels -- a pure translation, no heightmap regeneration.

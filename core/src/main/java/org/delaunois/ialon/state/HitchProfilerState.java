@@ -24,6 +24,7 @@ import com.jme3.profile.AppProfiler;
 import com.jme3.profile.AppStep;
 import com.jme3.profile.SpStep;
 import com.jme3.profile.VpStep;
+import com.jme3.renderer.Statistics;
 import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
@@ -35,7 +36,9 @@ import org.delaunois.ialon.blocks.ChunkPager;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -81,7 +84,7 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
     private long beginNs = -1;
     private AppStep lastStep;
 
-    private final List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+    private final List<GarbageCollectorMXBean> gcBeans = initGcBeans();
     private long prevGcCount = -1;
     private long prevGcTime;
 
@@ -96,8 +99,29 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
     private ChunkPager chunkPager;
     private long prevPageOps = -1;
 
+    // Per-AppState (and render-substep) timing within a frame : jME calls appSubStep(name) before each
+    // state's update/render, so the delta between consecutive calls is the previous substep's cost.
+    // The map is reused and its values reset each frame, so the steady path allocates nothing after the
+    // first frame (the state set is stable). Lets a 'state'-bound hitch name the exact AppState.
+    private final Map<String, long[]> subAccum = new HashMap<>();
+    private String lastSub;
+    private long lastSubNs;
+
     public HitchProfilerState(long thresholdMs) {
         this.thresholdNanos = thresholdMs * 1_000_000L;
+    }
+
+    /**
+     * The {@code java.lang.management} package is absent on Android (ART) : resolving it throws
+     * {@link NoClassDefFoundError}. Guard it so the profiler still works on-device (only the GC column
+     * is unavailable there) instead of crashing the GL thread.
+     */
+    private static List<GarbageCollectorMXBean> initGcBeans() {
+        try {
+            return ManagementFactory.getGarbageCollectorMXBeans();
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     @Override
@@ -134,6 +158,13 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         lastStep = null;
         beginNs = -1;
         getApplication().setAppProfiler(this);
+        // Turn on the engine draw-call/triangle counters so the HITCH line's draws=/tris= are populated
+        // (they are off by default on a build without StatsAppState, e.g. mobile).
+        try {
+            getApplication().getRenderer().getStatistics().setEnabled(true);
+        } catch (Throwable ignore) {
+            // statistics unavailable : draws=/tris= stay -1
+        }
         log.warn("HitchProfiler ON — logging frames whose work exceeds {} ms", thresholdNanos / 1_000_000L);
     }
 
@@ -154,6 +185,10 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
                 finalizeFrame(now);
             }
             Arrays.fill(bucket, 0L);
+            for (long[] v : subAccum.values()) {
+                v[0] = 0;
+            }
+            lastSub = null;
             beginNs = now;
             lastNs = now;
             lastStep = step;
@@ -161,6 +196,14 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         }
         if (lastStep != null) {
             bucket[lastStep.ordinal()] += now - lastNs;
+        }
+        // Neither renderManager.render() (RenderMainViewPorts) nor rootNode.updateLogicalState()
+        // (SpatialUpdate) is bracketed by appSubStep, so without this their time would be dumped on
+        // whatever AppState was marked last — making sub= falsely accuse e.g. ChunkLiquidManagerState
+        // for a rootLog/render cost. Drop the open substep at these boundaries so sub= reflects only
+        // genuine per-AppState update cost (and render/spatial time stays in their own buckets).
+        if (step == AppStep.RenderMainViewPorts || step == AppStep.SpatialUpdate) {
+            lastSub = null;
         }
         lastNs = now;
         lastStep = step;
@@ -183,11 +226,13 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         long gcDeltaTime = 0;
         long gcCount = 0;
         long gcTime = 0;
-        for (GarbageCollectorMXBean b : gcBeans) {
-            long c = b.getCollectionCount();
-            if (c > 0) {
-                gcCount += c;
-                gcTime += b.getCollectionTime();
+        if (gcBeans != null) {
+            for (GarbageCollectorMXBean b : gcBeans) {
+                long c = b.getCollectionCount();
+                if (c > 0) {
+                    gcCount += c;
+                    gcTime += b.getCollectionTime();
+                }
             }
         }
         if (prevGcCount >= 0) {
@@ -243,14 +288,44 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
                     timingGui != null ? timingGui.getLastGeometricNanos() / MS : 0.0);
         }
 
-        log.warn("HITCH {}ms | work {} (state {} / spatial {}{} / render {}) | gap {} (swap/vsync/driver/OS) | top={} {}ms | GC +{} ({}ms) | chunkNode {} (net {}{}) | pageOps +{}",
+        // Costliest individual AppState substep (names a 'state'-bound hitch ; small on render-bound ones).
+        long[] topSubNs = new long[1];
+        String topSub = topSubStep(nowBegin, topSubNs);
+
+        // Engine draw-call / triangle counts for this frame : discriminates a render-bound hitch that is
+        // draw-call-CPU-bound (high draws — batching would help) from fill-rate/vertex-bound. Requires
+        // statistics enabled (StatsAppState / showFps) ; -1 otherwise.
+        int draws = -1;
+        int tris = -1;
+        Statistics st = getApplication().getRenderer().getStatistics();
+        if (st != null) {
+            String[] labels = st.getLabels();
+            if (labels != null) {
+                int[] data = new int[labels.length];
+                st.getData(data);
+                draws = stat(labels, data, "Objects");
+                tris = stat(labels, data, "Triangles");
+            }
+        }
+
+        log.warn("HITCH {}ms | work {} (state {} / spatial {}{} / render {}) | gap {} (swap/vsync/driver/OS) | top={} {}ms | sub={} {}ms | draws={} tris={} | GC +{} ({}ms) | chunkNode {} (net {}{}) | pageOps +{}",
                 fmt(period), fmt(work), fmt(state), fmt(spatial), spatialDetail, fmt(render), fmt(gap),
-                STEPS[top], fmt(bucket[top]), gcDeltaCount, gcDeltaTime,
+                STEPS[top], fmt(bucket[top]), topSub, fmt(topSubNs[0]), draws, tris, gcDeltaCount, gcDeltaTime,
                 children, childDelta >= 0 ? "+" : "", childDelta, pageOpsDelta);
     }
 
     private static String fmt(long nanos) {
         return String.format(java.util.Locale.ROOT, "%.1f", nanos / MS);
+    }
+
+    /** Looks up a named counter in the engine {@link Statistics} data, or -1 if absent. */
+    private static int stat(String[] labels, int[] data, String name) {
+        for (int i = 0; i < labels.length; i++) {
+            if (labels[i].equals(name)) {
+                return data[i];
+            }
+        }
+        return -1;
     }
 
     @Override
@@ -265,6 +340,39 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
 
     @Override
     public void appSubStep(String... additionalInfo) {
-        // Nothing to do
+        long now = System.nanoTime();
+        if (lastSub != null) {
+            long[] b = subAccum.get(lastSub);
+            if (b == null) {
+                b = new long[1];
+                subAccum.put(lastSub, b);
+            }
+            b[0] += now - lastSubNs;
+        }
+        lastSub = (additionalInfo != null && additionalInfo.length > 0) ? additionalInfo[0] : "?";
+        lastSubNs = now;
+    }
+
+    /** The costliest AppState/render substep this frame (name + nanos), into store[0]=nanos. */
+    private String topSubStep(long nowBegin, long[] store) {
+        if (lastSub != null) {
+            long[] b = subAccum.get(lastSub);
+            if (b == null) {
+                b = new long[1];
+                subAccum.put(lastSub, b);
+            }
+            b[0] += nowBegin - lastSubNs;
+            lastSub = null;
+        }
+        String top = "-";
+        long topNs = 0;
+        for (Map.Entry<String, long[]> e : subAccum.entrySet()) {
+            if (e.getValue()[0] > topNs) {
+                topNs = e.getValue()[0];
+                top = e.getKey();
+            }
+        }
+        store[0] = topNs;
+        return top;
     }
 }

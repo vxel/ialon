@@ -20,11 +20,19 @@ import org.delaunois.ialon.blocks.PhysicsChunkPager;
 @Slf4j
 public class WorldBuilderState extends BaseAppState {
 
+    // Abandon the splash if the build makes no progress at all for this long. This is a stall guard
+    // (a chunk failed to mesh, generation hung, ...), NOT a deadline on the whole build : a large grid
+    // or a slow device can legitimately take much longer than this to finish, so the timer is reset
+    // every time a page gets attached. Dismissing on an absolute deadline would hide the splash while
+    // chunks are still streaming in, making them pop in after the loading screen is gone.
+    private static final long STALL_TIMEOUT_MS = 10000;
+
     @Getter
     private final long startTime = System.currentTimeMillis();
 
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
+    private long lastProgressTime = startTime;
 
     private PlayerState playerState;
     private final IalonConfig config;
@@ -59,9 +67,10 @@ public class WorldBuilderState extends BaseAppState {
             log.debug("{} pages - {} physic pages attached ({}%)", numPagesAttached, numPhysicPagesAttached, percent);
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
+            lastProgressTime = System.currentTimeMillis();
         }
         if (numPagesAttached >= total && physicsChunkPager.isReady()
-                || (System.currentTimeMillis() - startTime > 10000)) {
+                || (System.currentTimeMillis() - lastProgressTime > STALL_TIMEOUT_MS)) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
             log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);

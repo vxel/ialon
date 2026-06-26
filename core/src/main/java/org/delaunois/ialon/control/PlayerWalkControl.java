@@ -97,13 +97,13 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
     }
 
     private void updateMilieu() {
-        log.info("New State: " + state);
+        log.debug("New State: " + state);
 
         switch (state) {
             case UNDER_WATER | ON_SCALE:
             case ON_SCALE:
                 playerCharacterControl.setFallSpeed(0);
-                log.info("Applied 0 fall speed");
+                log.debug("Applied 0 fall speed");
                 break;
 
             case UNDER_WATER:
@@ -114,7 +114,7 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
                 playerCharacterControl.getCharacter().setStepHeight(0.03f);
                 playerCharacterControl.setFallSpeed(config.getWaterGravity());
                 playerCharacterControl.setJumpSpeed(config.getWaterJumpSpeed());
-                log.info("Applied water gravity");
+                log.debug("Applied water gravity");
                 break;
 
             case ON_RAIL:
@@ -122,7 +122,7 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
                 playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
                 playerCharacterControl.setFallSpeed(config.getGroundGravity());
                 playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
-                log.info("Applied ground gravity");
+                log.debug("Applied ground gravity");
         }
 
     }
@@ -152,14 +152,14 @@ public class PlayerWalkControl extends AbstractControl implements ActionListener
         }
 
         if (enabled) {
-            log.info("Walking");
+            log.debug("Walking");
             config.getInputActionManager().addListener(this, ACTIONS);
             playerCharacterControl.getCharacter().setStepHeight(config.getPlayerStepHeight());
             playerCharacterControl.setFallSpeed(config.getGroundGravity());
             playerCharacterControl.setJumpSpeed(config.getJumpSpeed());
 
         } else {
-            log.info("Not Walking");
+            log.debug("Not Walking");
             config.getInputActionManager().removeListener(this);
         }
     }
