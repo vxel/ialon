@@ -21,8 +21,6 @@ public class ChunkPagerState extends BaseAppState {
 
     @Override
     protected void initialize(Application app) {
-        // Camera used by the chunk visibility graph (cave culling) to frustum-gate the BFS.
-        chunkPager.setCamera(app.getCamera());
         chunkPager.initialize();
     }
 

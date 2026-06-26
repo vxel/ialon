@@ -18,9 +18,7 @@
 package org.delaunois.ialon.blocks;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.jme3.bounding.BoundingBox;
 import com.jme3.math.Vector3f;
-import com.jme3.renderer.Camera;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.simsilica.mathd.Vec3i;
@@ -76,6 +74,17 @@ public class ChunkPager {
     @Getter
     private final Map<Vec3i, Node> attachedPages = new ConcurrentHashMap<>();
 
+    // Derived views of attachedPages, maintained at trackPage/untrackPage so the cave-culling pass scans
+    // only the relevant subsets instead of the whole grid VOLUME. attachedPages also holds the thousands
+    // of air/empty pages (kept for connectivity + paging), so scanning it wholesale costs 16-27 ms on a
+    // chunk-cross. scenePages = pages actually in the scene graph (have a mesh to cull) ; occluders =
+    // pages whose connectivity is not CONNECT_ALL (the only cells that can block the BFS).
+    private final Map<Vec3i, Node> scenePages = new ConcurrentHashMap<>();
+    // Occluders store their connectivity bitset directly (computed once at trackPage) so the per-pass
+    // cacheConnectivity avoids a String-keyed getUserData per occluder — there can be thousands when the
+    // grid spans dense/underground terrain.
+    private final Map<Vec3i, Short> occluders = new ConcurrentHashMap<>();
+
     @Getter
     private final Map<Vec3i, Chunk> fetchedPages = new ConcurrentHashMap<>();
 
@@ -98,32 +107,58 @@ public class ChunkPager {
     private final Set<Vec3i> pagesToFetch = new HashSet<>();
     private final Comparator<Vec3i> meshDistanceComparator = Comparator.comparingInt(vec -> vec.getDistanceSq(centerPage));
 
-    @Setter
-    private Camera camera;
-
-    // --- Cave culling : a per-frame chunk visibility graph (BFS through each chunk's face
-    // connectivity, gated by the camera frustum) that hides chunks the camera cannot see through
-    // (behind walls, underground). Minecraft-style "advanced occlusion culling". ---
+    // --- Cave culling : occlusion culling via the chunk visibility graph. A connectivity-only BFS from
+    // the chunk holding the player marks every chunk sight can reach THROUGH open faces (air/glass/...),
+    // and hides the rest (chunks sealed behind opaque rock — underground pockets, behind walls) with
+    // CullHint.Always. View-direction (frustum) culling is left to jME's per-geometry pass, so this BFS
+    // is independent of camera rotation and only needs to re-run when the player crosses a chunk
+    // boundary or the world is edited — NOT every frame. ---
     @Getter
     @Setter
     private boolean caveCullingEnabled = true;
 
     private static final Direction[] DIRS = Direction.values();
-    // Re-run the BFS when the camera turns past ~2.5° (dot of the normalised view vectors).
-    private static final float VISIBILITY_DIR_DOT = 0.999f;
+    // Direction data flattened to primitive arrays so the BFS inner loop avoids per-node method calls
+    // (getVector()/opposite()) and the connectivity check avoids Chunk.isConnected()'s call + swap.
+    private static final int[] DIR_DX = new int[6];
+    private static final int[] DIR_DY = new int[6];
+    private static final int[] DIR_DZ = new int[6];
+    private static final int[] DIR_OPP = new int[6]; // opposite direction's ordinal
+    private static final int[] PAIR_BIT = new int[36]; // bit index for each (faceA, faceB) ordinal pair
+    static {
+        for (Direction d : DIRS) {
+            int o = d.ordinal();
+            DIR_DX[o] = d.getVector().x;
+            DIR_DY[o] = d.getVector().y;
+            DIR_DZ[o] = d.getVector().z;
+            DIR_OPP[o] = d.opposite().ordinal();
+        }
+        for (int a = 0; a < 6; a++) {
+            for (int b = 0; b < 6; b++) {
+                PAIR_BIT[a * 6 + b] = pairBitOf(a, b);
+            }
+        }
+    }
 
-    private final int chunkSizeX;
-    private final int chunkSizeY;
-    private final int chunkSizeZ;
-    private final float blockScale;
+    /** Same mapping as {@link Chunk#isConnected}'s private pairBit, precomputed into {@link #PAIR_BIT}. */
+    private static int pairBitOf(int a, int b) {
+        if (a > b) {
+            int t = a;
+            a = b;
+            b = t;
+        }
+        return a * 5 - (a * (a - 1)) / 2 + (b - a - 1);
+    }
+    // Minimum spacing between BFS re-runs triggered by paging/edits (a chunk crossing always re-runs
+    // immediately). Coalesces the per-frame attach churn during movement into a few runs per second.
+    private static final long VISIBILITY_MIN_INTERVAL_NANOS = 200_000_000L;
 
     private boolean visibilityComputed = false;
-    // Set when a page is attached/detached so the BFS refreshes even if the camera did not move
-    // (e.g. an edit remeshed a chunk, or new chunks streamed in).
+    // Set when a page is attached/detached (new chunks streamed in, or an edit remeshed a chunk, which
+    // can change connectivity). Honoured on a throttle so it does not force a BFS every frame.
     private volatile boolean visibilityDirty = false;
     private final Vec3i lastVisibilityRoot = new Vec3i(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
-    private final Vector3f lastVisibilityDir = new Vector3f(Float.NaN, Float.NaN, Float.NaN);
-    private final Vector3f visibilityDirScratch = new Vector3f();
+    private long lastVisibilityNanos = 0;
 
     // BFS scratch, sized to the mesh grid and reused across runs. Stamps are epoch-marked so the
     // arrays never need clearing. Only ever touched on the update thread (single-threaded).
@@ -134,25 +169,25 @@ public class ChunkPager {
     private int visOriginY;
     private int visOriginZ;
     private int[] bfsQueue = new int[0];
-    private int[] bfsStamp = new int[0];    // == bfsEpoch  : visited (enqueued or frustum-rejected)
+    private int[] bfsCoord = new int[0];    // packed (lx,ly,lz) parallel to bfsQueue : avoids div decode
+    private final int[] visDli = new int[6]; // neighbour linear-index deltas for the current grid stride
+    private int[] bfsStamp = new int[0];    // == bfsEpoch  : visited (enqueued)
     private int[] reachStamp = new int[0];  // == reachEpoch : sight reaches this chunk (keep visible)
-    private int[] bfsDirs = new int[0];     // dirsTravelled bitmask reaching this cell
     private byte[] bfsEnter = new byte[0];  // enter-face ordinal + 1 (0 = root)
+    // Per-cell connectivity cached into a flat array once per pass (one entrySet scan), so the BFS reads
+    // it by index instead of doing a ConcurrentHashMap.get(Vec3i) + getUserData per node. Air / not-yet-
+    // loaded cells (the bulk of the grid volume) carry no stamp and read as CONNECT_ALL (traversable),
+    // turning thousands of map misses per pass into free array reads.
+    private short[] connGrid = new short[0];
+    private int[] connStamp = new int[0];   // == connEpoch : this cell's connGrid entry is populated
     private int bfsEpoch = 0;
     private int reachEpoch = 0;
-    private final Vec3i visLookup = new Vec3i();
-    private final BoundingBox visBound = new BoundingBox();
-    private final Vector3f visBoundCenter = new Vector3f();
+    private int connEpoch = 0;
 
     public ChunkPager(Node node, @NonNull ChunkManager chunkManager) {
         this.node = node;
         this.chunkManager = chunkManager;
         this.gridSize = BlocksConfig.getInstance().getGrid();
-        Vec3i cs = BlocksConfig.getInstance().getChunkSize();
-        this.chunkSizeX = cs.x;
-        this.chunkSizeY = cs.y;
-        this.chunkSizeZ = cs.z;
-        this.blockScale = BlocksConfig.getInstance().getBlockScale();
     }
 
     public void initialize() {
@@ -171,13 +206,9 @@ public class ChunkPager {
         }
 
         updateCenterPage();
-
         unfetchNextPages();
-
         detachNextPages();
-
         attachNextPages();
-
         updateChunkVisibility();
     }
 
@@ -283,7 +314,7 @@ public class ChunkPager {
                 log.warn("Trying to detach page at location {} that isn't attached.", pageLocation);
             } else {
                 detachPage(page);
-                attachedPages.remove(pageLocation);
+                untrackPage(pageLocation);
                 removed += 1;
             }
 
@@ -339,14 +370,14 @@ public class ChunkPager {
         while (chunk != null) {
 
             // detach the old page if any
-            Node oldPage = attachedPages.remove(chunk.getLocation());
+            Node oldPage = untrackPage(chunk.getLocation());
             if (oldPage != null) {
                 detachPage(oldPage);
             }
 
             // Create the new page
             Node newPage = createPage(chunk);
-            attachedPages.put(chunk.getLocation(), newPage);
+            trackPage(chunk.getLocation(), newPage);
             if (newPage != null) {
                 attachPage(newPage);
                 attached += 1;
@@ -375,31 +406,71 @@ public class ChunkPager {
         if (log.isTraceEnabled()) {
             log.trace("Detaching {} from {}", page, node);
         }
-        if (!(node instanceof EmptyNode)) {
-            node.detachChild(page);
+        // Empty (air) pages are never put in the scene graph (see attachPage) — nothing to detach.
+        if (page instanceof EmptyNode || node instanceof EmptyNode) {
+            return;
         }
+        node.detachChild(page);
+    }
+
+    /**
+     * Records a page in {@link #attachedPages} and updates the derived {@link #scenePages} /
+     * {@link #occluders} views used by the cave-culling pass. Package-private so cave-culling tests can
+     * populate the pager through the same path the real paging uses.
+     */
+    void trackPage(Vec3i location, Node page) {
+        attachedPages.put(location, page);
+        if (page instanceof EmptyNode) {
+            scenePages.remove(location); // air / fully-internal chunk : nothing in the scene to cull
+        } else {
+            scenePages.put(location, page);
+        }
+        short conn = connectivityOf(page);
+        if (conn != Chunk.CONNECT_ALL) {
+            occluders.put(location, conn); // can block sight : the BFS must see its connectivity
+        } else {
+            occluders.remove(location);
+        }
+    }
+
+    /** Removes a page from {@link #attachedPages} and the derived views, returning the removed node. */
+    private Node untrackPage(Vec3i location) {
+        Node removed = attachedPages.remove(location);
+        scenePages.remove(location);
+        occluders.remove(location);
+        return removed;
+    }
+
+    private static short connectivityOf(Node page) {
+        Object ud = page.getUserData(Chunk.USERDATA_FACE_CONNECTIVITY);
+        return (ud instanceof Integer) ? (short) ((Integer) ud).intValue() : Chunk.CONNECT_ALL;
     }
 
     protected void attachPage(Node page) {
         if (log.isTraceEnabled()) {
             log.trace("Attaching {} to {}", page, node);
         }
-        if (!(node instanceof EmptyNode)) {
-            node.attachChild(page);
+        // Air chunks render nothing and carry no controls : keep them out of the scene graph (they stay
+        // tracked in attachedPages for paging + cave-culling connectivity). This shrinks the graph jME
+        // recurses through when it rebuilds its update list on every paging frame — the residual
+        // updateLogicalState ('rootLog') hitch, which scales with the attached chunk-node count.
+        if (page instanceof EmptyNode || node instanceof EmptyNode) {
+            return;
         }
+        node.attachChild(page);
     }
 
     /**
-     * Cave culling. Recomputes (when the camera moved chunk, rotated enough, or a page changed)
-     * which loaded chunks the camera can actually see through the chunk visibility graph, and hides
-     * the rest with {@link Spatial.CullHint#Always}. Cheap to call every frame : it early-outs when
-     * nothing relevant changed, and otherwise does a bounded BFS over the mesh grid plus a reconcile
-     * that only toggles the pages whose visibility flipped.
+     * Cave culling. Recomputes which loaded chunks sight can reach through the connectivity graph and
+     * hides the rest (occluded behind opaque terrain) with {@link Spatial.CullHint#Always}. Occlusion
+     * is view-independent, so this runs only when the player crosses a chunk boundary, or — throttled —
+     * when paging/edits dirtied the graph ; NOT on camera rotation and NOT every frame. Cheap to call
+     * every frame : it early-outs when nothing relevant changed. Frustum culling stays jME's job.
      */
     private void updateChunkVisibility() {
-        if (!caveCullingEnabled || camera == null) {
+        if (!caveCullingEnabled) {
             if (visibilityComputed) {
-                // Culling was just turned off (or the camera is gone) : un-hide everything.
+                // Culling was just turned off : un-hide everything.
                 showAllPages();
                 visibilityComputed = false;
             }
@@ -409,14 +480,14 @@ public class ChunkPager {
             return;
         }
 
-        camera.getDirection(visibilityDirScratch);
         boolean rootChanged = !centerPage.equals(lastVisibilityRoot);
-        boolean rotated = visibilityDirScratch.dot(lastVisibilityDir) < VISIBILITY_DIR_DOT;
-        if (visibilityComputed && !visibilityDirty && !rootChanged && !rotated) {
+        long now = System.nanoTime();
+        boolean dirtyDue = visibilityDirty && (now - lastVisibilityNanos) >= VISIBILITY_MIN_INTERVAL_NANOS;
+        if (visibilityComputed && !rootChanged && !dirtyDue) {
             return;
         }
         lastVisibilityRoot.set(centerPage);
-        lastVisibilityDir.set(visibilityDirScratch);
+        lastVisibilityNanos = now;
         visibilityDirty = false;
 
         computeReachable(centerPage);
@@ -425,9 +496,9 @@ public class ChunkPager {
     }
 
     /**
-     * Test seam : runs the cave-culling visibility pass for a given camera-chunk root, against the
-     * pages currently in {@link #attachedPages} (each carrying its connectivity as userData) and the
-     * configured {@link #camera}. Bypasses the throttle and the paging executor.
+     * Test seam : runs the cave-culling visibility pass for a given player-chunk root, against the
+     * pages currently in {@link #attachedPages} (each carrying its connectivity as userData). Bypasses
+     * the throttle and the paging executor.
      */
     void applyCaveCullingForTest(Vec3i root) {
         computeReachable(root);
@@ -435,11 +506,11 @@ public class ChunkPager {
     }
 
     /**
-     * BFS through the chunk visibility graph from the chunk holding the camera. A chunk is traversed
-     * from the face it was entered to a neighbour face only if its {@link Chunk#getFaceConnectivity()}
-     * links them (so solid rock blocks sight), the BFS never doubles back (monotonic direction set),
-     * and the neighbour lies inside the camera frustum (a chunk the camera cannot see cannot be seen
-     * through). Reachable chunks are stamped in {@link #reachStamp}.
+     * Connectivity flood-fill from the chunk holding the player. A chunk is traversed from the face it
+     * was entered to a neighbour face only if its {@link Chunk#getFaceConnectivity()} links them (so a
+     * chunk of solid opaque rock blocks sight). Reachable chunks are stamped in {@link #reachStamp} ;
+     * everything else is occluded. No frustum test (jME culls the view direction per geometry) and no
+     * monotonic-direction pruning (which could falsely occlude a chunk visible only via a bent tunnel).
      */
     private void computeReachable(Vec3i root) {
         final int gx = gridSize.x;
@@ -455,67 +526,76 @@ public class ChunkPager {
 
         bfsEpoch++;
         reachEpoch++;
+        cacheConnectivity();
 
         int rootLocal = localIndex(root.x, root.y, root.z);
         if (rootLocal < 0) {
             return; // camera chunk outside its own grid : should not happen
         }
 
+        // Neighbour linear-index deltas for this grid (constant stride per direction), computed once.
+        final int strideZ = visGridX * visGridY;
+        for (int di = 0; di < 6; di++) {
+            visDli[di] = DIR_DX[di] + DIR_DY[di] * visGridX + DIR_DZ[di] * strideZ;
+        }
+
         int head = 0;
         int tail = 0;
-        bfsQueue[tail++] = rootLocal;
+        bfsQueue[tail] = rootLocal;
+        bfsCoord[tail] = pack(root.x - visOriginX, root.y - visOriginY, root.z - visOriginZ);
+        tail++;
         bfsStamp[rootLocal] = bfsEpoch;
         bfsEnter[rootLocal] = 0; // root : no enter face, connectivity gate disabled
-        bfsDirs[rootLocal] = 0;
 
         while (head < tail) {
-            int li = bfsQueue[head++];
+            int li = bfsQueue[head];
+            int code = bfsCoord[head];
+            head++;
             reachStamp[li] = reachEpoch;
 
-            int lz = li / (visGridX * visGridY);
-            int rem = li - lz * visGridX * visGridY;
-            int ly = rem / visGridX;
-            int lx = rem - ly * visGridX;
+            // lx/ly/lz come packed in the queue : avoids three integer divisions per popped node.
+            int lx = code & 0x3FF;
+            int ly = (code >> 10) & 0x3FF;
+            int lz = (code >> 20) & 0x3FF;
 
-            short conn = connectivityAt(visOriginX + lx, visOriginY + ly, visOriginZ + lz);
+            short conn = connStamp[li] == connEpoch ? connGrid[li] : Chunk.CONNECT_ALL;
             int enter = bfsEnter[li];
-            int dirs = bfsDirs[li];
+            int enterOrd = enter - 1; // meaningful only when enter != 0
 
-            for (Direction d : DIRS) {
-                int oppOrd = d.opposite().ordinal();
-                // monotonicity : never travel opposite to a direction already taken
-                if ((dirs & (1 << oppOrd)) != 0) {
+            for (int di = 0; di < 6; di++) {
+                // Connectivity gate (disabled for the root, enter == 0). Inlined Chunk.isConnected : the
+                // same face is always connected, otherwise test the precomputed (enter, di) pair bit.
+                if (enter != 0 && enterOrd != di && (conn & (1 << PAIR_BIT[enterOrd * 6 + di])) == 0) {
                     continue;
                 }
-                // connectivity gate (disabled for the root, where enter == 0)
-                if (enter != 0 && !Chunk.isConnected(conn, DIRS[enter - 1], d)) {
-                    continue;
-                }
-                int nlx = lx + d.getVector().x;
-                int nly = ly + d.getVector().y;
-                int nlz = lz + d.getVector().z;
+                int nlx = lx + DIR_DX[di];
+                int nly = ly + DIR_DY[di];
+                int nlz = lz + DIR_DZ[di];
                 if (nlx < 0 || nlx >= visGridX || nly < 0 || nly >= visGridY || nlz < 0 || nlz >= visGridZ) {
                     continue;
                 }
-                int ni = nlx + visGridX * (nly + visGridY * nlz);
+                int ni = li + visDli[di];
                 if (bfsStamp[ni] == bfsEpoch) {
                     continue; // already visited
                 }
                 bfsStamp[ni] = bfsEpoch;
-                // frustum gate : a chunk the camera cannot see also cannot be seen through
-                if (!inFrustum(visOriginX + nlx, visOriginY + nly, visOriginZ + nlz)) {
-                    continue;
-                }
-                bfsEnter[ni] = (byte) (oppOrd + 1);
-                bfsDirs[ni] = dirs | (1 << d.ordinal());
-                bfsQueue[tail++] = ni;
+                bfsEnter[ni] = (byte) (DIR_OPP[di] + 1);
+                bfsQueue[tail] = ni;
+                bfsCoord[tail] = pack(nlx, nly, nlz);
+                tail++;
             }
         }
     }
 
-    /** Sets each attached page's cull hint from the BFS result, touching only the pages that changed. */
+    /** Packs a local grid coordinate (each axis &lt; 1024) into one int for the BFS queue. */
+    private static int pack(int lx, int ly, int lz) {
+        return lx | (ly << 10) | (lz << 20);
+    }
+
+    /** Sets each scene page's cull hint from the BFS result, touching only the pages that changed. Only
+     * scene pages (non-empty, actually in the graph) have a mesh to cull — air/empty pages are skipped. */
     private void applyVisibility() {
-        for (Map.Entry<Vec3i, Node> entry : attachedPages.entrySet()) {
+        for (Map.Entry<Vec3i, Node> entry : scenePages.entrySet()) {
             Vec3i loc = entry.getKey();
             Node page = entry.getValue();
             int li = localIndex(loc.x, loc.y, loc.z);
@@ -529,42 +609,33 @@ public class ChunkPager {
     }
 
     private void showAllPages() {
-        for (Node page : attachedPages.values()) {
+        for (Node page : scenePages.values()) {
             if (page.getLocalCullHint() != Spatial.CullHint.Inherit) {
                 page.setCullHint(Spatial.CullHint.Inherit);
             }
         }
     }
 
-    /** Face-connectivity bitset of the chunk at the given grid location, read from its node userData. */
-    private short connectivityAt(int wx, int wy, int wz) {
-        visLookup.set(wx, wy, wz);
-        Node page = attachedPages.get(visLookup);
-        if (page == null) {
-            return Chunk.CONNECT_ALL; // not meshed/loaded yet : do not occlude
+    /**
+     * Caches every attached chunk's face-connectivity into the flat {@link #connGrid}, indexed by the
+     * current BFS grid, in a single {@link #attachedPages} scan. Cells left unstamped (air, or chunks not
+     * yet meshed/loaded) read back as {@link Chunk#CONNECT_ALL} — they do not occlude. Replaces the
+     * per-BFS-node {@code ConcurrentHashMap.get(Vec3i)} + {@code getUserData} that dominated the pass when
+     * the grid volume (thousands of mostly-air cells) far exceeds the ~hundreds of loaded chunks.
+     */
+    private void cacheConnectivity() {
+        connEpoch++;
+        // Only occluders (connectivity != CONNECT_ALL) need stamping : every other cell — air, open
+        // terrain, not-yet-loaded — reads back as CONNECT_ALL (traversable) from the unstamped default.
+        for (Map.Entry<Vec3i, Short> entry : occluders.entrySet()) {
+            Vec3i loc = entry.getKey();
+            int li = localIndex(loc.x, loc.y, loc.z);
+            if (li < 0) {
+                continue; // outside the current BFS grid (transient, about to be detached)
+            }
+            connGrid[li] = entry.getValue();
+            connStamp[li] = connEpoch;
         }
-        Object ud = page.getUserData(Chunk.USERDATA_FACE_CONNECTIVITY);
-        if (ud instanceof Integer) {
-            return (short) ((Integer) ud).intValue();
-        }
-        return Chunk.CONNECT_ALL;
-    }
-
-    /** True if the chunk at the given grid location intersects the camera frustum. */
-    private boolean inFrustum(int wx, int wy, int wz) {
-        float ex = 0.5f * chunkSizeX * blockScale;
-        float ey = 0.5f * chunkSizeY * blockScale;
-        float ez = 0.5f * chunkSizeZ * blockScale;
-        visBoundCenter.set(
-                wx * chunkSizeX * blockScale + ex,
-                wy * chunkSizeY * blockScale + ey,
-                wz * chunkSizeZ * blockScale + ez);
-        visBound.setCenter(visBoundCenter);
-        visBound.setXExtent(ex);
-        visBound.setYExtent(ey);
-        visBound.setZExtent(ez);
-        camera.setPlaneState(0);
-        return camera.contains(visBound) != Camera.FrustumIntersect.Outside;
     }
 
     private int localIndex(int wx, int wy, int wz) {
@@ -581,13 +652,16 @@ public class ChunkPager {
         int volume = gx * gy * gz;
         if (bfsQueue.length < volume) {
             bfsQueue = new int[volume];
+            bfsCoord = new int[volume];
             bfsStamp = new int[volume];
             reachStamp = new int[volume];
-            bfsDirs = new int[volume];
             bfsEnter = new byte[volume];
+            connGrid = new short[volume];
+            connStamp = new int[volume];
             // Freshly-zeroed stamps : reset epochs so they cannot match a stale value.
             bfsEpoch = 0;
             reachEpoch = 0;
+            connEpoch = 0;
         }
     }
 
@@ -610,6 +684,8 @@ public class ChunkPager {
         }
         attachedPages.forEach((loc, page) -> detachPage(page));
         attachedPages.clear();
+        scenePages.clear();
+        occluders.clear();
         fetchedPages.clear();
         pagesToAttach.clear();
         pagesToDetach.clear();

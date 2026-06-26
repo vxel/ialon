@@ -18,7 +18,7 @@ import com.jme3.scene.shape.Box;
 import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Shape;
-import org.delaunois.ialon.blocks.ShapeIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Pyramid;
@@ -41,10 +41,10 @@ public class PlaceholderControl extends AbstractControl {
 
     private final CollisionResults collisionResults = new CollisionResults();
     private final Ray ray = new Ray();
-    // Scratch reused by the billboard grid-march (runs every UPDATE_TIME, not in the render loop).
+    // Scratch reused by the voxel grid-march (runs every UPDATE_TIME, not in the render loop).
     private final Vector3f marchPoint = new Vector3f();
     private final Vector3f marchNormal = new Vector3f();
-    private final CollisionResult billboardCollision = new CollisionResult();
+    private final CollisionResult gridCollision = new CollisionResult();
     private final SimpleApplication app;
 
     @Setter
@@ -83,8 +83,7 @@ public class PlaceholderControl extends AbstractControl {
                 && playerHeadDirectionControl != null
                 && curTime > UPDATE_TIME) {
             curTime = 0;
-            CollisionResult result = getCollisionResult();
-            updatePlaceholders(result);
+            updatePlaceholders(getCollisionResult());
         }
     }
 
@@ -182,75 +181,76 @@ public class PlaceholderControl extends AbstractControl {
     private CollisionResult getCollisionResult() {
         // The camera direction is computed by PlayerHeadDirectionControl, which is disabled while the
         // world menu is open. Right after a world switch it may not have run yet, leaving a zero
-        // (non-unit) direction : skip until it is valid, otherwise Ray.setDirection asserts.
+        // (non-unit) direction : skip until it is valid, otherwise the grid-march normalises garbage.
         Vector3f camDir = playerHeadDirectionControl.getCamDir();
         if (!camDir.isUnitVector()) {
             return null;
         }
-        ray.setOrigin(playerHeadDirectionControl.getCamera().getLocation());
-        ray.setDirection(camDir);
-        // Bound the pick ray to the interaction reach. Without a limit the ray is infinite, so collideWith
-        // runs the (expensive) per-triangle BIH traversal on EVERY chunk the ray crosses across the whole
-        // world -- the cause of intermittent ~25ms updateLogicalState hitches while moving/looking around.
-        // jME's BIHTree honours Ray.limit (it clamps the traversal to [tMin, min(tMax, limit)]), so chunks
-        // beyond MAX_REACH cost only their O(1) bounding-box test. A block can't be targeted past MAX_REACH
-        // anyway (maxDist is clamped to it below), so the picking result is unchanged.
-        ray.setLimit(MAX_REACH);
-        collisionResults.clear();
-        chunkNode.collideWith(ray, collisionResults);
-
-        CollisionResult geomResult = null;
-        for (CollisionResult collisionResult : collisionResults) {
-            String materialName = collisionResult.getGeometry().getMaterial().getName();
-            // Skip liquid surfaces (water and lava) so the ray stops on the first SOLID block : a liquid
-            // block is placed/removed against that solid hit, exactly like water.
-            if (materialName != null && !materialName.contains("water") && !materialName.contains("lava")) {
-                geomResult = collisionResult;
-                break;
-            }
-        }
-
-        // Billboard blocks (e.g. fire) collapse all their vertices to the block centre in the render
-        // mesh — they have no CPU-side triangles, so the ray above passes straight through them. Walk
-        // the world grid along the ray (up to the first solid hit, or the max reach) to catch them,
-        // so they can be selected/removed just like a regular cross-plane block.
-        float maxDist = geomResult != null ? geomResult.getDistance() : MAX_REACH;
-        CollisionResult billboardResult = getBillboardHit(ray.getOrigin(), ray.getDirection(), maxDist);
-        return billboardResult != null ? billboardResult : geomResult;
+        // Block picking by a voxel grid-march (DDA), NOT chunkNode.collideWith. A per-triangle BIH raycast
+        // against the chunk meshes had to BUILD each crossed chunk's BIHTree lazily on the main thread,
+        // costing intermittent 20-60ms updateLogicalState hitches while flying (new chunks keep entering
+        // the ray, never cached). Marching the voxel grid and querying worldManager.getBlock is O(reach),
+        // needs no BIH/triangles and is insensitive to paging. Picking is therefore cell-granular (like
+        // Minecraft's per-block picking) : pointing at a partial shape's cell targets that block.
+        return getGridHit(playerHeadDirectionControl.getCamera().getLocation(), camDir, MAX_REACH);
     }
 
     /**
-     * Marches the world grid along the ray and returns a synthetic collision on the first billboard
-     * block (e.g. fire) found within {@code maxDist}, or {@code null}. The contact point is placed at
-     * the cell centre (so the same floor-based block lookup the rest of the code uses resolves it),
-     * and the contact normal is the face the ray entered through (for adjacent placement).
+     * Marches the world voxel grid along the ray and returns a synthetic collision on the first
+     * non-liquid block found within {@code maxDist}, or {@code null}. Liquid cells (water/lava) are
+     * passed through so the ray stops on the first solid block, exactly as the former mesh raycast did
+     * (which skipped liquid surfaces). The contact point is placed at the cell centre (so the same
+     * floor-based block lookup the rest of the code uses resolves it), and the contact normal is the
+     * face the ray entered through (for adjacent placement). Billboard blocks (e.g. fire) collapse all
+     * their vertices to the block centre and have no CPU triangles, so a mesh raycast would miss them —
+     * the grid-march catches them like any other block.
      */
-    private CollisionResult getBillboardHit(Vector3f origin, Vector3f direction, float maxDist) {
-        float scale = BlocksConfig.getInstance().getBlockScale();
+    private CollisionResult getGridHit(Vector3f origin, Vector3f direction, float maxDist) {
+        return marchGrid(worldManager::getBlock, origin, direction, maxDist,
+                BlocksConfig.getInstance().getBlockScale(), marchPoint, marchNormal, gridCollision);
+    }
+
+    /**
+     * The voxel grid-march itself, extracted as a package-private static method so it can be unit-tested
+     * with a plain {@code Vector3f -> Block} lookup, without standing up a world or an app. The
+     * {@code scratch*} arguments are reused across the (throttled, ~10 Hz) call so production stays
+     * allocation-free in the per-frame path; tests pass fresh instances. Returns {@code scratchResult}
+     * pointing at the first non-liquid cell, or {@code null} if none within {@code maxDist}.
+     */
+    static CollisionResult marchGrid(java.util.function.Function<Vector3f, Block> blockAt,
+                                     Vector3f origin, Vector3f direction, float maxDist, float scale,
+                                     Vector3f scratchPoint, Vector3f scratchNormal, CollisionResult scratchResult) {
         float step = 0.1f * scale;
         Vec3i previousCell = null;
         for (float d = 0; d <= maxDist; d += step) {
-            marchPoint.set(direction).multLocal(d).addLocal(origin);
-            Vec3i cell = ChunkManager.getBlockLocation(marchPoint);
+            scratchPoint.set(direction).multLocal(d).addLocal(origin);
+            Vec3i cell = ChunkManager.getBlockLocation(scratchPoint);
             if (cell.equals(previousCell)) {
                 continue;
             }
-            Block block = worldManager.getBlock(marchPoint);
-            if (block != null && ShapeIds.BILLBOARD.equals(block.getShape())) {
-                marchNormal.set(0, 1, 0);
+            Block block = blockAt.apply(scratchPoint);
+            if (block != null && !isLiquid(block)) {
+                scratchNormal.set(0, 1, 0);
                 if (previousCell != null) {
-                    marchNormal.set(previousCell.x - cell.x, previousCell.y - cell.y, previousCell.z - cell.z);
-                    marchNormal.normalizeLocal();
+                    scratchNormal.set(previousCell.x - cell.x, previousCell.y - cell.y, previousCell.z - cell.z);
+                    scratchNormal.normalizeLocal();
                 }
-                billboardCollision.setContactPoint(new Vector3f(
+                scratchResult.setContactPoint(new Vector3f(
                         (cell.x + 0.5f) * scale, (cell.y + 0.5f) * scale, (cell.z + 0.5f) * scale));
-                billboardCollision.setContactNormal(marchNormal.clone());
-                billboardCollision.setDistance(d);
-                return billboardCollision;
+                scratchResult.setContactNormal(scratchNormal.clone());
+                scratchResult.setDistance(d);
+                return scratchResult;
             }
             previousCell = cell;
         }
         return null;
+    }
+
+    /** A pure-liquid cell (water or lava) : the ray passes through it, as the former raycast skipped
+     * liquid surfaces. A solid block submerged in liquid keeps its own type, so it is NOT skipped. */
+    private static boolean isLiquid(Block block) {
+        String type = block.getType();
+        return TypeIds.WATER.equals(type) || TypeIds.LAVA.equals(type);
     }
 
 }

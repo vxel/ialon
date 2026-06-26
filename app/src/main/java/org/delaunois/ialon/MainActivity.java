@@ -38,6 +38,14 @@ public class MainActivity extends AndroidHarness {
 
     static {
         System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
+        // PROFILING TOGGLE : enable the render-thread hitch profiler on mobile. Logs (to logcat, tag
+        // HitchProfilerState) one line per frame slower than this many ms, splitting the spike into
+        // work (state/spatial/render) vs gap (swap/vsync/driver), the top AppStep, GC and chunk churn.
+        // Set very early (class load, before the GL app is constructed) so the TimingNodes get installed
+        // too. Steady path is allocation-free, but remove/raise this for release builds. 20 ms catches
+        // dropped frames at the 60 fps cap.
+        //
+        //System.setProperty("ialon.hitch", "40");
     }
 
     public MainActivity() {

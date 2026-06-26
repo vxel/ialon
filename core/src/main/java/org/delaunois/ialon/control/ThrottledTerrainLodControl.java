@@ -41,8 +41,11 @@ import com.jme3.terrain.geomipmap.TerrainLodControl;
  */
 public class ThrottledTerrainLodControl extends TerrainLodControl {
 
-    // Far horizon : LOD only needs refreshing every couple of chunks of travel. Tunable per instance.
-    public static final float DEFAULT_MIN_MOVE = 32f;
+    // Far horizon : LOD only needs refreshing every several chunks of travel. The recompute applies
+    // per-patch index-buffer rebuilds on the main thread (a multi-ms updateLogicalState spike on the
+    // big far TerrainQuad), so refreshing rarely matters more than the slight LOD staleness — which is
+    // imperceptible on a distant backdrop. Tunable per instance.
+    public static final float DEFAULT_MIN_MOVE = 128f;
 
     private final Camera throttleCamera;
     private final float minMoveSq;
