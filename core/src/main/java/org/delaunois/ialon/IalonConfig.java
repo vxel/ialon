@@ -124,7 +124,7 @@ public class IalonConfig implements WorldSettings {
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
     // Lava flows like water but slower : its own (lower) simulation cadence. See ChunkLiquidManagerState.
-    private float lavaSimulationSpeed = 1.5f;
+    private float lavaSimulationSpeed = 0.5f;
 
     // Underwater view : a full-screen post-process (UnderwaterState) applied only while the camera is
     // below waterHeight - a bluish distance fog that shortens the view range plus a gentle ripple
