@@ -23,6 +23,7 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.WorldManager;
+import org.delaunois.ialon.state.BlockPickingMode;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -117,15 +118,38 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             log.debug("Action {} isPressed {}", name, isPressed);
         }
 
+        // During a block-picking mode (creation capture/placement) the world editing is suspended : a
+        // left-click or the action button confirms (capture: select the aimed block ; placement: stamp the
+        // creation), and a right-click (ACTION_REMOVE_BLOCK on desktop) aborts the mode.
+        BlockPickingMode picking = BlockPickingMode.active(app.getStateManager());
+
         switch (name) {
             case ACTION_ADD_BLOCK:
-                addBlock(isPressed);
+                if (picking != null) {
+                    if (isPressed) {
+                        picking.onPick(pickedCell());
+                    }
+                } else {
+                    addBlock(isPressed);
+                }
                 break;
             case ACTION_REMOVE_BLOCK:
-                removeBlock(isPressed);
+                if (picking != null) {
+                    if (isPressed) {
+                        picking.onCancel();
+                    }
+                } else {
+                    removeBlock(isPressed);
+                }
                 break;
             case ACTION_ACTION_OBJECT:
-                toggleDoor(isPressed);
+                if (picking != null) {
+                    if (isPressed) {
+                        picking.onPick(pickedCell());
+                    }
+                } else {
+                    toggleDoor(isPressed);
+                }
                 break;
             case ACTION_FLY:
                 toogleFly(isPressed);
@@ -269,6 +293,17 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
                 .getWorldTranslation()
                 .subtract(0.5f, 0.5f, 0.5f);
         app.enqueue(() -> worldManager.toggleDoor(blockLocation));
+    }
+
+    /**
+     * The block currently aimed at (under the remove placeholder), or {@code null} when nothing is aimed.
+     * Fed to the active picking mode so it can select / confirm against it.
+     */
+    private Vec3i pickedCell() {
+        if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {
+            return null;
+        }
+        return ChunkManager.getBlockLocation(placeholderControl.getRemovePlaceholderPosition());
     }
 
     public void actionDebugChunks(boolean isPressed) {

@@ -135,13 +135,15 @@ public class IalonInitializer {
                 "Textures/arrowup.png",
                 "Textures/arrowright.png",
                 "Textures/arrowjump.png",
+                "Textures/arrowjumpdown.png",
                 "Textures/flight.png",
                 "Textures/minus.png",
                 "Textures/plus.png",
                 "Textures/gear.png",
                 "Textures/settings.png",
                 "Textures/trash.png",
-                "Textures/action.png"
+                "Textures/action.png",
+                "Textures/rotate.png"
         };
 
         for (String texPath : noMiptexPaths) {

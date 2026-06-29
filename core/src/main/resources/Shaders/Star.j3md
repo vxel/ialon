@@ -1,0 +1,35 @@
+MaterialDef Ialon Stars {
+
+    // Procedural star field : a sparse grid of points is computed PER FRAGMENT from the view-direction
+    // (Shaders/Star.frag) over a camera-following dome, so no texture is needed and the field stays
+    // anchored to the world. Intensity is driven live by StarControl to fade the stars in at dusk and
+    // out at dawn, mirroring the sky/lighting day-night curve. MANUAL_SRGB re-encodes on output where
+    // the hardware sRGB framebuffer is missing (Android GLES), like Sky / IalonUnshaded.
+
+    MaterialParameters {
+        // Overall visibility : 0 (day, fully hidden) .. 1 (deep night) - set live by StarControl
+        Float Intensity
+
+        // Quaternion (x,y,z,w) that wheels the star field about the celestial pole - set live by StarControl
+        Vector4 SkyRotation
+
+        // Emulate the sRGB framebuffer encode in-shader when there is no hardware one (Android GLES)
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Star.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Star.frag
+
+        WorldParameters {
+            WorldMatrix
+            ViewProjectionMatrix
+            CameraPosition
+            Time
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

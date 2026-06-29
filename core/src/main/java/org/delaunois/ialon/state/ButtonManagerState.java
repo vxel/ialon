@@ -74,6 +74,13 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
     private final Node actionButtonNode = new Node("ActionButton");
     private boolean actionButtonVisible = false;
 
+    // The add ("+") and remove ("-") block buttons are kept OUT of the batched node (each in its own
+    // node, like the action button) so they can be hidden on their own : the "build mode" (creation
+    // capture) detaches them and shows the action button in the "+" slot instead.
+    private final Node addBlockNode = new Node("AddBlockButton");
+    private final Node removeBlockNode = new Node("RemoveBlockButton");
+    private boolean buildMode = false;
+
     private int buttonSize;
     private SimpleApplication app;
     private final ScreenButtonMouseListener screenButtonMouseListener;
@@ -105,6 +112,12 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         actionButtonNode.attachChild(buttonAction.icon);
         actionButtonNode.attachChild(buttonAction.background);
 
+        // Add/remove block buttons live in their own (un-batched) nodes so build mode can hide them.
+        addBlockNode.attachChild(buttonAddBlock.icon);
+        addBlockNode.attachChild(buttonAddBlock.background);
+        removeBlockNode.attachChild(buttonRemoveBlock.icon);
+        removeBlockNode.attachChild(buttonRemoveBlock.background);
+
         BatchNode batchNode = new BatchNode("ButtonBatch");
         batchNode.attachChild(buttonLeft.icon);
         batchNode.attachChild(buttonBackward.icon);
@@ -112,8 +125,6 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         batchNode.attachChild(buttonRight.icon);
         batchNode.attachChild(buttonJump.icon);
         batchNode.attachChild(buttonFly.icon);
-        batchNode.attachChild(buttonRemoveBlock.icon);
-        batchNode.attachChild(buttonAddBlock.icon);
         batchNode.batch();
         batchNode.getMaterial().setColor("Color", ColorRGBA.White);
         buttonParentNode.attachChild(batchNode);
@@ -123,9 +134,9 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         buttonParentNode.attachChild(buttonForward.background);
         buttonParentNode.attachChild(buttonRight.background);
         buttonParentNode.attachChild(buttonJump.background);
-        buttonParentNode.attachChild(buttonAddBlock.background);
-        buttonParentNode.attachChild(buttonRemoveBlock.background);
         buttonParentNode.attachChild(buttonFly.background);
+        buttonParentNode.attachChild(addBlockNode);
+        buttonParentNode.attachChild(removeBlockNode);
 
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
@@ -202,9 +213,35 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         place(buttonRight, margin + (buttonSize + SPACING) * 2, margin + buttonSize);
         place(buttonJump, width - margin - buttonSize, margin + buttonSize);
         place(buttonFly, width - margin - 2 * buttonSize - SPACING, height - margin);
-        place(buttonAction, width - margin - 3 * buttonSize - 2 * SPACING, height - margin);
         place(buttonRemoveBlock, margin, height - margin);
         place(buttonAddBlock, width - margin - buttonSize, height - margin);
+        // In build mode the action button takes the "+" (add block) slot ; otherwise it sits left of fly
+        // (its contextual door-open position).
+        if (buildMode) {
+            place(buttonAction, width - margin - buttonSize, height - margin);
+        } else {
+            place(buttonAction, width - margin - 3 * buttonSize - 2 * SPACING, height - margin);
+        }
+    }
+
+    /**
+     * Toggles "build mode" (creation capture) : hides the add/remove block buttons and moves the action
+     * button into the "+" slot. The action button's visibility itself is driven by
+     * {@code PlaceholderControl} (kept visible throughout capture).
+     */
+    public void setBuildMode(boolean buildMode) {
+        if (buildMode == this.buildMode) {
+            return;
+        }
+        this.buildMode = buildMode;
+        if (buildMode) {
+            addBlockNode.removeFromParent();
+            removeBlockNode.removeFromParent();
+        } else {
+            buttonParentNode.attachChild(addBlockNode);
+            buttonParentNode.attachChild(removeBlockNode);
+        }
+        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
     }
 
     /**

@@ -175,6 +175,11 @@ public class TimeFactorState extends BaseAppState implements ActionListener, Res
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
         if (ACTION_SWITCH_MOUSELOCK.equals(name) && isPressed) {
+            // During a block-picking mode (creation capture/placement) this button is hidden ; a mouse-lock
+            // toggle must not bring it back (the picking state owns its visibility and restores it on exit).
+            if (BlockPickingMode.active(app.getStateManager()) != null) {
+                return;
+            }
             setEnabled(!this.isEnabled());
         }
     }

@@ -128,6 +128,10 @@ public class WorldSelectionState extends BaseAppState {
         if (moonState != null) {
             moonState.getMoonControl().forceUpdate();
         }
+        StarState starState = app.getStateManager().getState(StarState.class);
+        if (starState != null) {
+            starState.getStarControl().forceUpdate();
+        }
     }
 
     @Override
