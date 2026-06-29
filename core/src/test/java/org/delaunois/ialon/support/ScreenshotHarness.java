@@ -250,7 +250,9 @@ public class ScreenshotHarness extends SimpleApplication {
             // off app.getCamera(). Heavier and assumes more bootstrap — used to inspect the sky itself.
             stateManager.attach(new LightingState(config));
             stateManager.attach(new SunState(config));
+            stateManager.attach(new org.delaunois.ialon.state.MoonState(config));
             stateManager.attach(new SkyState(config));
+            stateManager.attach(new org.delaunois.ialon.state.StarState(config));
         } else if (options.lighting) {
             // Simple, robust lighting (matches FarTreeTest/FarTerrainTest) : a directional sun reveals
             // the block relief, ambient lifts the shadows. The block material is Lighting-based, so
@@ -349,8 +351,10 @@ public class ScreenshotHarness extends SimpleApplication {
                 2, o.config.getWaterHeight(), o.config.getMaxy(), o.config.getWorldSize()));
         o.config.setGridRadius(6);
         o.farTerrain = true;
+        o.realSky = true;                 // TEMP
+        o.time = -1.0f; // TEMP rotated ~28deg
         o.camLocation = new Vector3f(90, 110, 90);
-        o.camTarget = new Vector3f(0, 30, 0);
+        o.camTarget = new Vector3f(90, 210, -10); // TEMP: look towards the celestial pole (0,1,-1)
         o.maxWaitMs = 60_000;
         Path png = capture(o);
         log.info("Wrote {}", png.toAbsolutePath());

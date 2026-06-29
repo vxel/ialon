@@ -19,6 +19,7 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Shape;
 import org.delaunois.ialon.blocks.TypeIds;
+import org.delaunois.ialon.state.BlockPickingMode;
 import org.delaunois.ialon.state.ButtonManagerState;
 import org.delaunois.ialon.blocks.shapes.CrossPlane;
 import org.delaunois.ialon.blocks.shapes.Pyramid;
@@ -38,6 +39,10 @@ public class PlaceholderControl extends AbstractControl {
     private static final Vector3f OFFSET = new Vector3f(0.5f, 0.5f, 0.5f);
     private static final float UPDATE_TIME = 0.1f;
     private static final float MAX_REACH = 20f;
+    // Reach while a block-picking mode (creation capture/placement) is active : far longer than the normal
+    // editing reach, so the player can stand back / fly up for an overview and still aim at a distant
+    // ground block to capture or place a (possibly large) creation.
+    private static final float PICK_REACH = 256f;
 
     private final CollisionResults collisionResults = new CollisionResults();
     private final Ray ray = new Ray();
@@ -126,13 +131,15 @@ public class PlaceholderControl extends AbstractControl {
     }
 
     private void updatePlaceholders(CollisionResult result) {
-        if (result == null || result.getDistance() >= 20) {
+        if (result == null || result.getDistance() >= currentReach()) {
             removePlaceholder.removeFromParent();
             updateActionButton(null);
+            updateCapturePreview(null);
             return;
         }
 
         Vec3i pointingLocation = ChunkManager.getBlockLocation(result);
+        updateCapturePreview(pointingLocation);
         Vector3f localTranslation = pointingLocation.toVector3f().addLocal(OFFSET).multLocal(BlocksConfig.getInstance().getBlockScale());
         removePlaceholder.setLocalTranslation(localTranslation);
         removePlaceholderLocation.set(removePlaceholder.getLocalTranslation());
@@ -156,7 +163,7 @@ public class PlaceholderControl extends AbstractControl {
             collisionResults.clear();
             addPlaceholder.collideWith(ray, collisionResults);
             result = collisionResults.getClosestCollision();
-            if (result == null || result.getDistance() >= 20) {
+            if (result == null || result.getDistance() >= currentReach()) {
                 addPlaceholder.removeFromParent();
                 return;
             }
@@ -174,7 +181,18 @@ public class PlaceholderControl extends AbstractControl {
     private void updateActionButton(Block b) {
         ButtonManagerState buttonManager = app.getStateManager().getState(ButtonManagerState.class);
         if (buttonManager != null) {
-            buttonManager.setActionButtonVisible(b != null && WorldManager.isDoor(b.getType()));
+            // During a block-picking mode (creation capture/placement) the action button replaces the
+            // "+" button and stays visible throughout (it is how the player picks), regardless of target.
+            boolean picking = BlockPickingMode.active(app.getStateManager()) != null;
+            buttonManager.setActionButtonVisible(picking || (b != null && WorldManager.isDoor(b.getType())));
+        }
+    }
+
+    /** Feeds the block currently aimed at (or {@code null}) to the active picking mode, for its live preview. */
+    private void updateCapturePreview(Vec3i cell) {
+        BlockPickingMode mode = BlockPickingMode.active(app.getStateManager());
+        if (mode != null) {
+            mode.onTarget(cell);
         }
     }
 
@@ -192,7 +210,12 @@ public class PlaceholderControl extends AbstractControl {
         // the ray, never cached). Marching the voxel grid and querying worldManager.getBlock is O(reach),
         // needs no BIH/triangles and is insensitive to paging. Picking is therefore cell-granular (like
         // Minecraft's per-block picking) : pointing at a partial shape's cell targets that block.
-        return getGridHit(playerHeadDirectionControl.getCamera().getLocation(), camDir, MAX_REACH);
+        return getGridHit(playerHeadDirectionControl.getCamera().getLocation(), camDir, currentReach());
+    }
+
+    /** Normal editing reach, extended while a block-picking mode is active (see {@link #PICK_REACH}). */
+    private float currentReach() {
+        return BlockPickingMode.active(app.getStateManager()) != null ? PICK_REACH : MAX_REACH;
     }
 
     /**

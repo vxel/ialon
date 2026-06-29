@@ -106,6 +106,23 @@ public class WorldPreview implements SceneProcessor {
         assetManager.deleteFromCache(key(worldId));
     }
 
+    /**
+     * Loads any preview PNG by its asset-relative key (e.g. {@code "creations/foo.png"}), or {@code null}
+     * if absent. Like {@link #load}, the save root must be registered as a {@code FileLocator}. Reused for
+     * creation thumbnails, which live outside the per-world directory.
+     */
+    public static Texture loadFromKey(AssetManager assetManager, String relativeKey) {
+        try {
+            return assetManager.loadTexture(new TextureKey(relativeKey, true));
+        } catch (AssetNotFoundException e) {
+            return null;
+        }
+    }
+
+    public static void dropFromCacheByKey(AssetManager assetManager, String relativeKey) {
+        assetManager.deleteFromCache(new TextureKey(relativeKey, true));
+    }
+
     // flipY = true (the jME default for UI textures) : the PNG is stored upright, so it must be flipped
     // into texture space to render the right way up on the Lemur quad.
     private static TextureKey key(String worldId) {

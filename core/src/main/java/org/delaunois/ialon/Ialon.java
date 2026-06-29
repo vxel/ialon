@@ -28,6 +28,9 @@ import org.delaunois.ialon.serialize.IalonConfigRepository;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
+import org.delaunois.ialon.state.CreationCaptureState;
+import org.delaunois.ialon.state.CreationLibraryState;
+import org.delaunois.ialon.state.CreationPlacementState;
 import org.delaunois.ialon.state.HitchProfilerState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.TimingNode;
@@ -38,6 +41,7 @@ import org.delaunois.ialon.state.MemoryGuardState;
 import org.delaunois.ialon.state.PhotoModeState;
 import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
+import org.delaunois.ialon.state.StarState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
@@ -153,11 +157,15 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new SunState(config));
         stateManager.attach(new MoonState(config));
         stateManager.attach(new SkyState(config));
+        stateManager.attach(new StarState(config)); // Night star field, depends on SunState; drawn over the sky, under sun/moon
         stateManager.attach(new WaterState(config)); // Animates the calm-water shader, depends on SunState + SkyState
         stateManager.attach(new UnderwaterState(config)); // Underwater post-process (bluish fog + ripple) when submerged, depends on SkyState
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
+        stateManager.attach(new CreationCaptureState(config)); // "New creation" capture mode (uses ButtonManagerState)
+        stateManager.attach(new CreationPlacementState(config)); // Places a saved creation into the world
+        stateManager.attach(new CreationLibraryState(config)); // Library of creations (opens from WorldMenuState)
         stateManager.attach(new WorldMenuState(config)); // Create / switch worlds (uses WorldSelectionState)
         stateManager.attach(new PhotoModeState(config)); // Hides all UI for a clean screenshot
         stateManager.attach(new WorldSelectionState(config)); // Runtime world switch service

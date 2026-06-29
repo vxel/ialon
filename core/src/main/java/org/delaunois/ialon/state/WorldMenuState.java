@@ -94,6 +94,10 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     // Create-form header buttons, shown at the popup's top corners only while the create form is open.
     private Button createBack;
     private Button createClose;
+    // Worlds-grid header buttons, at the popup's top corners (like the other popups). Both return to the
+    // game : this is the top-level menu, so "Back" has nowhere to go up to and just closes, like "Close".
+    private Button worldsBack;
+    private Button worldsClose;
 
     private final IalonConfig config;
     // SettingsValue sliders shown on the create form, polled each frame so their value labels track.
@@ -216,6 +220,12 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         if (popup.getParent() != null) {
             return;
         }
+        // Tapping the gear cancels an in-progress creation capture or placement (restores the normal UI).
+        // This is the cancel affordance on mobile, where there is no right-click.
+        Optional.ofNullable(app.getStateManager().getState(CreationCaptureState.class))
+                .ifPresent(CreationCaptureState::cancel);
+        Optional.ofNullable(app.getStateManager().getState(CreationPlacementState.class))
+                .ifPresent(CreationPlacementState::cancel);
         rebuildGrid();
         app.getGuiNode().attachChild(popup);
         sizePopupToScreen();
@@ -241,6 +251,13 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
         activeValues.clear();
         closeDeleteConfirm();
+    }
+
+    /** Closes the worlds menu and opens the creation library (owned by {@link CreationLibraryState}). */
+    private void openLibrary() {
+        hidePopup();
+        Optional.ofNullable(app.getStateManager().getState(CreationLibraryState.class))
+                .ifPresent(CreationLibraryState::showPopup);
     }
 
     /** Closes the worlds menu and opens the global settings popup (owned by {@link SettingsState}). */
@@ -294,18 +311,21 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             selectedWorldId = config.getWorldId();
         }
 
-        // Card grid. Lemur has no wrapping layout, so pave row = i / cols, col = i % cols. Columns are
-        // sized to fit the left area, leaving ~30vw on the right for the fixed button column.
+        // Card grid. Lemur has no wrapping layout, so pave row = i / cols, col = i % cols. Offset the grid
+        // to the RIGHT of the top-left Back button (its measured width + a gap) so the cards never share
+        // its column ; columns are then sized to the space left up to the right button column.
+        float margin = UiHelper.screenMargin(app.getCamera().getHeight());
+        gridLeftX = margin + worldsBack.getPreferredSize().x + 3 * vw;
+        gridTopBase = -6 * vh; // start the first row a bit below the top of the screen
         float cardFootprintW = 26 * vw + 4.8f * vh; // contentW + 2*(pad+border+halfGap), see createCard
-        int cols = Math.max(1, (int) ((w - 34 * vw) / cardFootprintW));
+        float rightColumnX = w - 30 * vw;
+        int cols = Math.max(1, (int) ((rightColumnX - gridLeftX - 2 * vw) / cardFootprintW));
         gridContainer = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         for (int i = 0; i < worlds.size(); i++) {
             gridContainer.addChild(createCard(worlds.get(i), vw, vh), i / cols, i % cols);
         }
         // Catch drags that start on the gaps between cards (cards catch their own).
         CursorEventControl.addListenersToSpatial(gridContainer, new CardScrollListener(null));
-        gridLeftX = 6 * vw;
-        gridTopBase = -6 * vh; // start the first row a bit below the top of the screen
         worldsView.attachChild(gridContainer);
 
         // Visible band runs from the top margin down to the screen bottom ; the scroll range is the
@@ -338,6 +358,38 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         detachCreateFormCornerButtons();
         if (worldsView.getParent() == null) {
             ((Node) popup).attachChild(worldsView);
+        }
+        showWorldsViewCornerButtons();
+    }
+
+    /**
+     * Shows the worlds-grid header buttons at the popup's top corners (like the settings / library / create
+     * popups) : Back (left) and Close (right) both return to the game (the worlds menu is the top level).
+     * Created lazily ; their font is set here so their width is known when {@link #rebuildGrid} offsets the
+     * grid to the right of the Back button.
+     */
+    private void showWorldsViewCornerButtons() {
+        float vh = app.getCamera().getHeight() / 100f;
+        if (worldsBack == null) {
+            worldsBack = new Button("Back", IALON_STYLE);
+            worldsBack.setTextVAlignment(VAlignment.Center);
+            worldsBack.addClickCommands(source -> hidePopup());
+            worldsClose = new Button("Close", IALON_STYLE);
+            worldsClose.setTextVAlignment(VAlignment.Center);
+            worldsClose.addClickCommands(source -> hidePopup());
+        }
+        sizeCornerButton(worldsBack, vh);
+        sizeCornerButton(worldsClose, vh);
+        ((Node) popup).attachChild(worldsBack);
+        ((Node) popup).attachChild(worldsClose);
+        UiHelper.placeCornerButtons(worldsBack, worldsClose,
+                app.getCamera().getWidth(), app.getCamera().getHeight());
+    }
+
+    private void detachWorldsViewCornerButtons() {
+        if (worldsBack != null) {
+            worldsBack.removeFromParent();
+            worldsClose.removeFromParent();
         }
     }
 
@@ -431,6 +483,11 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             buttons.addChild(create, row++, 0);
         }
 
+        // Creations library : closes this menu and opens the creation library (place / capture a creation).
+        Button library = menuButton("Creations", vw, vh);
+        library.addClickCommands(source -> openLibrary());
+        buttons.addChild(library, row++, 0);
+
         // Global settings : closes this menu and opens the settings popup.
         Button settings = menuButton("Global Settings", vw, vh);
         settings.addClickCommands(source -> openSettings());
@@ -439,14 +496,9 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         // Photo mode : closes this menu and hides all UI for a clean screenshot of the world.
         Button photo = menuButton("Photo Mode", vw, vh);
         photo.addClickCommands(source -> openPhotoMode());
-        buttons.addChild(photo, row++, 0);
+        buttons.addChild(photo, row, 0);
 
-        Button close = menuButton("Close", vw, vh);
-        // Extra top gap to set Close apart from the world-action buttons above it.
-        close.setInsetsComponent(new InsetsComponent(9 * vh, 0, 0, 0));
-        close.addClickCommands(source -> hidePopup());
-        buttons.addChild(close, row, 0);
-
+        // Back / Close now live at the popup's top corners (see showWorldsViewCornerButtons).
         return buttons;
     }
 
@@ -472,6 +524,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         if (worldsView.getParent() != null) {
             worldsView.removeFromParent();
         }
+        detachWorldsViewCornerButtons();
         if (content.getParent() == null) {
             ((Container) popup).addChild(content);
         }

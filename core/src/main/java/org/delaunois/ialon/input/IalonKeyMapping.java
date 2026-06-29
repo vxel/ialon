@@ -33,6 +33,15 @@ public class IalonKeyMapping {
     public static final String ACTION_DEBUG_CHUNK = "debug-chunk";
     public static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
+    // Fine-adjust of a creation being placed (one block per press, world axes).
+    public static final String ACTION_PLACE_X_MINUS = "place-x-minus";
+    public static final String ACTION_PLACE_X_PLUS = "place-x-plus";
+    public static final String ACTION_PLACE_Y_MINUS = "place-y-minus";
+    public static final String ACTION_PLACE_Y_PLUS = "place-y-plus";
+    public static final String ACTION_PLACE_Z_MINUS = "place-z-minus";
+    public static final String ACTION_PLACE_Z_PLUS = "place-z-plus";
+    public static final String ACTION_PLACE_ROTATE = "place-rotate";
+
     public static final String TOUCH = "touch";
 
     private IalonKeyMapping() {
@@ -62,6 +71,15 @@ public class IalonKeyMapping {
         inputManager.addMapping(ACTION_FLY_DOWN, new KeyTrigger(KeyInput.KEY_DOWN));
         inputManager.addMapping(ACTION_DEBUG_CHUNK, new KeyTrigger(KeyInput.KEY_C));
         inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
+
+        // Creation placement fine-adjust (desktop). Mobile uses the on-screen nudge buttons.
+        inputManager.addMapping(ACTION_PLACE_X_MINUS, new KeyTrigger(KeyInput.KEY_J));
+        inputManager.addMapping(ACTION_PLACE_X_PLUS, new KeyTrigger(KeyInput.KEY_L));
+        inputManager.addMapping(ACTION_PLACE_Z_MINUS, new KeyTrigger(KeyInput.KEY_I));
+        inputManager.addMapping(ACTION_PLACE_Z_PLUS, new KeyTrigger(KeyInput.KEY_K));
+        inputManager.addMapping(ACTION_PLACE_Y_PLUS, new KeyTrigger(KeyInput.KEY_O));
+        inputManager.addMapping(ACTION_PLACE_Y_MINUS, new KeyTrigger(KeyInput.KEY_U));
+        inputManager.addMapping(ACTION_PLACE_ROTATE, new KeyTrigger(KeyInput.KEY_Y));
 
         inputManager.addMapping(TOUCH, new TouchTrigger(TouchInput.ALL));
     }
