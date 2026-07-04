@@ -23,12 +23,10 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.post.SceneProcessor;
-import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.Renderer;
 import com.jme3.renderer.ViewPort;
-import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 import com.jme3.system.JmeSystem;
 import com.jme3.texture.FrameBuffer;
@@ -57,7 +55,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class CreationPreview implements SceneProcessor {
+public class CreationPreview extends AbstractPreviewProcessor {
 
     private static final int WIDTH = 256;
 
@@ -155,25 +153,5 @@ public class CreationPreview implements SceneProcessor {
         }
         // Tear the throwaway viewport down outside the render iteration.
         app.enqueue(() -> app.getRenderManager().removePreView(viewPort));
-    }
-
-    @Override
-    public void preFrame(float tpf) {
-        // Nothing to do
-    }
-
-    @Override
-    public void postQueue(RenderQueue rq) {
-        // Nothing to do
-    }
-
-    @Override
-    public void cleanup() {
-        // Nothing to do
-    }
-
-    @Override
-    public void setProfiler(AppProfiler profiler) {
-        // Nothing to do
     }
 }

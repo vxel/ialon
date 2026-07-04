@@ -77,6 +77,26 @@ public class ScreenState extends BaseAppState implements ActionListener {
     }
 
     /**
+     * Looks up the active {@link ScreenState} on {@code app} and registers {@code resizable} for
+     * resolution-change layout, if present. Convenience for states that register themselves from
+     * {@code initialize()} : a no-op when there is no ScreenState (e.g. in tests).
+     */
+    public static void registerOn(Application app, Resizable resizable) {
+        ScreenState screenState = app.getStateManager().getState(ScreenState.class);
+        if (screenState != null) {
+            screenState.register(resizable);
+        }
+    }
+
+    /** Unregisters {@code resizable} from the active {@link ScreenState} on {@code app}, if present. */
+    public static void unregisterFrom(Application app, Resizable resizable) {
+        ScreenState screenState = app.getStateManager().getState(ScreenState.class);
+        if (screenState != null) {
+            screenState.unregister(resizable);
+        }
+    }
+
+    /**
      * Changes the frame-rate cap and applies it live. jME only reads {@code AppSettings.frameRate} when
      * the context is (re)created, so the new cap is applied by restarting the context (same mechanism as
      * the fullscreen toggle).

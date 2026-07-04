@@ -22,11 +22,9 @@ import com.jme3.asset.AssetManager;
 import com.jme3.asset.AssetNotFoundException;
 import com.jme3.asset.TextureKey;
 import com.jme3.post.SceneProcessor;
-import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.Renderer;
 import com.jme3.renderer.ViewPort;
-import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.system.JmeSystem;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Texture;
@@ -53,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class WorldPreview implements SceneProcessor {
+public class WorldPreview extends AbstractPreviewProcessor {
 
     public static final String PREVIEW_FILENAME = "preview.png";
     // Previews are downscaled to this width before being written : a card never needs more, and it keeps
@@ -200,25 +198,5 @@ public class WorldPreview implements SceneProcessor {
             }
         }
         return dst;
-    }
-
-    @Override
-    public void preFrame(float tpf) {
-        // Nothing to do
-    }
-
-    @Override
-    public void postQueue(RenderQueue rq) {
-        // Nothing to do
-    }
-
-    @Override
-    public void cleanup() {
-        // Nothing to do
-    }
-
-    @Override
-    public void setProfiler(AppProfiler profiler) {
-        // Nothing to do
     }
 }
