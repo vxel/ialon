@@ -358,7 +358,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
         detachCreateFormCornerButtons();
         if (worldsView.getParent() == null) {
-            ((Node) popup).attachChild(worldsView);
+            popup.attachChild(worldsView);
         }
         showWorldsViewCornerButtons();
     }
@@ -381,8 +381,8 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
         sizeCornerButton(worldsBack, vh);
         sizeCornerButton(worldsClose, vh);
-        ((Node) popup).attachChild(worldsBack);
-        ((Node) popup).attachChild(worldsClose);
+        popup.attachChild(worldsBack);
+        popup.attachChild(worldsClose);
         UiHelper.placeCornerButtons(worldsBack, worldsClose,
                 app.getCamera().getWidth(), app.getCamera().getHeight());
     }
@@ -593,7 +593,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         dialog.addChild(buttons, 1, 0);
 
         overlay.addChild(dialog);
-        ((Node) popup).attachChild(overlay);
+        popup.attachChild(overlay);
         // Force the full-screen size AFTER attaching + adding the dialog, otherwise the layout shrinks the
         // overlay to its content (leaving the dialog jammed top-left and the grid undimmed).
         overlay.setPreferredSize(screen);
@@ -680,8 +680,8 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
         sizeCornerButton(createBack, vh);
         sizeCornerButton(createClose, vh);
-        ((Node) popup).attachChild(createBack);
-        ((Node) popup).attachChild(createClose);
+        popup.attachChild(createBack);
+        popup.attachChild(createClose);
         UiHelper.placeCornerButtons(createBack, createClose,
                 app.getCamera().getWidth(), app.getCamera().getHeight());
     }
@@ -835,7 +835,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
     }
 
-    private class IgnoreMouseClickListener extends DefaultMouseListener {
+    private static class IgnoreMouseClickListener extends DefaultMouseListener {
         @Override
         public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
             event.setConsumed();

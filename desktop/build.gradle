@@ -1,4 +1,9 @@
-apply plugin: "java"
+plugins {
+    id 'application'
+    // jlink (minimal JRE) + jpackage (self-contained native installers) for a non-modular app.
+    id 'org.beryx.runtime' version '2.0.1'
+}
+
 sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
@@ -23,14 +28,15 @@ test {
     useJUnitPlatform()
 }
 
-// Launch the desktop game (there is no application plugin). Example:
+application {
+    mainClass = 'org.delaunois.ialon.DesktopLauncher'
+}
+
+// Launch the desktop game from the repo root (the `run` task is provided by the application
+// plugin). Examples:
 //   ./gradlew :desktop:run
 //   ./gradlew :desktop:run -Phitch=15     # enable the render-thread hitch profiler (threshold ms)
-tasks.register('run', JavaExec) {
-    group = 'application'
-    description = 'Launch the desktop game (org.delaunois.ialon.DesktopLauncher).'
-    mainClass = 'org.delaunois.ialon.DesktopLauncher'
-    classpath = sourceSets.main.runtimeClasspath
+run {
     // Run from the repo root: ./save (worlds) and the native libs that jME/Minie extract & load
     // (libbulletjme.so, liblwjgl64.so, libopenal64.so) all live there.
     workingDir = rootProject.projectDir
@@ -42,4 +48,44 @@ tasks.register('run', JavaExec) {
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+// --- Distribution: self-contained installers (bundled minimal JRE) via jlink + jpackage. ---
+// Build (must disable the configuration cache, which jpackage/runtime do not support):
+//   ./gradlew :desktop:jpackage -PinstallerType=deb -PappVersion=1.0.0 --no-configuration-cache   # Linux
+//   ./gradlew :desktop:jpackage -PinstallerType=exe -PappVersion=1.0.0 --no-configuration-cache   # Windows
+runtime {
+    // JDK modules required at runtime by jME/AWT/LWJGL2/Minie + Jackson/logback/protobuf.
+    modules = ['java.base', 'java.desktop', 'java.logging', 'java.management',
+               'java.naming', 'java.xml', 'java.sql', 'jdk.unsupported']
+
+    // Trim the bundled JRE.
+    options = ['--strip-debug', '--compress', 'zip-6', '--no-header-files', '--no-man-pages']
+
+    def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+
+    jpackage {
+        imageName = 'Ialon'
+        installerName = 'Ialon'
+        appVersion = project.findProperty('appVersion') ?: '1.0.0'
+
+        // -Dialon.packaged=true tells DesktopLauncher to write saves & extract natives to a
+        // per-user writable directory instead of the (read-only) install directory.
+        jvmArgs = ['-Dialon.packaged=true']
+
+        // Installer type is chosen by the caller/CI (deb on Linux, exe on Windows).
+        if (project.hasProperty('installerType')) {
+            installerType = project.property('installerType')
+        }
+
+        if (isWindows) {
+            imageOptions = ['--icon', "${projectDir}/packaging/ialon.ico"]
+            installerOptions = ['--win-menu', '--win-shortcut', '--win-dir-chooser',
+                                '--win-per-user-install', '--vendor', 'Cédric de Launois']
+        } else {
+            imageOptions = ['--icon', "${projectDir}/packaging/ialon.png"]
+            installerOptions = ['--linux-shortcut', '--linux-menu-group', 'Game',
+                                '--vendor', 'Cédric de Launois']
+        }
+    }
 }
