@@ -215,7 +215,7 @@ public final class CreationRepository {
 
     /** Derives a filesystem-safe, unique id from a name (e.g. "Creation 1" -> "creation-1"). */
     public static String generateUniqueId(Path savePath, String name) {
-        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(?:^-+)|(?:-+$)", "");
         if (base.isEmpty()) {
             base = "creation";
         }

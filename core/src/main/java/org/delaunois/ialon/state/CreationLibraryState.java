@@ -39,10 +39,7 @@ import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.InsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.SpringGridLayout;
-import com.simsilica.lemur.event.CursorButtonEvent;
 import com.simsilica.lemur.event.CursorEventControl;
-import com.simsilica.lemur.event.CursorMotionEvent;
-import com.simsilica.lemur.event.DefaultCursorListener;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.jme3.input.event.MouseButtonEvent;
 
@@ -67,7 +64,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class CreationLibraryState extends BaseAppState implements Resizable {
+public class CreationLibraryState extends BaseAppState implements Resizable, CardGrid.ScrollableGrid {
 
     private final IalonConfig config;
 
@@ -95,16 +92,12 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
     protected void initialize(Application application) {
         this.app = (SimpleApplication) application;
         popup = createPopup();
-        if (app.getStateManager().getState(ScreenState.class) != null) {
-            app.getStateManager().getState(ScreenState.class).register(this);
-        }
+        ScreenState.registerOn(app, this);
     }
 
     @Override
     protected void cleanup(Application application) {
-        if (application.getStateManager().getState(ScreenState.class) != null) {
-            application.getStateManager().getState(ScreenState.class).unregister(this);
-        }
+        ScreenState.unregisterFrom(application, this);
     }
 
     @Override
@@ -123,7 +116,7 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
         container.setLocalTranslation(0, app.getCamera().getHeight(), 100);
         container.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
         UiHelper.addBackground(container, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
-        CursorEventControl.addListenersToSpatial(container, new CardScrollListener(null));
+        CursorEventControl.addListenersToSpatial(container, new CardGrid.ScrollListener(this, null));
         view = new Node("creationLibraryView");
 
         // Header buttons at the top corners, exactly like the settings / new-world popups. Their font is
@@ -223,7 +216,7 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
                 gridContainer.addChild(createCard(creations.get(i), vw, vh), i / cols, i % cols);
             }
         }
-        CursorEventControl.addListenersToSpatial(gridContainer, new CardScrollListener(null));
+        CursorEventControl.addListenersToSpatial(gridContainer, new CardGrid.ScrollListener(this, null));
         view.attachChild(gridContainer);
 
         float gridH = gridContainer.getPreferredSize().y;
@@ -238,9 +231,43 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
         sizePopupToScreen();
     }
 
-    private void applyScroll() {
+    @Override
+    public void applyScroll() {
         if (gridContainer != null) {
             gridContainer.setLocalTranslation(gridLeftX, gridTopBase + scrollOffset, 2);
+        }
+    }
+
+    @Override
+    public float getMaxScroll() {
+        return maxScroll;
+    }
+
+    @Override
+    public boolean isGridVisible() {
+        return gridContainer != null && gridContainer.getParent() != null;
+    }
+
+    @Override
+    public float getScrollOffset() {
+        return scrollOffset;
+    }
+
+    @Override
+    public void setScrollOffset(float offset) {
+        this.scrollOffset = offset;
+    }
+
+    @Override
+    public float getScreenHeight() {
+        return app.getCamera().getHeight();
+    }
+
+    @Override
+    public void selectCard(String cardId) {
+        if (!cardId.equals(selectedId)) {
+            selectedId = cardId;
+            app.enqueue(this::rebuildGrid);
         }
     }
 
@@ -254,35 +281,12 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
         float captionH = 5.5f * vh;
 
         ColorRGBA frameColor = selected ? ColorRGBA.White : ColorRGBA.Black;
-        Container frame = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(frame, frameColor, config);
-        frame.setInsetsComponent(new InsetsComponent(halfGap, halfGap, halfGap, halfGap));
-
-        Container mat = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(mat, ColorRGBA.Black, config);
-        mat.setInsetsComponent(new InsetsComponent(border, border, border, border));
-
-        Container contentBox = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        contentBox.setInsetsComponent(new InsetsComponent(pad, pad, pad, pad));
-
-        Panel preview = new Panel();
-        preview.setPreferredSize(new Vector3f(contentW, previewH, 0));
         Texture tex = WorldPreview.loadFromKey(app.getAssetManager(), CreationRepository.previewAssetKey(creation.getId()));
-        if (tex != null) {
-            preview.setBackground(new QuadBackgroundComponent(tex));
-        }
-        contentBox.addChild(preview, 0, 0);
-
-        Label caption = new Label(creation.getName() + "\n"
-                + creation.getSizeX() + "x" + creation.getSizeY() + "x" + creation.getSizeZ(), IALON_STYLE);
-        caption.setFontSize(2.2f * vh);
-        caption.setColor(ColorRGBA.White);
-        caption.setPreferredSize(new Vector3f(contentW, captionH, 0));
-        contentBox.addChild(caption, 1, 0);
-
-        mat.addChild(contentBox);
-        frame.addChild(mat);
-        CursorEventControl.addListenersToSpatial(frame, new CardScrollListener(creation.getId()));
+        String captionText = creation.getName() + "\n"
+                + creation.getSizeX() + "x" + creation.getSizeY() + "x" + creation.getSizeZ();
+        Container frame = CardGrid.buildCard(config, frameColor, border, pad, halfGap, contentW, previewH,
+                captionH, tex, captionText, 2.2f * vh);
+        CursorEventControl.addListenersToSpatial(frame, new CardGrid.ScrollListener(this, creation.getId()));
         return frame;
     }
 
@@ -443,56 +447,4 @@ public class CreationLibraryState extends BaseAppState implements Resizable {
         }
     }
 
-    /** Drag-to-scroll + tap-to-select (mirrors the worlds menu). */
-    private class CardScrollListener extends DefaultCursorListener {
-        private final String creationId; // null = background catcher (scroll only)
-        private boolean capturing;
-        private float lastY;
-        private float dragAccum;
-
-        CardScrollListener(String creationId) {
-            this.creationId = creationId;
-        }
-
-        @Override
-        public void cursorButtonEvent(CursorButtonEvent event, Spatial target, Spatial capture) {
-            event.setConsumed();
-            if (event.isPressed()) {
-                capturing = true;
-                lastY = event.getY();
-                dragAccum = 0;
-            } else {
-                if (capturing && dragAccum < app.getCamera().getHeight() * 0.02f
-                        && creationId != null && !creationId.equals(selectedId)) {
-                    selectedId = creationId;
-                    app.enqueue(CreationLibraryState.this::rebuildGrid);
-                }
-                capturing = false;
-            }
-        }
-
-        @Override
-        public void cursorMoved(CursorMotionEvent event, Spatial target, Spatial capture) {
-            if (maxScroll <= 0 || gridContainer == null || gridContainer.getParent() == null) {
-                return;
-            }
-            int wheel = event.getScrollDelta();
-            if (wheel != 0) {
-                float step = app.getCamera().getHeight() * 0.001f;
-                scrollOffset = Math.max(0, Math.min(scrollOffset - wheel * step, maxScroll));
-                applyScroll();
-                event.setConsumed();
-                return;
-            }
-            if (!capturing) {
-                return;
-            }
-            float y = event.getY();
-            float dy = y - lastY;
-            lastY = y;
-            dragAccum += Math.abs(dy);
-            scrollOffset = Math.max(0, Math.min(scrollOffset + dy, maxScroll));
-            applyScroll();
-        }
-    }
 }
