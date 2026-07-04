@@ -86,6 +86,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     private static final float SPACING = 10;
     private static final int MAX_WORLDS = 20;
 
+    private final Random random = new Random();
     private SimpleApplication app;
     private IconButton button;
     private int buttonSize;
@@ -629,7 +630,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         // Android, and the screenshot preview already distinguishes worlds).
         // High-level generation sliders. Each maps to one or more existing generation parameters
         // (see WorldParams / NoiseTerrainGenerator). Defaults reproduce the standard world.
-        int randomSeed = new Random().nextInt(10000);
+        int randomSeed = random.nextInt(10000);
         Container sliders = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
         SettingsValue seed = addValue(sliders, 0, "Seed", 0, 9999, randomSeed, v -> String.valueOf(v.intValue()));
         SettingsValue water = addValue(sliders, 1, "Water height", 0, 60, 30, v -> String.valueOf(v.intValue()));
