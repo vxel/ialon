@@ -43,10 +43,7 @@ import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.InsetsComponent;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.SpringGridLayout;
-import com.simsilica.lemur.event.CursorButtonEvent;
 import com.simsilica.lemur.event.CursorEventControl;
-import com.simsilica.lemur.event.CursorMotionEvent;
-import com.simsilica.lemur.event.DefaultCursorListener;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
@@ -81,7 +78,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class WorldMenuState extends BaseAppState implements ActionListener, Resizable {
+public class WorldMenuState extends BaseAppState implements ActionListener, Resizable, CardGrid.ScrollableGrid {
 
     private static final float SPACING = 10;
     private static final int MAX_WORLDS = 20;
@@ -163,7 +160,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         // A full-screen scroll listener : it consumes clicks (so they don't reach the game, and the popup
         // does NOT close — closing is explicit via Close) and, since the popup spans the whole screen and
         // sits behind the grid, it catches wheel/drag scrolling anywhere not handled by a card.
-        CursorEventControl.addListenersToSpatial(worldPopup, new CardScrollListener(null));
+        CursorEventControl.addListenersToSpatial(worldPopup, new CardGrid.ScrollListener(this, null));
 
         // content (centred) is attached lazily, only for the create form. The worlds grid uses worldsView.
         // Horizontally centred ; vertically anchored to a fixed top margin (top inset 0, slack to bottom)
@@ -326,7 +323,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             gridContainer.addChild(createCard(worlds.get(i), vw, vh), i / cols, i % cols);
         }
         // Catch drags that start on the gaps between cards (cards catch their own).
-        CursorEventControl.addListenersToSpatial(gridContainer, new CardScrollListener(null));
+        CursorEventControl.addListenersToSpatial(gridContainer, new CardGrid.ScrollListener(this, null));
         worldsView.attachChild(gridContainer);
 
         // Visible band runs from the top margin down to the screen bottom ; the scroll range is the
@@ -345,9 +342,43 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     }
 
     /** Slides the grid vertically by the current scroll offset (clamped). */
-    private void applyScroll() {
+    @Override
+    public void applyScroll() {
         if (gridContainer != null) {
             gridContainer.setLocalTranslation(gridLeftX, gridTopBase + scrollOffset, 2);
+        }
+    }
+
+    @Override
+    public float getMaxScroll() {
+        return maxScroll;
+    }
+
+    @Override
+    public boolean isGridVisible() {
+        return gridContainer != null && gridContainer.getParent() != null;
+    }
+
+    @Override
+    public float getScrollOffset() {
+        return scrollOffset;
+    }
+
+    @Override
+    public void setScrollOffset(float offset) {
+        this.scrollOffset = offset;
+    }
+
+    @Override
+    public float getScreenHeight() {
+        return app.getCamera().getHeight();
+    }
+
+    @Override
+    public void selectCard(String cardId) {
+        if (!cardId.equals(selectedWorldId)) {
+            selectedWorldId = cardId;
+            app.enqueue(this::rebuildGrid);
         }
     }
 
@@ -404,44 +435,15 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         float previewH = 17 * vh;
         float captionH = 5.5f * vh;
 
-        // In Lemur an InsetsComponent reveals the PARENT's background in its margin (insets are applied
-        // outside the background). So the inset goes on the CHILD to expose its parent's colour :
-        //   frame (white bg) > mat (black bg, inset reveals the white frame) > content (transparent,
-        //   inset reveals the black mat) > preview + caption.
-        // A halfGap inset on the frame reveals the popup background, spacing the cards apart.
         // Currently loaded world : light-blue frame ; selected (but not loaded) : white frame ; others :
         // black frame (blends with the black mat, i.e. no frame).
         ColorRGBA frameColor = current ? new ColorRGBA(0.4f, 0.7f, 1f, 1f)
                 : (selected ? ColorRGBA.White : ColorRGBA.Black);
-        Container frame = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(frame, frameColor, config);
-        frame.setInsetsComponent(new InsetsComponent(halfGap, halfGap, halfGap, halfGap));
-
-        Container mat = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        UiHelper.addBackground(mat, ColorRGBA.Black, config);
-        mat.setInsetsComponent(new InsetsComponent(border, border, border, border));
-
-        Container contentBox = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        contentBox.setInsetsComponent(new InsetsComponent(pad, pad, pad, pad));
-
-        // Preview image (or the black mat as placeholder when no screenshot exists yet).
-        Panel preview = new Panel();
-        preview.setPreferredSize(new Vector3f(contentW, previewH, 0));
         Texture tex = WorldPreview.load(app.getAssetManager(), world.getId());
-        if (tex != null) {
-            preview.setBackground(new QuadBackgroundComponent(tex));
-        }
-        contentBox.addChild(preview, 0, 0);
-
-        Label caption = new Label(world.getName() + "\n" + formatDate(world.getId()), IALON_STYLE);
-        caption.setFontSize(2.2f * vh);
-        caption.setColor(ColorRGBA.White);
-        caption.setPreferredSize(new Vector3f(contentW, captionH, 0));
-        contentBox.addChild(caption, 1, 0);
-
-        mat.addChild(contentBox);
-        frame.addChild(mat);
-        CursorEventControl.addListenersToSpatial(frame, new CardScrollListener(world.getId()));
+        String captionText = world.getName() + "\n" + formatDate(world.getId());
+        Container frame = CardGrid.buildCard(config, frameColor, border, pad, halfGap, contentW, previewH,
+                captionH, tex, captionText, 2.2f * vh);
+        CursorEventControl.addListenersToSpatial(frame, new CardGrid.ScrollListener(this, world.getId()));
         return frame;
     }
 
@@ -842,64 +844,4 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         }
     }
 
-    /**
-     * Drag-to-scroll + tap-to-select on a card (or, with a null worldId, on the gaps between cards).
-     * Uses Lemur's cursor events (like DragHandler) rather than the legacy MouseListener, whose move
-     * events are not reliably delivered during a touch drag. A press captures the pointer ; vertical
-     * cursor motion scrolls the grid ; on release, a near-stationary press counts as a tap and selects.
-     */
-    private class CardScrollListener extends DefaultCursorListener {
-        private final String worldId; // null = background catcher (scroll only, no selection)
-        private boolean capturing;
-        private float lastY;
-        private float dragAccum;
-
-        CardScrollListener(String worldId) {
-            this.worldId = worldId;
-        }
-
-        @Override
-        public void cursorButtonEvent(CursorButtonEvent event, Spatial target, Spatial capture) {
-            event.setConsumed();
-            if (event.isPressed()) {
-                capturing = true;
-                lastY = event.getY();
-                dragAccum = 0;
-            } else {
-                if (capturing && dragAccum < app.getCamera().getHeight() * 0.02f
-                        && worldId != null && !worldId.equals(selectedWorldId)) {
-                    selectedWorldId = worldId;
-                    app.enqueue(WorldMenuState.this::rebuildGrid);
-                }
-                capturing = false;
-            }
-        }
-
-        @Override
-        public void cursorMoved(CursorMotionEvent event, Spatial target, Spatial capture) {
-            // No scroll when there is no overflow, or when the grid isn't the current view (create form).
-            if (maxScroll <= 0 || gridContainer == null || gridContainer.getParent() == null) {
-                return;
-            }
-            // Mouse wheel : one notch scrolls a fraction of the screen (wheel down reveals lower rows).
-            int wheel = event.getScrollDelta();
-            if (wheel != 0) {
-                float step = app.getCamera().getHeight() * 0.001f;
-                scrollOffset = Math.max(0, Math.min(scrollOffset - wheel * step, maxScroll));
-                applyScroll();
-                event.setConsumed();
-                return;
-            }
-            if (!capturing) {
-                return;
-            }
-            // Drag : content follows the finger (moving up, y increases, reveals lower rows).
-            float y = event.getY();
-            float dy = y - lastY;
-            lastY = y;
-            dragAccum += Math.abs(dy);
-            scrollOffset = Math.max(0, Math.min(scrollOffset + dy, maxScroll));
-            applyScroll();
-        }
-    }
 }

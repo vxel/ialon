@@ -106,16 +106,12 @@ public class CreationCaptureState extends BaseAppState implements Resizable, Blo
         hud.setTextHAlignment(HAlignment.Center);
         previewNode = createPreviewNode();
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
-        if (app.getStateManager().getState(ScreenState.class) != null) {
-            app.getStateManager().getState(ScreenState.class).register(this);
-        }
+        ScreenState.registerOn(app, this);
     }
 
     @Override
     protected void cleanup(Application application) {
-        if (application.getStateManager().getState(ScreenState.class) != null) {
-            application.getStateManager().getState(ScreenState.class).unregister(this);
-        }
+        ScreenState.unregisterFrom(application, this);
     }
 
     @Override
