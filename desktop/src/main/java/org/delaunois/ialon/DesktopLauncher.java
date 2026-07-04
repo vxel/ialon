@@ -18,16 +18,69 @@
 package org.delaunois.ialon;
 
 import com.jme3.system.AppSettings;
+import com.jme3.system.NativeLibraryLoader;
 import com.jme3.util.BufferAllocatorFactory;
 import com.jme3.util.PrimitiveAllocator;
 
 import org.delaunois.ialon.serialize.IalonConfigRepository;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 
 public class DesktopLauncher {
 
     static {
         System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
+        redirectWritesToUserDataDir();
+    }
+
+    /**
+     * When running from a packaged/installed build (started with {@code -Dialon.packaged=true},
+     * set by jpackage), the install directory is typically read-only. Redirect all runtime writes
+     * to a per-user, writable data directory:
+     * <ul>
+     *   <li>Windows: {@code %APPDATA%\Ialon}</li>
+     *   <li>Linux:   {@code $XDG_DATA_HOME/ialon} (or {@code ~/.local/share/ialon})</li>
+     * </ul>
+     * Setting {@code user.dir} makes relative paths resolve here — this covers the game saves
+     * ({@code ./save} in IalonConfig) and Minie's native extraction ({@code new File(".")}).
+     * {@code NativeLibraryLoader.setCustomExtractionFolder} does the same for jME's LWJGL/OpenAL
+     * natives. When not packaged (development runs), nothing is changed: saves stay under the
+     * working directory ({@code ./save}).
+     */
+    private static void redirectWritesToUserDataDir() {
+        if (!Boolean.getBoolean("ialon.packaged")) {
+            return;
+        }
+        try {
+            Path dataDir = resolveUserDataDir();
+            Files.createDirectories(dataDir);
+            String absolute = dataDir.toAbsolutePath().toString();
+            System.setProperty("user.dir", absolute);
+            NativeLibraryLoader.setCustomExtractionFolder(absolute);
+        } catch (Exception e) {
+            // Fall back to the default working directory; startup logging will surface any
+            // subsequent write failure.
+            System.err.println("Ialon: could not set up the user data directory: " + e.getMessage());
+        }
+    }
+
+    private static Path resolveUserDataDir() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win")) {
+            String appData = System.getenv("APPDATA");
+            if (appData != null && !appData.isEmpty()) {
+                return Paths.get(appData, "Ialon");
+            }
+            return Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "Ialon");
+        }
+        String xdg = System.getenv("XDG_DATA_HOME");
+        if (xdg != null && !xdg.isEmpty()) {
+            return Paths.get(xdg, "ialon");
+        }
+        return Paths.get(System.getProperty("user.home"), ".local", "share", "ialon");
     }
 
     public static void main(String[] args) {

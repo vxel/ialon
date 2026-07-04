@@ -1,0 +1,65 @@
+name: Release
+
+# Build self-contained installers (bundled JRE) for Linux and Windows and publish them to a
+# GitHub Release. jpackage cannot cross-compile, so each OS is built on its own runner.
+# Trigger by pushing a version tag, e.g.:  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            type: deb
+            artifact: 'desktop/build/jpackage/*.deb'
+          - os: windows-latest
+            type: exe
+            artifact: 'desktop/build/jpackage/*.exe'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # A full JDK 21 (includes jpackage + jmods, required by jlink/jpackage).
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # jpackage needs the WiX Toolset v3 to produce a Windows .exe/.msi.
+      - name: Install WiX (Windows)
+        if: runner.os == 'Windows'
+        run: choco install wixtoolset --no-progress -y
+
+      # Strip the leading "v" from the tag to get a jpackage-compatible version (e.g. v1.2.3 -> 1.2.3).
+      - name: Derive app version
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build installer
+        shell: bash
+        run: >
+          ./gradlew :desktop:jpackage
+          -PinstallerType=${{ matrix.type }}
+          -PappVersion=${{ steps.ver.outputs.version }}
+          --no-configuration-cache --stacktrace
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact }}
+          fail_on_unmatched_files: true

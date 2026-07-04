@@ -1,4 +1,4 @@
-<img src="https://user-images.githubusercontent.com/28866693/201870048-1ca6b73c-6e46-4e16-b00d-05d996c5ab92.png" width="100">
+<img src="https://user-images.githubusercontent.com/28866693/201870048-1ca6b73c-6e46-4e16-b00d-05d996c5ab92.png" width="100" alt="Ialon">
 
 # Ialon - A block (voxel) construction game
 
@@ -15,6 +15,16 @@ It is based on the jMonkeyEgine and the Blocks framework library.
 
 It is released under the GNU General Public License v3.0.
 
+Use Backspace to switch between desktop and mobile mode.
+In the Desktop mode :
+- Use Q,S,D,Z keys to move left, backward, right and forward
+- Use the mouse to rotate the camera
+- Use mouse left to add the selected block and mouse right to remove it
+- Use Esc key to exit
+- Use Space key to jump or to swim
+- Use F key to switch the Fly mode
+- In Fly mode, use de Up and Down arrow keys to go up or down.
+
 # Features
 
 - 250+ different blocks
@@ -28,27 +38,29 @@ It is released under the GNU General Public License v3.0.
 - Fly mode
 - Free, Ad-free, Open Source
 
-# Running Ialon
+# Installing Ialon
 
 ## Desktop version
 
-Run the org.delaunois.ialon.DesktopLauncher Gradle Task.
+Self-contained installers (a trimmed Java runtime is bundled - **no Java installation required**)
+are published on the [Releases page](https://github.com/vxel/ialon/releases) for each tagged version.
 
-Use Backspace to switch between desktop and mobile mode.
-In the Desktop mode :
-- Use Q,S,D,Z keys to move left, backward, right and forward
-- Use the mouse to rotate the camera
-- Use mouse left to add the selected block and mouse right to remove it
-- Use Esc key to exit
-- Use Space key to jump or to swim
-- Use F key to switch the Fly mode
-- In Fly mode, use de Up and Down arrow keys to go up or down.
+- **Linux** - download `ialon_<version>_amd64.deb` and install it:
+  ```bash
+  sudo dpkg -i ialon_<version>_amd64.deb
+  ```
+  The game is installed under `/opt/ialon` and appears in the applications menu (category *Game*).
+  Saved worlds live in `~/.local/share/ialon` (or `$XDG_DATA_HOME/ialon`).
+
+- **Windows** - download `Ialon-<version>.exe`, run it and follow the installer. A Start-menu and
+  desktop shortcut are created. Saved worlds live in `%APPDATA%\Ialon`.
+
+The Android version is not distributed as an installer yet (see *Android Version* below).
 
 ## Android Version
 
 Currently, you need android-studio to import the projet, build the code, upload the apk on a connected Android device and to run it.
 In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
-
 
 # Screenshots
 
@@ -90,5 +102,37 @@ Water simulation and Minecraft-like lightning :
 # Developer
 
 [![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
+
+## Building the installers
+
+The `:desktop` module uses the [Beryx runtime plugin](https://github.com/beryx/badass-runtime-plugin)
+to assemble a minimal JRE (via `jlink`) and a native installer (via `jpackage`). A **full JDK 21**
+is required (it must provide `jpackage` and `jmods`).
+
+```bash
+# Linux (.deb) — needs dpkg-deb + fakeroot (present on Ubuntu)
+./gradlew :desktop:jpackage -PinstallerType=deb -PappVersion=1.0.0 --no-configuration-cache
+
+# Windows (.exe) — needs the WiX Toolset v3
+./gradlew :desktop:jpackage -PinstallerType=exe -PappVersion=1.0.0 --no-configuration-cache
+```
+
+`--no-configuration-cache` is required (the `jpackage`/`runtime` tasks are not compatible with the
+configuration cache). The installer is written to `desktop/build/jpackage/`. Note that `jpackage`
+cannot cross-compile: a Windows `.exe` can only be built on Windows, and a `.deb` on Linux.
+
+Packaged builds are started with `-Dialon.packaged=true`, which redirects saved worlds and native
+library extraction to a per-user, writable directory (see *Installing Ialon* above), so the app
+works when installed in a read-only location such as `/opt`.
+
+## Publishing a release
+
+Pushing a version tag triggers the [`Release`](.github/workflows/release.yml) workflow, which builds
+the Linux and Windows installers on their respective runners and attaches them to a GitHub Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 Cédric de Launois
