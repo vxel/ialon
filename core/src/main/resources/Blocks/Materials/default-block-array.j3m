@@ -1,0 +1,18 @@
+// TextureArray variant of default-block.j3m. DiffuseArray is bound in code (TypeRegistry).
+Material normal-block-array : Blocks/MatDefs/IalonArray.j3md {
+
+    MaterialParameters {
+        Shininess: 0
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 1.0
+        VertexLighting: true
+        UseVertexColor: true
+        AlphaDiscardThreshold : 0
+    }
+
+    AdditionalRenderState {
+        PolyOffset -0.2 -0.2
+    }
+
+}

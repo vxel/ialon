@@ -361,13 +361,16 @@ public class IalonInitializer {
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
         typeRegistry.setTheme(new BlocksTheme("Ialon", "/IalonTheme"));
-        typeRegistry.setAtlasManager(ialonConfig.getTextureAtlasManager());
         long start = System.nanoTime();
         typeRegistry.registerDefaultMaterials();
         log.info("registerDefaultMaterials: loaded block materials/textures in {} ms",
                 (System.nanoTime() - start) / 1_000_000);
 
         registerIalonBlocks();
+
+        // Prebuild the block texture array now, on the setup thread, so it is ready before any chunk
+        // meshing (which runs on the background pool) calls TypeRegistry.assignLayers.
+        typeRegistry.getBlockTextureArray();
     }
 
     public static void registerIalonBlocks() {

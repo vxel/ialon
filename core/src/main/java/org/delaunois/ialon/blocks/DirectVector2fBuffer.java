@@ -4,6 +4,7 @@ import com.jme3.math.Vector2f;
 import com.jme3.util.BufferUtils;
 
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 public class DirectVector2fBuffer {
 
@@ -37,6 +38,28 @@ public class DirectVector2fBuffer {
 
     public FloatBuffer getInternalBuffer() {
         return buff;
+    }
+
+    /**
+     * Quantizes the (block-local, [0,1]) UVs to normalized unsigned shorts : 2 bytes/component instead
+     * of 4. Bound with {@code setNormalized(true)}, the shader receives them back in [0,1]. Values are
+     * clamped to [0,1] (a stored UV outside the tile would otherwise wrap/overflow). 1/65535 precision
+     * is far finer than a 128 px tile texel.
+     */
+    public ShortBuffer getShortBuffer() {
+        int n = buff.position();
+        ShortBuffer sb = BufferUtils.createShortBuffer(n);
+        for (int i = 0; i < n; i++) {
+            float f = buff.get(i);
+            if (f < 0f) {
+                f = 0f;
+            } else if (f > 1f) {
+                f = 1f;
+            }
+            sb.put((short) Math.round(f * 65535f));
+        }
+        sb.flip();
+        return sb;
     }
 
     public int size() {

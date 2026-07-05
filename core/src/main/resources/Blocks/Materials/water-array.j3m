@@ -1,0 +1,23 @@
+// TextureArray variant of IalonTheme/water.j3m (flowing textured water). DiffuseArray is bound in code
+// (TypeRegistry) ; the scroll speed animates the flow, tiled natively by the array's Repeat wrap.
+Material water-still-array : Blocks/MatDefs/IalonArray.j3md {
+
+    MaterialParameters {
+        VertexLighting: true
+        UseVertexColor: true
+        UseMaterialColors: true
+        Ambient: 1.0 1.0 1.0 1.0
+        Diffuse: 1.0 1.0 1.0 0.7
+        Specular: 0.12 0.12 0.12 1.0
+        Shininess: 96
+
+        TextureScrollSpeedX : 0.0
+        TextureScrollSpeedY : -0.01
+    }
+
+    AdditionalRenderState {
+        Blend Alpha
+        PolyOffset -0.1 -0.1
+    }
+
+}

@@ -1,18 +1,10 @@
-Material normal-block : Blocks/MatDefs/Ialon.j3md {
+// Texture-sourcing container for block types (see Blocks/MatDefs/BlockSource.j3md). The DiffuseMap is a
+// placeholder replaced per type by the theme loader ; the image feeds the block TextureArray. Blocks
+// render from that array via default-block-array.j3m, not from this material.
+Material normal-block : Blocks/MatDefs/BlockSource.j3md {
 
     MaterialParameters {
-        Shininess: 0
-        UseMaterialColors: true
-        Ambient: 1.0 1.0 1.0 1.0
-        Diffuse: 1.0 1.0 1.0 1.0
-        VertexLighting: true
         DiffuseMap: Flip MagBilinear BilinearNearestMipMap IalonTheme/dummy.png
-        UseVertexColor: true
-        AlphaDiscardThreshold : 0
-    }
-
-    AdditionalRenderState {
-        PolyOffset -0.2 -0.2
     }
 
 }

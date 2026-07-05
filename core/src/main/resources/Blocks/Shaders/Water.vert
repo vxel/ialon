@@ -17,7 +17,7 @@ attribute vec3 inPosition;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
-    // Same perceptual light curve as Blocks/Shaders/Ialon.vert (16 discrete sun/torch levels).
+    // Same perceptual light curve as Blocks/Shaders/IalonArray.vert (16 discrete sun/torch levels).
     const float lightDecay = 2.2;
     const float levels[16] = float[16](
         0.0,

@@ -43,7 +43,10 @@ public class TextureAtlasManager {
     private Texture diffuseMap;
 
     public TextureAtlasManager() {
-        atlas = new TextureAtlas(2048, 2048);
+        // 1024² is ample for the atlas's remaining consumers (bitmap font 256², wagon 256², sun 256²,
+        // moon 128², ~14 UI icons 64², 4 far-tree billboards 64² ; ~0.3 Mpx of ~1 Mpx). Block tiles no
+        // longer live here — they render from the TextureArray (see TypeRegistry.getBlockTextureArray).
+        atlas = new TextureAtlas(1024, 1024);
     }
 
     public void addTexture(Texture texture, String mapName) {
