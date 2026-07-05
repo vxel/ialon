@@ -85,6 +85,7 @@ public enum IalonBlock {
 
     GRASS(TypeIds.GRASS, true, false, true, ShapeIds.CUBE, ShapeIds.SLAB, ShapeIds.DOUBLE_SLAB),
     GRASS_SNOW(TypeIds.GRASS_SNOW, true, false, true, ShapeIds.CUBE, ShapeIds.SLAB, ShapeIds.DOUBLE_SLAB),
+    GRASS_TOUNDRA(TypeIds.GRASS_TOUNDRA, true, false, true, ShapeIds.CUBE, ShapeIds.SLAB, ShapeIds.DOUBLE_SLAB),
     GRAVEL(TypeIds.GRAVEL, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     DIRT(TypeIds.DIRT, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),
     COBBLESTONE(TypeIds.COBBLESTONE, true, false, false, IalonShapeSet.STANDARD_SHAPES.getShapes()),

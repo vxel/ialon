@@ -43,6 +43,7 @@ import static org.delaunois.ialon.IalonBlock.DRAWERS;
 import static org.delaunois.ialon.IalonBlock.FIRE;
 import static org.delaunois.ialon.IalonBlock.GRASS;
 import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
+import static org.delaunois.ialon.IalonBlock.GRASS_TOUNDRA;
 import static org.delaunois.ialon.IalonBlock.GRAVEL;
 import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
 import static org.delaunois.ialon.IalonBlock.ITEM_MUSHROOM;
@@ -169,6 +170,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     private static final String[] BLOCK_IDS = {
             getName(GRASS, CUBE),
             getName(GRASS_SNOW, CUBE),
+            getName(GRASS_TOUNDRA, CUBE),
             WATER_SOURCE,
             getName(WHITE_LIGHT, SHORT_POLE),
             getName(SCALE, SQUARE_NORTH),

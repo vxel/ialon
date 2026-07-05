@@ -17,6 +17,7 @@ public interface TypeIds {
     String GRAVEL = "gravel";
     String GRASS = "grass";
     String GRASS_SNOW = "grass_snow";
+    String GRASS_TOUNDRA = "grass_toundra";
     String PALM_TREE_LOG = "palm_tree_log";
     String PALM_TREE_PLANKS = "palm_tree_planks";
     String ROCK = "rock";
