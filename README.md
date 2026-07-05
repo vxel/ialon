@@ -64,7 +64,7 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 
 # Screenshots
 
-## Version Beta 6
+## Version 0.7.0
 
 - Far horizon and improved world generation
   ![Screenshot Ialon 6](https://github.com/user-attachments/assets/80c2283e-e6b4-4630-b1f1-d9ae1dd24168)
@@ -73,32 +73,32 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 - Supports multiple worlds :
   ![Screenshot Ialon 9](https://github.com/user-attachments/assets/67db1101-3da2-4a97-854e-2d5eaa231ef8)
 
-## Version Beta 5
+## Version 0.5.0
 
 - New font for the User Interface
 - New Setup menu
 - Soft Shadows for wedge blocks (see the roof in the following screenshot) :
 ![Screenshot Ialon 6](https://github.com/vxel/ialon/assets/28866693/8a9fb54d-3a46-46c7-b3fd-27ee34e49bdf)
 
-## Version Beta 4
+## Version 0.4.0
 
 New block selection popup and new blocks (bed, drawers, oven, books...)
 
 ![Screenshot Ialon 6](https://user-images.githubusercontent.com/28866693/254984090-0d28e49b-0e87-4d23-a0b4-d3db6dadf6e4.jpg)
 
-## Version Beta 3
+## Version 0.3.0
 
 Rail system 
 
 ![Screenshot Ialon 5](https://user-images.githubusercontent.com/28866693/254984107-282fff7a-4b6f-4cda-9d68-f82e60bf4580.jpg)
 
-## Version Beta 2
+## Version 0.2.0
 
 Soft shadows
 
 ![Screenshot Ialon 4](https://user-images.githubusercontent.com/28866693/249278557-8a9ee388-2e61-4eeb-8c6c-b24d0ee17f75.jpg)
 
-## Version Beta 1
+## Version 0.1.0
 
 Water simulation and Minecraft-like lightning :
 
