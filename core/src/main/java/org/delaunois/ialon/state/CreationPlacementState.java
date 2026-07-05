@@ -53,6 +53,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.Block;
+import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
@@ -572,7 +573,15 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
                 creation.getName(), anchor, touched.size(), skipped);
     }
 
-    /** Sets full sunlight on the air cells of the box + a one-cell margin (see {@link #apply}). */
+    /**
+     * Sets full sunlight on the air cells of the box + a one-cell margin, and zeroes the sunlight of the
+     * stamped solid cells (see {@link #apply}). The air cells stay lit so exposed faces sample lit air ;
+     * the darkened solid cells give the neighbouring exposed faces their ambient-occlusion corner
+     * shadowing (smooth lighting averages the light of the cells around each face corner, so a dark solid
+     * corner is what darkens the corner). This mirrors {@code WorldManager}'s per-block sunlight removal,
+     * which zeroes the added block's own cell — but without the (too slow here) flood propagation, so it
+     * restores face AO without full self-shadowing of the interior.
+     */
     private void relight(ChunkManager chunkManager, Vec3i anchor, int sizeX, int sizeY, int sizeZ,
                          float scale, Set<Vec3i> touched) {
         for (int y = -1; y <= sizeY; y++) {
@@ -587,8 +596,18 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
                         continue;
                     }
                     Vec3i local = chunk.toLocalLocation(ChunkManager.getBlockLocation(scratch));
-                    if (chunk.getBlock(local.x, local.y, local.z) == null) {
+                    Block block = chunk.getBlock(local.x, local.y, local.z);
+                    if (block == null) {
                         chunk.setSunlight(local.x, local.y, local.z, 15);
+                        touched.add(chunkLoc);
+                    } else if (x >= 0 && x < sizeX && y >= 0 && y < sizeY && z >= 0 && z < sizeZ) {
+                        // Stamped cell (only the box, so surrounding terrain light is left untouched).
+                        // Only a full opaque cube actually occludes light : darken it so neighbouring
+                        // exposed faces get their AO corner shadowing. Non-occluders (wedges, slabs, glass,
+                        // rails...) let light through and have faces that sample their own cell, so keep
+                        // them lit or they render black.
+                        boolean occluder = !block.isTransparent() && ShapeIds.CUBE.equals(block.getShape());
+                        chunk.setSunlight(local.x, local.y, local.z, occluder ? 0 : 15);
                         touched.add(chunkLoc);
                     }
                 }
