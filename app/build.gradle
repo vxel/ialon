@@ -11,10 +11,25 @@ android {
         minSdkVersion 26
         targetSdk 36
         versionCode 1
-        versionName "1.0"
+        versionName project.hasProperty('appVersion') ? project.property('appVersion') : "1.0"
         multiDexEnabled = true
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Release signing is driven by environment variables so local/debug builds stay unaffected
+    // (the config is only wired in when ANDROID_KEYSTORE_FILE is present, e.g. in CI). The keystore
+    // itself never lives in the repo — CI decodes it from a base64 secret into a temp file.
+    signingConfigs {
+        release {
+            def ksPath = System.getenv('ANDROID_KEYSTORE_FILE')
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +39,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (System.getenv('ANDROID_KEYSTORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
