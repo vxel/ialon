@@ -44,19 +44,30 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install wixtoolset --no-progress -y
 
-      # Strip the leading "v" from the tag to get a jpackage-compatible version (e.g. v1.2.3 -> 1.2.3).
+      # Derive two versions from the tag:
+      #  - version:    the tag without the leading "v" (e.g. v1.2.3-beta.6 -> 1.2.3-beta.6),
+      #                used verbatim for the .deb (Debian versioning allows pre-release suffixes).
+      #  - numeric:    only the leading numeric X.Y.Z (e.g. 1.2.3), required by jpackage on Windows
+      #                where MSI/WiX rejects any non-numeric component (e.g. "1.0.0-beta.6" fails).
       - name: Derive app version
         id: ver
         shell: bash
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "numeric=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Build installer
         shell: bash
-        run: >
-          ./gradlew :desktop:jpackage
-          -PinstallerType=${{ matrix.type }}
-          -PappVersion=${{ steps.ver.outputs.version }}
-          --no-configuration-cache --stacktrace
+        run: |
+          appversion="${{ steps.ver.outputs.version }}"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            appversion="${{ steps.ver.outputs.numeric }}"
+          fi
+          ./gradlew :desktop:jpackage \
+            -PinstallerType=${{ matrix.type }} \
+            -PappVersion="${appversion}" \
+            --no-configuration-cache --stacktrace
 
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
