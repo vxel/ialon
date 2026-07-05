@@ -18,6 +18,7 @@
 package org.delaunois.ialon;
 
 import com.jme3.app.DebugKeysAppState;
+import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
 import com.simsilica.lemur.GuiGlobals;
@@ -33,18 +34,18 @@ import org.delaunois.ialon.state.CreationLibraryState;
 import org.delaunois.ialon.state.CreationPlacementState;
 import org.delaunois.ialon.state.HitchProfilerState;
 import org.delaunois.ialon.state.IalonDebugState;
-import org.delaunois.ialon.state.TimingNode;
 import org.delaunois.ialon.state.LightingState;
-import org.delaunois.ialon.state.MoonState;
-import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.MemoryGuardState;
+import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhotoModeState;
+import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
-import org.delaunois.ialon.state.StarState;
 import org.delaunois.ialon.state.SplashscreenState;
+import org.delaunois.ialon.state.StarState;
 import org.delaunois.ialon.state.SunState;
 import org.delaunois.ialon.state.TimeFactorState;
+import org.delaunois.ialon.state.TimingNode;
 import org.delaunois.ialon.state.UnderwaterState;
 import org.delaunois.ialon.state.WaterState;
 import org.delaunois.ialon.state.WireframeState;
@@ -184,6 +185,11 @@ public class Ialon extends SimpleApplication {
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
             stateManager.attach(new WireframeState());
+            // jME's per-step CPU/GPU frame profiler. It self-binds to F6 (toggles its own visibility)
+            // and starts hidden, so it only installs the AppProfiler overhead once actually shown.
+            DetailedProfilerState detailedProfiler = new DetailedProfilerState();
+            detailedProfiler.setEnabled(false);
+            stateManager.attach(detailedProfiler);
             //stateManager.attach(new WagonState());
         }
 

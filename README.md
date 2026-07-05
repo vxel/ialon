@@ -24,7 +24,8 @@ In Desktop mode :
 - Use Esc key to exit
 - Use Space key to jump or to swim
 - Use F key to switch the Fly mode
-- In Fly mode, use the Up and Down arrow keys to go up or down.
+- Use F2 to switch beween windowed and fullscreen modes
+- In Fly mode, use the Up and Down arrow keys to go up or down
 
 # Features
 
