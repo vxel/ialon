@@ -95,7 +95,16 @@ public class DesktopLauncher {
         settings.setFrameRate(config.getMaxFramerate());
         settings.setGammaCorrection(true);
         settings.setResizable(true);
-        settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
+        // Launch in fullscreen by default ; the last-used mode is restored from the persisted config
+        // (game.yml) and updated live by the F2 toggle in ScreenState. -1x-1 lets jME pick the current
+        // desktop resolution for fullscreen (same convention as the runtime toggle).
+        if (config.isFullscreen()) {
+            settings.setFullscreen(true);
+            settings.setResolution(-1, -1);
+        } else {
+            settings.setFullscreen(false);
+            settings.setResolution(config.getScreenWidth(), config.getScreenHeight());
+        }
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);
         settings.setUseInput(true);
         settings.setAudioRenderer(null);

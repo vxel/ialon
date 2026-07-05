@@ -163,6 +163,8 @@ public class ScreenState extends BaseAppState implements ActionListener {
                 settings.setResolution(-1, -1);
                 settings.setFullscreen(true);
             }
+            // Remember the new mode so it is persisted (game.yml) and restored on the next launch.
+            config.setFullscreen(settings.isFullscreen());
             app.restart();
         }
     }

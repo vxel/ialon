@@ -14,7 +14,8 @@ import org.delaunois.ialon.blocks.TypeRegistry;
  */
 public class WireframeState extends BaseAppState implements ActionListener {
 
-    private static final KeyTrigger TOGGLE_WIREFRAME_TRIGGER = new KeyTrigger(KeyInput.KEY_W);
+    // F3 (was W) : W now belongs to the QWERTY movement diamond (forward), see IalonKeyMapping.
+    private static final KeyTrigger TOGGLE_WIREFRAME_TRIGGER = new KeyTrigger(KeyInput.KEY_F3);
     private static final String TOGGLE_WIREFRAME = "toggle-wireframe";
 
     private boolean isWireframe = false;

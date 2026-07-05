@@ -15,25 +15,25 @@ It is based on the jMonkeyEgine and the Blocks framework library.
 
 It is released under the GNU General Public License v3.0.
 
-Use Backspace to switch between desktop and mobile mode.
-In the Desktop mode :
-- Use Q,S,D,Z keys to move left, backward, right and forward
+Use **Tab** key to switch between desktop and mobile mode.
+
+In Desktop mode :
+- Use WASD / ZQSD keys to move left, backward, right and forward
 - Use the mouse to rotate the camera
 - Use mouse left to add the selected block and mouse right to remove it
 - Use Esc key to exit
 - Use Space key to jump or to swim
 - Use F key to switch the Fly mode
-- In Fly mode, use de Up and Down arrow keys to go up or down.
+- In Fly mode, use the Up and Down arrow keys to go up or down.
 
 # Features
 
-- 250+ different blocks
-- Shapes : cube, slab, wedge, pole, pyramid, stairs, corner stairs, fence, 
+- 400+ different blocks
+- Shapes : cube, slab, wedge, pole, pyramid, stairs, corner stairs, fence, slates
+- Create and switch between multiple worlds
 - Night/day cycle with Time acceleration factor
-- Light blocks
-- Slates
-- Water simulation
-- Supports blocks in water
+- Light and fire blocks
+- Water and lava simulation
 - Works on desktop or Android devices
 - Fly mode
 - Free, Ad-free, Open Source

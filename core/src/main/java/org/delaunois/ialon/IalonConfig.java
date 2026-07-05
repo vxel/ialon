@@ -46,6 +46,10 @@ public class IalonConfig implements WorldSettings {
     private boolean manualGammaEncode = false;
     private int screenWidth = 1520;
     private int screenHeight = 720;
+    // Desktop windowing mode. Defaults to fullscreen ; toggled at runtime with F2 (ScreenState) and
+    // persisted in game.yml so the last-used mode is restored on the next launch (DesktopLauncher).
+    // Ignored on Android (always fullscreen).
+    private boolean fullscreen = true;
     private int maxUpdatePerFrame = 8;
     private int chunkPoolsize = defaultChunkPoolSize();
 
