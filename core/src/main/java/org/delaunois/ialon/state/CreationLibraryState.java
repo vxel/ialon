@@ -64,7 +64,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class CreationLibraryState extends BaseAppState implements Resizable, CardGrid.ScrollableGrid {
+public class CreationLibraryState extends BaseAppState implements Resizable, CardGrid.ScrollableGrid, Popup {
 
     private final IalonConfig config;
 
@@ -147,6 +147,16 @@ public class CreationLibraryState extends BaseAppState implements Resizable, Car
         sizePopupToScreen();
         layoutCornerButtons();
         setPlayerTouchEnabled(false);
+    }
+
+    @Override
+    public boolean isPopupOpen() {
+        return popup != null && popup.getParent() != null;
+    }
+
+    @Override
+    public void closePopup() {
+        hidePopup();
     }
 
     /** Closes the library and reopens the worlds menu (owned by {@link WorldMenuState}). */

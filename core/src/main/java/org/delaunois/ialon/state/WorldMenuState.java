@@ -78,7 +78,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class WorldMenuState extends BaseAppState implements ActionListener, Resizable, CardGrid.ScrollableGrid {
+public class WorldMenuState extends BaseAppState implements ActionListener, Resizable, CardGrid.ScrollableGrid, Popup {
 
     private static final float SPACING = 10;
     private static final int MAX_WORLDS = 20;
@@ -179,6 +179,16 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         } else {
             hidePopup();
         }
+    }
+
+    @Override
+    public boolean isPopupOpen() {
+        return popup != null && popup.getParent() != null;
+    }
+
+    @Override
+    public void closePopup() {
+        hidePopup();
     }
 
     public void showPopup() {

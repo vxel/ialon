@@ -162,7 +162,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class BlockSliderSelectionState extends BaseAppState implements Resizable {
+public class BlockSliderSelectionState extends BaseAppState implements Resizable, Popup {
 
     private static final String BLOCK_NAME = "blockName";
     private static final ColorRGBA BLOCK_AMBIENT_LIGHT = ColorRGBA.White.mult(.7f);
@@ -415,6 +415,16 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         } else {
             hideBlockMenu();
         }
+    }
+
+    @Override
+    public boolean isPopupOpen() {
+        return menuBlock != null && menuBlock.getParent() != null;
+    }
+
+    @Override
+    public void closePopup() {
+        hideBlockMenu();
     }
 
     public Block getSelectedBlock() {

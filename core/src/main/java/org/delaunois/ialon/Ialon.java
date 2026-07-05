@@ -21,6 +21,9 @@ import com.jme3.app.DebugKeysAppState;
 import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
+import com.jme3.input.KeyInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.anim.AnimationState;
 
@@ -36,8 +39,10 @@ import org.delaunois.ialon.state.HitchProfilerState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
 import org.delaunois.ialon.state.MemoryGuardState;
+import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhotoModeState;
+import org.delaunois.ialon.state.Popup;
 import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
@@ -137,7 +142,55 @@ public class Ialon extends SimpleApplication {
         IalonInitializer.setupCamera(this);
         IalonInitializer.setupViewPort(this);
         GuiGlobals.initialize(this); // required by the splashscreen's Lemur UI ; moved out of setupGui()
+        setupExitAction();
         stateManager.attach(new SplashscreenState(config));
+    }
+
+    /**
+     * Overrides jME's default ESC-quits-the-game binding : when a UI popup (world menu, settings, minimap,
+     * block picker...) is open, ESC closes that popup instead of stopping the application. With no popup
+     * open, ESC still quits, preserving the previous behaviour.
+     */
+    private void setupExitAction() {
+        if (inputManager == null) {
+            return; // headless context (e.g. screenshot harness) : no input, nothing to rebind
+        }
+        // SimpleApplication.initialize() already mapped INPUT_MAPPING_EXIT to ESC with a listener that
+        // calls stop(). Drop that mapping (which unbinds jME's listener) and rebind ESC to our own handler.
+        if (inputManager.hasMapping(INPUT_MAPPING_EXIT)) {
+            inputManager.deleteMapping(INPUT_MAPPING_EXIT);
+        }
+        inputManager.addMapping(INPUT_MAPPING_EXIT, new KeyTrigger(KeyInput.KEY_ESCAPE));
+        inputManager.addListener(exitActionListener, INPUT_MAPPING_EXIT);
+    }
+
+    private final ActionListener exitActionListener = (name, isPressed, tpf) -> {
+        if (!isPressed && !closeOpenPopup()) {
+            stop();
+        }
+    };
+
+    /**
+     * Closes the top open popup, if any. Only one modal is normally open at a time, so a single popup is
+     * closed per ESC press.
+     *
+     * @return {@code true} if a popup was open and got closed ; {@code false} if none was open.
+     */
+    private boolean closeOpenPopup() {
+        return closeIfOpen(BlockSliderSelectionState.class)
+                || closeIfOpen(MinimapState.class)
+                || closeIfOpen(SettingsState.class)
+                || closeIfOpen(CreationLibraryState.class)
+                || closeIfOpen(WorldMenuState.class);
+    }
+
+    private boolean closeIfOpen(Class<? extends AppState> type) {
+        AppState state = stateManager.getState(type);
+        if (state instanceof Popup && ((Popup) state).isPopupOpen()) {
+            ((Popup) state).closePopup();
+            return true;
+        }
+        return false;
     }
 
     /**

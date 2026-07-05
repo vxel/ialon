@@ -56,7 +56,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SettingsState extends BaseAppState implements ActionListener, Resizable {
+public class SettingsState extends BaseAppState implements ActionListener, Resizable, Popup {
 
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
@@ -359,6 +359,16 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
             app.getGuiNode().attachChild(popup);
             app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
         }
+    }
+
+    @Override
+    public boolean isPopupOpen() {
+        return popup != null && popup.getParent() != null;
+    }
+
+    @Override
+    public void closePopup() {
+        hidePopup();
     }
 
     /** Closes the settings popup and reopens the worlds menu (owned by {@link WorldMenuState}). */
