@@ -64,6 +64,15 @@ In Fly mode, use the Jump + Forward or Backward buttons to go up or down.
 
 # Screenshots
 
+## Version Beta 6
+
+- Far horizon and improved world generation
+  ![Screenshot Ialon 6](https://github.com/user-attachments/assets/80c2283e-e6b4-4630-b1f1-d9ae1dd24168)
+- Lava
+  ![Screenshot Ialon 8](https://github.com/user-attachments/assets/d44c7edb-0d23-48bc-9eea-da51887f1c10)
+- Supports multiple worlds :
+  ![Screenshot Ialon 9](https://github.com/user-attachments/assets/67db1101-3da2-4a97-854e-2d5eaa231ef8)
+
 ## Version Beta 5
 
 - New font for the User Interface
