@@ -356,6 +356,20 @@ public class Liquid implements Shape {
 
 
     private boolean isLiquidFaceVisible(BlockNeighborhood neighborhood, Direction direction) {
+        Block center = neighborhood.getCenterBlock();
+
+        // A structure standing in water (a stair, slab, wedge... co-habiting this liquid cell) seals the
+        // faces its own opaque geometry fully covers : there is no liquid surface there, so emitting one
+        // would only produce a quad coplanar with the structure's opaque face — the z-fighting seen in the
+        // back of a stair standing in water. A pure liquid cell's own shape covers no face (default), so
+        // this never culls normal water.
+        if (center != null && BlocksConfig.getInstance()
+                .getShapeRegistry()
+                .get(center.getShape())
+                .fullyCoversFace(direction)) {
+            return false;
+        }
+
         // A liquid face is always visible except against a neighbouring liquid OF THE SAME TYPE.
         // A different liquid (water vs lava) keeps the boundary face so the two don't visually bleed
         // into one another (they never mix — the flow stops at the boundary).
@@ -364,7 +378,6 @@ public class Liquid implements Shape {
             return true;
         }
         if (neighbour.getLiquidLevel() > 0) {
-            Block center = neighborhood.getCenterBlock();
             // Compare the LIQUID type of the two cells, not the block type : a non-liquid structure
             // co-habiting water (a submerged torch / ladder / seaweed) keeps its own block type while
             // the liquid filling its cell is water. Comparing block types here would treat that water
@@ -372,7 +385,26 @@ public class Liquid implements Shape {
             // two coplanar water quads that z-fight (the diagonal moiré seen around objects in water).
             return center == null || !liquidType(center).equals(liquidType(neighbour));
         }
-        return neighbour.isTransparent() || !ShapeIds.CUBE.equals(neighbour.getShape());
+
+        // Non-liquid neighbour. A transparent neighbour (glass, leaves, ...) never hides the liquid face.
+        if (neighbour.isTransparent()) {
+            return true;
+        }
+
+        // An opaque full cube always fully covers the boundary : cull the liquid face (fast path, the
+        // dominant shoreline / lakebed case).
+        if (ShapeIds.CUBE.equals(neighbour.getShape())) {
+            return false;
+        }
+
+        // Any other opaque shape : cull the liquid face only when the neighbour's shape fully covers the
+        // shared boundary square (e.g. the full back or base of a stair, slab or wedge sitting against the
+        // liquid). Otherwise the opaque neighbour face and this liquid face are coplanar and z-fight — the
+        // shimmer seen behind a stair placed in water. Mirrors Chunk#isFaceVisible.
+        return !BlocksConfig.getInstance()
+                .getShapeRegistry()
+                .get(neighbour.getShape())
+                .fullyCoversFace(direction.opposite());
     }
 
     /**
