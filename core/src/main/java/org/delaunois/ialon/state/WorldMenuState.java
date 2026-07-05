@@ -749,7 +749,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     }
 
     private String generateUniqueId(String name) {
-        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+)|(-+$)", "");
         if (base.isEmpty()) {
             base = "world";
         }
