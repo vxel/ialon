@@ -79,6 +79,7 @@ import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
 import static org.delaunois.ialon.IalonBlock.TILE_RED;
 import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
 import static org.delaunois.ialon.IalonBlock.WINDOW;
+import static org.delaunois.ialon.IalonBlock.WINDOW_WOOD;
 import static org.delaunois.ialon.blocks.BlockIds.LAVA_SOURCE;
 import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 import static org.delaunois.ialon.blocks.ShapeIds.BILLBOARD;
@@ -209,6 +210,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             getName(OAK_LEAVES, CUBE),
             getName(SPRUCE_LEAVES, CUBE),
             getName(WINDOW, CUBE),
+            getName(WINDOW_WOOD, CUBE),
             getName(ITEM_GRASS, CROSS_PLANE),
             getName(ITEM_SEAWEED, CROSS_PLANE),
             getName(ITEM_MUSHROOM, CROSS_PLANE),

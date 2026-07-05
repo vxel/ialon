@@ -28,6 +28,7 @@ import java.util.Set;
 public enum IalonBlock {
 
     WINDOW(TypeIds.WINDOW, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_WEST, ShapeIds.PLATE_EAST),
+    WINDOW_WOOD(TypeIds.WINDOW_WOOD, true, true, false, ShapeIds.CUBE, ShapeIds.PLATE, ShapeIds.PLATE_NORTH, ShapeIds.PLATE_SOUTH, ShapeIds.PLATE_WEST, ShapeIds.PLATE_EAST),
 
     WATER1(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID1), TypeIds.WATER, false, true, false, ShapeIds.LIQUID1, Block.LIQUID_LEVEL1),
     WATER2(BlockIds.getName(TypeIds.WATER, ShapeIds.LIQUID2), TypeIds.WATER, false, true, false, ShapeIds.LIQUID2, Block.LIQUID_LEVEL2),
