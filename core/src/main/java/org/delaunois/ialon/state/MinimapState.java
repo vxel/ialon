@@ -77,7 +77,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Cedric de Launois
  */
 @Slf4j
-public class MinimapState extends BaseAppState implements Resizable {
+public class MinimapState extends BaseAppState implements Resizable, Popup {
 
     // Gap (GUI pixels) between the minimap and the Jump button, matching ButtonManagerState's button gap.
     private static final float SPACING = 10f;
@@ -378,6 +378,16 @@ public class MinimapState extends BaseAppState implements Resizable {
             minimapPopup.removeFromParent();
             setPlayerTouchEnabled(true);
         }
+    }
+
+    @Override
+    public boolean isPopupOpen() {
+        return minimapPopup != null && minimapPopup.getParent() != null;
+    }
+
+    @Override
+    public void closePopup() {
+        hidePopup();
     }
 
     private void setPlayerTouchEnabled(boolean enabled) {
