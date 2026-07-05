@@ -1,0 +1,54 @@
+// GLSL100 (GLES2) is dropped : sampler2DArray requires GLSL ES 300+.
+MaterialDef IalonArray {
+
+    MaterialParameters {
+
+        Boolean VertexLighting
+        Float AlphaDiscardThreshold
+        Boolean UseMaterialColors
+        Boolean UseVertexColor
+
+        Color Ambient
+        Color Diffuse
+        Color Specular
+        Float Shininess : 1
+
+        // Diffuse texture array (one layer per block tile). Bound in code (TypeRegistry).
+        TextureArray DiffuseArray
+
+        // texture scroll speed (flowing water)
+        Float TextureScrollSpeedX
+        Float TextureScrollSpeedY
+
+        // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
+        // (e.g. Android GLES). See IalonArray.frag / IalonConfig.manualGammaEncode.
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        LightMode SinglePass
+
+        VertexShader GLSL310 GLSL300 GLSL150:   Blocks/Shaders/IalonArray.vert
+        FragmentShader GLSL310 GLSL300 GLSL150: Blocks/Shaders/IalonArray.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            NormalMatrix
+            WorldViewMatrix
+            ViewMatrix
+            CameraPosition
+            WorldMatrix
+            ViewProjectionMatrix
+            Time
+        }
+
+        Defines {
+            VERTEX_COLOR : UseVertexColor
+            VERTEX_LIGHTING : VertexLighting
+            MATERIAL_COLORS : UseMaterialColors
+            DIFFUSEARRAY : DiffuseArray
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+
+}

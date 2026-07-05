@@ -20,28 +20,20 @@ uniform vec3 g_CameraPosition;
 attribute vec3 inPosition;
 attribute vec2 inTexCoord;
 attribute vec3 inNormal;
+// Texture-array layer index for this vertex (bound as the 1-component TexCoord2 buffer).
+attribute float inTexCoord2;
 
-// Animated texture
+// Animated texture (flowing water)
 uniform float g_Time;
 uniform float m_TextureScrollSpeedX;
 uniform float m_TextureScrollSpeedY;
-
-const float ATLAS_SIZE = 2048.0;
-const float TEX_SIZE = 128.0;
-const float NUM_TEXTURES = ATLAS_SIZE / TEX_SIZE;
-const float UV_TEX_SIZE = 1.0 / NUM_TEXTURES;
-const float UV_PADDING = 0.25 * UV_TEX_SIZE;
-const float PADDED_UV_TEX_SIZE = UV_TEX_SIZE - 2.0 * UV_PADDING;
-
-flat out vec2 wrapCoordMin;
-flat out vec2 wrapCoordMax;
 
 out vec3 AmbientSum;
 out vec4 DiffuseSum;
 out vec3 SpecularSum;
 
 out vec2 texCoord;
-out float fogFactor;
+flat out float layer;
 
 #ifdef VERTEX_COLOR
     attribute vec4 inColor;
@@ -66,37 +58,20 @@ out float fogFactor;
     );
 #endif
 
-float len2(vec3 d) {
-    return d.x*d.x + d.y*d.y + d.z*d.z;
-}
-
 void main() {
     vec4 modelSpacePos = vec4(inPosition, 1.0);
     vec3 modelSpaceNorm = inNormal;
 
     gl_Position = TransformWorldViewProjection(modelSpacePos);
 
+    layer = inTexCoord2;
+
+    // Local [0,1] UVs over the tile. Flowing water scrolls by g_Time ; the sampler's Repeat wrap tiles
+    // the (seamlessly mirror-bordered) layer natively -- no per-tile atlas wrap math needed.
     if (abs(m_TextureScrollSpeedX) > 0.0 || abs(m_TextureScrollSpeedY) > 0.0) {
-        // Texture scrolling
-
-        // Index (x, y) of the tile in the texture atlas. Example : (4, 2)
-        vec2 tileAtlasIndex = floor(inTexCoord / UV_TEX_SIZE);
-
-        // UV offset of the tile in the texture atlas. Example : (0.08, 0.04)
-        vec2 tileOffset = tileAtlasIndex * UV_TEX_SIZE;
-
-        // Coordinate of the texture for this vertex, relative to the tile offset, e.g. (0, 0)
-        vec2 tileUV = inTexCoord - tileOffset;
-        wrapCoordMin = tileOffset + UV_PADDING;
-        wrapCoordMax = wrapCoordMin + PADDED_UV_TEX_SIZE;
-
-        // Scroll against time, modulo the (padded) texture size
-        vec2 delta = vec2(mod(g_Time * m_TextureScrollSpeedX, PADDED_UV_TEX_SIZE), mod(g_Time * m_TextureScrollSpeedY, PADDED_UV_TEX_SIZE));
-
-        texCoord = tileOffset + fract(tileUV) - delta;
-
+        vec2 delta = vec2(mod(g_Time * m_TextureScrollSpeedX, 1.0), mod(g_Time * m_TextureScrollSpeedY, 1.0));
+        texCoord = inTexCoord - delta;
     } else {
-        wrapCoordMin = vec2(0.0, 0.0);
         texCoord = inTexCoord;
     }
 
@@ -109,7 +84,6 @@ void main() {
          SpecularSum = m_Specular.rgb;
          DiffuseSum = m_Diffuse;
     #else
-         // Defaults: Ambient and diffuse are white, specular is black.
          AmbientSum  = g_AmbientLightColor.rgb;
          SpecularSum = vec3(0.0);
          DiffuseSum = vec4(1.0);
@@ -123,12 +97,10 @@ void main() {
          int SunIntensity = (packedLight >> 4) & 0xF;
          int TorchIntensity = packedLight & 0xF;
 
-         // Adapt the sunlight to the current ambient level (i.e. night or day)
          float lum = AmbientSum.r * 0.3 + AmbientSum.g * 0.59 + AmbientSum.b * 0.11;
          float sunlight = levels[SunIntensity] * lum;
          float torchlight = levels[TorchIntensity];
 
-         // Get the maximum light between Sun and Torch lights
          float lightLevel = min(max(sunlight, torchlight), 0.7f);
 
          AmbientSum.xyz = lightLevel * inColor.rgb;
@@ -136,7 +108,6 @@ void main() {
     #endif
 
     #ifdef VERTEX_LIGHTING
-         int i = 0;
          vec3 diffuseAccum  = vec3(0.0);
          vec3 specularAccum = vec3(0.0);
          vec4 diffuseColor;
@@ -157,7 +128,6 @@ void main() {
 
          float spotFallOff = 1.0;
          #if __VERSION__ >= 110
-         // allow use of control flow
          if (lightColor.w > 1.0) {
          #endif
               vec4 lightDirection = g_LightData[2];
@@ -173,9 +143,4 @@ void main() {
          DiffuseSum.rgb  *= diffuseAccum.rgb;
          SpecularSum.rgb *= specularAccum.rgb;
     #endif
-
-    //vec4 worldSpacePso = g_WorldMatrix * modelSpacePos;
-    //float dist2 = len2(worldSpacePso.xyz - g_CameraPosition.xyz);
-    //fogFactor = 1.3f - dist2 * 0.00002f;
-    //fogFactor = clamp(fogFactor, 0.0, 1.0);
 }

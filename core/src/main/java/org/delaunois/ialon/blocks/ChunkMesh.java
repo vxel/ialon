@@ -31,6 +31,10 @@ public class ChunkMesh {
     private final DirectVector2fBuffer uvs = new DirectVector2fBuffer(INITIAL_CAPACITY);
     private final DirectIntBuffer indices = new DirectIntBuffer(INITIAL_CAPACITY);
     private final DirectVector4fBuffer colors = new DirectVector4fBuffer(INITIAL_CAPACITY);
+    // Per-vertex texture-array layer index (one float per vertex), populated by the TextureArray path
+    // (TypeRegistry.assignLayers via FacesMeshGenerator). Empty for the atlas path and for the
+    // procedural fire/lava/calm-water meshes, whose materials don't sample the block array.
+    private final DirectFloatBuffer layers = new DirectFloatBuffer(INITIAL_CAPACITY);
 
     public ChunkMesh(boolean collisionMesh) {
         this.collisionMesh = collisionMesh;
@@ -53,7 +57,22 @@ public class ChunkMesh {
 
         // collision meshes don't require uvs, normals and tangents
         if (!isCollisionMesh()) {
-            mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, uvs.getBuffer());
+            // UVs are block-local [0,1] : store them as 2 normalized unsigned shorts (4 bytes/vertex
+            // instead of 8 floats). The shader receives them back in [0,1].
+            VertexBuffer uvBuffer = new VertexBuffer(VertexBuffer.Type.TexCoord);
+            uvBuffer.setupData(VertexBuffer.Usage.Static, 2, VertexBuffer.Format.UnsignedShort, uvs.getShortBuffer());
+            uvBuffer.setNormalized(true);
+            mesh.setBuffer(uvBuffer);
+            // Texture-array layer index, one per vertex (bound as TexCoord2 -> shader inTexCoord2), as a
+            // NON-normalized unsigned byte (1 byte instead of 4 floats ; the shader reads the integer
+            // index as a float). Only present on the array path ; the atlas path and procedural meshes
+            // leave it empty.
+            if (!layers.isEmpty()) {
+                VertexBuffer layerBuffer = new VertexBuffer(VertexBuffer.Type.TexCoord2);
+                layerBuffer.setupData(VertexBuffer.Usage.Static, 1, VertexBuffer.Format.UnsignedByte, layers.getByteBuffer());
+                layerBuffer.setNormalized(false);
+                mesh.setBuffer(layerBuffer);
+            }
             // Normals are unit vectors : store them as 3 normalized signed bytes (3 bytes/vertex
             // instead of 12). The shader normalizes the interpolated normal, so the byte quantization
             // is imperceptible. See DirectVector3fBuffer#getByteBuffer.
@@ -94,6 +113,7 @@ public class ChunkMesh {
         uvs.clear();
         indices.clear();
         colors.clear();
+        layers.clear();
     }
 
 }

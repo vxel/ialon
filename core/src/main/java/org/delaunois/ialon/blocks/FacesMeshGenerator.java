@@ -195,7 +195,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         meshMap.forEach((type, chunkMesh) -> {
             Geometry geometry = createGeometry(type, chunkMesh);
             if (geometry != null) {
-                BlocksConfig.getInstance().getTypeRegistry().transformTextureCoords(geometry, type);
+                // Both paths already finalised the UVs per shape in addShapeToMesh (atlas remap or
+                // local-UV + layer index), so no whole-geometry pass is needed here.
                 node.attachChild(geometry);
             }
         });
@@ -889,12 +890,12 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         int position = mesh.getUvs().getInternalBuffer().position();
         shape.add(neighborhood, mesh);
         int length = mesh.getUvs().getInternalBuffer().position() - position;
-        BlocksConfig.getInstance().getTypeRegistry().transformTextureCoords(textureName,
-                mesh.getUvs().getInternalBuffer(),
-                mesh.getUvs().getInternalBuffer(),
-                position,
-                length
-        );
+        // Keep the shape's local [0,1] UVs and emit a per-vertex texture-array layer index. The collision
+        // mesh has no UV buffer, so it is skipped.
+        if (!mesh.isCollisionMesh()) {
+            BlocksConfig.getInstance().getTypeRegistry().assignLayers(textureName,
+                    mesh.getUvs().getInternalBuffer(), position, length, mesh.getLayers());
+        }
     }
 
     /**
@@ -978,6 +979,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         switch (type) {
             case CHUNK_MESH_TYPE_WATER:
                 typeRegistry.applyMaterial(geometry, type);
+                // The water material (IalonArray) emulates sRGB in-shader like the generic one.
+                geometry.getMaterial().setBoolean("ManualSrgb", config.isManualGammaEncode());
                 geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
                 break;
             case CHUNK_MESH_TYPE_WATER_CALM:

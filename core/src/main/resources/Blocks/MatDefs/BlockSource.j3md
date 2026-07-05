@@ -1,0 +1,22 @@
+// Block texture SOURCING material - NOT a render material. The type registry loads each block type's
+// diffuse (and optional normal/parallax) texture through this container, expands it, and feeds it into
+// the block TextureArray (see TypeRegistry.buildBlockTextureArray). Blocks actually render from that
+// array via Blocks/MatDefs/IalonArray.j3md ; this matdef is never set on a geometry, so its technique
+// only needs to parse (it borrows the stock Unshaded shaders, never compiled here).
+MaterialDef Block Source {
+
+    MaterialParameters {
+        Texture2D DiffuseMap
+        Texture2D NormalMap -LINEAR
+        Texture2D ParallaxMap -LINEAR
+    }
+
+    Technique {
+        VertexShader   GLSL300 GLSL150 GLSL100: Common/MatDefs/Misc/Unshaded.vert
+        FragmentShader GLSL300 GLSL150 GLSL100: Common/MatDefs/Misc/Unshaded.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+        }
+    }
+}

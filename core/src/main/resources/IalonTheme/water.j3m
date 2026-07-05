@@ -1,23 +1,10 @@
-Material water-still : Blocks/MatDefs/Ialon.j3md {
+// Texture-sourcing container for the "water" block type (see Blocks/MatDefs/BlockSource.j3md). Provides
+// the water diffuse image for the block TextureArray ; flowing water renders (with scroll) from that
+// array via Blocks/Materials/water-array.j3m, not from this material.
+Material water-still : Blocks/MatDefs/BlockSource.j3md {
 
     MaterialParameters {
-        VertexLighting: true
-        UseVertexColor: true
-        UseMaterialColors: true
-        Ambient: 1.0 1.0 1.0 1.0
-        Diffuse: 1.0 1.0 1.0 0.7
-        Specular: 0.12 0.12 0.12 1.0
-        Shininess: 96
         DiffuseMap: Flip WrapRepeat_S WrapRepeat_T IalonTheme/water_calm.png
-
-        // custom
-        TextureScrollSpeedX : 0.0
-        TextureScrollSpeedY : -0.01
-    }
-
-    AdditionalRenderState {
-        Blend Alpha
-        PolyOffset -0.1 -0.1
     }
 
 }
