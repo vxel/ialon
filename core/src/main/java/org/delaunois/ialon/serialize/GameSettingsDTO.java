@@ -53,6 +53,9 @@ public class GameSettingsDTO {
     private boolean showPosition = false;
     private boolean showMinimap = true;
     private int maxFramerate = IalonConfig.FPS_LIMIT_DESKTOP;
+    // Desktop windowing mode. Default true (fullscreen) to match the launcher default for saves written
+    // before this field existed.
+    private boolean fullscreen = true;
 
     public GameSettingsDTO(IalonConfig config) {
         this.gridRadius = config.getGridRadius();
@@ -67,6 +70,7 @@ public class GameSettingsDTO {
         this.showPosition = config.isShowPosition();
         this.showMinimap = config.isShowMinimap();
         this.maxFramerate = config.getMaxFramerate();
+        this.fullscreen = config.isFullscreen();
     }
 
     public void applyTo(IalonConfig config) {
@@ -90,5 +94,6 @@ public class GameSettingsDTO {
         config.setShowMinimap(showMinimap);
         // Only 60 or 120 are offered ; guard against out-of-range values from edited/old saves.
         config.setMaxFramerate(maxFramerate == 60 ? 60 : IalonConfig.FPS_LIMIT_DESKTOP);
+        config.setFullscreen(fullscreen);
     }
 }

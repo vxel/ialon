@@ -59,9 +59,14 @@ public class IalonKeyMapping {
         inputManager.addMapping(ACTION_ADD_BLOCK, new KeyTrigger(KeyInput.KEY_RETURN));
         inputManager.addMapping(ACTION_ACTION_OBJECT, new KeyTrigger(KeyInput.KEY_T));
         inputManager.addMapping(ACTION_REMOVE_BLOCK, new KeyTrigger(KeyInput.KEY_DELETE));
-        inputManager.addMapping(ACTION_LEFT, new KeyTrigger(KeyInput.KEY_Q));
+        // Movement keys bind BOTH the AZERTY (ZQSD) and QWERTY (WASD) diamonds at once, so the layout
+        // adapts itself without any detection : an AZERTY player naturally uses Z/Q/S/D, a QWERTY player
+        // W/A/S/D. Only forward and left differ between layouts (S and D share the same slot in both).
+        // This is robust across platforms : jME's LWJGL key codes are character-based on Linux/X11 but
+        // positional (US) on Windows, and binding both keys covers the intended diamond either way.
+        inputManager.addMapping(ACTION_LEFT, new KeyTrigger(KeyInput.KEY_Q), new KeyTrigger(KeyInput.KEY_A));
         inputManager.addMapping(ACTION_RIGHT, new KeyTrigger(KeyInput.KEY_D));
-        inputManager.addMapping(ACTION_FORWARD, new KeyTrigger(KeyInput.KEY_Z));
+        inputManager.addMapping(ACTION_FORWARD, new KeyTrigger(KeyInput.KEY_Z), new KeyTrigger(KeyInput.KEY_W));
         inputManager.addMapping(ACTION_BACKWARD, new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping(ACTION_JUMP, new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping(ACTION_FIRE, new KeyTrigger(KeyInput.KEY_LCONTROL));
@@ -70,7 +75,7 @@ public class IalonKeyMapping {
         inputManager.addMapping(ACTION_FLY_UP, new KeyTrigger(KeyInput.KEY_UP));
         inputManager.addMapping(ACTION_FLY_DOWN, new KeyTrigger(KeyInput.KEY_DOWN));
         inputManager.addMapping(ACTION_DEBUG_CHUNK, new KeyTrigger(KeyInput.KEY_C));
-        inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_BACK));
+        inputManager.addMapping(ACTION_SWITCH_MOUSELOCK, new KeyTrigger(KeyInput.KEY_TAB));
 
         // Creation placement fine-adjust (desktop). Mobile uses the on-screen nudge buttons.
         inputManager.addMapping(ACTION_PLACE_X_MINUS, new KeyTrigger(KeyInput.KEY_J));
