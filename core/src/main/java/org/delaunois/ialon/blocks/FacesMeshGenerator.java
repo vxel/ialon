@@ -666,7 +666,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (calmWaterMaterial == null) {
             // All static tuning (waves, glint, Fresnel, blend, poly offset, placeholder sun/sky values)
             // lives in the j3m ; only the two config-driven values are overridden here.
-            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/water_calm.j3m");
+            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("Blocks/Textures/water_calm.j3m");
             // Surface transparency at the steepest (looking-down) angle, from the configured water alpha.
             mat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, config.getCalmWaterColor().a));
             mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
@@ -685,7 +685,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
      */
     public synchronized Material getFireMaterial() {
         if (fireMaterial == null) {
-            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/fire.j3m");
+            // The fire material (its .j3m path) is declared in blocks.yaml and registered in the
+            // TypeRegistry ; it carries no diffuse tile so it stays out of the texture array.
+            Material mat = BlocksConfig.getInstance().getTypeRegistry().get(TypeIds.FIRE);
             mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
             // Billboard size = one block in world units.
             mat.setFloat("Size", BlocksConfig.getInstance().getBlockScale());
@@ -703,7 +705,8 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
      */
     public synchronized Material getLavaMaterial() {
         if (lavaMaterial == null) {
-            Material mat = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/lava.j3m");
+            // Declared in blocks.yaml (material: Textures/lava.j3m), registered in the TypeRegistry.
+            Material mat = BlocksConfig.getInstance().getTypeRegistry().get(TypeIds.LAVA);
             mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
             lavaMaterial = mat;
         }
@@ -718,7 +721,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     public synchronized Material getLavaInsideMaterial() {
         if (lavaInsideMaterial == null) {
             // Flat translucent orange (Unshaded) — no procedural shader, no sRGB param needed.
-            lavaInsideMaterial = BlocksConfig.getInstance().getAssetManager().loadMaterial("IalonTheme/lava_inside.j3m");
+            lavaInsideMaterial = BlocksConfig.getInstance().getAssetManager().loadMaterial("Blocks/Textures/lava_inside.j3m");
         }
         return lavaInsideMaterial;
     }

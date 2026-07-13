@@ -17,11 +17,9 @@
 
 package org.delaunois.ialon;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
-import java.util.Locale;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -33,30 +31,21 @@ import lombok.Setter;
  * <b>liquid family</b> (a list of {@code variants}, each an explicitly named single-shape,
  * single-level block, as used by water and lava).
  * <p>
+ * The block's appearance is stated explicitly (this replaces the former {@code render} enum and
+ * the filename-convention theme lookup) : either a {@code texture} (a diffuse image packed into
+ * the block texture array) or a {@code material} (a {@code .j3m} rendered directly, e.g. the
+ * procedural fire/lava shaders — kept out of the array as it carries no diffuse tile). Both paths
+ * are relative to the folder holding {@code blocks.yaml} (i.e. {@code Blocks/}), so the catalog +
+ * its {@code Textures/} folder form a self-contained theme.
+ * <p>
  * Field defaults mirror the historical {@code IalonBlock} enum : {@code solid=true},
  * {@code transparent=false}, {@code multitexture=false}, {@code torchlight=false},
- * {@code terrain=false}, {@code render=ATLAS}.
+ * {@code terrain=false}.
  */
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IalonBlockDef {
-
-    /**
-     * How a block type's faces are textured. {@code ATLAS} types are registered in the
-     * {@code TypeRegistry} and packed into the block texture array ; {@code FIRE} and {@code LAVA}
-     * are rendered by dedicated procedural shaders and are therefore kept out of the atlas (their
-     * type is not registered), leaving their shape UVs raw for the shaders.
-     */
-    public enum RenderMode {
-        ATLAS, FIRE, LAVA;
-
-        /** Parse the lowercase YAML value (atlas/fire/lava) case-insensitively. */
-        @JsonCreator
-        public static RenderMode from(String value) {
-            return value == null ? ATLAS : RenderMode.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        }
-    }
 
     private String type;
     private boolean solid = true;
@@ -64,7 +53,12 @@ public class IalonBlockDef {
     private boolean multitexture = false;
     private boolean torchlight = false;
     private boolean terrain = false;
-    private RenderMode render = RenderMode.ATLAS;
+
+    /** Diffuse texture path (relative to the catalog folder). Atlas-array block. */
+    private String texture;
+
+    /** Material {@code .j3m} path (relative to the catalog folder). Procedural, kept out of the array. */
+    private String material;
 
     /** Name of a reusable shape bundle declared under {@code shapeSets:}. */
     private String shapeSet;

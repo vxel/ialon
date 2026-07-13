@@ -94,9 +94,15 @@ class BlockCatalogParityTest {
         assertTrue(registry.get("grass").isTerrain());
         assertFalse(registry.get("grass-slab_up-0").isTerrain());
 
-        Collection<String> types = BlocksConfig.getInstance().getTypeRegistry().getAll();
+        // Every block type is now registered with its explicit texture/material — including the
+        // procedural fire/lava (registered with their .j3m ; carrying no diffuse tile, they are skipped
+        // by the texture array). getMaterial confirms they resolve.
+        var typeRegistry = BlocksConfig.getInstance().getTypeRegistry();
+        Collection<String> types = typeRegistry.getAll();
         assertTrue(types.contains("water"));
-        assertFalse(types.contains("fire"));
-        assertFalse(types.contains("lava"));
+        assertTrue(types.contains("fire"));
+        assertTrue(types.contains("lava"));
+        assertNotNull(typeRegistry.get("fire"));
+        assertNotNull(typeRegistry.get("lava"));
     }
 }

@@ -11137,6 +11137,7 @@ TYPE|door_right
 TYPE|door_right_glass
 TYPE|door_right_metal
 TYPE|drawers
+TYPE|fire
 TYPE|grass
 TYPE|grass_snow
 TYPE|grass_toundra
@@ -11145,6 +11146,7 @@ TYPE|item_grass
 TYPE|item_mushroom
 TYPE|item_seaweed
 TYPE|item_sunflower
+TYPE|lava
 TYPE|metal1
 TYPE|metal2
 TYPE|metal3

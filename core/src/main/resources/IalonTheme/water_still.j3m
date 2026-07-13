@@ -1,8 +1,0 @@
-// Texture-sourcing container (see Blocks/MatDefs/BlockSource.j3md). Not a render material.
-Material water-still : Blocks/MatDefs/BlockSource.j3md {
-
-    MaterialParameters {
-        DiffuseMap: Flip WrapRepeat_S WrapRepeat_T IalonTheme/water_calm.png
-    }
-
-}

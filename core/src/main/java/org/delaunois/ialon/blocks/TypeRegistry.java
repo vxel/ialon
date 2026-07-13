@@ -1,7 +1,6 @@
 package org.delaunois.ialon.blocks;
 
 import com.jme3.asset.AssetManager;
-import com.jme3.asset.AssetNotFoundException;
 import com.jme3.asset.TextureKey;
 import com.jme3.material.MatParamTexture;
 import com.jme3.material.Material;
@@ -16,11 +15,8 @@ import com.jme3.texture.image.ColorSpace;
 import com.jme3.texture.image.ImageRaster;
 import com.jme3.util.BufferUtils;
 
-import org.delaunois.ialon.blocks.jme.TextureAtlas;
-
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,11 +32,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static java.util.Optional.empty;
-import static java.util.Optional.of;
 
 /**
  * A thread safe register for block types. The register is used so only one instance of a type is used throughout the
  * Blocks framework.
+ * <p>
+ * Types are registered with an explicit appearance : either a diffuse {@code texture} (packed into the block
+ * {@link #getBlockTextureArray() texture array}) via {@link #registerTexture(String, String)}, or a full
+ * {@code .j3m} {@code material} rendered directly (procedural fire/lava, kept out of the array as it carries no
+ * diffuse tile) via {@link #registerMaterial(String, String)}. The former filename-convention theme lookup is gone :
+ * the asset paths are supplied explicitly by the caller (from the YAML block catalog).
  *
  * @author rvandoosselaer
  */
@@ -49,18 +50,8 @@ public class TypeRegistry {
 
     public static final String DEFAULT_BLOCK_MATERIAL = "Blocks/Materials/default-block.j3m";
 
-    private enum TextureType {
-        DIFFUSE, NORMAL, PARALLAX;
-    }
-
     private final ConcurrentMap<String, Material> registry = new ConcurrentHashMap<>();
     private final AssetManager assetManager;
-
-    @Getter
-    private BlocksTheme theme;
-
-    @Getter
-    private BlocksTheme defaultTheme = new BlocksTheme("Soartex Fanver", "Blocks/Themes/default/");
 
     // Shared block materials (both sample the texture array). Built lazily, cached.
     private Material genericMaterial;
@@ -71,34 +62,33 @@ public class TypeRegistry {
     // layers matching the vertical thirds the shape emits (base+floor(v*3)).
     private final Map<String, int[]> typeLayers = new ConcurrentHashMap<>();
 
-    /**
-     * Will register default materials
-     */
     public TypeRegistry(@NonNull AssetManager assetManager) {
-        this(assetManager, null, true);
+        this.assetManager = assetManager;
     }
 
     /**
-     * Will register default materials
+     * Register a block type from an explicit diffuse texture. The type is materialed with a copy of the
+     * default block material and its {@code DiffuseMap} set to the given image, so it is packed into the
+     * block texture array.
+     *
+     * @param name        block type (grass, rock, ...)
+     * @param diffusePath asset path of the diffuse texture (e.g. {@code Blocks/Textures/grass.png})
      */
-    public TypeRegistry(@NonNull AssetManager assetManager, BlocksTheme theme) {
-        this(assetManager, theme, true);
+    public Material registerTexture(@NonNull String name, @NonNull String diffusePath) {
+        TexturesWrapper textures = new TexturesWrapper(expandTexture(new TextureKey(diffusePath)), empty(), empty());
+        return register(name, setTextures(textures, load(DEFAULT_BLOCK_MATERIAL)));
     }
 
-    public TypeRegistry(@NonNull AssetManager assetManager, BlocksTheme theme, boolean registerDefaultMaterials) {
-        this.assetManager = assetManager;
-        this.theme = theme;
-
-        if (registerDefaultMaterials) {
-            registerDefaultMaterials();
-        }
-    }
-
-    public Material register(@NonNull String name) {
-        // The registered material serves two purposes now : it is the source of the block's (expanded)
-        // diffuse image for the texture array (see buildBlockTextureArray), and it stays queryable via
-        // get(name). Block tiles are NOT packed into the atlas anymore — they render from the array.
-        return register(name, getMaterial(name));
+    /**
+     * Register a block type from an explicit {@code .j3m} material (e.g. the procedural fire/lava shaders).
+     * A material without a {@code DiffuseMap} carries no tile and is therefore skipped by the texture array
+     * (see {@link #buildBlockTextureArray()}).
+     *
+     * @param name         block type (fire, lava, ...)
+     * @param materialPath asset path of the material (e.g. {@code Blocks/Textures/fire.j3m})
+     */
+    public Material registerMaterial(@NonNull String name, @NonNull String materialPath) {
+        return register(name, expandMaterialTexture(assetManager.loadMaterial(materialPath)));
     }
 
     public void applyMaterial(@NonNull Geometry geom, @NonNull String name) {
@@ -280,7 +270,7 @@ public class TypeRegistry {
     }
 
     /**
-     * Texture-array counterpart of {@link #transformTextureCoords}. Leaves the shape's local [0,1] UVs in
+     * Texture-array counterpart of the per-tile UV mapping. Leaves the shape's local [0,1] UVs in
      * place (single tile) or rescales the vertical third to [0,1] (multi tile), and appends one texture
      * layer index per vertex to {@code layerBuf}. A type absent from the array (fire/lava) is left
      * untouched with no layer emitted.
@@ -347,10 +337,6 @@ public class TypeRegistry {
         return false;
     }
 
-    public boolean usingTheme() {
-        return theme != null;
-    }
-
     public void clear() {
         registry.clear();
     }
@@ -359,144 +345,8 @@ public class TypeRegistry {
         return Collections.unmodifiableCollection(registry.keySet());
     }
 
-    public void registerDefaultMaterials() {
-        register(TypeIds.BIRCH_LOG);
-        register(TypeIds.BIRCH_PLANKS);
-        register(TypeIds.BRICKS);
-        register(TypeIds.COBBLESTONE);
-        register(TypeIds.MOSSY_COBBLESTONE);
-        register(TypeIds.DIRT);
-        register(TypeIds.GRAVEL);
-        register(TypeIds.GRASS);
-        register(TypeIds.GRASS_SNOW);
-        register(TypeIds.PALM_TREE_LOG);
-        register(TypeIds.PALM_TREE_PLANKS);
-        register(TypeIds.ROCK);
-        register(TypeIds.OAK_LOG);
-        register(TypeIds.OAK_PLANKS);
-        register(TypeIds.SAND);
-        register(TypeIds.SNOW);
-        register(TypeIds.SPRUCE_LOG);
-        register(TypeIds.SPRUCE_PLANKS);
-        register(TypeIds.STONE_BRICKS);
-        register(TypeIds.MOSSY_STONE_BRICKS);
-        register(TypeIds.WATER);
-        register(TypeIds.BIRCH_LEAVES);
-        register(TypeIds.PALM_TREE_LEAVES);
-        register(TypeIds.OAK_LEAVES);
-        register(TypeIds.SPRUCE_LEAVES);
-        register(TypeIds.WHITE_LIGHT);
-        register(TypeIds.WINDOW);
-        register(TypeIds.ITEM_GRASS);
-        register(TypeIds.SCALE);
-    }
-
-    public void setTheme(BlocksTheme theme) {
-        if (log.isDebugEnabled()) {
-            log.debug("Setting {}", theme);
-        }
-        this.theme = theme;
-        reload();
-    }
-
-    public void setDefaultTheme(@NonNull BlocksTheme defaultTheme) {
-        if (log.isDebugEnabled()) {
-            log.debug("Setting {} as default theme", theme);
-        }
-        this.defaultTheme = defaultTheme;
-        reload();
-    }
-
-    public static Texture combineTextures(Texture topTexture, Texture sideTexture, Texture bottomTexture) {
-        boolean widthEqual = assertValuesAreEqual(topTexture.getImage().getWidth(), sideTexture.getImage().getWidth(), bottomTexture.getImage().getWidth());
-        boolean heightEqual = assertValuesAreEqual(topTexture.getImage().getHeight(), sideTexture.getImage().getHeight(), bottomTexture.getImage().getHeight());
-
-        if (!widthEqual || !heightEqual) {
-            String message = String.format("Textures (%s, %s, %s) have different sizes! The widths and heights of the textures should be equal.",
-                    topTexture.getKey(), sideTexture.getKey(), bottomTexture.getKey());
-            throw new IllegalArgumentException(message);
-        }
-
-        boolean colorSpacesEqual = assertColorSpacesAreEqual(topTexture.getImage().getColorSpace(), sideTexture.getImage().getColorSpace(), bottomTexture.getImage().getColorSpace());
-        if (!colorSpacesEqual) {
-            String message = String.format("Textures (%s, %s, %s) have different colorspaces! Colorspaces of the textures should be equal.",
-                    topTexture.getKey(), sideTexture.getKey(), bottomTexture.getKey());
-            throw new IllegalArgumentException(message);
-        }
-
-        TextureAtlas textureAtlas = new TextureAtlas(topTexture.getImage().getWidth(), topTexture.getImage().getHeight() * 3);
-        textureAtlas.addTexture(bottomTexture, "main");
-        textureAtlas.addTexture(sideTexture, "main");
-        textureAtlas.addTexture(topTexture, "main");
-
-        Texture texture = textureAtlas.getAtlasTexture("main");
-        texture.getImage().setColorSpace(topTexture.getImage().getColorSpace());
-        return texture;
-    }
-
-    /**
-     * Retrieves a material for the block type. When a material file isn't found, the default material will be used and
-     * the textures found in the theme or default theme folder will be added to the material.
-     *
-     * @param name block type (grass, rock, ...)
-     * @return the material of the block type
-     */
-    private Material getMaterial(String name) {
-        if (usingTheme()) {
-            Optional<Material> optionalThemeMaterial = loadMaterial(name, theme);
-            if (optionalThemeMaterial.isPresent()) {
-                return optionalThemeMaterial.get();
-            }
-
-            Optional<TexturesWrapper> optionalThemeTextures = getTextures(name, theme);
-            if (optionalThemeTextures.isPresent()) {
-                return setTextures(optionalThemeTextures.get(), load(DEFAULT_BLOCK_MATERIAL));
-            }
-        }
-
-        Optional<Material> optionalDefaultThemeMaterial = loadMaterial(name, defaultTheme);
-        if (optionalDefaultThemeMaterial.isPresent()) {
-            return optionalDefaultThemeMaterial.get();
-        }
-
-        Optional<TexturesWrapper> optionalDefaultThemeTextures = getTextures(name, defaultTheme);
-        if (!optionalDefaultThemeTextures.isPresent()) {
-            throw new AssetNotFoundException("Texture " + getTexturePath(name, TextureType.DIFFUSE, defaultTheme) + " not found!");
-        }
-
-        return setTextures(optionalDefaultThemeTextures.get(), load(DEFAULT_BLOCK_MATERIAL));
-    }
-
-    /**
-     * Load the material in the given theme.
-     *
-     * @param name  block type
-     * @param theme
-     * @return an optional of the material
-     */
-    private Optional<Material> loadMaterial(String name, BlocksTheme theme) {
-        String materialPath = getMaterialPath(name, theme);
-        try {
-            if (log.isTraceEnabled()) {
-                log.trace("Loading material {}", materialPath);
-            }
-            Material material = assetManager.loadMaterial(materialPath);
-            return of(expandMaterialTexture(material));
-        } catch (AssetNotFoundException e) {
-            if (log.isTraceEnabled()) {
-                log.trace("Material {} not found in theme {}", materialPath, theme);
-            }
-        }
-
-        return empty();
-    }
-
     /**
      * Set the textures in the TexturesWrapper on the material.
-     *
-     * @param textures
-     * @param material
-     * @return the material with the textures applied
      */
     private Material setTextures(TexturesWrapper textures, Material material) {
         material.setTexture("DiffuseMap", textures.getDiffuseMap());
@@ -506,151 +356,11 @@ public class TypeRegistry {
         return material;
     }
 
-    /**
-     * Reload all the materials in the registry.
-     */
-    private void reload() {
-        registry.keySet().forEach(this::register);
-    }
-
     private Material load(String materialPath) {
         if (log.isTraceEnabled()) {
             log.trace("Loading material {}", materialPath);
         }
         return assetManager.loadMaterial(materialPath);
-    }
-
-    /**
-     * Retrieves the textures for the block type in the given theme.
-     *
-     * @param type
-     * @param theme
-     * @return an optional of the textures
-     */
-    private Optional<TexturesWrapper> getTextures(String type, BlocksTheme theme) {
-        Optional<Texture> diffuseMap = getTexture(type, TextureType.DIFFUSE, theme);
-        // map the value if present, or return an empty optional
-        return diffuseMap.map(texture -> new TexturesWrapper(texture,
-                getTexture(type, TextureType.NORMAL, theme),
-                getTexture(type, TextureType.PARALLAX, theme)));
-
-    }
-
-    /**
-     * @param type        block type (grass, rock, ...)
-     * @param textureType kind of texture (diffuse, normal, parallax)
-     * @param theme
-     * @return an optional of the texture
-     */
-    private Optional<Texture> getTexture(String type, TextureType textureType, BlocksTheme theme) {
-        String texture = getTexturePath(type, textureType, theme);
-        try {
-            if (log.isTraceEnabled()) {
-                log.trace("Loading {}", texture);
-            }
-            return of(expandTexture(new TextureKey(texture)));
-        } catch (AssetNotFoundException e) {
-            if (log.isTraceEnabled()) {
-                log.trace("Texture {} not found in theme {}", texture, theme);
-            }
-        }
-
-        return getCombinedTexture(type, textureType, theme);
-    }
-
-    private Optional<Texture> getCombinedTexture(String type, TextureType textureType, BlocksTheme theme) {
-        String topTexturePath = getTopTexturePath(type, textureType, theme);
-        String sideTexturePath = getSideTexturePath(type, textureType, theme);
-        String bottomTexturePath = getBottomTexturePath(type, textureType, theme);
-        try {
-            if (log.isTraceEnabled()) {
-                log.trace("Loading {}, {}, {}", topTexturePath, sideTexturePath, bottomTexturePath);
-            }
-            Texture topTexture = expandTexture(new TextureKey(topTexturePath));
-            Texture sideTexture = expandTexture(new TextureKey(sideTexturePath));
-            Texture bottomTexture = expandTexture(new TextureKey(bottomTexturePath));
-
-            return of(combineTextures(topTexture, sideTexture, bottomTexture));
-        } catch (AssetNotFoundException e) {
-            if (log.isTraceEnabled()) {
-                log.trace("Texture {} not found in theme {}", e.getMessage(), theme);
-            }
-        } catch (IllegalArgumentException e) {
-            log.warn(e.getMessage());
-        }
-
-        return empty();
-    }
-
-    private static boolean assertValuesAreEqual(int... values) {
-        if (values.length == 0) {
-            return true;
-        }
-
-        int checkValue = values[0];
-        for (int i : values) {
-            if (i != checkValue) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static boolean assertColorSpacesAreEqual(ColorSpace... colorSpaces) {
-        if (colorSpaces.length == 0) {
-            return true;
-        }
-
-        ColorSpace colorSpace = colorSpaces[0];
-        for (ColorSpace c : colorSpaces) {
-            if (colorSpace != c) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private String getTopTexturePath(String type, TextureType textureType, BlocksTheme theme) {
-        return getTexturePath(type + "_top", textureType, theme);
-    }
-
-    private String getSideTexturePath(String type, TextureType textureType, BlocksTheme theme) {
-        return getTexturePath(type + "_side", textureType, theme);
-    }
-
-    private String getBottomTexturePath(String type, TextureType textureType, BlocksTheme theme) {
-        return getTexturePath(type + "_bottom", textureType, theme);
-    }
-
-    /**
-     * @param type        block type (grass, rock, ...)
-     * @param textureType kind of texture (diffuse, normal, parallax)
-     * @param theme       current theme
-     * @return the full path to the texture, used by the assetmanager to load the texture
-     */
-    private static String getTexturePath(String type, TextureType textureType, BlocksTheme theme) {
-        String path = Paths.get(theme.getPath(), getTextureFilename(type, textureType)).toString();
-        // this should be interpreted as a java path. It will look for this texture in the classpath. When this code is
-        // executed on windows, it will use backward slashes when constructing the path, and the texture will not be
-        // properly resolved.
-        path = path.replace('\\', '/');
-        return path;
-    }
-
-    private static String getMaterialPath(String type, BlocksTheme theme) {
-        String path = Paths.get(theme.getPath(), getMaterialFilename(type)).toString();
-        // this should be interpreted as a java path. It will look for this texture in the classpath. When this code is
-        // executed on windows, it will use backward slashes when constructing the path, and the texture will not be
-        // properly resolved.
-        path = path.replace('\\', '/');
-        return path;
-    }
-
-    private static String getMaterialFilename(String type) {
-        String fileExtension = ".j3m";
-        return type + fileExtension;
     }
 
     private Material expandMaterialTexture(Material material) {
@@ -760,23 +470,6 @@ public class TypeRegistry {
         }
     }
 
-    /**
-     * @param type        block type (grass, rock, ...)
-     * @param textureType kind of texture (diffuse, normal, parallax)
-     * @return the filename of the texture
-     */
-    private static String getTextureFilename(String type, TextureType textureType) {
-        String fileExtension = ".png";
-        switch (textureType) {
-            case NORMAL:
-                return type + "-normal" + fileExtension;
-            case PARALLAX:
-                return type + "-parallax" + fileExtension;
-            default:
-                return type + fileExtension;
-        }
-    }
-
     @Getter
     @RequiredArgsConstructor
     private static class TexturesWrapper {
@@ -786,5 +479,4 @@ public class TypeRegistry {
         private final Optional<Texture> parallaxMap;
 
     }
-
 }
