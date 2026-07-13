@@ -51,7 +51,7 @@ public class BlocksConfig {
         instance.setPhysicsGrid(new Vec3i(5, 3, 5));
         instance.setShapeRegistry(new ShapeRegistry(registerDefaults));
         instance.setBlockRegistry(new BlockRegistry(registerDefaults));
-        instance.setTypeRegistry(new TypeRegistry(assetManager, null, registerDefaults));
+        instance.setTypeRegistry(new TypeRegistry(assetManager));
         // The ChunkMeshGenerator is provided by the game via IalonInitializer.configureBlocksFramework().
     }
 

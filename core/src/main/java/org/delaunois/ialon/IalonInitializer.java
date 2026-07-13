@@ -26,7 +26,6 @@ import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.blocks.BlocksConfig;
-import org.delaunois.ialon.blocks.BlocksTheme;
 import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.blocks.FacesMeshGenerator;
 import org.delaunois.ialon.blocks.PhysicsChunkPager;
@@ -354,15 +353,14 @@ public class IalonInitializer {
         blocksConfig.setChunkMeshGenerator(new FacesMeshGenerator(ialonConfig));
 
         TypeRegistry typeRegistry = blocksConfig.getTypeRegistry();
-        typeRegistry.setTheme(new BlocksTheme("Ialon", "/IalonTheme"));
         long start = System.nanoTime();
-        typeRegistry.registerDefaultMaterials();
-        log.info("registerDefaultMaterials: loaded block materials/textures in {} ms",
-                (System.nanoTime() - start) / 1_000_000);
-
+        // Every type is registered from the YAML catalog with its explicit texture/material
+        // (Blocks/blocks.yaml + Blocks/Textures/). No filename-convention theme anymore.
         IalonBlockCatalog catalog = IalonBlockCatalog.load(assetManager);
         catalog.registerAll(typeRegistry, blocksConfig.getBlockRegistry());
         ialonConfig.setBlockCatalog(catalog);
+        log.info("registerIalonBlocks: loaded block materials/textures in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
 
         // Prebuild the block texture array now, on the setup thread, so it is ready before any chunk
         // meshing (which runs on the background pool) calls TypeRegistry.assignLayers.

@@ -96,9 +96,9 @@ public class IalonConfig implements WorldSettings {
     // the framebuffer encodes back to sRGB on output. The literal sRGB numbers below are the intended
     // on-screen colours ; setAsSrgb keeps them looking the same after the framebuffer encode. (Light
     // INTENSITIES, e.g. White * ambiantIntensity, stay raw - they are linear multipliers, not colours.)
-    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.45f, 0.16f, 1f); // grass / land : mean albedo of the voxel grass texture (IalonTheme/grass.png) so near & far land read alike
-    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.245f, 0.421f, 0.535f, 0.92f); // teal-blue, matched to the voxel water texture (IalonTheme/water_calm.png) so near & far seas read as one body
-    private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (IalonTheme/sand.png)
+    private ColorRGBA farTerrainBaseColor = new ColorRGBA().setAsSrgb(0.28f, 0.45f, 0.16f, 1f); // grass / land : mean albedo of the voxel grass texture (Blocks/Textures/grass.png) so near & far land read alike
+    private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.245f, 0.421f, 0.535f, 0.92f); // teal-blue, matched to the voxel water texture (Blocks/Textures/water_calm.png) so near & far seas read as one body
+    private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (Blocks/Textures/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
     private ColorRGBA farTerrainSnowColor = new ColorRGBA().setAsSrgb(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
@@ -123,7 +123,7 @@ public class IalonConfig implements WorldSettings {
     // Cave culling : hide chunks the camera cannot see through the chunk visibility graph
     // (behind walls, underground). Minecraft-style advanced occlusion culling.
     private boolean chunkCaveCulling = true;
-    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of IalonTheme/water_calm.png (alpha kept as-is by setAsSrgb)
+    private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of Blocks/Textures/water_calm.png (alpha kept as-is by setAsSrgb)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;

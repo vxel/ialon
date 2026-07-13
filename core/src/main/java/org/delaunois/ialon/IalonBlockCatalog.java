@@ -108,17 +108,27 @@ public class IalonBlockCatalog {
      * array is built (which reads the registered types).
      */
     public void registerAll(@NonNull TypeRegistry typeRegistry, @NonNull BlockRegistry blockRegistry) {
-        // Snapshot once, mirroring the former single getAll() read.
-        Collection<String> existing = new HashSet<>(typeRegistry.getAll());
+        // Asset paths in the catalog are relative to the folder holding blocks.yaml (e.g. "Blocks/").
+        String base = CATALOG_ASSET.contains("/")
+                ? CATALOG_ASSET.substring(0, CATALOG_ASSET.lastIndexOf('/') + 1)
+                : "";
+        Collection<String> registered = new HashSet<>();
 
         List<PaletteEntry> palette = new ArrayList<>();
 
         for (IalonBlockDef def : root.getBlocks()) {
-            // Type registration : only atlas-rendered, not-yet-registered types. Fire/lava (procedural)
-            // are excluded because they are not RenderMode.ATLAS.
-            if (def.getRender() == IalonBlockDef.RenderMode.ATLAS && !existing.contains(def.getType())) {
-                typeRegistry.register(def.getType());
-                existing.add(def.getType());
+            // Type registration from the explicit appearance : a `material` (.j3m) is loaded directly
+            // (procedural fire/lava — no diffuse tile, so skipped by the texture array) ; otherwise the
+            // `texture` (.png) is packed into the array. Each type is registered once (variants share it).
+            if (!registered.contains(def.getType())) {
+                if (def.getMaterial() != null) {
+                    typeRegistry.registerMaterial(def.getType(), base + def.getMaterial());
+                } else if (def.getTexture() != null) {
+                    typeRegistry.registerTexture(def.getType(), base + def.getTexture());
+                } else {
+                    throw new IllegalStateException("Block type " + def.getType() + " has neither texture nor material");
+                }
+                registered.add(def.getType());
             }
 
             if (def.getVariants() != null && !def.getVariants().isEmpty()) {

@@ -4,7 +4,7 @@
 Material normal-block : Blocks/MatDefs/BlockSource.j3md {
 
     MaterialParameters {
-        DiffuseMap: Flip MagBilinear BilinearNearestMipMap IalonTheme/dummy.png
+        DiffuseMap: Flip MagBilinear BilinearNearestMipMap Blocks/Textures/dummy.png
     }
 
 }
