@@ -17,85 +17,17 @@
 
 package org.delaunois.ialon.state;
 
-import static org.delaunois.ialon.IalonBlock.BED;
-import static org.delaunois.ialon.IalonBlock.BEDPILLOW;
-import static org.delaunois.ialon.IalonBlock.BIRCH_LEAVES;
-import static org.delaunois.ialon.IalonBlock.BIRCH_LOG;
-import static org.delaunois.ialon.IalonBlock.BIRCH_PLANKS;
-import static org.delaunois.ialon.IalonBlock.BOOKS;
-import static org.delaunois.ialon.IalonBlock.BRICKS;
-import static org.delaunois.ialon.IalonBlock.COBBLESTONE;
-import static org.delaunois.ialon.IalonBlock.COLOR_BLACK;
-import static org.delaunois.ialon.IalonBlock.COLOR_BLUE;
-import static org.delaunois.ialon.IalonBlock.COLOR_CYAN;
-import static org.delaunois.ialon.IalonBlock.COLOR_GREEN;
-import static org.delaunois.ialon.IalonBlock.COLOR_MAGENTA;
-import static org.delaunois.ialon.IalonBlock.COLOR_ORANGE;
-import static org.delaunois.ialon.IalonBlock.COLOR_RED;
-import static org.delaunois.ialon.IalonBlock.COLOR_RED2;
-import static org.delaunois.ialon.IalonBlock.COLOR_ROSE;
-import static org.delaunois.ialon.IalonBlock.COLOR_YELLOW;
-import static org.delaunois.ialon.IalonBlock.DIRT;
-import static org.delaunois.ialon.IalonBlock.DOOR_LEFT;
-import static org.delaunois.ialon.IalonBlock.DOOR_LEFT_GLASS;
-import static org.delaunois.ialon.IalonBlock.DOOR_LEFT_METAL;
-import static org.delaunois.ialon.IalonBlock.DRAWERS;
-import static org.delaunois.ialon.IalonBlock.FIRE;
-import static org.delaunois.ialon.IalonBlock.GRASS;
-import static org.delaunois.ialon.IalonBlock.GRASS_SNOW;
-import static org.delaunois.ialon.IalonBlock.GRASS_TOUNDRA;
-import static org.delaunois.ialon.IalonBlock.GRAVEL;
-import static org.delaunois.ialon.IalonBlock.ITEM_GRASS;
-import static org.delaunois.ialon.IalonBlock.ITEM_MUSHROOM;
-import static org.delaunois.ialon.IalonBlock.ITEM_SEAWEED;
-import static org.delaunois.ialon.IalonBlock.ITEM_SUNFLOWER;
-import static org.delaunois.ialon.IalonBlock.METAL1;
-import static org.delaunois.ialon.IalonBlock.METAL2;
-import static org.delaunois.ialon.IalonBlock.METAL3;
-import static org.delaunois.ialon.IalonBlock.METAL4;
-import static org.delaunois.ialon.IalonBlock.METAL5;
-import static org.delaunois.ialon.IalonBlock.MOSSY_COBBLESTONE;
-import static org.delaunois.ialon.IalonBlock.MOSSY_STONE_BRICKS;
-import static org.delaunois.ialon.IalonBlock.OAK_LEAVES;
-import static org.delaunois.ialon.IalonBlock.OAK_LOG;
-import static org.delaunois.ialon.IalonBlock.OAK_PLANKS;
-import static org.delaunois.ialon.IalonBlock.OVEN;
-import static org.delaunois.ialon.IalonBlock.PALM_TREE_LEAVES;
-import static org.delaunois.ialon.IalonBlock.PALM_TREE_LOG;
-import static org.delaunois.ialon.IalonBlock.PALM_TREE_PLANKS;
-import static org.delaunois.ialon.IalonBlock.PAVING;
-import static org.delaunois.ialon.IalonBlock.RAIL;
-import static org.delaunois.ialon.IalonBlock.ROCK;
-import static org.delaunois.ialon.IalonBlock.SAND;
-import static org.delaunois.ialon.IalonBlock.SCALE;
-import static org.delaunois.ialon.IalonBlock.SLATE;
-import static org.delaunois.ialon.IalonBlock.SNOW;
-import static org.delaunois.ialon.IalonBlock.SPRUCE_LEAVES;
-import static org.delaunois.ialon.IalonBlock.SPRUCE_LOG;
-import static org.delaunois.ialon.IalonBlock.SPRUCE_PLANKS;
-import static org.delaunois.ialon.IalonBlock.STONE_BRICKS;
-import static org.delaunois.ialon.IalonBlock.STONE_BRICKS2;
-import static org.delaunois.ialon.IalonBlock.STONE_BRICKS3;
-import static org.delaunois.ialon.IalonBlock.TILE_RED;
-import static org.delaunois.ialon.IalonBlock.WHITE_LIGHT;
-import static org.delaunois.ialon.IalonBlock.WINDOW;
-import static org.delaunois.ialon.IalonBlock.WINDOW_WOOD;
-import static org.delaunois.ialon.blocks.BlockIds.LAVA_SOURCE;
-import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 import static org.delaunois.ialon.blocks.ShapeIds.BILLBOARD;
 import static org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE;
 import static org.delaunois.ialon.blocks.ShapeIds.CUBE;
-import static org.delaunois.ialon.blocks.ShapeIds.DOOR_EAST;
 import static org.delaunois.ialon.blocks.ShapeIds.DOUBLE_SLAB;
 import static org.delaunois.ialon.blocks.ShapeIds.FENCE;
 import static org.delaunois.ialon.blocks.ShapeIds.PLATE;
 import static org.delaunois.ialon.blocks.ShapeIds.PLATE_NORTH;
 import static org.delaunois.ialon.blocks.ShapeIds.POLE;
 import static org.delaunois.ialon.blocks.ShapeIds.PYRAMID;
-import static org.delaunois.ialon.blocks.ShapeIds.SHORT_POLE;
 import static org.delaunois.ialon.blocks.ShapeIds.SLAB;
 import static org.delaunois.ialon.blocks.ShapeIds.SQUARE;
-import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_HS;
 import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_NORTH;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_EAST;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
@@ -142,10 +74,10 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.IalonBlock;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
@@ -156,6 +88,7 @@ import org.delaunois.ialon.ui.UiHelper;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import lombok.Getter;
@@ -168,73 +101,6 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     private static final String BLOCK_NAME = "blockName";
     private static final ColorRGBA BLOCK_AMBIENT_LIGHT = ColorRGBA.White.mult(.7f);
     private static final String SPACER = null;
-    private static final String[] BLOCK_IDS = {
-            getName(GRASS, CUBE),
-            getName(GRASS_SNOW, CUBE),
-            getName(GRASS_TOUNDRA, CUBE),
-            WATER_SOURCE,
-            getName(WHITE_LIGHT, SHORT_POLE),
-            getName(SCALE, SQUARE_NORTH),
-            getName(RAIL, SQUARE_HS),
-            getName(DIRT, CUBE),
-            getName(BIRCH_LOG, CUBE),
-            getName(BIRCH_PLANKS, CUBE),
-            getName(BRICKS, CUBE),
-            getName(COBBLESTONE, CUBE),
-            getName(MOSSY_COBBLESTONE, CUBE),
-            getName(GRAVEL, CUBE),
-            getName(SLATE, CUBE),
-            getName(TILE_RED, CUBE),
-            getName(PALM_TREE_LOG, CUBE),
-            getName(PALM_TREE_PLANKS, CUBE),
-            getName(ROCK, CUBE),
-            LAVA_SOURCE,
-            getName(OAK_LOG, CUBE),
-            getName(OAK_PLANKS, CUBE),
-            getName(SAND, CUBE),
-            getName(SNOW, CUBE),
-            getName(SPRUCE_LOG, CUBE),
-            getName(SPRUCE_PLANKS, CUBE),
-            getName(STONE_BRICKS, CUBE),
-            getName(STONE_BRICKS2, CUBE),
-            getName(STONE_BRICKS3, CUBE),
-            getName(MOSSY_STONE_BRICKS, CUBE),
-            getName(PAVING, CUBE),
-            getName(METAL1, CUBE),
-            getName(METAL2, CUBE),
-            getName(METAL3, CUBE),
-            getName(METAL4, CUBE),
-            getName(METAL5, CUBE),
-            getName(BIRCH_LEAVES, CUBE),
-            getName(PALM_TREE_LEAVES, CUBE),
-            getName(OAK_LEAVES, CUBE),
-            getName(SPRUCE_LEAVES, CUBE),
-            getName(WINDOW, CUBE),
-            getName(WINDOW_WOOD, CUBE),
-            getName(ITEM_GRASS, CROSS_PLANE),
-            getName(ITEM_SEAWEED, CROSS_PLANE),
-            getName(ITEM_MUSHROOM, CROSS_PLANE),
-            getName(ITEM_SUNFLOWER, CROSS_PLANE),
-            getName(FIRE, BILLBOARD),
-            getName(COLOR_BLACK, CUBE),
-            getName(COLOR_BLUE, CUBE),
-            getName(COLOR_CYAN, CUBE),
-            getName(COLOR_GREEN, CUBE),
-            getName(COLOR_MAGENTA, CUBE),
-            getName(COLOR_ORANGE, CUBE),
-            getName(COLOR_RED, CUBE),
-            getName(COLOR_RED2, CUBE),
-            getName(COLOR_ROSE, CUBE),
-            getName(COLOR_YELLOW, CUBE),
-            getName(BOOKS, CUBE),
-            getName(DRAWERS, CUBE),
-            getName(OVEN, CUBE),
-            getName(BED, SLAB),
-            getName(BEDPILLOW, SLAB),
-            getName(DOOR_LEFT, DOOR_EAST),
-            getName(DOOR_LEFT_METAL, DOOR_EAST),
-            getName(DOOR_LEFT_GLASS, DOOR_EAST),
-    };
 
     private static final String[] SHAPES = {
             CUBE,
@@ -260,6 +126,10 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     private static final int BLOCK_HISTORY_SIZE = 3;
     private static final String APLHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
     private Node[] blocks;
+
+    // Ordered ids of placeable blocks, from the YAML catalog (replaces the former hand-maintained
+    // BLOCK_IDS array). Populated in initialize() from config.getBlockCatalog().
+    private List<String> blockIds;
 
     private SimpleApplication app;
     private BitmapFont guiFont;
@@ -306,6 +176,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             guiFont = app.getAssetManager().loadFont("Interface/Fonts/Default.fnt");
         }
 
+        blockIds = config.getBlockCatalog().getPlaceableBlockNames();
         blocks = createBlockNodes();
         menuBlock = createBlockTypeSelectionPopup();
 
@@ -441,7 +312,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             if (blockName != null) {
                 log.warn("Unknown selected block {}, falling back to default", blockName);
             }
-            blockName = getName(GRASS, CUBE);
+            blockName = BlockIds.getName(TypeIds.GRASS, CUBE);
         }
 
         log.info("Selecting {}", blockName);
@@ -508,17 +379,18 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     }
 
     private Node[] createBlockNodes() {
-        Node[] nodes = new Node[BLOCK_IDS.length];
+        Node[] nodes = new Node[blockIds.size()];
         BlockRegistry blockRegistry = BlocksConfig.getInstance().getBlockRegistry();
-        for (int i = 0; i < BLOCK_IDS.length; i++) {
-            if (Objects.equals(BLOCK_IDS[i], SPACER)) {
+        for (int i = 0; i < blockIds.size(); i++) {
+            String blockId = blockIds.get(i);
+            if (Objects.equals(blockId, SPACER)) {
                 nodes[i] = null;
             } else {
-                Block block = blockRegistry.get(BLOCK_IDS[i]);
+                Block block = blockRegistry.get(blockId);
                 if (block == null) {
-                    log.warn("Unknown block {}", BLOCK_IDS[i]);
+                    log.warn("Unknown block {}", blockId);
                 } else {
-                    nodes[i] = createBlockNode(block, buttonSize, BLOCK_IDS[i]);
+                    nodes[i] = createBlockNode(block, buttonSize, blockId);
                 }
             }
         }
@@ -608,7 +480,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     private Node createBlockShapeSelectionPopup(int blockIndex) {
         Container blockList = new Container(new SpringGridLayout(Axis.X, Axis.Y));
         blockList.setName("SubBlockList");
-        String blockName = BLOCK_IDS[blockIndex];
+        String blockName = blockIds.get(blockIndex);
 
         MouseListener blockButtonMouseListener = new DefaultMouseListener(20, 20) {
             @Override
@@ -728,7 +600,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         Chunk chunk = Chunk.createAt(new Vec3i(0, 0, 0));
         chunk.addBlock(new Vec3i(0, 0, 0), block);
         if (ShapeIds.FENCE.equals(block.getShape())) {
-            chunk.addBlock(new Vec3i(1, 0, 0), BlocksConfig.getInstance().getBlockRegistry().get(getName(IalonBlock.PHANTOM, CUBE)));
+            chunk.addBlock(new Vec3i(1, 0, 0), BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.getName(TypeIds.PHANTOM, CUBE)));
         }
         chunk.update();
 
@@ -828,14 +700,6 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
 
     private float toRadians(float degrees) {
         return (degrees / 180) * FastMath.PI;
-    }
-
-    private static String getName(IalonBlock block, String shape) {
-        if (CUBE.equals(shape)) {
-            return BlockIds.getName(block.getType(), shape);
-        } else {
-            return BlockIds.getName(block.getType(), shape, 0);
-        }
     }
 
     @Override
