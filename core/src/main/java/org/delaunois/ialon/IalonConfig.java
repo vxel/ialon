@@ -207,6 +207,9 @@ public class IalonConfig implements WorldSettings {
     // populated from the world's save by WorldEditOverlayRepository when the world is opened.
     private final WorldEditOverlay worldEditOverlay = new WorldEditOverlay();
     private final TextureAtlasManager textureAtlasManager = new TextureAtlasManager();
+    // The block catalog loaded from Blocks/blocks.yaml (single source of truth for block definitions).
+    // Set by IalonInitializer.configureBlocksFramework ; read by the block-selection slider.
+    private IalonBlockCatalog blockCatalog;
     private BitmapFont font;
 
     // Debug

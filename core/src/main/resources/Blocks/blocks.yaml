@@ -1,0 +1,327 @@
+# Catalogue des blocs Ialon - source de vérité unique.
+# Généré depuis IalonBlock ; désormais édité à la main.
+# shapeSets : jeux de formes réutilisables. blocks : blocs-catalogue (shapeSet/shapes)
+# ou familles de liquide (variants). Défauts : solid=true, transparent=false,
+# multitexture=false, torchlight=false, terrain=false, render=atlas.
+
+shapeSets:
+  standard:
+    - cube_up
+    - pyramid_up
+    - pole_up
+    - fence_up
+    - slab_up
+    - double_slab_up
+    - plate_up
+    - wedge_north
+    - wedge_east
+    - wedge_south
+    - wedge_west
+    - wedge_inverted_north
+    - wedge_inverted_east
+    - wedge_inverted_south
+    - wedge_inverted_west
+    - stairs_north
+    - stairs_east
+    - stairs_south
+    - stairs_west
+    - stairs_inverted_north
+    - stairs_inverted_east
+    - stairs_inverted_south
+    - stairs_inverted_west
+    - stairs_inner_corner_north
+    - stairs_inner_corner_east
+    - stairs_inner_corner_south
+    - stairs_inner_corner_west
+    - stairs_inverted_inner_corner_north
+    - stairs_inverted_inner_corner_east
+    - stairs_inverted_inner_corner_south
+    - stairs_inverted_inner_corner_west
+    - stairs_outer_corner_north
+    - stairs_outer_corner_east
+    - stairs_outer_corner_south
+    - stairs_outer_corner_west
+    - stairs_inverted_outer_corner_north
+    - stairs_inverted_outer_corner_east
+    - stairs_inverted_outer_corner_south
+    - stairs_inverted_outer_corner_west
+  standardNoStairs:
+    - cube_up
+    - pyramid_up
+    - pole_up
+    - fence_up
+    - slab_up
+    - double_slab_up
+    - plate_up
+    - wedge_north
+    - wedge_east
+    - wedge_south
+    - wedge_west
+    - wedge_inverted_north
+    - wedge_inverted_east
+    - wedge_inverted_south
+    - wedge_inverted_west
+
+blocks:
+  - type: window
+    transparent: true
+    shapes: [cube_up, plate_up, plate_north, plate_south, plate_west, plate_east]
+    palette: { order: 410, shape: cube_up }
+  - type: window_wood
+    transparent: true
+    shapes: [cube_up, plate_up, plate_north, plate_south, plate_west, plate_east]
+    palette: { order: 420, shape: cube_up }
+  - type: water
+    solid: false
+    transparent: true
+    variants:
+      - { name: water-liquid_1, shape: liquid_1, level: 1 }
+      - { name: water-liquid_2, shape: liquid_2, level: 2 }
+      - { name: water-liquid_3, shape: liquid_3, level: 3 }
+      - { name: water-liquid_4, shape: liquid_4, level: 4 }
+      - { name: water-liquid_5, shape: liquid_5, level: 5 }
+      - { name: water-liquid, shape: liquid, level: 6 }
+      - { name: water_source, shape: liquid_5, level: 7, palette: { order: 40 } }
+  - type: stone_bricks
+    shapeSet: standard
+    palette: { order: 270, shape: cube_up }
+  - type: stone_bricks2
+    shapeSet: standard
+    palette: { order: 280, shape: cube_up }
+  - type: stone_bricks3
+    shapes: [cube_up]
+    palette: { order: 290, shape: cube_up }
+  - type: mossy_stone_bricks
+    shapeSet: standard
+    palette: { order: 300, shape: cube_up }
+  - type: spruce_log
+    multitexture: true
+    shapeSet: standardNoStairs
+    palette: { order: 250, shape: cube_up }
+  - type: spruce_planks
+    shapeSet: standard
+    palette: { order: 260, shape: cube_up }
+  - type: spruce_leaves
+    transparent: true
+    shapes: [cube_up]
+    palette: { order: 400, shape: cube_up }
+  - type: snow
+    terrain: true
+    shapeSet: standard
+    palette: { order: 240, shape: cube_up }
+  - type: item_seaweed
+    solid: false
+    shapes: [cross_plane]
+    palette: { order: 440, shape: cross_plane }
+  - type: item_grass
+    solid: false
+    shapes: [cross_plane]
+    palette: { order: 430, shape: cross_plane }
+  - type: item_mushroom
+    solid: false
+    shapes: [cross_plane]
+    palette: { order: 450, shape: cross_plane }
+  - type: item_sunflower
+    solid: false
+    shapes: [cross_plane]
+    palette: { order: 460, shape: cross_plane }
+  - type: fire
+    solid: false
+    torchlight: true
+    render: fire
+    shapes: [billboard]
+    palette: { order: 470, shape: billboard }
+  - type: scale
+    solid: false
+    shapes: [square_north, square_south, square_west, square_east]
+    palette: { order: 60, shape: square_north }
+  - type: rail
+    shapes: [square_he, square_hs, wedge_north, wedge_east, wedge_south, wedge_west]
+    palette: { order: 70, shape: square_hs }
+  - type: rail_curved
+    shapes: [square_he, square_hw, square_hs, square_hn]
+  - type: rail_slope
+    multitexture: true
+    shapes: [wedge_north, wedge_east, wedge_south, wedge_west]
+  - type: sand
+    terrain: true
+    shapeSet: standard
+    palette: { order: 230, shape: cube_up }
+  - type: oak_log
+    multitexture: true
+    shapeSet: standardNoStairs
+    palette: { order: 210, shape: cube_up }
+  - type: oak_planks
+    shapeSet: standard
+    palette: { order: 220, shape: cube_up }
+  - type: oak_leaves
+    transparent: true
+    shapes: [cube_up]
+    palette: { order: 390, shape: cube_up }
+  - type: rock
+    terrain: true
+    shapeSet: standard
+    palette: { order: 190, shape: cube_up }
+  - type: lava
+    solid: false
+    transparent: true
+    torchlight: true
+    render: lava
+    variants:
+      - { name: lava-liquid_1, shape: liquid_1, level: 1 }
+      - { name: lava-liquid_2, shape: liquid_2, level: 2 }
+      - { name: lava-liquid_3, shape: liquid_3, level: 3 }
+      - { name: lava-liquid_4, shape: liquid_4, level: 4 }
+      - { name: lava-liquid_5, shape: liquid_5, level: 5 }
+      - { name: lava-liquid, shape: liquid, level: 6 }
+      - { name: lava_source, shape: liquid_5, level: 7, palette: { order: 200 } }
+  - type: palm_tree_log
+    multitexture: true
+    shapeSet: standardNoStairs
+    palette: { order: 170, shape: cube_up }
+  - type: palm_tree_planks
+    shapeSet: standard
+    palette: { order: 180, shape: cube_up }
+  - type: palm_tree_leaves
+    transparent: true
+    shapes: [cube_up]
+    palette: { order: 380, shape: cube_up }
+  - type: grass
+    multitexture: true
+    terrain: true
+    shapes: [cube_up, slab_up, double_slab_up]
+    palette: { order: 10, shape: cube_up }
+  - type: grass_snow
+    multitexture: true
+    terrain: true
+    shapes: [cube_up, slab_up, double_slab_up]
+    palette: { order: 20, shape: cube_up }
+  - type: grass_toundra
+    multitexture: true
+    shapes: [cube_up, slab_up, double_slab_up]
+    palette: { order: 30, shape: cube_up }
+  - type: gravel
+    shapeSet: standard
+    palette: { order: 140, shape: cube_up }
+  - type: dirt
+    terrain: true
+    shapeSet: standard
+    palette: { order: 80, shape: cube_up }
+  - type: cobblestone
+    shapeSet: standard
+    palette: { order: 120, shape: cube_up }
+  - type: mossy_cobblestone
+    shapeSet: standard
+    palette: { order: 130, shape: cube_up }
+  - type: bricks
+    shapeSet: standard
+    palette: { order: 110, shape: cube_up }
+  - type: paving
+    shapeSet: standard
+    palette: { order: 310, shape: cube_up }
+  - type: birch_log
+    multitexture: true
+    shapeSet: standardNoStairs
+    palette: { order: 90, shape: cube_up }
+  - type: birch_planks
+    shapeSet: standard
+    palette: { order: 100, shape: cube_up }
+  - type: birch_leaves
+    transparent: true
+    shapes: [cube_up]
+    palette: { order: 370, shape: cube_up }
+  - type: tile_red
+    shapeSet: standard
+    palette: { order: 160, shape: cube_up }
+  - type: slate
+    shapeSet: standard
+    palette: { order: 150, shape: cube_up }
+  - type: metal1
+    shapeSet: standard
+    palette: { order: 320, shape: cube_up }
+  - type: metal2
+    transparent: true
+    shapeSet: standard
+    palette: { order: 330, shape: cube_up }
+  - type: metal3
+    shapeSet: standard
+    palette: { order: 340, shape: cube_up }
+  - type: metal4
+    shapeSet: standard
+    palette: { order: 350, shape: cube_up }
+  - type: metal5
+    transparent: true
+    shapeSet: standard
+    palette: { order: 360, shape: cube_up }
+  - type: color_black
+    shapeSet: standard
+    palette: { order: 480, shape: cube_up }
+  - type: color_blue
+    shapeSet: standard
+    palette: { order: 490, shape: cube_up }
+  - type: color_cyan
+    shapeSet: standard
+    palette: { order: 500, shape: cube_up }
+  - type: color_green
+    shapeSet: standard
+    palette: { order: 510, shape: cube_up }
+  - type: color_magenta
+    shapeSet: standard
+    palette: { order: 520, shape: cube_up }
+  - type: color_orange
+    shapeSet: standard
+    palette: { order: 530, shape: cube_up }
+  - type: color_red
+    shapeSet: standard
+    palette: { order: 540, shape: cube_up }
+  - type: color_red2
+    shapeSet: standard
+    palette: { order: 550, shape: cube_up }
+  - type: color_rose
+    shapeSet: standard
+    palette: { order: 560, shape: cube_up }
+  - type: color_yellow
+    shapeSet: standard
+    palette: { order: 570, shape: cube_up }
+  - type: books
+    multitexture: true
+    shapes: [cube_up]
+    palette: { order: 580, shape: cube_up }
+  - type: oven
+    multitexture: true
+    shapes: [cube_up]
+    palette: { order: 600, shape: cube_up }
+  - type: drawers
+    multitexture: true
+    shapes: [cube_up]
+    palette: { order: 590, shape: cube_up }
+  - type: bed
+    multitexture: true
+    shapes: [slab_up]
+    palette: { order: 610, shape: slab_up }
+  - type: bedpillow
+    multitexture: true
+    shapes: [slab_up]
+    palette: { order: 620, shape: slab_up }
+  - type: phantom
+    transparent: true
+    shapes: [cube_up]
+  - type: door_left
+    shapes: [door_north, door_south, door_east, door_west]
+    palette: { order: 630, shape: door_east }
+  - type: door_right
+    shapes: [door_north, door_south, door_east, door_west]
+  - type: door_left_metal
+    shapes: [door_north, door_south, door_east, door_west]
+    palette: { order: 640, shape: door_east }
+  - type: door_right_metal
+    shapes: [door_north, door_south, door_east, door_west]
+  - type: door_left_glass
+    shapes: [door_north, door_south, door_east, door_west]
+    palette: { order: 650, shape: door_east }
+  - type: door_right_glass
+    shapes: [door_north, door_south, door_east, door_west]
+  - type: white_light
+    torchlight: true
+    shapes: [shortpole_up, shortpole_down, shortpole_east, shortpole_west, shortpole_south, shortpole_north]
+    palette: { order: 50, shape: shortpole_up }

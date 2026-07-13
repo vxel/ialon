@@ -25,17 +25,12 @@ import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
 
-import org.delaunois.ialon.blocks.Block;
-import org.delaunois.ialon.blocks.BlockIds;
-import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.BlocksTheme;
 import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.blocks.FacesMeshGenerator;
 import org.delaunois.ialon.blocks.PhysicsChunkPager;
-import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.TextureAtlasManager;
-import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.TypeRegistry;
 import org.delaunois.ialon.blocks.jme.BitmapFontLoader;
 import org.delaunois.ialon.blocks.jme.LayerComparator;
@@ -56,7 +51,6 @@ import org.delaunois.ialon.ui.Slider;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -366,60 +360,13 @@ public class IalonInitializer {
         log.info("registerDefaultMaterials: loaded block materials/textures in {} ms",
                 (System.nanoTime() - start) / 1_000_000);
 
-        registerIalonBlocks();
+        IalonBlockCatalog catalog = IalonBlockCatalog.load(assetManager);
+        catalog.registerAll(typeRegistry, blocksConfig.getBlockRegistry());
+        ialonConfig.setBlockCatalog(catalog);
 
         // Prebuild the block texture array now, on the setup thread, so it is ready before any chunk
         // meshing (which runs on the background pool) calls TypeRegistry.assignLayers.
         typeRegistry.getBlockTextureArray();
-    }
-
-    public static void registerIalonBlocks() {
-        Collection<String> types = BlocksConfig.getInstance().getTypeRegistry().getAll();
-        for (IalonBlock block : IalonBlock.values()) {
-            // Fire and lava are not registered as regular types : they are rendered by dedicated
-            // procedural shaders (see FacesMeshGenerator#getFireMaterial / #getLavaMaterial), not by an
-            // atlas texture. Skipping registration keeps them out of the texture atlas so their shape
-            // UVs are left untouched (raw, padded per face) for the procedural shaders to use directly.
-            if (!types.contains(block.getType())
-                    && !TypeIds.FIRE.equals(block.getType())
-                    && !TypeIds.LAVA.equals(block.getType())) {
-                BlocksConfig.getInstance().getTypeRegistry().register(block.getType());
-            }
-
-            for (String shape : block.getShapes()) {
-                registerIalonBlock(block, shape);
-            }
-        }
-    }
-
-    public static void registerIalonBlock(IalonBlock block, String shape) {
-        BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
-        if (ShapeIds.CUBE.equals(shape)) {
-            registry.register(Block.builder()
-                    .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape))
-                    .type(block.getType())
-                    .shape(shape)
-                    .solid(block.isSolid())
-                    .transparent(block.isTransparent())
-                    .usingMultipleImages(block.isMultitexture())
-                    .torchlight(block.isTorchlight())
-                    // Only the CUBE form of a natural-ground type shapes the far terrain (not its slabs/stairs).
-                    .terrain(block.isTerrain())
-                    .build());
-        } else {
-            for (byte waterLevel : block.getWaterLevels()) {
-                registry.register(Block.builder()
-                        .name(block.getName() != null ? block.getName() : BlockIds.getName(block.getType(), shape, waterLevel))
-                        .type(block.getType())
-                        .shape(shape)
-                        .solid(block.isSolid())
-                        .transparent(block.isTransparent())
-                        .usingMultipleImages(block.isMultitexture())
-                        .liquidLevel(waterLevel)
-                        .torchlight(block.isTorchlight())
-                        .build());
-            }
-        }
     }
 
 }
