@@ -20,9 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Guards that the YAML-driven {@link IalonBlockCatalog} reproduces, byte-for-byte, the block catalog
- * that the former {@code IalonBlock} enum produced. The golden fixture
- * {@code block-catalog-golden.txt} was captured from the enum path before the refactor.
+ * Guards the block catalog produced by the YAML-driven {@link IalonBlockCatalog} against accidental
+ * change. The golden fixture {@code block-catalog-golden.txt} was originally captured, byte-for-byte,
+ * from the former {@code IalonBlock} enum path to validate the enum→YAML refactor, and is regenerated
+ * whenever the catalog legitimately evolves (e.g. a new block is added to {@code blocks.yaml}) so it
+ * keeps acting as a change-detector. To regenerate it, dump {@code String.join("\n", dump(config))}
+ * for the current catalog into the fixture.
  */
 class BlockCatalogParityTest {
 
