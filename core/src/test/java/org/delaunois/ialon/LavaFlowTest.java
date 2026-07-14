@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Regression tests for the lava liquid : water/lava incompatibility (flows stop where they meet) and
- * the pure-cell rule (lava does not co-habit with structural blocks, unlike water).
+ * Regression tests for the lava liquid : water/lava incompatibility (where the two meet, the water
+ * cell solidifies into gravel_dark and the lava stays liquid — no mixing) and the pure-cell rule
+ * (lava does not co-habit with structural blocks, unlike water).
  */
 class LavaFlowTest extends BaseSceneryTest {
 
@@ -41,7 +42,7 @@ class LavaFlowTest extends BaseSceneryTest {
     }
 
     @Test
-    void waterAndLavaStopWhereTheyMeet() {
+    void waterSolidifiesWhereItMeetsLava() {
         init("lava-ut1");
 
         // Solid floor so the liquids spread horizontally instead of falling.
@@ -49,19 +50,22 @@ class LavaFlowTest extends BaseSceneryTest {
             addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
         }
 
-        // Adjacent water and lava sources : each tries to flow into the other and must stop.
+        // Adjacent water and lava sources. Where the two liquids meet, the water cell solidifies into
+        // gravel_dark (Minecraft-style lava + water → stone) while the lava stays liquid — no mixing.
         addBlock(BlockIds.WATER_SOURCE, 5, Y, Z);
         addBlock(BlockIds.LAVA_SOURCE, 6, Y, Z);
         waitAllLiquidEnd();
 
-        // Neither source overwrote the other : the boundary holds.
-        assertEquals(TypeIds.WATER, blockAt(5, Y, Z).getType(), "water source must remain water");
+        // The water cell at the boundary froze into gravel_dark ; the lava source stayed lava.
+        assertEquals(TypeIds.GRAVEL_DARK, blockAt(5, Y, Z).getType(),
+                "the water cell meeting lava solidifies into gravel_dark");
         assertEquals(TypeIds.LAVA, blockAt(6, Y, Z).getType(), "lava source must remain lava");
 
-        // Each liquid still flowed away from the boundary on its own side.
+        // Each liquid still flowed away from the boundary on its own side, and neither mixed into the
+        // other : water stayed water to the west, lava stayed lava to the east.
         Block west = blockAt(4, Y, Z);
         assertNotNull(west, "water should have flowed west");
-        assertEquals(TypeIds.WATER, west.getType(), "the cell west of the water source is water");
+        assertEquals(TypeIds.WATER, west.getType(), "the cell west of the boundary is water");
 
         Block east = blockAt(7, Y, Z);
         assertNotNull(east, "lava should have flowed east");
