@@ -15,6 +15,7 @@ public interface TypeIds {
     String MOSSY_COBBLESTONE = "mossy_cobblestone";
     String DIRT = "dirt";
     String GRAVEL = "gravel";
+    String GRAVEL_DARK = "gravel_dark";
     String GRASS = "grass";
     String GRASS_SNOW = "grass_snow";
     String GRASS_TOUNDRA = "grass_toundra";

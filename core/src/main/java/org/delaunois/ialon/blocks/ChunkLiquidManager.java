@@ -373,18 +373,26 @@ public class ChunkLiquidManager {
                 //  - a solid block (no co-habitation, unlike water) or any other liquid (water — no
                 //    mixing) stops the lava.
                 if (!(targetIsLiquid && TypeIds.LAVA.equals(targetLiquidType))) {
-                    if (!block.isSolid() && !targetIsLiquid) {
+                    if (targetIsLiquid) {
+                        // Lava reaching water : the WATER cell solidifies into gravel_dark
+                        // (Minecraft-style lava + water → stone), the lava stays liquid — no mixing.
+                        log.debug("PL2.3 - Lava meets water at ({}, {}, {}), solidifying water", x, y, z);
+                        solidifyToGravel(chunk, x, y, z, Math.max(liquidLevel, getLiquidLevel(block)), context);
+                        return false;
+                    } else if (!block.isSolid()) {
                         lavaConsumesItem = true;
                     } else {
-                        log.debug("PL2.3 - Lava stops against {} at ({}, {}, {})", block.getType(), x, y, z);
+                        log.debug("PL2.3b - Lava stops against {} at ({}, {}, {})", block.getType(), x, y, z);
                         return false;
                     }
                 }
             } else if (targetIsLiquid && !flowingType.equals(targetLiquidType)) {
-                // Water meeting a different liquid (lava) : the flow stops at the boundary, no mixing.
+                // Water meeting a different liquid (lava) : the flowing WATER cell solidifies into
+                // gravel_dark (Minecraft-style lava + water → stone), the lava stays liquid — no mixing.
                 // (A structural block logged with water has targetLiquidType == water, so water still
                 // flows through it — co-habitation is preserved.)
-                log.debug("PL2.4 - {} stops against {} at ({}, {}, {})", flowingType, block.getType(), x, y, z);
+                log.debug("PL2.4 - Water meets lava at ({}, {}, {}), solidifying water", node.x, node.y, node.z);
+                solidifyToGravel(node.chunk, node.x, node.y, node.z, Math.max(liquidLevel, getLiquidLevel(block)), context);
                 return false;
             }
         }
@@ -473,6 +481,57 @@ public class ChunkLiquidManager {
         }
         chunk.removeBlock(location);
         return null;
+    }
+
+    /**
+     * Replaces the water cell at the given location with a gravel_dark block, used when water and lava
+     * meet : the WATER block solidifies (Minecraft-style lava + water → stone) while the lava stays
+     * liquid. Solidifying the water rather than the lava avoids a thin lava stream (a low-level, non-cube
+     * liquid shape) suddenly turning into a full gravel cube. The gravel shape is picked to approximate
+     * the height of the <b>tallest</b> of the two meeting liquids (see {@link #gravelShapeForLevel(int)}) :
+     * the crust fills the space both liquids occupied, so a deep flow does not leave a suspiciously thin
+     * plate. The relevant mesh update requests (this cell and its chunk neighbours) are recorded in the
+     * context.
+     *
+     * @param chunk the chunk holding the water cell
+     * @param x the x location of the water inside the chunk
+     * @param y the y location of the water inside the chunk
+     * @param z the z location of the water inside the chunk
+     * @param level the frozen liquid level to approximate : {@code max(waterLevel, lavaLevel)}
+     */
+    private void solidifyToGravel(Chunk chunk, int x, int y, int z, int level, LiquidRunningContext context) {
+        String shape = gravelShapeForLevel(level);
+        Block gravel = BlocksConfig.getInstance().getBlockRegistry()
+                .get(BlockIds.getName(BlockIds.GRAVEL_DARK, shape, 0));
+        if (gravel == null) {
+            // Defensive fallback : the plain cube is always registered.
+            gravel = BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.GRAVEL_DARK);
+        }
+        chunk.addBlock(new Vec3i(x, y, z), gravel);
+        updateChunkMeshUpdateRequests(chunk, x, y, z, context);
+    }
+
+    /**
+     * Maps a frozen water level to the gravel_dark shape whose height best approximates it, so a
+     * shallow water sheet solidifies into a thin plate rather than a full cube. The thresholds follow
+     * the liquid heights ({@code Liquid.HEIGHTS}) versus the shape heights (plate 0.1, slab 1/3,
+     * double-slab 2/3, cube 1) by nearest height :
+     * <pre>
+     *   level 1-2 (h ≤ 0.2)  → plate_up
+     *   level 3   (h = 0.4)  → slab_up
+     *   level 4-5 (h ≤ 0.8)  → double_slab_up
+     *   level 6-7 (h = 1.0)  → cube_up  (a full source freezes into a full cube)
+     * </pre>
+     */
+    private static String gravelShapeForLevel(int level) {
+        if (level <= 2) {
+            return ShapeIds.PLATE;
+        } else if (level == 3) {
+            return ShapeIds.SLAB;
+        } else if (level <= 5) {
+            return ShapeIds.DOUBLE_SLAB;
+        }
+        return ShapeIds.CUBE;
     }
 
     /**

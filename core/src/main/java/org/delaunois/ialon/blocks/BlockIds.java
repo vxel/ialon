@@ -33,6 +33,7 @@ public interface BlockIds {
     String DIRT = TypeIds.DIRT;
     
     String GRAVEL = TypeIds.GRAVEL;
+    String GRAVEL_DARK = TypeIds.GRAVEL_DARK;
     
     String GRASS = TypeIds.GRASS;
     String GRASS_SNOW = TypeIds.GRASS_SNOW;
