@@ -56,7 +56,7 @@ void main() {
     star *= 0.6 + 0.4 * rnd.y;                    // vary apparent magnitude (kept bright : 0.6 .. 1.0)
 
     // Subtle twinkle, phase-shifted per star so they don't pulse in unison.
-    star *= 0.85 + 0.15 * sin(g_Time * 2.5 + rnd.z * 6.2831);
+    star *= 0.65 + 0.35 * sin(g_Time * 2.5 + rnd.z * 6.2831);
 
     // Linear brightness. Carried in the RGB (not the alpha) so the sRGB encode below lifts the dark
     // values exactly as a hardware sRGB framebuffer would after additive blending.
