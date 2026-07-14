@@ -1,44 +1,36 @@
 package org.delaunois.ialon.blocks;
 
 /**
- * Contains all the keys of the types that are registered in the {@link TypeRegistry}. Use these keys to retrieve the
- * types from the {@link TypeRegistry#get(String)}.
+ * Keys of the block types the engine dispatches on, or that a {@link BlockIds} entry aliases. The
+ * full type catalog is defined declaratively in {@code Blocks/blocks.yaml} and registered at startup
+ * by {@code IalonBlockCatalog}; this interface only holds the subset that Java code references
+ * symbolically (rendering/gameplay branches on the type, or a {@link BlockIds} cube-form alias points
+ * here). A type that is only ever named from the YAML does not belong here.
+ * Use these keys to retrieve types from {@link TypeRegistry#get(String)}.
  *
  * @author: rvandoosselaer
  */
 public interface TypeIds {
 
     String BIRCH_LOG = "birch_log";
-    String BIRCH_PLANKS = "birch_planks";
+    String BIRCH_LEAVES = "birch_leaves";
     String BRICKS = "bricks";
     String COBBLESTONE = "cobblestone";
-    String MOSSY_COBBLESTONE = "mossy_cobblestone";
     String DIRT = "dirt";
-    String GRAVEL = "gravel";
     String GRAVEL_DARK = "gravel_dark";
     String GRASS = "grass";
-    String GRASS_SNOW = "grass_snow";
-    String GRASS_TOUNDRA = "grass_toundra";
     String PALM_TREE_LOG = "palm_tree_log";
-    String PALM_TREE_PLANKS = "palm_tree_planks";
+    String PALM_TREE_LEAVES = "palm_tree_leaves";
     String ROCK = "rock";
     String OAK_LOG = "oak_log";
+    String OAK_LEAVES = "oak_leaves";
     String OAK_PLANKS = "oak_planks";
     String SAND = "sand";
     String SNOW = "snow";
     String SPRUCE_LOG = "spruce_log";
-    String SPRUCE_PLANKS = "spruce_planks";
-    String STONE_BRICKS = "stone_bricks";
-    String MOSSY_STONE_BRICKS = "mossy_stone_bricks";
-    String WATER = "water";
-    String BIRCH_LEAVES = "birch_leaves";
-    String PALM_TREE_LEAVES = "palm_tree_leaves";
-    String OAK_LEAVES = "oak_leaves";
     String SPRUCE_LEAVES = "spruce_leaves";
+    String WATER = "water";
     String ITEM_GRASS = "item_grass";
-    String WHITE_LIGHT = "white_light";
-    String WINDOW = "window";
-    String WINDOW_WOOD = "window_wood";
     String SCALE = "scale";
     String RAIL = "rail";
     String RAIL_CURVED = "rail_curved";
@@ -50,6 +42,4 @@ public interface TypeIds {
     String DOOR_RIGHT = "door_right";
     String DOOR_LEFT_METAL = "door_left_metal";
     String DOOR_RIGHT_METAL = "door_right_metal";
-    String DOOR_LEFT_GLASS = "door_left_glass";
-    String DOOR_RIGHT_GLASS = "door_right_glass";
 }
