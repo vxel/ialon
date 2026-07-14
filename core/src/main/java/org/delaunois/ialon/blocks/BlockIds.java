@@ -1,11 +1,18 @@
 package org.delaunois.ialon.blocks;
 
 /**
- * Contains all the keys of the default cube shape blocks that are registered in the {@link BlockRegistry}. Use these
- * keys to retrieve the blocks from the {@link BlockRegistry#get(String)}. For non-default shapes, use
- * the {@link #getName(String type, String shape)} method to get the name (id) of the block.
- * The convention is that the name of the block is a concatenation of the type and shape with a dash or hyphen in
- * between. When the shape of the block is the default shape (ShapeIds.CUBE) the shape can be left out in the name.
+ * Keys of the specific blocks that Java code references by name, plus the {@link #getName} helper used
+ * to build block names at runtime. The full block catalog is defined declaratively in
+ * {@code Blocks/blocks.yaml} and registered at startup by {@code IalonBlockCatalog} - this interface is
+ * NOT that catalog and does not enumerate the (type x shape x liquid-level) fan-out. It only holds:
+ * the empty block ({@link #NONE}), the liquid-source block ids that are not type ids
+ * ({@link #WATER_SOURCE}, {@link #LAVA_SOURCE}), and the handful of cube-form blocks the code names
+ * directly (e.g. terrain generation). A cube-form block id equals its type id, so those entries alias
+ * {@link TypeIds} to document intent ("the placeable cube block", not "the material").
+ *
+ * The convention is that the name of the block is a concatenation of the type and shape with a dash or
+ * hyphen in between. When the shape of the block is the default shape (ShapeIds.CUBE) the shape can be
+ * left out in the name.
  *
  * Some examples:
  * - block (type: grass, shape: cube)
@@ -20,62 +27,40 @@ package org.delaunois.ialon.blocks;
 public interface BlockIds {
 
     String NONE = "";
-    
+
     String BIRCH_LOG = TypeIds.BIRCH_LOG;
-    String BIRCH_PLANKS = TypeIds.BIRCH_PLANKS;
     String BIRCH_LEAVES = TypeIds.BIRCH_LEAVES;
-    
-    String BRICKS = TypeIds.BRICKS;
-    
+
     String COBBLESTONE = TypeIds.COBBLESTONE;
-    String MOSSY_COBBLESTONE = TypeIds.MOSSY_COBBLESTONE;
-    
+
     String DIRT = TypeIds.DIRT;
-    
-    String GRAVEL = TypeIds.GRAVEL;
+
     String GRAVEL_DARK = TypeIds.GRAVEL_DARK;
-    
+
     String GRASS = TypeIds.GRASS;
-    String GRASS_SNOW = TypeIds.GRASS_SNOW;
 
     String PALM_TREE_LOG = TypeIds.PALM_TREE_LOG;
-    String PALM_TREE_PLANKS = TypeIds.PALM_TREE_PLANKS;
     String PALM_TREE_LEAVES = TypeIds.PALM_TREE_LEAVES;
 
     String ROCK = TypeIds.ROCK;
 
     String OAK_LOG = TypeIds.OAK_LOG;
-    String OAK_PLANKS = TypeIds.OAK_PLANKS;
     String OAK_LEAVES = TypeIds.OAK_LEAVES;
 
     String SAND = TypeIds.SAND;
-    
+
     String SNOW = TypeIds.SNOW;
 
     String SPRUCE_LOG = TypeIds.SPRUCE_LOG;
-    String SPRUCE_PLANKS = TypeIds.SPRUCE_PLANKS;
     String SPRUCE_LEAVES = TypeIds.SPRUCE_LEAVES;
-
-    String STONE_BRICKS = TypeIds.STONE_BRICKS;
-    String MOSSY_STONE_BRICKS = TypeIds.MOSSY_STONE_BRICKS;
 
     String WATER = TypeIds.WATER;
     String WATER_SOURCE = "water_source";
 
-    String WHITE_LIGHT = TypeIds.WHITE_LIGHT;
-
-    String WINDOW = TypeIds.WINDOW;
-
-    String ITEM_GRASS = TypeIds.ITEM_GRASS;
-    String FIRE = TypeIds.FIRE;
-    String LAVA = TypeIds.LAVA;
     String LAVA_SOURCE = "lava_source";
 
-    String SCALE = TypeIds.SCALE;
-    String DOOR = TypeIds.DOOR_LEFT;
     String RAIL = TypeIds.RAIL;
     String RAIL_CURVED = TypeIds.RAIL_CURVED;
-    String RAIL_SLOPE = TypeIds.RAIL_SLOPE;
 
     static String getName(String type, String shape) {
         return ShapeIds.CUBE.equals(shape) ? type : type + "-" + shape;
