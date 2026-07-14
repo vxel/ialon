@@ -272,6 +272,10 @@ blocks:
     texture: Textures/gravel.png
     shapeSet: standard
     palette: { order: 140, shape: cube_up }
+  - type: gravel_dark
+    texture: Textures/gravel-dark.png
+    shapeSet: standard
+    palette: { order: 141, shape: cube_up }
   - type: dirt
     texture: Textures/dirt.png
     terrain: true
