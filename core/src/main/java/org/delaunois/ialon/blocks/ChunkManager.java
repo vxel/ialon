@@ -32,6 +32,11 @@ public class ChunkManager {
     private ChunkCache cache;
     private ChunkMeshGenerator meshGenerator;
     private ExecutorService requestExecutor;
+    // Dedicated single-thread executor for interactive edits (add/remove/toggle block). Kept separate
+    // from requestExecutor so an edit's mesh regeneration runs immediately instead of queueing behind
+    // the (often busy) chunk generation/meshing tasks of the pager — the render thread blocks on the
+    // edit's mesh via requestOrderedMeshChunks, so any wait behind paging directly stalls the frame.
+    private ExecutorService editExecutor;
 
     private final int poolSize;
     private final ChunkRepository repository;
@@ -62,6 +67,7 @@ public class ChunkManager {
         cache = new ChunkCache();
         meshGenerator = BlocksConfig.getInstance().getChunkMeshGenerator();
         requestExecutor = Executors.newFixedThreadPool(poolSize, new ThreadFactoryBuilder().setNameFormat("chunk-generator-%d").build());
+        editExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("chunk-editor-%d").build());
         initialized = true;
     }
 
@@ -165,11 +171,13 @@ public class ChunkManager {
     }
 
     public Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations) {
-        return requestMeshChunks(locations, true);
+        return requestMeshChunks(locations, true, requestExecutor);
     }
 
     public void requestOrderedMeshChunks(Collection<Vec3i> locations) {
-        Set<Future<Chunk>> results = requestMeshChunks(locations, false);
+        // Interactive edits mesh on the dedicated single-thread editExecutor so they never queue behind
+        // the pager's generation/meshing work : the render thread blocks on these futures below.
+        Set<Future<Chunk>> results = requestMeshChunks(locations, false, editExecutor);
         results.forEach(result -> {
             try {
                 triggerListenerChunkAvailable(result.get());
@@ -183,7 +191,7 @@ public class ChunkManager {
         });
     }
 
-    private Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations, boolean triggers) {
+    private Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations, boolean triggers, ExecutorService executor) {
         assertInitialized();
 
         Set<Future<Chunk>> results = new LinkedHashSet<>();
@@ -226,12 +234,12 @@ public class ChunkManager {
 
             } else {
                 // Generate mesh for partially-filled chunks
-                requestMeshChunk(results, chunk, triggers);
+                requestMeshChunk(results, chunk, triggers, executor);
             }
         });
 
         // Generate mesh for full chunks
-        fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers));
+        fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers, executor));
 
         log.info("{} locations generated and {} empty locations", locations.size() - saved[0], saved[0]);
 
@@ -259,9 +267,9 @@ public class ChunkManager {
         return neighbour == null || neighbour.isFullyOpaque();
     }
 
-    private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers) {
+    private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers, ExecutorService executor) {
         results.add(
-                requestExecutor.submit(() -> {
+                executor.submit(() -> {
                     try {
                         meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
                         if (triggers) {
@@ -340,9 +348,13 @@ public class ChunkManager {
         }
 
         requestExecutor.shutdown();
+        editExecutor.shutdown();
         try {
             if (!requestExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS) && timeout > 0) {
                 log.warn("Executors did not terminate properly within {}ms timeout", timeout);
+            }
+            if (!editExecutor.awaitTermination(timeout, TimeUnit.MILLISECONDS) && timeout > 0) {
+                log.warn("Edit executor did not terminate properly within {}ms timeout", timeout);
             }
         } catch (InterruptedException e) {
             log.error("Interrupted while cleaning up {}", getClass().getSimpleName());

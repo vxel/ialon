@@ -111,11 +111,11 @@ public class WorldManager {
             }
         }
 
-        log.info("Adding block {}", block.getName());
+        log.debug("Adding block {}", block.getName());
 
         if (Objects.equals(previousBlock, block)) {
             // 1. Adding the same block : nothing to do
-            log.info("Previous block at location {} was already {}", location, previousBlock);
+            log.debug("Previous block at location {} was already {}", location, previousBlock);
             return emptyChunkSet;
         }
 
@@ -130,7 +130,7 @@ public class WorldManager {
         }
 
         // 4. Adding block on an existing non-water block is not allowed
-        log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
+        log.debug("Existing block {} at location {} prevents adding the new block", previousBlock, location);
         return emptyChunkSet;
     }
 
@@ -262,12 +262,12 @@ public class WorldManager {
     public Block orientateBlockScale(Block block, Vector3f blockLocation, Direction direction) {
         // A scale can only be added if a block exists behind it
         if (Direction.UP.equals(direction) || Direction.DOWN.equals(direction)) {
-            log.info("Can't add an horizontal scale");
+            log.debug("Can't add an horizontal scale");
             return null;
         }
         Block behind = chunkManager.getBlock(blockLocation.subtract(direction.getVector().toVector3f())).orElse(null);
         if (behind == null || !ShapeIds.CUBE.equals(behind.getShape())) {
-            log.info("No cube block behind scale");
+            log.debug("No cube block behind scale");
             return null;
         }
         return orientateBlockDefault(block, blockLocation, direction);
@@ -417,7 +417,7 @@ public class WorldManager {
     }
 
     private Set<Vec3i> doRemoveBlock(Vector3f location) {
-        log.info("Removing block at {}", location);
+        log.debug("Removing block at {}", location);
 
         if (location.y <= 1) {
             return Collections.emptySet();
@@ -610,7 +610,7 @@ public class WorldManager {
     private Block selectRailBlock(Block block, Vector3f location) {
         Block below = chunkManager.getBlock(location.add(0, -1, 0)).orElse(null);
         if (!isSolidBlock(below)) {
-            log.info("No cube block below rail");
+            log.debug("No cube block below rail");
             return null;
         }
 
@@ -734,7 +734,7 @@ public class WorldManager {
             // Placing a liquid source where another liquid already is : the two liquids are
             // incompatible, so a source of a different liquid is refused (no mixing).
             if (!liquidTypeOf(block).equals(prevLiquidType)) {
-                log.info("Incompatible liquids : cannot place {} source in {}", liquidTypeOf(block), prevLiquidType);
+                log.debug("Incompatible liquids : cannot place {} source in {}", liquidTypeOf(block), prevLiquidType);
                 return new LinkedHashSet<>();
             }
             return addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
@@ -755,7 +755,7 @@ public class WorldManager {
 
         } else {
             // There is already a block at this location
-            log.info("Existing block {} at location {} prevents adding the new block", previousBlock, location);
+            log.debug("Existing block {} at location {} prevents adding the new block", previousBlock, location);
             return new LinkedHashSet<>();
         }
     }
