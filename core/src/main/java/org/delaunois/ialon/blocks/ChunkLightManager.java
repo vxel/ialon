@@ -324,10 +324,16 @@ public class ChunkLightManager {
         }
 
         if (!dimLight && lightLevel == 15) {
-            log.debug("PAS3 - Setting light ({}, {}, {}) to {}", x, y, z, lightLevel);
-            chunk.setSunlight(x, y, z, lightLevel);
-            updateChunkMeshUpdateRequests(chunk, x, y, z, context);
-            context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
+            // Full-strength sunlight travels straight down (no dimming). Only act when the cell isn't
+            // already at 15 : re-setting an unchanged cell would re-mark its chunk for meshing and
+            // re-enqueue an already-propagated node — spurious mesh updates and wasted BFS work. When
+            // it IS already 15 its downstream was propagated when it was first lit, so we can stop here.
+            if (chunk.getSunlight(x, y, z) != lightLevel) {
+                log.debug("PAS3 - Setting light ({}, {}, {}) to {}", x, y, z, lightLevel);
+                chunk.setSunlight(x, y, z, lightLevel);
+                updateChunkMeshUpdateRequests(chunk, x, y, z, context);
+                context.sunlightBfsQueue.offer(new LightNode(chunk, x, y, z));
+            }
             return;
         }
 

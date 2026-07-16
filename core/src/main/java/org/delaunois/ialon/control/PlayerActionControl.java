@@ -200,10 +200,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        log.info("Action : addBlock triggered");
+        log.debug("Action : addBlock triggered");
 
         if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {
-            log.info("Not adding. No placeholder.");
+            log.debug("Not adding. No placeholder.");
             return;
         }
 
@@ -216,7 +216,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
                 && blockLocation.x == playerBlockLocation.x
                 && blockLocation.z == playerBlockLocation.z
                 && (blockLocation.y == playerBlockLocation.y || blockLocation.y == playerBlockLocation.y + 1)) {
-            log.info("Can't add a solid block where the player stands");
+            log.debug("Can't add a solid block where the player stands");
             return;
         }
 
@@ -239,7 +239,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         if (TypeIds.FIRE.equals(block.getType())) {
             Block target = worldManager.getBlock(location);
             if (target != null && TypeIds.WATER.equals(target.getType())) {
-                log.info("Can't place fire in water");
+                log.debug("Can't place fire in water");
                 return;
             }
         }
@@ -260,10 +260,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        log.info("Action : removeBlock triggered");
+        log.debug("Action : removeBlock triggered");
 
         if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {
-            log.info("Not removing. No parent for placeholder");
+            log.debug("Not removing. No parent for placeholder");
             return;
         }
 
@@ -282,10 +282,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        log.info("Action : toggleDoor triggered");
+        log.debug("Action : toggleDoor triggered");
 
         if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {
-            log.info("Not toggling. No placeholder.");
+            log.debug("Not toggling. No placeholder.");
             return;
         }
 
