@@ -493,6 +493,11 @@ public class ChunkLiquidManager {
      * plate. The relevant mesh update requests (this cell and its chunk neighbours) are recorded in the
      * context.
      *
+     * <p>A liquid <b>source</b> is never solidified : sources are permanent, so a water source and a
+     * lava source that meet simply block each other at the boundary (no gravel crust), and only the
+     * <em>flowing</em> water between them freezes. Solidifying a source would destroy it and orphan the
+     * flow it feeds (that water would float, never receding), so this method leaves sources untouched.
+     *
      * @param chunk the chunk holding the water cell
      * @param x the x location of the water inside the chunk
      * @param y the y location of the water inside the chunk
@@ -500,6 +505,12 @@ public class ChunkLiquidManager {
      * @param level the frozen liquid level to approximate : {@code max(waterLevel, lavaLevel)}
      */
     private void solidifyToGravel(Chunk chunk, int x, int y, int z, int level, LiquidRunningContext context) {
+        Block existing = chunk.getBlock(x, y, z);
+        if (existing != null && existing.isLiquidSource()) {
+            // Never solidify a source : it stays and simply blocks the other liquid at the boundary.
+            log.debug("Not solidifying liquid source at ({}, {}, {})", x, y, z);
+            return;
+        }
         String shape = gravelShapeForLevel(level);
         Block gravel = BlocksConfig.getInstance().getBlockRegistry()
                 .get(BlockIds.getName(BlockIds.GRAVEL_DARK, shape, 0));

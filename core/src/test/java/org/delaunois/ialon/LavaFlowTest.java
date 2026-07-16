@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Regression tests for the lava liquid : water/lava incompatibility (where the two meet, the water
- * cell solidifies into gravel_dark and the lava stays liquid — no mixing) and the pure-cell rule
- * (lava does not co-habit with structural blocks, unlike water).
+ * Regression tests for the lava liquid : water/lava incompatibility (they never mix - two sources
+ * block each other where they meet, while flowing water freezes into gravel_dark against lava) and the
+ * pure-cell rule (lava does not co-habit with structural blocks, unlike water).
  */
 class LavaFlowTest extends BaseSceneryTest {
 
@@ -42,7 +42,7 @@ class LavaFlowTest extends BaseSceneryTest {
     }
 
     @Test
-    void waterSolidifiesWhereItMeetsLava() {
+    void waterAndLavaSourcesStopWhereTheyMeet() {
         init("lava-ut1");
 
         // Solid floor so the liquids spread horizontally instead of falling.
@@ -50,26 +50,55 @@ class LavaFlowTest extends BaseSceneryTest {
             addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
         }
 
-        // Adjacent water and lava sources. Where the two liquids meet, the water cell solidifies into
-        // gravel_dark (Minecraft-style lava + water → stone) while the lava stays liquid — no mixing.
+        // Adjacent water and lava sources : each tries to flow into the other and must stop. Sources are
+        // permanent - they are never solidified into gravel, so the boundary simply holds (no crust).
         addBlock(BlockIds.WATER_SOURCE, 5, Y, Z);
         addBlock(BlockIds.LAVA_SOURCE, 6, Y, Z);
         waitAllLiquidEnd();
 
-        // The water cell at the boundary froze into gravel_dark ; the lava source stayed lava.
-        assertEquals(TypeIds.GRAVEL_DARK, blockAt(5, Y, Z).getType(),
-                "the water cell meeting lava solidifies into gravel_dark");
+        // Neither source overwrote or solidified the other : the boundary holds.
+        assertEquals(TypeIds.WATER, blockAt(5, Y, Z).getType(), "water source must remain water");
         assertEquals(TypeIds.LAVA, blockAt(6, Y, Z).getType(), "lava source must remain lava");
 
-        // Each liquid still flowed away from the boundary on its own side, and neither mixed into the
-        // other : water stayed water to the west, lava stayed lava to the east.
+        // Each liquid still flowed away from the boundary on its own side.
         Block west = blockAt(4, Y, Z);
         assertNotNull(west, "water should have flowed west");
-        assertEquals(TypeIds.WATER, west.getType(), "the cell west of the boundary is water");
+        assertEquals(TypeIds.WATER, west.getType(), "the cell west of the water source is water");
 
         Block east = blockAt(7, Y, Z);
         assertNotNull(east, "lava should have flowed east");
         assertEquals(TypeIds.LAVA, east.getType(), "the cell east of the lava source is lava");
+    }
+
+    @Test
+    void flowingWaterSolidifiesAgainstLava() {
+        init("lava-ut1");
+
+        // Solid floor so the liquids spread horizontally instead of falling.
+        for (int x = 1; x <= 10; x++) {
+            addBlock(BlockIds.COBBLESTONE, x, FLOOR, Z);
+        }
+
+        // A water source far to the west sends a FLOWING tongue east ; a lava source sits to the east.
+        // Where the flowing water reaches the lava, that (non-source) water cell freezes into gravel_dark
+        // while both sources stay liquid.
+        addBlock(BlockIds.WATER_SOURCE, 1, Y, Z);
+        addBlock(BlockIds.LAVA_SOURCE, 8, Y, Z);
+        waitAllLiquidEnd();
+
+        // Both sources survive.
+        assertEquals(TypeIds.WATER, blockAt(1, Y, Z).getType(), "water source must remain water");
+        assertEquals(TypeIds.LAVA, blockAt(8, Y, Z).getType(), "lava source must remain lava");
+
+        // A gravel_dark crust formed at the water/lava boundary, and no cell mixed the two liquids.
+        boolean gravelFound = false;
+        for (int x = 2; x <= 7; x++) {
+            Block b = blockAt(x, Y, Z);
+            if (b != null && TypeIds.GRAVEL_DARK.equals(b.getType())) {
+                gravelFound = true;
+            }
+        }
+        assertTrue(gravelFound, "flowing water solidifies into gravel_dark where it meets lava");
     }
 
     @Test
