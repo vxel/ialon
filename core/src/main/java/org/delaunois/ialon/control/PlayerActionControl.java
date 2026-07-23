@@ -1,10 +1,10 @@
 package org.delaunois.ialon.control;
 
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ACTION_OBJECT;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ADD_BLOCK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_DEBUG_CHUNK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FLY;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
-import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ACTION_OBJECT;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.input.controls.ActionListener;
@@ -21,7 +21,6 @@ import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.ShapeIds;
-import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.state.BlockPickingMode;
 
@@ -196,7 +195,8 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
     }
 
     public void addBlock(boolean isPressed) {
-        if (!isPressed || config.getSelectedBlock() == null) {
+        final Block selectedBlock = config.getSelectedBlock();
+        if (!isPressed || selectedBlock == null) {
             return;
         }
 
@@ -212,7 +212,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         Vec3i blockLocation = ChunkManager.getBlockLocation(worldBlockLocation);
 
         // Prevents adding a solid block where the player stands
-        if (config.getSelectedBlock().isSolid()
+        if (selectedBlock.isSolid()
                 && blockLocation.x == playerBlockLocation.x
                 && blockLocation.z == playerBlockLocation.z
                 && (blockLocation.y == playerBlockLocation.y || blockLocation.y == playerBlockLocation.y + 1)) {
@@ -220,7 +220,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        app.enqueue(() -> addBlockTask(worldBlockLocation, config.getSelectedBlock()));
+        app.enqueue(() -> addBlockTask(worldBlockLocation, selectedBlock));
     }
 
     private void addBlockTask(Vector3f location, Block block) {
@@ -235,20 +235,18 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        // Fire cannot be placed inside water : the target cell would be flooded.
-        if (TypeIds.FIRE.equals(block.getType())) {
-            Block target = worldManager.getBlock(location);
-            if (target != null && TypeIds.WATER.equals(target.getType())) {
-                log.debug("Can't place fire in water");
-                return;
-            }
-        }
-
-        if (TypeIds.WATER.equals(block.getType())) {
-            Vector3f tmp = placeholderControl.getRemovePlaceholder().getWorldTranslation().subtract(0.5f, 0.5f, 0.5f);
-            Block previousBlock = worldManager.getBlock(tmp);
-            if (previousBlock != null && !ShapeIds.CUBE.equals(previousBlock.getShape())) {
-                location = tmp;
+        if (block.isLiquidSource()) {
+            // Waterlogging : a water source aimed at a non-full (non-cube) block floods that block's own
+            // cell (co-habiting with it) instead of landing in the adjacent cell. Any other block, or a
+            // full-cube / non-floodable target, keeps the normal adjacent-cell placement.
+            Vector3f aimed = placeholderControl.getRemovePlaceholder().getWorldTranslation()
+                    .subtract(0.5f, 0.5f, 0.5f);
+            Block target = worldManager.getBlock(aimed);
+            if (target != null
+                    && !ShapeIds.CUBE.equals(target.getShape())
+                    && target.getLiquidLevelId() != Block.LIQUID_DISABLED
+                    && !target.isLiquidSource()) {
+                location = aimed;
             }
         }
 
@@ -267,14 +265,12 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
 
-        app.enqueue(() -> removeBlockTask(placeholderControl
+        final Vector3f blockLocation = placeholderControl
                 .getRemovePlaceholder()
                 .getWorldTranslation()
-                .subtract(0.5f, 0.5f, 0.5f)));
-    }
+                .subtract(0.5f, 0.5f, 0.5f);
 
-    private void removeBlockTask(Vector3f blockLocation) {
-        worldManager.removeBlock(blockLocation);
+        app.enqueue(() -> worldManager.removeBlock(blockLocation));
     }
 
     public void toggleDoor(boolean isPressed) {

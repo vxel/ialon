@@ -93,7 +93,14 @@ public class WorldManager {
         Vec3i blockLocationInsideChunk = chunk.toLocalLocation(ChunkManager.getBlockLocation(location));
         Block previousBlock = chunk.getBlock(blockLocationInsideChunk);
 
-        if (TypeIds.RAIL.equals(block.getType())) {
+        if (TypeIds.FIRE.equals(block.getType())) {
+            // Fire cannot be placed inside water : the target cell would be flooded.
+            if (previousBlock != null && TypeIds.WATER.equals(previousBlock.getType())) {
+                log.debug("Can't place fire in water");
+                return emptyChunkSet;
+            }
+
+        } else if (TypeIds.RAIL.equals(block.getType())) {
             // Select rail block according to the neighbour blocks
             block = selectRailBlock(block, location);
             if (block == null) {
@@ -129,7 +136,15 @@ public class WorldManager {
             return addBlockInWater(block, previousBlock, chunk, blockLocationInsideChunk, location);
         }
 
-        // 4. Adding block on an existing non-water block is not allowed
+        if (isWaterSource(block) && canHoldLiquid(previousBlock)) {
+            // 4. Waterlogging : a water source floods a dry, non-full (non-cube) block, co-habiting
+            //    with it exactly as a source dropped into already-standing water would (see 3.1.1).
+            //    The block keeps its shape/type and gains the liquid-source level. Full cubes and
+            //    blocks that can't carry liquid fall through to the "not allowed" case below.
+            return addSourceBlockInWaterLocation(block, previousBlock, chunk, blockLocationInsideChunk);
+        }
+
+        // 5. Adding block on an existing non-water block is not allowed
         log.debug("Existing block {} at location {} prevents adding the new block", previousBlock, location);
         return emptyChunkSet;
     }
@@ -716,6 +731,17 @@ public class WorldManager {
 
     private static boolean isWaterSource(Block block) {
         return block != null && block.isLiquidSource() && TypeIds.WATER.equals(block.getType());
+    }
+
+    /**
+     * True for a dry, non-full block that can be flooded (waterlogged) : any registered non-cube shape
+     * carries the full range of liquid-level variants (see {@code IalonBlockCatalog}), so it can host a
+     * source. Full cubes fill their cell and blocks flagged {@code LIQUID_DISABLED} never take liquid.
+     */
+    private static boolean canHoldLiquid(Block block) {
+        return block != null
+                && !ShapeIds.CUBE.equals(block.getShape())
+                && block.getLiquidLevelId() != Block.LIQUID_DISABLED;
     }
 
     private Set<Vec3i> addBlockInEmptyNonWaterLocation(Block block, Chunk chunk, Vec3i blockLocationInsideChunk) {
