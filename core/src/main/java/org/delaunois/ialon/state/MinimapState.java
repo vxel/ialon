@@ -29,6 +29,7 @@ import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
@@ -566,6 +567,13 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         ColorRGBA rock = config.getFarTerrainRockColor();
         ColorRGBA snow = config.getFarTerrainSnowColor();
         ColorRGBA water = config.getCalmWaterColor();
+        // Biome grass-band colour : sampled per texel from the generator (same source as the near voxels
+        // and the far horizon), so all three read one palette. Falls back to the flat base colour when the
+        // generator isn't a NoiseTerrainGenerator.
+        NoiseTerrainGenerator noise = generator instanceof NoiseTerrainGenerator
+                ? (NoiseTerrainGenerator) generator : null;
+        Vector2f biomeSample = new Vector2f();
+        ColorRGBA biomeGrass = new ColorRGBA();
 
         // Android (no hardware sRGB framebuffer : manualGammaEncode) does not sRGB-encode on output, and the
         // plain Unshaded GUI shader doesn't emulate it (unlike the world shaders' MANUAL_SRGB) ; so the linear
@@ -579,16 +587,20 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             float v = (j + 0.5f) / texSize;
             for (int i = 0; i < texSize; i++) {
                 float u = (i + 0.5f) / texSize;
+                // World coords for this texel : shown extent, centered on the origin. On the torus the
+                // biome field is periodic with worldExtent, so origin-centered coords are correct.
+                float worldX = (u - 0.5f) * worldExtent;
+                float worldZ = (v - 0.5f) * worldExtent;
                 float height;
                 if (heights != null) {
                     height = sampleHeightmap(heights, hmSize, hmStep, u, v);
                 } else {
-                    // Fallback : sample the generator over the shown extent, centered on the origin.
-                    float worldX = (u - 0.5f) * worldExtent;
-                    float worldZ = (v - 0.5f) * worldExtent;
                     height = generator.getHeight(sample.set(worldX, 0f, worldZ));
                 }
-                colorAt(c, height, waterHeight, rockHeight, snowHeight, sand, grass, rock, snow, water);
+                // Per-texel biome grass colour (continuous blend), or the flat base colour as a fallback.
+                ColorRGBA grassColor = noise != null
+                        ? noise.biomeColorAt(worldX, worldZ, biomeSample, biomeGrass) : grass;
+                colorAt(c, height, waterHeight, rockHeight, snowHeight, sand, grassColor, rock, snow, water);
                 data.put(toByte(c.r, manualSrgb));
                 data.put(toByte(c.g, manualSrgb));
                 data.put(toByte(c.b, manualSrgb));

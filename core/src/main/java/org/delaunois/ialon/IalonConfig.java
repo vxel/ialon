@@ -60,7 +60,7 @@ public class IalonConfig implements WorldSettings {
     private int physicsGridRadius = 1;
     private int chunkSize = 16;
     private int chunkHeight = 16;
-    private int gridHeight = 7;
+    private int gridHeight = 10;
 
     // World
 

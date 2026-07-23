@@ -38,6 +38,8 @@ public interface BlockIds {
     String GRAVEL_DARK = TypeIds.GRAVEL_DARK;
 
     String GRASS = TypeIds.GRASS;
+    String GRASS_SNOW = TypeIds.GRASS_SNOW;
+    String GRASS_TOUNDRA = TypeIds.GRASS_TOUNDRA;
 
     String PALM_TREE_LOG = TypeIds.PALM_TREE_LOG;
     String PALM_TREE_LEAVES = TypeIds.PALM_TREE_LEAVES;

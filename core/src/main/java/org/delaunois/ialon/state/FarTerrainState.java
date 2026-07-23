@@ -95,6 +95,8 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     private static final int PATCH_SIZE = 65;
     // Forest-density tint map resolution (single channel, covers the whole extent).
     private static final int FOREST_DENSITY_SIZE = 256;
+    // Biome colour map resolution (RGB grass-band colour per biome, covers the whole extent).
+    private static final int BIOME_MAP_SIZE = 256;
 
     private static final float ENCLOSURE_OFFSET = 0f;
 
@@ -202,7 +204,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
 
         terrain = new TerrainQuad("FarTerrain", PATCH_SIZE, HEIGHTMAP_SIZE, heightmap);
         material = createMaterial();
-        bindForestTint(generator, step);
+        bindProceduralMaps(generator, step);
         terrain.setMaterial(material);
         // Uniform scale : heights were pre-divided by step (see sampleHeightmap), so world Y is exact
         // again after scaling, AND a uniform scale keeps the terrain normals correct in world space.
@@ -478,7 +480,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
      * grass slopes where this field is high, so the beyond-billboard woods read as dark-green relief. Only
      * the noise generator carries a forest field ; for the others the FOREST_TINT define stays off.
      */
-    private void bindForestTint(TerrainGenerator generator, float step) {
+    private void bindProceduralMaps(TerrainGenerator generator, float step) {
         if (!(generator instanceof NoiseTerrainGenerator)) {
             return;
         }
@@ -488,6 +490,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         material.setFloat("ForestTintStrength", config.getForestTintStrength());
         // Ramp the tint in where the billboards thin out, so the two layers don't double-darken the slopes.
         material.setFloat("ForestTintStart", config.getFarTreeDistance());
+        // Biome colour map : the grass band is tinted per biome (same source as the near voxels), so the
+        // distant horizon reads with the same biome palette. Shares the Extent/ForestOrigin UV below.
+        material.setTexture("BiomeMap", createBiomeColorTexture(noise, step));
         material.setFloat("Extent", extent);
         material.setVector2("ForestOrigin", forestOrigin); // mutated in place in update() on tile snaps
         forestTintEnabled = true;
@@ -519,6 +524,39 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         tex.setMagFilter(Texture.MagFilter.Bilinear);
         tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
         return tex;
+    }
+
+    /**
+     * Bakes the biome grass-band colour over the same origin-centered grid as the forest-density map. The
+     * biome field is periodic with the world size (seamless on the torus), so the tile snap keeps it
+     * aligned. Colours are LINEAR (like the m_BaseColor palette in the shader) ; the shader does the sRGB
+     * output encode where needed (MANUAL_SRGB). The shader replaces its grass base with this texel.
+     */
+    private Texture2D createBiomeColorTexture(NoiseTerrainGenerator noise, float step) {
+        int n = BIOME_MAP_SIZE;
+        float worldStep = step * (HEIGHTMAP_SIZE - 1) / (float) n;
+        float half = n / 2f;
+        ByteBuffer data = BufferUtils.createByteBuffer(n * n * 4);
+        Vector2f sample = new Vector2f();
+        ColorRGBA c = new ColorRGBA();
+        for (int j = 0; j < n; j++) {
+            float worldZ = (j - half) * worldStep;
+            for (int i = 0; i < n; i++) {
+                float worldX = (i - half) * worldStep;
+                noise.biomeColorAt(worldX, worldZ, sample, c);
+                data.put(unitToByte(c.r)).put(unitToByte(c.g)).put(unitToByte(c.b)).put((byte) 0xFF);
+            }
+        }
+        data.flip();
+        Image img = new Image(Image.Format.RGBA8, n, n, data, ColorSpace.Linear);
+        Texture2D tex = new Texture2D(img);
+        tex.setMagFilter(Texture.MagFilter.Bilinear);
+        tex.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
+        return tex;
+    }
+
+    private static byte unitToByte(float v) {
+        return (byte) Math.round(Math.max(0f, Math.min(1f, v)) * 255f);
     }
 
     /**

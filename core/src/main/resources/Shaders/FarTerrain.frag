@@ -33,13 +33,22 @@ uniform vec3 m_MoonDirection;
 uniform vec4 m_MoonColor;
 uniform float m_MoonGlintStrength;
 
+// Shared UV of the procedural maps (forest density + biome colour) : covers [-Extent/2, +Extent/2] in
+// local X/Z, offset by the terrain world translation (tile snap on the torus ; 0 otherwise).
+#if defined(FOREST_TINT) || defined(BIOME_MAP)
+uniform float m_Extent;
+uniform vec2 m_ForestOrigin;
+#endif
+
 #ifdef FOREST_TINT
 uniform sampler2D m_ForestDensityMap;
 uniform vec4 m_ForestTintColor;
 uniform float m_ForestTintStrength;
 uniform float m_ForestTintStart; // distance at which the tint ramps in (where the billboards thin out)
-uniform float m_Extent;          // world span the density map covers (same as the terrain extent)
-uniform vec2 m_ForestOrigin;     // terrain world translation (tile snap on the torus ; 0 otherwise)
+#endif
+
+#ifdef BIOME_MAP
+uniform sampler2D m_BiomeMap; // per-biome grass-band colour (linear, same source as the near voxels)
 #endif
 
 #ifdef FAR_NOISE
@@ -108,8 +117,16 @@ void main() {
     // Coastal gradient : sand at the shoreline shallows -> dark-blue seabed with depth (like the voxels).
     float depth = clamp(m_WaterHeight - trueHeight, 0.0, 1.0);
     vec3 seabed = mix(m_SandColor.rgb, m_SeabedColor.rgb, depth);
+    // Grass-band colour : the flat base palette by default, or the per-biome colour where the biome map
+    // is bound (same biome source as the near voxels, so near & far read with one palette). Sampled by the
+    // shared procedural-map UV. Desert's biome colour ~ sand, so the shore->desert transition stays smooth.
+    vec3 grassColor = m_BaseColor.rgb;
+#ifdef BIOME_MAP
+    vec2 buv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
+    grassColor = texture2D(m_BiomeMap, buv).rgb;
+#endif
     // Sand fringe : the shore is sand for ~2 units above the water, then grass/land.
-    vec3 land = mix(m_SandColor.rgb, m_BaseColor.rgb, smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height));
+    vec3 land = mix(m_SandColor.rgb, grassColor, smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height));
     // High-altitude tiers, matching the voxel generator : grass -> bare rock -> snow caps.
     land = mix(land, m_RockColor.rgb, smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
     land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
