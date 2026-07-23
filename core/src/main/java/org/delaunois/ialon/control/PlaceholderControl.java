@@ -255,7 +255,7 @@ public class PlaceholderControl extends AbstractControl {
             if (block != null && !isLiquid(block)) {
                 scratchNormal.set(0, 1, 0);
                 if (previousCell != null) {
-                    scratchNormal.set(previousCell.x - cell.x, previousCell.y - cell.y, previousCell.z - cell.z);
+                    scratchNormal.set((float) previousCell.x - cell.x, (float) previousCell.y - cell.y, (float) previousCell.z - cell.z);
                     scratchNormal.normalizeLocal();
                 }
                 scratchResult.setContactPoint(new Vector3f(

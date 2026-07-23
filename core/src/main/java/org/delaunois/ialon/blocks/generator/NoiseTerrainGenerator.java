@@ -20,6 +20,7 @@ package org.delaunois.ialon.blocks.generator;
 import static org.delaunois.ialon.blocks.BlockIds.WATER;
 import static org.delaunois.ialon.blocks.BlockIds.WATER_SOURCE;
 
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
@@ -93,9 +94,91 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int CH_GRASS = 5;
     private static final int CH_PLANT_KIND = 6;
     private static final int CH_SPECIES = 7;
+    private static final int CH_BIOME = 8; // per-column dither of the biome boundary (see biomeAt)
+
+    // --- Biomes ---------------------------------------------------------------------------------------
+    // Two low-frequency, tiled (seamless) fields -- temperature and humidity -- classify each column into
+    // a biome (a Whittaker-style grid). The biome drives the surface/subsurface block, the tree species &
+    // density, the ground plants, and the far-horizon/minimap grass-band colour. All of this stays here in
+    // the generator (pure, tiled functions of seed + coords) so the near voxels, the distant horizon and
+    // the minimap read from ONE source -- no biome logic duplicated in GLSL.
+    private static final float BIOME_FREQUENCY_TEMPERATURE = 0.0018f; // ~550-block temperature bands
+    private static final float BIOME_FREQUENCY_HUMIDITY = 0.0022f;    // ~450-block humidity bands
+    // Classification thresholds in [0, 1] (see biomeAt). The climate noise concentrates near its median,
+    // so the thresholds sit close to 0.5 to give every biome a meaningful share of the map (else the cold
+    // & hot extremes -- snowy / taiga / desert -- would be vanishingly rare). Tunable.
+    // With temperature driven by latitude (a cosine, see temperature01) the value concentrates near the
+    // poles (cold) and the equator (hot), so the thresholds are spread wide to give three real latitude
+    // bands : polar (snowy/taiga) | temperate (plains/forest) | equatorial (desert where dry, else forest).
+    private static final float TEMP_COLD = 0.10f;   // below -> snowy / taiga (polar band)
+    private static final float TEMP_HOT = 0.90f;    // above (and dry) -> desert (equatorial band)
+    private static final float HUM_TAIGA = 0.50f;   // cold: below -> snowy, above -> taiga
+    private static final float HUM_DESERT = 0.52f;  // hot: below -> desert
+    private static final float HUM_FOREST = 0.50f;  // temperate: above -> forest, below -> plains
+    // The hard block choice is dithered over this half-width so biome borders are a stippled interleave of
+    // the two palettes rather than a razor-straight contour (deterministic, seamless on the torus).
+    private static final float BIOME_DITHER = 0.06f;
+    // Temperature follows LATITUDE (the Z axis) for a realistic climate : hot at the equator (Z=0, the
+    // world centre -> the central horizontal band = deserts) and cold at the poles (Z=±worldSize/2, the
+    // top & bottom of the map, which coincide on the torus seam -> taiga / snowy). A cosine gives this
+    // AND is naturally periodic in Z with period worldSize, so it is seam-free on the finite torus. The
+    // temperature noise is demoted to a small WOBBLE that just waves the otherwise dead-straight latitude
+    // bands ; humidity stays full noise (it decides where the hot band is actually desert vs plains).
+    private static final float TEMP_NOISE_WEIGHT = 0.22f;
+
+    // --- Highland relief (makes the taller world meaningful) ------------------------------------------
+    // A separate low-frequency, tiled "continentalness" field is ADDED to the raw terrain height so whole
+    // regions rise toward the (now higher) snow line, producing real mountain ranges. Additive (not a
+    // per-column modulation of the LayeredNoise, whose strengths are baked at build time) so it stays
+    // seam-free ; the existing soft ceiling absorbs the overshoot. Where the boosted height passes the
+    // rock/snow lines, generateSurface already caps it with rock/snow -- the "mountain biome" is emergent.
+    private static final float HIGHLAND_FREQUENCY = 0.0015f; // ~650-block highlands
+    private static final int HIGHLAND_OCTAVES = 2;
+    private static final float HIGHLAND_BOOST = 40f; // max blocks added to the highest continents
 
     /** Tree shapes : broadleaf sphere (oak/birch), conical spruce, top-tuft palm. */
     private enum CanopyStyle { SPHERE, CONE, PALM }
+
+    /**
+     * Land biomes. Each carries the type ids of its surface / subsurface block (resolved once in
+     * {@link #resolveBlocks}), a vegetation policy (tree species + relative density, ground plant kind)
+     * and a representative grass-band colour (authored sRGB, stored LINEAR like the far-terrain palette in
+     * IalonConfig, ~ the mean albedo of the surface texture) used to colour the distant horizon & minimap.
+     * The altitude tiers (snow/rock caps) still override the surface block on high peaks in every biome.
+     */
+    public enum Biome {
+        DESERT (TypeIds.SAND,          TypeIds.SAND, TreeSpecies.PALM,   0.08f, PlantKind.NONE,      srgb(0.76f, 0.71f, 0.50f)),
+        PLAINS (TypeIds.GRASS,         TypeIds.DIRT, null,               0.45f, PlantKind.SUNFLOWER, srgb(0.42f, 0.60f, 0.24f)),
+        FOREST (TypeIds.GRASS,         TypeIds.DIRT, null,               1.30f, PlantKind.MUSHROOM,  srgb(0.28f, 0.46f, 0.16f)),
+        TAIGA  (TypeIds.GRASS_TOUNDRA, TypeIds.DIRT, TreeSpecies.SPRUCE, 0.90f, PlantKind.SPARSE,    srgb(0.52f, 0.55f, 0.32f)),
+        SNOWY  (TypeIds.GRASS_SNOW,    TypeIds.DIRT, TreeSpecies.SPRUCE, 0.35f, PlantKind.NONE,      srgb(0.82f, 0.87f, 0.90f));
+
+        final String surfaceId;
+        final String subsurfaceId;
+        // Forced tree species, or null to pick a broadleaf (oak/birch) per wood via speciesNoise.
+        final TreeSpecies forcedSpecies;
+        final float treeDensityMul; // multiplies the forest-density keep probability
+        final PlantKind plantKind;
+        final ColorRGBA color; // grass-band colour for the far horizon & minimap (linear)
+
+        Biome(String surfaceId, String subsurfaceId, TreeSpecies forcedSpecies, float treeDensityMul,
+              PlantKind plantKind, ColorRGBA color) {
+            this.surfaceId = surfaceId;
+            this.subsurfaceId = subsurfaceId;
+            this.forcedSpecies = forcedSpecies;
+            this.treeDensityMul = treeDensityMul;
+            this.plantKind = plantKind;
+            this.color = color;
+        }
+    }
+
+    /** Ground-plant palette a biome scatters on its grass surface. */
+    private enum PlantKind { NONE, SPARSE, SUNFLOWER, MUSHROOM }
+
+    /** Authored sRGB -> linear (matches IalonConfig's setAsSrgb palette, since the renderer runs gamma). */
+    private static ColorRGBA srgb(float r, float g, float b) {
+        return new ColorRGBA().setAsSrgb(r, g, b, 1f);
+    }
 
     private enum TreeSpecies {
         OAK(CanopyStyle.SPHERE, 0, 1),
@@ -172,6 +255,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // Low-frequency field that lets each wood lean toward one broadleaf species (oak vs birch) instead
     // of a random species per tree. Tiled like the others.
     private NoiseLayer speciesNoise;
+    // Biome classification fields (temperature/humidity) and the highland relief field. Low-frequency,
+    // tiled and read-only after createWorldNoise() -> safe to share across the chunk-generation pool.
+    private NoiseLayer temperatureNoise;
+    private NoiseLayer humidityNoise;
+    private NoiseLayer continentalNoise;
     private FastNoise scatterNoise;
     // Player edits the far-horizon renderers must honour (felled trees / reshaped relief). Null until a
     // world is opened ; consulted only by the chunk-free far paths (forEachTreeAnchor), never by the
@@ -185,9 +273,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private volatile boolean blocksResolved = false;
     private Block blockRock;
     private Block blockSnow;
-    private Block blockGrass;
     private Block blockSand;
-    private Block blockDirt;
     private Block blockWaterSource;
     private Block blockWaterLiquid;
     private Block blockOakLog;
@@ -201,6 +287,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private Block blockItemGrass;
     private Block blockItemMushroom;
     private Block blockItemSunflower;
+    // Per-biome surface & subsurface blocks, indexed by Biome.ordinal() (resolved once, see resolveBlocks).
+    private final Block[] biomeSurface = new Block[Biome.values().length];
+    private final Block[] biomeSubsurface = new Block[Biome.values().length];
 
     public NoiseTerrainGenerator(long seed, float waterHeight) {
         this(seed, waterHeight, DEFAULT_WORLD_HEIGHT);
@@ -252,9 +341,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         BlockRegistry registry = BlocksConfig.getInstance().getBlockRegistry();
         blockRock = registry.get(BlockIds.ROCK);
         blockSnow = registry.get(BlockIds.SNOW);
-        blockGrass = registry.get(BlockIds.GRASS);
         blockSand = registry.get(BlockIds.SAND);
-        blockDirt = registry.get(BlockIds.DIRT);
         blockWaterSource = registry.get(WATER_SOURCE);
         blockWaterLiquid = registry.get(BlockIds.getName(WATER, ShapeIds.LIQUID));
         blockOakLog = registry.get(BlockIds.OAK_LOG);
@@ -268,6 +355,12 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         blockItemGrass = registry.get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
         blockItemMushroom = registry.get(BlockIds.getName("item_mushroom", ShapeIds.CROSS_PLANE, 0));
         blockItemSunflower = registry.get(BlockIds.getName("item_sunflower", ShapeIds.CROSS_PLANE, 0));
+        // Per-biome surface/subsurface blocks : the surface id resolves to the cube_up form (bare type
+        // name, like GRASS), the subsurface likewise. Cached by ordinal for a per-block array lookup.
+        for (Biome biome : Biome.values()) {
+            biomeSurface[biome.ordinal()] = registry.get(biome.surfaceId);
+            biomeSubsurface[biome.ordinal()] = registry.get(biome.subsurfaceId);
+        }
         // Written last: a thread observing blocksResolved == true is guaranteed to see all block fields.
         blocksResolved = true;
     }
@@ -375,6 +468,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             return chunk;
         }
 
+        // One biome classification per surface column (reused Vector2f, no per-block cost).
+        Vector2f biomeSample = new Vector2f();
         for (int x = 0; x < maxX; x++) {
             int rowx = (x + CANOPY_RADIUS) * sizez;
             int worldX = worldOffsetX + x;
@@ -385,10 +480,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 float density = heights[densityBase + gridIndex];
                 float horizon = Math.max(groundh, waterHeight);
                 int worldZ = worldOffsetZ + z;
+                Biome biome = biomeAt(worldX, worldZ, biomeSample);
 
                 for (int y = maxY - 1; y >= 0; y--) {
                     int worldY = minWorldY + y;
-                    generate(chunk, x, y, z, worldY, groundh, horizon, worldX, worldZ, density);
+                    generate(chunk, x, y, z, worldY, groundh, horizon, worldX, worldZ, density, biome);
                 }
             }
         }
@@ -400,7 +496,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void generate(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon,
-                          int worldX, int worldZ, float density) {
+                          int worldX, int worldZ, float density, Biome biome) {
         // The world has a solid floor at y=0 (the bottom faces there are never rendered). Keep it as
         // bedrock so very deep water columns -- whose ground noise dips below 0 -- are not bottomless
         // (otherwise you see straight through the bottom of the water to the background).
@@ -416,10 +512,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             block = generateAboveHorizon(chunk, x, y, z);
 
         } else if (worldY == (int) horizon) {
-            block = generateSurface(chunk, x, y, z, worldY, groundh, worldX, worldZ, density);
+            block = generateSurface(chunk, x, y, z, worldY, groundh, worldX, worldZ, density, biome);
 
         } else {
-            block = generateUnderground(chunk, x, y, z, worldY, groundh, horizon);
+            block = generateUnderground(chunk, x, y, z, worldY, groundh, horizon, biome);
         }
 
         if (block != null) {
@@ -433,19 +529,20 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private Block generateSurface(Chunk chunk, int x, int y, int z, int worldY, float groundh,
-                                  int worldX, int worldZ, float density) {
+                                  int worldX, int worldZ, float density, Biome biome) {
         chunk.setSunlight(x, y, z, 0);
 
         Block block;
         if (worldY > waterHeight) {
-            // Altitude tiers : snow caps the highest peaks, bare rock below it, grass lower down.
+            // Altitude tiers first : snow caps the highest peaks, bare rock below it (mountains override
+            // the biome). Lower down, the biome picks the surface block (grass / tundra / snow / sand).
             if (worldY > snowLine) {
                 block = blockSnow;
             } else if (worldY > rockLine) {
                 block = blockRock;
             } else {
-                block = blockGrass;
-                placePlant(chunk, x, y, z, worldX, worldZ, density);
+                block = biomeSurface[biome.ordinal()];
+                placePlant(chunk, x, y, z, worldX, worldZ, density, biome);
             }
         } else if (worldY == (int) waterHeight && worldY == (int) groundh) {
             block = blockSand;
@@ -460,9 +557,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
      * Scatters a cross-plane ground plant on a grass surface : grass everywhere, with mushrooms on the
      * shaded forest floor (high density) and sunflowers in the open meadows (low density).
      */
-    private void placePlant(Chunk chunk, int x, int y, int z, int worldX, int worldZ, float density) {
-        if (y >= 15) {
-            // Keep the plant (placed at y+1) inside this chunk.
+    private void placePlant(Chunk chunk, int x, int y, int z, int worldX, int worldZ, float density, Biome biome) {
+        if (y >= 15 || biome.plantKind == PlantKind.NONE) {
+            // Keep the plant (placed at y+1) inside this chunk ; some biomes carry no ground plants.
             return;
         }
         int wx = canonical(worldX);
@@ -472,15 +569,24 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         }
         float kind = hash01(wx, wz, CH_PLANT_KIND);
         Block plant;
-        if (density > 0.5f) {
-            plant = kind < MUSHROOM_FRACTION ? blockItemMushroom : blockItemGrass;
-        } else {
-            plant = kind < SUNFLOWER_FRACTION ? blockItemSunflower : blockItemGrass;
+        switch (biome.plantKind) {
+            case MUSHROOM:
+                // Forest floor : mushrooms in the shade of dense woods, grass tufts elsewhere.
+                plant = (density > 0.5f && kind < MUSHROOM_FRACTION) ? blockItemMushroom : blockItemGrass;
+                break;
+            case SUNFLOWER:
+                // Open meadow : the odd sunflower among the grass tufts.
+                plant = kind < SUNFLOWER_FRACTION ? blockItemSunflower : blockItemGrass;
+                break;
+            default: // SPARSE : plain grass tufts only (e.g. taiga)
+                plant = blockItemGrass;
+                break;
         }
         chunk.addBlock(x, y + 1, z, plant);
     }
 
-    private Block generateUnderground(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon) {
+    private Block generateUnderground(Chunk chunk, int x, int y, int z, int worldY, float groundh,
+                                      float horizon, Biome biome) {
         Block block;
         if (worldY > groundh) {
             // Above ground but below horizon => in water. Water stays well-lit : its sunlight never drops
@@ -493,7 +599,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             if (waterHeight - worldY < 3 && worldY == (int) groundh) {
                 block = blockSand;
             } else if (groundh - worldY < 3) {
-                block = blockDirt;
+                // Shallow subsurface shelf, biome-dependent (desert = sand, others = dirt).
+                block = biomeSubsurface[biome.ordinal()];
             } else {
                 block = blockRock;
             }
@@ -611,9 +718,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                     continue;
                 }
 
-                // Forest density drives the keep probability : dense groves vs open clearings.
+                // Forest density (scaled by the biome's tree density) drives the keep probability :
+                // dense groves in forests, sparse in plains/deserts, none where the biome carries no trees.
+                Biome biome = biomeAt(worldX, worldZ, sample);
                 float density = heights[densityBase + index];
-                if (!treeKept(hx, hz, density)) {
+                if (!treeKept(hx, hz, density * biome.treeDensityMul)) {
                     continue;
                 }
 
@@ -624,7 +733,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
                 int trunkHeight = treeTrunkHeight(hx, hz);
                 int canopyRadius = treeCanopyRadius(hx, hz);
-                TreeSpecies species = selectSpecies(groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
+                TreeSpecies species = selectSpecies(biome, groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
                 createTree(chunk, x, y, z, trunkHeight, canopyRadius, species);
             }
         }
@@ -707,14 +816,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 if (!treeBandOk(groundh)) {
                     continue;
                 }
-                if (!treeKept(hx, hz, densityAt(worldX, worldZ, sample))) {
+                Biome biome = biomeAt(worldX, worldZ, sample);
+                if (!treeKept(hx, hz, densityAt(worldX, worldZ, sample) * biome.treeDensityMul)) {
                     continue;
                 }
                 if (farSlope(worldX, worldZ, groundh, sample) > SLOPE_MAX) {
                     continue;
                 }
 
-                TreeSpecies species = selectSpecies(groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
+                TreeSpecies species = selectSpecies(biome, groundh, worldX, worldZ, hash01(hx, hz, CH_SPECIES), sample);
                 // Mirror createTree's effective trunk/canopy so the billboard height tracks the voxel tree.
                 int th = Math.max(2, treeTrunkHeight(hx, hz) + species.trunkBonus);
                 int cr = Math.max(1, Math.min(CANOPY_RADIUS, treeCanopyRadius(hx, hz) + species.radiusDelta));
@@ -736,6 +846,96 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
      *  the far horizon (FarTerrainState) can tint the same woods shader-side. See {@link #densityAt}. */
     public float getForestDensity(float worldX, float worldZ) {
         return densityAt(worldX, worldZ, new Vector2f());
+    }
+
+    /**
+     * Classifies the biome at a world column from the (tiled) temperature & humidity fields. The boundary
+     * is dithered by a per-column white-noise hash so the HARD block choice reads as a stippled interleave
+     * of the two palettes instead of a razor-straight contour. Pure & seamless on the torus.
+     */
+    public Biome biomeAt(float worldX, float worldZ, Vector2f sample) {
+        float d = (hash01(canonical((int) worldX), canonical((int) worldZ), CH_BIOME) - 0.5f) * BIOME_DITHER;
+        float t = temperature01(worldX, worldZ, sample) + d;
+        float h = humidity01(worldX, worldZ, sample) - d;
+        if (t < TEMP_COLD) {
+            return h < HUM_TAIGA ? Biome.SNOWY : Biome.TAIGA;
+        }
+        if (t > TEMP_HOT && h < HUM_DESERT) {
+            return Biome.DESERT;
+        }
+        return h > HUM_FOREST ? Biome.FOREST : Biome.PLAINS;
+    }
+
+    /**
+     * Grass-band colour at a world column : a CONTINUOUS blend of the biome palette by soft membership in
+     * (temperature, humidity) space (NO dither), so the baked far-horizon & minimap colour is seam-free
+     * even per-texel. Writes into {@code out} (no allocation) and returns it. Public : consumed by
+     * FarTerrainState (biome colour map) and MinimapState, so near voxels, distant horizon and minimap all
+     * read one palette. The near voxels show a dithered hard mix of the same two palettes -> they agree.
+     */
+    public ColorRGBA biomeColorAt(float worldX, float worldZ, Vector2f sample, ColorRGBA out) {
+        float t = temperature01(worldX, worldZ, sample);
+        float h = humidity01(worldX, worldZ, sample);
+        // Smoothsteps centered on the same thresholds as biomeAt : cold vs temperate, and, within each,
+        // the humidity split. Desert only in the hot & dry corner of the temperate side.
+        float cold = 1f - smoothstep(TEMP_COLD - 0.03f, TEMP_COLD + 0.03f, t);
+        float taiga = smoothstep(HUM_TAIGA - 0.03f, HUM_TAIGA + 0.03f, h);   // cold : snowy -> taiga
+        float forest = smoothstep(HUM_FOREST - 0.03f, HUM_FOREST + 0.03f, h); // temperate : plains -> forest
+        float desert = smoothstep(TEMP_HOT - 0.03f, TEMP_HOT + 0.03f, t)
+                * (1f - smoothstep(HUM_DESERT - 0.03f, HUM_DESERT + 0.03f, h));
+
+        ColorRGBA snowy = Biome.SNOWY.color;
+        ColorRGBA tai = Biome.TAIGA.color;
+        ColorRGBA plains = Biome.PLAINS.color;
+        ColorRGBA forestC = Biome.FOREST.color;
+        ColorRGBA des = Biome.DESERT.color;
+        // Cold side : snowy <-> taiga.
+        float cr = lerp(snowy.r, tai.r, taiga);
+        float cg = lerp(snowy.g, tai.g, taiga);
+        float cb = lerp(snowy.b, tai.b, taiga);
+        // Temperate side : plains <-> forest, then pulled toward desert in the hot-dry corner.
+        float wr = lerp(lerp(plains.r, forestC.r, forest), des.r, desert);
+        float wg = lerp(lerp(plains.g, forestC.g, forest), des.g, desert);
+        float wb = lerp(lerp(plains.b, forestC.b, forest), des.b, desert);
+        out.r = lerp(wr, cr, cold);
+        out.g = lerp(wg, cg, cold);
+        out.b = lerp(wb, cb, cold);
+        out.a = 1f;
+        return out;
+    }
+
+    /**
+     * Temperature in [0, 1] at a world column, driven by LATITUDE (the Z axis) : hot at the equator (Z=0,
+     * the world centre) and cold at the poles (Z=±worldSize/2, the top/bottom of the map). A cosine makes
+     * this periodic in Z with period worldSize, so it is seam-free on the finite torus. A little tiled
+     * temperature noise waves the bands so the biome borders aren't dead-straight. On the infinite world
+     * (worldSize == 0) there is no latitude to speak of, so it falls back to the raw climate noise.
+     */
+    private float temperature01(float worldX, float worldZ, Vector2f sample) {
+        if (worldSize <= 0f) {
+            return norm01(temperatureNoise.evaluate(sample.set(worldX, worldZ), worldSize));
+        }
+        float latitude = 0.5f + 0.5f * (float) Math.cos(2.0 * Math.PI * worldZ / worldSize);
+        float wobble = norm01(temperatureNoise.evaluate(sample.set(worldX, worldZ), worldSize)) - 0.5f;
+        return clamp01(latitude + wobble * TEMP_NOISE_WEIGHT);
+    }
+
+    /** Humidity in [0, 1] at a world column : full (tiled) noise -- decides forest/plains and desert/dry. */
+    private float humidity01(float worldX, float worldZ, Vector2f sample) {
+        return norm01(humidityNoise.evaluate(sample.set(worldX, worldZ), worldSize));
+    }
+
+    /** Maps raw simplex ~[-1, 1] to [0, 1]. */
+    private static float norm01(float raw) {
+        return (raw + 1f) * 0.5f;
+    }
+
+    private static float clamp01(float v) {
+        return v < 0f ? 0f : (v > 1f ? 1f : v);
+    }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
     }
 
     /**
@@ -848,8 +1048,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         }
         Vector2f sample = new Vector2f();
         float groundh = getHeight(anchorX, anchorZ, sample);
+        Biome biome = biomeAt(anchorX, anchorZ, sample);
         if (!treeBandOk(groundh)
-                || !treeKept(hx, hz, densityAt(anchorX, anchorZ, sample))
+                || !treeKept(hx, hz, densityAt(anchorX, anchorZ, sample) * biome.treeDensityMul)
                 || farSlope(anchorX, anchorZ, groundh, sample) > SLOPE_MAX) {
             return -1L; // no tree is actually scattered here
         }
@@ -857,18 +1058,24 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     /**
-     * Picks the tree species without a biome system : spruce caps the cool highlands, palms fringe the
-     * warm shore, and the middle band is broadleaf — oak or birch, chosen per wood by a low-frequency
-     * (seamless) noise so a given wood leans to one species rather than being randomly mixed.
+     * Picks the tree species from the biome : cool highlands are always spruce-capped (mountains override
+     * the biome), then the biome's forced species (spruce in taiga/snowy, palm in desert) applies, and the
+     * temperate biomes (plains/forest) stay broadleaf — palm as a coastal accent on the warm low shore,
+     * else oak or birch chosen per wood by a low-frequency (seamless) noise.
      */
-    private TreeSpecies selectSpecies(float groundh, float worldX, float worldZ, float speciesHash, Vector2f sample) {
+    private TreeSpecies selectSpecies(Biome biome, float groundh, float worldX, float worldZ,
+                                      float speciesHash, Vector2f sample) {
         float alt = (groundh - waterHeight) / Math.max(1f, rockLine - waterHeight); // ~[0, 1] across the band
-        // Palms are a coastal accent : only in the lowest fringe, and only in scattered groves there.
-        if (alt <= PALM_ALT && speciesHash < PALM_FRACTION) {
-            return TreeSpecies.PALM;
-        }
+        // Cool highlands cap with spruce whatever the biome (matches the rock/snow altitude tiers).
         if (alt >= SPRUCE_ALT) {
             return TreeSpecies.SPRUCE;
+        }
+        if (biome.forcedSpecies != null) {
+            return biome.forcedSpecies;
+        }
+        // Temperate broadleaf band : palm coastal accent, then oak/birch per wood.
+        if (alt <= PALM_ALT && speciesHash < PALM_FRACTION) {
+            return TreeSpecies.PALM;
         }
         return speciesNoise.evaluate(sample.set(worldX, worldZ), worldSize) >= 0f
                 ? TreeSpecies.BIRCH : TreeSpecies.OAK;
@@ -1041,6 +1248,25 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         speciesNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
         speciesNoise.setFrequency(SPECIES_FREQUENCY);
 
+        // Biome climate fields : low-frequency temperature & humidity, tiled (seamless) like the others.
+        temperatureNoise = new NoiseLayer("temperature");
+        temperatureNoise.setSeed(random.nextInt());
+        temperatureNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
+        temperatureNoise.setFrequency(BIOME_FREQUENCY_TEMPERATURE);
+
+        humidityNoise = new NoiseLayer("humidity");
+        humidityNoise.setSeed(random.nextInt());
+        humidityNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
+        humidityNoise.setFrequency(BIOME_FREQUENCY_HUMIDITY);
+
+        // Highland relief : very low frequency, added to the raw height in getHeight so whole regions
+        // rise into mountains toward the (higher) snow line. Tiled so it stays seamless on the torus.
+        continentalNoise = new NoiseLayer("continental");
+        continentalNoise.setSeed(random.nextInt());
+        continentalNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
+        continentalNoise.setFrequency(HIGHLAND_FREQUENCY);
+        continentalNoise.setFractalOctaves(HIGHLAND_OCTAVES);
+
         // Deterministic white-noise hash for per-cell/per-column scatter draws (jitter, keep/skip, size).
         scatterNoise = new FastNoise(random.nextInt());
     }
@@ -1052,6 +1278,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     private float getHeight(float worldX, float worldZ, Vector2f sample) {
         float h = layeredNoise.evaluate(sample.set(worldX, worldZ), worldSize) + GROUND_MIN;
+        // Highland relief : add a very-low-frequency continentalness term so whole regions climb into
+        // mountains toward the (higher) snow line. Smooth and tiled -> no seam ; the soft ceiling below
+        // absorbs the overshoot. Emergent "mountain biome" : the surface caps as rock/snow past the tiers.
+        float c01 = (continentalNoise.evaluate(sample.set(worldX, worldZ), worldSize) + 1f) * 0.5f;
+        h += c01 * HIGHLAND_BOOST;
         // Soft ceiling : at high relief the raw noise far exceeds the world ceiling (gridHeight*chunkHeight),
         // so peaks would be flat-cut at the top of the chunk grid. Compress everything above peakSoftStart
         // so it asymptotes smoothly to peakCeiling (just under the ceiling) -- rounded peaks instead of a

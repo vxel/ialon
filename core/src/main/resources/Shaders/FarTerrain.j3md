@@ -44,6 +44,10 @@ MaterialDef Far Terrain {
         Float Extent
         Vector2 ForestOrigin
 
+        // Biome colour map : the per-biome grass-band colour (same source as the near voxels), sampled
+        // over the same [-Extent/2, +Extent/2] local X/Z as the forest-density map (shares ForestOrigin).
+        Texture2D BiomeMap
+
         // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
         // (e.g. Android GLES). See FarTerrain.frag / IalonConfig.manualGammaEncode.
         Boolean ManualSrgb
@@ -62,6 +66,7 @@ MaterialDef Far Terrain {
         Defines {
             MANUAL_SRGB : ManualSrgb
             FOREST_TINT : ForestDensityMap
+            BIOME_MAP : BiomeMap
             FAR_NOISE : NoiseStrength
         }
     }
