@@ -15,14 +15,20 @@ Material water-calm : Blocks/MatDefs/Water.j3md {
         WaveSpeed : 0.4
         WaveAmplitude : 0.18
         WaveFadeNear : 30.0
-        WaveFadeFar : 120.0
+        WaveFadeFar : 200.0
 
         // --- Sun glint / Fresnel tuning ---
         GlintPower : 220.0
         GlintStrength : 2.2
         FresnelPower : 5.0
 
-        // Sky reflection kept subtle so the water colour matches the FarTerrain (0 = none, 1 = mirror).
+        // Underside brightness (underwater looking up) : transmitted sky + refracted sun/moon sparkle.
+        UnderStrength : 1.0
+        // Underside sun sparkle : broad glow (low power) and strong scatter -> wide, shattered "éclaté" sun.
+        UnderGlintPower : 30.0
+        UnderScatter : 6.0
+
+        // Sky reflection (0 = none, 1 = mirror).
         ReflectionStrength : 1.0
 
         // --- Dynamic uniforms : first-frame placeholders, overwritten every update by WaterState
@@ -43,6 +49,19 @@ Material water-calm : Blocks/MatDefs/Water.j3md {
 
     AdditionalRenderState {
         Blend Alpha
+        // Double-sided, in ONE draw call. The calm surface is a flat, single-layer greedy mesh, so a
+        // given pixel is covered by a face that is either front-facing (camera above) or back-facing
+        // (camera below), never both : one double-sided geometry draws exactly the same fragments as
+        // the outside/inside geometry pair it replaces, and Water.frag already picks the top-side or
+        // underside shading from vWorldPos.y vs g_CameraPosition.y rather than from the cull mode.
+        // (The volumetric `water` type still needs the two-geometry trick : there, near and far faces
+        // of the same body DO overlap and must be blended back-to-front.)
+        FaceCull Off
+        // Transparent surface : do not write depth, otherwise the water lays down depth in front of
+        // other transparents drawn after it (the emissive fire billboard, layer 3) and depth-culls
+        // them — a fire in a dry pocket seen through submerged water would vanish. Correctness against
+        // the opaque terrain still comes from the depth *test* + PolyOffset below.
+        DepthWrite Off
         // Nudge towards the camera so the flat surface wins over the textured side faces at the seam.
         PolyOffset -0.1 -0.1
     }

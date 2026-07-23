@@ -34,10 +34,12 @@ import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.ui.IalonTheme;
 
 public class SplashscreenState extends BaseAppState {
 
-    private static final ColorRGBA BAR_COLOR = new ColorRGBA(.137f, .693f, .145f, 1f);
+    /** Progress bar : hot amber, like a pressure gauge, rather than the stock green. */
+    private static final ColorRGBA BAR_COLOR = IalonTheme.AMBER;
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
     private SimpleApplication app;
@@ -83,13 +85,16 @@ public class SplashscreenState extends BaseAppState {
         pbContainer.setName("ProgressBar");
         pbContainer.setLocalTranslation(25 * vw, 25 * vh, 20);
 
-        percentLabel = new Label("");
+        percentLabel = new Label("Loading...");
         // The splash is built before setupGui() remaps the default Lemur style font to the game font, so
         // set it explicitly here to keep the percent readout consistent with the rest of the UI.
         percentLabel.setFont(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
         percentLabel.setFontSize(4 * vh);
         percentLabel.setTextHAlignment(HAlignment.Center);
-        percentLabel.setLocalTranslation(50 * vw - 50f, 30 * vh, 20);
+        // Give the label the progress bar's width and centre the text inside it, so the readout stays
+        // centred whatever the font's glyph widths and however long the text is ("Loading..." / "42%").
+        percentLabel.setPreferredSize(new Vector3f(50 * vw, percentLabel.getPreferredSize().y, 0));
+        percentLabel.setLocalTranslation(25 * vw, 30 * vh, 20);
 
         splashScreen.attachChild(splashContainer);
         splashScreen.attachChild(pbContainer);

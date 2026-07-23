@@ -297,6 +297,10 @@ blocks:
     texture: Textures/paving.png
     shapeSet: standard
     palette: { order: 310, shape: cube_up }
+  - type: hay
+    texture: Textures/hay.png
+    shapeSet: standard
+    palette: { order: 311, shape: cube_up }
   - type: birch_log
     texture: Textures/birch_log.png
     multitexture: true

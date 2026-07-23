@@ -1,6 +1,5 @@
 #import "Common/ShaderLib/GLSLCompat.glsllib"
 
-uniform vec4 m_BaseColor;
 uniform vec3 m_LightDir;     // world-space direction the sunlight travels along
 uniform vec4 m_AmbientColor; // scene ambient light colour (sunColor * ambiantIntensity, day/night)
 uniform vec4 m_SunColor;     // scene directional light colour (sunColor * sunIntensity, day/night)
@@ -11,49 +10,70 @@ uniform float m_InnerRadius; // below this horizontal distance the voxels are th
 
 uniform vec3 g_CameraPosition;
 
-// Altitude palette : roughly matches the blocks the generator places by height (a sandy-to-deep-blue
-// seabed below the water level, a thin sand shore, grass/land above, then bare rock and snow on peaks).
-uniform vec4 m_SeabedColor;
+varying vec3 vNormal;
+varying float vDist;
+varying float vHorizDist;
+varying float vHeight;
+varying vec3 vWorldPos;
+
+// The far terrain is rendered in TWO modes from this one shader :
+//   - RELIEF (default) : one mesh of the TRUE relief -- the real land ABOVE the water and the real sea
+//     floor BELOW it, coloured by altitude and lit by the real normal. Opaque, single-sided (only ever
+//     seen from above, so no underside is drawn). The old "flatten the sea" surface and the separate
+//     "seabed" mesh are merged into this single relief.
+//   - WATER : a flat, SEMI-TRANSPARENT blue water plane at the water line, with the sky/sun/moon
+//     reflection -- the same water body as the near voxel calm water, so near & far read as one sea. It
+//     is its own geometry (a flat grid), detached from the relief.
+
+// Altitude palette : matches the blocks the generator places by height. Below the water line : a sea
+// floor of sand-fringe -> dirt -> grey bedrock, tinted by the water column (SeabedWaterColor) so it
+// reads like the near voxel floor seen through the water. Above : sand shore -> grass -> rock -> snow.
+uniform vec4 m_SeabedColor;      // dirt sea floor
+uniform vec4 m_BedrockColor;     // grey bedrock the deepest floor grades to
+uniform vec4 m_SeabedWaterColor; // bluish through-water tint on the sea floor
+uniform vec4 m_BaseColor;        // grass band (or per-biome via BiomeMap)
 uniform vec4 m_SandColor;
-uniform vec4 m_RockColor;
+uniform vec4 m_RockColor;        // bare mountain rock
 uniform vec4 m_SnowColor;
 uniform float m_WaterHeight;
-uniform float m_RockHeight;   // bare rock above this world height
-uniform float m_SnowHeight;   // snow above this world height
-uniform float m_HeightOffset; // vertical nudge applied to the terrain mesh ; undone here for colouring
+uniform float m_WaterlineClearance;
+uniform float m_RockHeight;      // bare rock above this world height (base line, see STRATA_MAP)
+uniform float m_SnowHeight;      // snow above this world height (base line, see STRATA_MAP)
+uniform float m_HeightOffset;    // vertical nudge applied to the mesh ; undone here for colouring
 
-// Sky/sun/moon reflection on the (flattened) sea surface. Same model & tuning as the near calm water.
-uniform vec4 m_SkyColor;
-uniform vec4 m_SkyHorizonColor;
-uniform float m_ReflectionStrength;
-uniform float m_FresnelPower;
-uniform float m_GlintPower;
-uniform float m_GlintStrength;
-uniform vec3 m_MoonDirection;
-uniform vec4 m_MoonColor;
-uniform float m_MoonGlintStrength;
+#ifdef STRATA_MAP
+// Per-column rock & snow lines, baked from NoiseTerrainGenerator.strataLinesAt : the same wandering,
+// climate-driven lines the voxel generator caps its columns with, so a massif that is snowy up close is
+// snowy on the horizon too. R = snow line, G = rock line, both as a fraction of the world ceiling.
+uniform sampler2D m_StrataMap;
+uniform float m_WorldCeiling;
+// (soilSlope, bareSlope, snowRise, rockDrop) -- the generator's slope ramp, see STRATA_SLOPE_* there.
+uniform vec4 m_SlopeStrata;
+// (altLow, altHigh, rockFloor) : the altitudes over which the SOIL half of that ramp fades in -- a
+// lowland hillside keeps its grass however steep it is -- and the floor the rock line stops at
+// (NoiseTerrainGenerator.soilBareness / rockLineWithSlope).
+uniform vec3 m_SoilStrata;
+#endif
 
-// Shared UV of the procedural maps (forest density + biome colour) : covers [-Extent/2, +Extent/2] in
-// local X/Z, offset by the terrain world translation (tile snap on the torus ; 0 otherwise).
-#if defined(FOREST_TINT) || defined(BIOME_MAP)
+#if defined(FOREST_TINT) || defined(BIOME_MAP) || defined(BIOME_SEABED_MAP) || defined(STRATA_MAP)
 uniform float m_Extent;
 uniform vec2 m_ForestOrigin;
 #endif
-
 #ifdef FOREST_TINT
 uniform sampler2D m_ForestDensityMap;
 uniform vec4 m_ForestTintColor;
 uniform float m_ForestTintStrength;
-uniform float m_ForestTintStart; // distance at which the tint ramps in (where the billboards thin out)
+uniform float m_ForestTintStart;
 #endif
-
 #ifdef BIOME_MAP
-uniform sampler2D m_BiomeMap; // per-biome grass-band colour (linear, same source as the near voxels)
+uniform sampler2D m_BiomeMap;
 #endif
-
+#ifdef BIOME_SEABED_MAP
+uniform sampler2D m_BiomeSeabedMap;
+#endif
 #ifdef FAR_NOISE
-uniform float m_NoiseStrength; // amplitude of the fBm brightness variation on the distant land
-uniform float m_NoiseScale;    // spatial frequency of that variation (world units : ~1/feature-size)
+uniform float m_NoiseStrength;
+uniform float m_NoiseScale;
 
 // Low-quality value noise + fBm (same construction as Shaders/map.frag), used only to break up the flat
 // altitude palette of the distant land into something that reads as textured relief.
@@ -61,141 +81,144 @@ float hash21(vec2 p) {
     p = 50.0 * fract(p * 0.3183099);
     return fract(p.x * p.y * (p.x + p.y));
 }
-
 float vnoise(in vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f); // cubic smoothstep interpolation
+    vec2 u = f * f * (3.0 - 2.0 * f);
     float a = hash21(i);
     float b = hash21(i + vec2(1.0, 0.0));
     float c = hash21(i + vec2(0.0, 1.0));
     float d = hash21(i + vec2(1.0, 1.0));
     return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
-
-// Rotation between octaves so the layers don't line up into a grid.
 const mat2 NOISE_ROT = mat2(0.80, 0.60, -0.60, 0.80);
-
 float fbm(vec2 p) {
     float a;
     a  = 0.5000 * vnoise(p); p = p * NOISE_ROT * 2.0;
     a += 0.2500 * vnoise(p); p = p * NOISE_ROT * 2.0;
     a += 0.1250 * vnoise(p); p = p * NOISE_ROT * 2.0;
     a += 0.0625 * vnoise(p);
-    return a; // ~[0..1]
+    return a;
 }
 #endif
 
-varying vec3 vNormal;
-varying float vDist;
-varying float vHorizDist;
-varying float vHeight;
-varying vec3 vWorldPos;
-
 void main() {
-    // The far terrain is only an horizon ring : inside the loaded-chunk region the voxels are the
-    // truth, so discard it there (prevents it showing through caves / overhangs near the player, and
-    // keeps the near voxel water transparent -- no opaque far sea backing it).
+    // The far terrain is only an horizon ring : inside the loaded-chunk region the voxels are the truth,
+    // so discard it there (prevents it showing through caves / overhangs near the player).
     if (vHorizDist < m_InnerRadius) {
         discard;
     }
 
-    // Two heights here, both in generator/world-block space (the mesh is nudged up by m_HeightOffset, so
-    // undo that). The GEOMETRIC height (vWorldPos.y, the flattened mesh) is waterline-flat on the sea and
-    // the real relief on land ; the TRUE generator height (vHeight, pre-flatten) still carries the
-    // submerged depth. Drive the land/water split AND the land palette from the GEOMETRIC height : the
-    // steep shore ramp -- a quad joining a flattened-sea sample to a high land sample -- rises above the
-    // water line immediately, so it reads as land at once. Driving the split from the true (pre-flatten)
-    // height instead placed the boundary partway UP that ramp (the deeper the neighbouring sea, the
-    // higher), so the sea colour visibly climbed the foot of the hills. The true height is kept only for
-    // the underwater depth gradient below.
-    float trueHeight = vHeight - m_HeightOffset;
-    float height = vWorldPos.y - m_HeightOffset;
-    float landAmount = smoothstep(m_WaterHeight, m_WaterHeight + 1.0, height);
-    float waterness = 1.0 - landAmount;
+    float ambientLum = dot(m_AmbientColor.rgb, vec3(0.3, 0.59, 0.11));
 
-    // Coastal gradient : sand at the shoreline shallows -> dark-blue seabed with depth (like the voxels).
-    float depth = clamp(m_WaterHeight - trueHeight, 0.0, 1.0);
-    vec3 seabed = mix(m_SandColor.rgb, m_SeabedColor.rgb, depth);
-    // Grass-band colour : the flat base palette by default, or the per-biome colour where the biome map
-    // is bound (same biome source as the near voxels, so near & far read with one palette). Sampled by the
-    // shared procedural-map UV. Desert's biome colour ~ sand, so the shore->desert transition stays smooth.
+    // ---- Real relief : sea floor below the water line, land above ----
+    float trueHeight = vHeight - m_HeightOffset;
+
+    // The relief is kept clear of the flat water plane by +/- m_WaterlineClearance so the two surfaces
+    // cannot graze each other and z-fight along the coast (FarTerrainState.clampAcrossWaterline). No
+    // sample exists inside that band, so each palette branch starts at the edge it can actually reach :
+    // without this shift the first LAND vertex would already be past the sand band (no beach at the far
+    // shore) and the shallowest SEA FLOOR vertex would already be past its sand fringe.
+    float landLine = m_WaterHeight + m_WaterlineClearance;
+    float seaLine = m_WaterHeight - m_WaterlineClearance;
+    // Land/sea colour blend, kept centred on the TRUE water line (where the relief actually crosses the
+    // plane), spread over the clearance band -- which the interpolation sweeps through in one cell.
+    float halfBand = max(m_WaterlineClearance, 0.001) * 0.5;
+
+    // Below-water sea floor : sand fringe (top ~3 blocks) -> subsurface deeper -> grey bedrock at the world
+    // floor, all tinted by the water column (SeabedWaterColor) so it reads blue like the near voxel floor.
+    // The subsurface colour is per-biome (BiomeSeabedMap) so desert seas grade sand->sand, matching the
+    // near voxels (generateUnderground: biomeSubsurface = sand for desert, dirt elsewhere) ; falls back to
+    // the flat SeabedColor (dirt) when no biome map is bound.
+    vec3 seabedColor = m_SeabedColor.rgb;
+#ifdef BIOME_SEABED_MAP
+    vec2 sbuv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
+    seabedColor = texture2D(m_BiomeSeabedMap, sbuv).rgb;
+#endif
+    float blockGrade = clamp((seaLine - trueHeight) / 3.0, 0.0, 1.0);
+    vec3 sediment = mix(m_SandColor.rgb, seabedColor, blockGrade);
+    float rockness = 1.0 - smoothstep(0.0, 1.0, trueHeight);
+    // Bluish water-column tint on the sea floor : fades OUT toward the water surface so the shallow sand at
+    // the shoreline reads as sand (not the teal sand*SeabedWaterColor that looked like a greenish rim at
+    // the coast), ramping to the full tint ~3 blocks down so the deeper floor still reads blue like the
+    // near voxel floor. Matches the sand-fringe depth (blockGrade, /3 above).
+    float waterTint = smoothstep(seaLine, seaLine - 3.0, trueHeight);
+    vec3 tint = mix(vec3(1.0), m_SeabedWaterColor.rgb, waterTint);
+    vec3 seaFloor = mix(sediment, m_BedrockColor.rgb, rockness) * tint;
+
+    vec3 nLit = normalize(vNormal);
+
+    // Altitude strata : where this column turns to bare rock, then to snow. Flat world-wide lines unless
+    // the strata map is bound, in which case they are the generator's own per-column lines.
+    float rockH = m_RockHeight;
+    float snowH = m_SnowHeight;
+#ifdef STRATA_MAP
+    vec2 stuv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
+    vec2 lines = texture2D(m_StrataMap, stuv).rg * m_WorldCeiling;
+    snowH = lines.r;
+    rockH = lines.g;
+    // Slope term, from the relief normal : soil and snow slide off a steep face, so the rock line dives
+    // toward the shore and the snow line climbs. The relief mesh is sampled every few blocks, so its
+    // normal is a smoothed version of the generator's per-block slope -- the distant crags therefore come
+    // out a little softer than the voxel ones (measured : the mesh keeps ~90% of the per-block slope).
+    float ny = max(nLit.y, 0.001);
+    float slope = sqrt(max(0.0, 1.0 - ny * ny)) / ny;
+    float bare = smoothstep(m_SlopeStrata.x, m_SlopeStrata.y, slope);
+    snowH += bare * m_SlopeStrata.z;
+    // The soil is only stripped up on the flanks : fade the same ramp in with altitude, then drop the
+    // rock line by a BOUNDED amount (see STRATA_ROCK_SLOPE_DROP -- a dive to the shore would make the
+    // grass/rock edge a ruled horizontal contour).
+    float soilBare = bare * smoothstep(m_SoilStrata.x, m_SoilStrata.y, trueHeight);
+    rockH = max(rockH - soilBare * m_SlopeStrata.w, min(m_SoilStrata.z, rockH));
+    rockH = min(rockH, snowH);
+#endif
+
+    // Above-water land palette : sand shore -> grass (or per-biome) -> bare rock -> snow caps.
     vec3 grassColor = m_BaseColor.rgb;
 #ifdef BIOME_MAP
     vec2 buv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
     grassColor = texture2D(m_BiomeMap, buv).rgb;
 #endif
-    // Sand fringe : the shore is sand for ~2 units above the water, then grass/land.
-    vec3 land = mix(m_SandColor.rgb, grassColor, smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height));
-    // High-altitude tiers, matching the voxel generator : grass -> bare rock -> snow caps.
-    land = mix(land, m_RockColor.rgb, smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
-    land = mix(land, m_SnowColor.rgb, smoothstep(m_SnowHeight - 2.0, m_SnowHeight + 2.0, height));
-    vec3 terrainColor = mix(seabed, land, landAmount);
+    vec3 land = mix(m_SandColor.rgb, grassColor, smoothstep(landLine, landLine + 2.0, trueHeight));
+    land = mix(land, m_RockColor.rgb, smoothstep(rockH - 2.0, rockH + 2.0, trueHeight));
+    land = mix(land, m_SnowColor.rgb, smoothstep(snowH - 2.0, snowH + 2.0, trueHeight));
+
+    float landAmount = smoothstep(m_WaterHeight - halfBand, m_WaterHeight + halfBand, trueHeight);
 
 #ifdef FAR_NOISE
-    // Break up the flat altitude palette with a touch of fBm brightness variation, so the distant land
-    // reads as textured relief rather than a single flat colour. Land only (the flattened sea must stay
-    // calm/uniform), and faded out with distance so the far horizon doesn't shimmer -- the fog takes over
-    // there anyway. Centered on 0 (n - 0.5) so it brightens and darkens around the base palette.
+    // Break up the flat altitude palette with a touch of fBm brightness variation (both the land AND the
+    // sea floor, faded with distance so the far horizon doesn't shimmer -- the fog takes over there anyway).
     float noiseFade = 1.0 - smoothstep(m_InnerRadius, m_InnerRadius + m_FogDistance, vDist);
     float n = fbm(vWorldPos.xz * m_NoiseScale);
-    terrainColor *= 1.0 + (n - 0.5) * 2.0 * m_NoiseStrength * landAmount * noiseFade;
+    float noiseMod = 1.0 + (n - 0.5) * 2.0 * m_NoiseStrength * noiseFade;
+    land *= noiseMod;
+    seaFloor *= noiseMod;
 #endif
-
 #ifdef FOREST_TINT
-    // Forest tint : pull the distant grass slopes toward a dark forest green where the (seamless) density
-    // field is high. Gated to land in the grass band only (no tint on sea / sand / bare rock / snow) and
-    // to beyond the billboard ring (ForestTintStart), so the near billboards aren't double-darkened.
+    // Pull the distant grass slopes toward a dark forest green where the (seamless) density field is high
+    // (grass band only, beyond the billboard ring so the near billboards aren't double-darkened).
     vec2 fuv = (vWorldPos.xz - m_ForestOrigin) / m_Extent + 0.5;
     float density = texture2D(m_ForestDensityMap, fuv).r;
-    float grass = smoothstep(m_WaterHeight, m_WaterHeight + 2.0, height)
-                * (1.0 - smoothstep(m_RockHeight - 2.0, m_RockHeight + 2.0, height));
+    float grass = smoothstep(landLine, landLine + 2.0, trueHeight)
+                * (1.0 - smoothstep(rockH - 2.0, rockH + 2.0, trueHeight));
     float distGate = smoothstep(m_ForestTintStart, m_ForestTintStart + 128.0, vDist);
-    float tint = density * m_ForestTintStrength * landAmount * grass * distGate;
-    terrainColor = mix(terrainColor, m_ForestTintColor.rgb, tint);
+    land = mix(land, m_ForestTintColor.rgb, density * m_ForestTintStrength * grass * distGate);
 #endif
 
-    // Lighting normal : flat (up) on the sea (it was flattened), real relief on land. The sea reflection
-    // also uses the flat up-normal, so the distant sea reads as a calm flat surface.
-    vec3 up = vec3(0.0, 1.0, 0.0);
-    vec3 nLit = normalize(mix(up, normalize(vNormal), landAmount));
+    // Lit by the real relief normal. Below water : ambient-only (capped), matching the near voxel floor.
+    // Above water : full ambient + warm directional term on lit slopes (matches the near voxel land).
     float diffuse = max(dot(nLit, -normalize(m_LightDir)), 0.0);
+    vec3 floorLit = seaFloor * (vec3(min(ambientLum, 0.9)) + m_SunColor.rgb * diffuse * 0.35);
+    vec3 landLit = land * (vec3(ambientLum) + m_SunColor.rgb * diffuse);
+    vec3 color = mix(floorLit, landLit, landAmount);
 
-    // Match the voxel lighting model (see Ialon.vert) : ambient tints only by its LUMINANCE (scalar dim,
-    // no orange wash), the directional term keeps the warm sun colour on lit slopes.
-    float ambientLum = dot(m_AmbientColor.rgb, vec3(0.3, 0.59, 0.11));
-    // Sea body lighting matches the near calm water EXACTLY (its body = colour * min(ambientLum, 0.7) :
-    // ambient luminance, capped at 0.7, no directional term -- see Ialon.vert), so the two seas have the
-    // same shade at the seam. Land keeps the full ambient + directional lighting.
-    vec3 seaLit = terrainColor * min(ambientLum, 0.7);
-    vec3 landLit = terrainColor * (vec3(ambientLum) + m_SunColor.rgb * diffuse);
-    vec3 color = mix(seaLit, landLit, landAmount);
-
-    // Sea reflection : sky (Fresnel-weighted) + sun glint + moon glint, only on the water (weighted by
-    // waterness). Computed before the fog so it fades into the horizon haze.
-    if (waterness > 0.001) {
-        vec3 V = normalize(g_CameraPosition - vWorldPos);
-        vec3 R = reflect(-V, up);
-        float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(up, V), 0.0), m_FresnelPower);
-        vec3 skyRefl = mix(m_SkyHorizonColor.rgb, m_SkyColor.rgb, clamp(R.y, 0.0, 1.0));
-        vec3 toSun = -normalize(m_LightDir);
-        float sunUp = clamp(toSun.y * 4.0, 0.0, 1.0);
-        float glint = pow(max(dot(R, toSun), 0.0), m_GlintPower) * m_GlintStrength * sunUp;
-        vec3 toMoon = normalize(m_MoonDirection);
-        float moonUp = clamp(toMoon.y * 4.0, 0.0, 1.0);
-        float moonGlint = pow(max(dot(R, toMoon), 0.0), m_GlintPower) * m_MoonGlintStrength * moonUp;
-        color = mix(color, skyRefl, fresnel * m_ReflectionStrength * waterness)
-              + (glint * m_SunColor.rgb + moonGlint * m_MoonColor.rgb) * waterness;
-    }
-
-    // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour). The fog starts at
-    // the inner radius (the seam with the near water/voxels), not at the camera, so the far terrain is
-    // CLEAR where it meets the unfogged near water -- no brightness step at the junction -- and only
-    // fades as it recedes towards the horizon.
+    // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour). Starts at the inner
+    // radius (the seam with the near water/voxels), not the camera, so the far terrain is clear where it
+    // meets the unfogged near water and only fades toward the horizon.
     float f = (max(vDist - m_InnerRadius, 0.0) / m_FogDistance) * m_FogDensity;
     float fog = clamp(exp(-f * f), 0.0, 1.0);
-
     vec3 outColor = mix(m_FogColor.rgb, color, fog);
+
 #ifdef MANUAL_SRGB
     // No hardware sRGB framebuffer (Android GLES) : palette/fog/lighting are linear, encode here.
     outColor = pow(outColor, vec3(1.0 / 2.2));

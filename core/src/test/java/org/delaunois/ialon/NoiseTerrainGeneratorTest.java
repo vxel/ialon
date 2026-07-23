@@ -245,6 +245,90 @@ class NoiseTerrainGeneratorTest {
     }
 
     /**
+     * Seaweed must scatter on the sea floor like the ground grass tufts, and obey the rules : every stalk
+     * roots on the seabed (a solid, non-water cell directly below its lowest segment), is contiguous going
+     * up, co-habits the water it stands in (liquid level &gt; 0), and never pokes above the water surface
+     * (top segment strictly below the water line). Scans a wide submerged area and asserts many stalks.
+     */
+    @Test
+    void seaweedRootsOnTheSeaFloorAndStaysUnderwater() {
+        IalonConfig config = new IalonConfig();
+        int ch = config.getChunkHeight();
+        int gh = config.getGridHeight();
+        int chunkSize = BlocksConfig.getInstance().getChunkSize().x;
+        int colH = ch * gh;
+        int waterLine = (int) config.getWaterHeight();
+
+        org.delaunois.ialon.blocks.BlockRegistry reg = BlocksConfig.getInstance().getBlockRegistry();
+        org.delaunois.ialon.blocks.Block seaweed = reg.get(org.delaunois.ialon.blocks.BlockIds.getName(
+                "item_seaweed", org.delaunois.ialon.blocks.ShapeIds.CROSS_PLANE,
+                org.delaunois.ialon.blocks.Block.LIQUID_FULL));
+        short seaweedId = seaweed.getId();
+        org.junit.jupiter.api.Assertions.assertTrue(seaweed.getLiquidLevel() > 0,
+                "the generated seaweed variant must co-habit water (liquid level > 0)");
+
+        NoiseTerrainGenerator gen = new NoiseTerrainGenerator(2, 30f, config.getMaxy(), config.getWorldSize());
+
+        // Locate a sea region : the island around the origin is fully above water, so probe ground heights
+        // over the world and centre the (expensive) full-column scan on the deepest sea column found.
+        com.jme3.math.Vector3f p = new com.jme3.math.Vector3f();
+        int span = 16;
+        int centerCx = 0;
+        int centerCz = 0;
+        float deepest = Float.MAX_VALUE;
+        int half = (int) (config.getWorldSize() / chunkSize) / 2;
+        for (int cx = -half; cx < half; cx += 4) {
+            for (int cz = -half; cz < half; cz += 4) {
+                float h = gen.getHeight(p.set((cx + 0.5f) * chunkSize, 0, (cz + 0.5f) * chunkSize));
+                if (h < deepest) { deepest = h; centerCx = cx; centerCz = cz; }
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(deepest < config.getWaterHeight(),
+                "expected to find a sea column below the water line, deepest ground=" + deepest);
+
+        int stalks = 0;
+        for (int cx = centerCx - span; cx <= centerCx + span; cx++) {
+            for (int cz = centerCz - span; cz <= centerCz + span; cz++) {
+                Chunk[] col = new Chunk[gh];
+                for (int cy = 0; cy < gh; cy++) col[cy] = gen.generate(new Vec3i(cx, cy, cz));
+                for (int lx = 0; lx < chunkSize; lx++) {
+                    for (int lz = 0; lz < chunkSize; lz++) {
+                        int lowest = -1;
+                        int highest = -1;
+                        for (int wy = 0; wy < colH; wy++) {
+                            org.delaunois.ialon.blocks.Block b = col[wy / ch].getBlock(lx, wy % ch, lz);
+                            if (b != null && b.getId() == seaweedId) {
+                                if (lowest < 0) lowest = wy;
+                                highest = wy;
+                            }
+                        }
+                        if (lowest < 0) continue;
+                        stalks++;
+                        // Contiguous stalk from floor to top (no gaps).
+                        for (int wy = lowest; wy <= highest; wy++) {
+                            org.delaunois.ialon.blocks.Block b = col[wy / ch].getBlock(lx, wy % ch, lz);
+                            org.junit.jupiter.api.Assertions.assertTrue(b != null && b.getId() == seaweedId,
+                                    "seaweed stalk must be contiguous at world y=" + wy);
+                        }
+                        // Rooted on a solid, non-water seabed cell.
+                        org.delaunois.ialon.blocks.Block below = lowest > 0
+                                ? col[(lowest - 1) / ch].getBlock(lx, (lowest - 1) % ch, lz) : null;
+                        org.junit.jupiter.api.Assertions.assertNotNull(below,
+                                "seaweed must root on the sea floor (solid cell below), not float");
+                        org.junit.jupiter.api.Assertions.assertTrue(below.getLiquidLevel() <= 0,
+                                "the cell below the seaweed root must be solid seabed, not water");
+                        // Never above the water surface.
+                        org.junit.jupiter.api.Assertions.assertTrue(highest <= waterLine - 1,
+                                "seaweed top y=" + highest + " must stay below the water line " + waterLine);
+                    }
+                }
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(stalks > 50,
+                "expected many seaweed stalks in the scanned sea area, got " + stalks);
+    }
+
+    /**
      * The relief amplitude knob must actually reshape the terrain : doubling it changes the heightmap.
      */
     @Test
@@ -263,5 +347,87 @@ class NoiseTerrainGeneratorTest {
         }
         org.junit.jupiter.api.Assertions.assertNotEquals(standardTotal, amplifiedTotal,
                 "doubling reliefAmplitude must change the terrain height");
+    }
+
+    /**
+     * The surface strata : the rock &amp; snow lines must wander per column (no flat contour), stay
+     * ordered (rock never above snow), follow the latitude (a polar snow line well below an equatorial
+     * one) and be seamless on the torus -- the far horizon bakes this same field into a map, so a seam
+     * here would be a visible ring in the distance.
+     */
+    @Test
+    void strataLinesWanderFollowLatitudeAndTile() {
+        IalonConfig config = new IalonConfig();
+        float w = config.getWorldSize(); // 4096 (finite)
+        NoiseTerrainGenerator gen =
+                new NoiseTerrainGenerator(2, config.getWaterHeight(), config.getMaxy(), w);
+        com.jme3.math.Vector2f sample = new com.jme3.math.Vector2f();
+        com.jme3.math.Vector2f lines = new com.jme3.math.Vector2f();
+
+        float first = gen.strataLinesAt(0, 0, sample, lines).x;
+        boolean wanders = false;
+        double equatorSnow = 0;
+        double polarSnow = 0;
+        int n = 0;
+        for (int i = 0; i < 200; i++) {
+            float x = i * 37f;
+            gen.strataLinesAt(x, 0, sample, lines);
+            org.junit.jupiter.api.Assertions.assertTrue(lines.y <= lines.x,
+                    "the rock line must never sit above the snow line");
+            wanders |= Math.abs(lines.x - first) > 2f;
+            equatorSnow += lines.x;
+            polarSnow += gen.strataLinesAt(x, w / 2f, sample, lines).x; // the pole is at |z| = W/2
+            n++;
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(wanders, "the snow line must wander from column to column");
+        org.junit.jupiter.api.Assertions.assertTrue(polarSnow / n < equatorSnow / n - 10,
+                "the polar snow line must sit well below the equatorial one");
+
+        // Seamless : a column and its twin one full period away carry the same lines.
+        gen.strataLinesAt(123f, -456f, sample, lines);
+        float snow = lines.x;
+        float rock = lines.y;
+        gen.strataLinesAt(123f + w, -456f + w, sample, lines);
+        assertEquals(snow, lines.x, 0.01f, "the snow line must tile with the world period");
+        assertEquals(rock, lines.y, 0.01f, "the rock line must tile with the world period");
+    }
+
+    /** Steep ground sheds its soil and its snow : bare rock lower down, snow only higher up. */
+    @Test
+    void steepGroundExposesRockAndShedsSnow() {
+        IalonConfig config = new IalonConfig();
+        NoiseTerrainGenerator gen = new NoiseTerrainGenerator(
+                2, config.getWaterHeight(), config.getMaxy(), config.getWorldSize());
+        float rock = NoiseTerrainGenerator.ROCK_LINE_RATIO * config.getMaxy();
+        float snow = NoiseTerrainGenerator.SNOW_LINE_RATIO * config.getMaxy();
+
+        float high = gen.soilAltitudeHigh() + 5f; // an upper flank : the soil fade is fully in
+        float low = gen.soilAltitudeLow() - 5f;   // a lowland hillside : the fade is fully out
+
+        // Gentle ground : untouched.
+        assertEquals(rock, gen.rockLineWithSlope(rock, 0f, high), 0.01f);
+        assertEquals(snow, gen.snowLineWithSlope(snow, 0f), 0.01f);
+        // A cliff face high up : the rock line drops by its full (bounded) amount, the snow line climbs.
+        float cliff = NoiseTerrainGenerator.STRATA_SLOPE_BARE + 0.5f;
+        assertEquals(rock - NoiseTerrainGenerator.STRATA_ROCK_SLOPE_DROP,
+                gen.rockLineWithSlope(rock, cliff, high), 0.01f);
+        // ... but never below the shore margin, whatever the base line is.
+        float lowBase = config.getWaterHeight() + 5f;
+        assertEquals(config.getWaterHeight() + NoiseTerrainGenerator.STRATA_ROCK_SLOPE_FLOOR,
+                gen.rockLineWithSlope(lowBase, cliff, high), 0.01f);
+        assertEquals(snow + NoiseTerrainGenerator.STRATA_SNOW_SLOPE_RISE,
+                gen.snowLineWithSlope(snow, cliff), 0.01f);
+        // Monotone in between.
+        org.junit.jupiter.api.Assertions.assertTrue(
+                gen.rockLineWithSlope(rock, 0.6f, high) < rock
+                        && gen.rockLineWithSlope(rock, 0.6f, high) > gen.rockLineWithSlope(rock, cliff, high),
+                "the rock line must fall gradually with the slope");
+
+        // The same cliff down in the lowlands keeps its soil : the rock line is not pulled down at all,
+        // so the ground there (which is BELOW the line by construction) stays grass/dirt.
+        assertEquals(rock, gen.rockLineWithSlope(rock, cliff, low), 0.01f);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                gen.rockLineWithSlope(rock, cliff, low) > gen.rockLineWithSlope(rock, cliff, high),
+                "the slope must strip less soil at low altitude than high on the flanks");
     }
 }

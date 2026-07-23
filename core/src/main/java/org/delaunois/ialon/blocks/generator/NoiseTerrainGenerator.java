@@ -78,6 +78,14 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final float PLANT_COVERAGE = 0.02f; // chance a grass-band column carries a plant
     private static final float MUSHROOM_FRACTION = 0.18f; // of forest-floor plants that are mushrooms
     private static final float SUNFLOWER_FRACTION = 0.02f; // of meadow plants that are sunflowers
+
+    // --- Sea-floor plants (cross-plane seaweed items growing UP through the water) -------------------
+    // Seaweed is the underwater counterpart of the ground grass tufts : scattered per submerged column,
+    // it always roots on the sea floor (groundh + 1) and grows a random number of blocks straight up,
+    // each cell co-habiting the water it stands in (LIQUID_FULL). The stalk is capped so its top stays
+    // strictly below the water surface source cell -- seaweed never pokes above the water.
+    private static final float SEAWEED_COVERAGE = 0.01f; // chance a submerged column carries a seaweed stalk
+    private static final int SEAWEED_MAX_HEIGHT = 5;     // tallest stalk (blocks) ; clamped to the water depth
     // Forest-density map : low frequency = large patches (big woods AND big clearings). The raw noise is
     // concentrated near its median, so a smoothstep around FOREST_THRESHOLD carves crisp dense woods
     // (density -> 1) and bare clearings (density -> 0). Raise the threshold to enlarge the clearings.
@@ -95,6 +103,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private static final int CH_PLANT_KIND = 6;
     private static final int CH_SPECIES = 7;
     private static final int CH_BIOME = 8; // per-column dither of the biome boundary (see biomeAt)
+    private static final int CH_SEAWEED = 9; // per-column seaweed coverage draw
+    private static final int CH_SEAWEED_HEIGHT = 10; // per-column seaweed stalk height draw
+    private static final int CH_STRATA = 11; // per-column dither of the rock/snow lines (see surfaceCap)
 
     // --- Biomes ---------------------------------------------------------------------------------------
     // Two low-frequency, tiled (seamless) fields -- temperature and humidity -- classify each column into
@@ -147,11 +158,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
      * The altitude tiers (snow/rock caps) still override the surface block on high peaks in every biome.
      */
     public enum Biome {
-        DESERT (TypeIds.SAND,          TypeIds.SAND, TreeSpecies.PALM,   0.08f, PlantKind.NONE,      srgb(0.76f, 0.71f, 0.50f)),
-        PLAINS (TypeIds.GRASS,         TypeIds.DIRT, null,               0.45f, PlantKind.SUNFLOWER, srgb(0.42f, 0.60f, 0.24f)),
-        FOREST (TypeIds.GRASS,         TypeIds.DIRT, null,               1.30f, PlantKind.MUSHROOM,  srgb(0.28f, 0.46f, 0.16f)),
-        TAIGA  (TypeIds.GRASS_TOUNDRA, TypeIds.DIRT, TreeSpecies.SPRUCE, 0.90f, PlantKind.SPARSE,    srgb(0.52f, 0.55f, 0.32f)),
-        SNOWY  (TypeIds.GRASS_SNOW,    TypeIds.DIRT, TreeSpecies.SPRUCE, 0.35f, PlantKind.NONE,      srgb(0.82f, 0.87f, 0.90f));
+        DESERT (TypeIds.SAND,          TypeIds.SAND, TreeSpecies.PALM,   0.08f, PlantKind.NONE,      srgb(0.76f, 0.71f, 0.50f), srgb(0.70f, 0.68f, 0.51f)),
+        PLAINS (TypeIds.GRASS,         TypeIds.DIRT, null,               0.45f, PlantKind.SUNFLOWER, srgb(0.42f, 0.60f, 0.24f), srgb(0.44f, 0.31f, 0.19f)),
+        FOREST (TypeIds.GRASS,         TypeIds.DIRT, null,               1.30f, PlantKind.MUSHROOM,  srgb(0.28f, 0.46f, 0.16f), srgb(0.44f, 0.31f, 0.19f)),
+        TAIGA  (TypeIds.GRASS_TOUNDRA, TypeIds.DIRT, TreeSpecies.SPRUCE, 0.90f, PlantKind.SPARSE,    srgb(0.52f, 0.55f, 0.32f), srgb(0.44f, 0.31f, 0.19f)),
+        SNOWY  (TypeIds.GRASS_SNOW,    TypeIds.DIRT, TreeSpecies.SPRUCE, 0.35f, PlantKind.NONE,      srgb(0.82f, 0.87f, 0.90f), srgb(0.44f, 0.31f, 0.19f));
 
         final String surfaceId;
         final String subsurfaceId;
@@ -160,15 +171,20 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         final float treeDensityMul; // multiplies the forest-density keep probability
         final PlantKind plantKind;
         final ColorRGBA color; // grass-band colour for the far horizon & minimap (linear)
+        // Sea-floor colour for the far horizon : mean albedo of the biome's underwater SUBSURFACE block
+        // (desert = sand, all others = dirt), so the distant seabed colour-matches the near voxel floor --
+        // generateUnderground places biomeSubsurface[biome] below the top sand fringe. (linear)
+        final ColorRGBA seabedColor;
 
         Biome(String surfaceId, String subsurfaceId, TreeSpecies forcedSpecies, float treeDensityMul,
-              PlantKind plantKind, ColorRGBA color) {
+              PlantKind plantKind, ColorRGBA color, ColorRGBA seabedColor) {
             this.surfaceId = surfaceId;
             this.subsurfaceId = subsurfaceId;
             this.forcedSpecies = forcedSpecies;
             this.treeDensityMul = treeDensityMul;
             this.plantKind = plantKind;
             this.color = color;
+            this.seabedColor = seabedColor;
         }
     }
 
@@ -197,10 +213,63 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
     // Altitude tiers for the land surface, expressed as a fraction of the world ceiling
     // (gridHeight * chunkHeight) : the highest mountains are capped with snow, then bare rock.
-    // Public so the far-terrain horizon (FarTerrainState) can colour the same tiers at the same
-    // altitudes -- single source of truth, keeping the distant relief consistent with the voxels.
-    public static final float SNOW_LINE_RATIO = 0.65f; // surface above 80% of the ceiling -> snow
-    public static final float ROCK_LINE_RATIO = 0.60f; // surface above 70% (below the snow line) -> rock
+    // These are only the BASE altitudes of the two lines -- see the strata block below, which warps them
+    // per column. Public so the far-terrain horizon (FarTerrainState) and the minimap can colour the same
+    // tiers at the same altitudes -- single source of truth, keeping the distant relief consistent with
+    // the voxels.
+    public static final float SNOW_LINE_RATIO = 0.75f; // surface above 75% of the ceiling -> snow
+    public static final float ROCK_LINE_RATIO = 0.70f; // surface above 65% (below the snow line) -> rock
+
+    // --- Surface strata (the rock & snow altitude tiers) ----------------------------------------------
+    // The two lines above are not flat contours : each column gets its own pair, warped by three effects.
+    //
+    //  1. WANDER -- a mid-frequency tiled noise field moves both lines up and down, so a band edge follows
+    //     no iso-altitude curve. The two amplitudes have OPPOSITE signs, so the bare-rock band between them
+    //     also breathes : it opens into wide scree flanks in places and pinches shut in others (there the
+    //     snow reaches straight down onto the grass, which is what a wet, cold massif looks like).
+    //  2. CLIMATE -- the snow line follows LATITUDE, high at the equator and low at the poles, exactly like
+    //     the real one (the same latitude term the biomes are built on, see strataClimate01). The rock line
+    //     follows it too but half as strongly, so hot mountains are mostly bare rock and cold ones white.
+    //  3. SLOPE -- soil and snow only hold on gentle ground. A steep face sheds both : the rock line dives
+    //     toward the shore (crags show bare rock far below the mountains) and the snow line climbs (dark
+    //     rock ribs poke through the white caps). Measured over the default world, the per-block slope is
+    //     ~0.2 on average and tops out near 1.6, hence the SOIL/BARE ramp below. The soil half of this is
+    //     itself faded out with ALTITUDE (see soilBareness) : down in the lowlands, vegetation and washed-
+    //     down soil cover a slope however steep it is, so a hillside stays green and only the upper flanks
+    //     of a real mountain go bare. Without that fade a high-relief massif was one grey wall from the
+    //     sea to the snow.
+    //
+    // On top of that, a per-column dither stipples the transition so the boundary reads as a grainy
+    // interleave at block scale rather than a clean curve (same trick as BIOME_DITHER).
+    private static final float STRATA_FREQUENCY = 0.009f; // ~110-block wander of the band edges
+    private static final int STRATA_OCTAVES = 2; // few octaves : this is a smooth warp, and it is per column
+    private static final float SNOW_LINE_WANDER = 9f;  // blocks, at wander = +/-1
+    private static final float ROCK_LINE_WANDER = -11f; // opposite sign : the rock band pinches and widens
+    private static final float SNOW_LINE_LATITUDE = 30f; // blocks the snow line climbs from pole to equator
+    private static final float ROCK_LINE_LATITUDE = 12f; // ... and the rock line, half as strongly
+    private static final float STRATA_DITHER = 5f; // blocks of per-column jitter on both lines
+    // Slope ramp, in blocks of height change per block of ground (the generator's own slope measure, see
+    // slopeAt) : below SOIL the ground is gentle and nothing changes, at BARE it is a cliff face.
+    // Public so the far-terrain shader can apply the SAME ramp to its mesh normal.
+    public static final float STRATA_SLOPE_SOIL = 0.30f;
+    public static final float STRATA_SLOPE_BARE = 0.95f;
+    // How far a cliff face pulls the rock line DOWN, in blocks -- deliberately a bounded drop and not a
+    // dive to the shore. The drop must stay comparable to the altitude span it fades in over (below) :
+    // when the line falls much faster than the ground rises, the grass/rock tier flips at ONE altitude and
+    // the boundary comes out as a dead-straight horizontal contour across the whole flank, whatever the
+    // wander does. Keeping the two of the same order makes the crossing near-tangential, so the wander and
+    // the dither move it by many blocks of altitude -- a wavy, mottled edge instead of a ruled line.
+    public static final float STRATA_ROCK_SLOPE_DROP = 26f;
+    // ... but never below this margin above the water line.
+    public static final float STRATA_ROCK_SLOPE_FLOOR = 2f;
+    // A steep face sheds its snow this many blocks up.
+    public static final float STRATA_SNOW_SLOPE_RISE = 26f;
+    // Altitude fade of the SOIL half of the slope term, as fractions of the shore -> base-rock-line span :
+    // no slope-driven bare rock at all below LOW (a lowland hillside is green however steep), the full
+    // effect above HIGH. Expressed as fractions, not absolute heights, so it tracks the world ceiling and
+    // the water line. See soilAltitudeLow / soilAltitudeHigh, which the far shader is fed too.
+    private static final float STRATA_SOIL_ALTITUDE_LOW = 0.28f;
+    private static final float STRATA_SOIL_ALTITUDE_HIGH = 0.85f;
 
     // "Relief" (reliefAmplitude) scales the MOUNTAINS layer fully (it sets the broad altitude, hence how
     // high the land climbs toward the fixed rock/snow tiers), but only PARTLY scales the hills/details
@@ -260,6 +329,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private NoiseLayer temperatureNoise;
     private NoiseLayer humidityNoise;
     private NoiseLayer continentalNoise;
+    // Warps the rock & snow lines per column (see the strata block above). Tiled, read-only after
+    // createWorldNoise() like the other fields.
+    private NoiseLayer strataNoise;
     private FastNoise scatterNoise;
     // Player edits the far-horizon renderers must honour (felled trees / reshaped relief). Null until a
     // world is opened ; consulted only by the chunk-free far paths (forEachTreeAnchor), never by the
@@ -287,6 +359,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     private Block blockItemGrass;
     private Block blockItemMushroom;
     private Block blockItemSunflower;
+    private Block blockItemSeaweed;
     // Per-biome surface & subsurface blocks, indexed by Biome.ordinal() (resolved once, see resolveBlocks).
     private final Block[] biomeSurface = new Block[Biome.values().length];
     private final Block[] biomeSubsurface = new Block[Biome.values().length];
@@ -355,6 +428,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         blockItemGrass = registry.get(BlockIds.getName(TypeIds.ITEM_GRASS, ShapeIds.CROSS_PLANE, 0));
         blockItemMushroom = registry.get(BlockIds.getName("item_mushroom", ShapeIds.CROSS_PLANE, 0));
         blockItemSunflower = registry.get(BlockIds.getName("item_sunflower", ShapeIds.CROSS_PLANE, 0));
+        // Seaweed stands IN water : the FULL-water co-habiting cross-plane variant, so the mesh emits both
+        // the plant geometry and the water faces around it (see Liquid#isFaceVisible, which cites seaweed).
+        blockItemSeaweed = registry.get(BlockIds.getName("item_seaweed", ShapeIds.CROSS_PLANE, Block.LIQUID_FULL));
         // Per-biome surface/subsurface blocks : the surface id resolves to the cube_up form (bare type
         // name, like GRASS), the subsurface likewise. Cached by ordinal for a per-block array lookup.
         for (Biome biome : Biome.values()) {
@@ -468,8 +544,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             return chunk;
         }
 
-        // One biome classification per surface column (reused Vector2f, no per-block cost).
+        // One biome classification and one strata (rock/snow line) evaluation per surface column
+        // (reused Vector2f pair, no per-block cost).
         Vector2f biomeSample = new Vector2f();
+        Vector2f strataLines = new Vector2f();
         for (int x = 0; x < maxX; x++) {
             int rowx = (x + CANOPY_RADIUS) * sizez;
             int worldX = worldOffsetX + x;
@@ -481,10 +559,17 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 float horizon = Math.max(groundh, waterHeight);
                 int worldZ = worldOffsetZ + z;
                 Biome biome = biomeAt(worldX, worldZ, biomeSample);
+                // World Y of the highest seaweed cell in this (submerged) column, or Integer.MIN_VALUE for none.
+                int seaweedTop = seaweedTop(groundh, worldX, worldZ);
+                // Altitude strata : rock / snow cap of this column (null = the biome's own surface), from
+                // the per-column rock & snow lines and the local slope. Once per column, not per block.
+                float slope = slopeAt(heights, gridIndex, sizex, sizez);
+                Block cap = surfaceCap(groundh, worldX, worldZ, slope, biomeSample, strataLines);
 
                 for (int y = maxY - 1; y >= 0; y--) {
                     int worldY = minWorldY + y;
-                    generate(chunk, x, y, z, worldY, groundh, horizon, worldX, worldZ, density, biome);
+                    generate(chunk, x, y, z, worldY, groundh, horizon, worldX, worldZ, density, biome,
+                            seaweedTop, cap);
                 }
             }
         }
@@ -496,7 +581,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private void generate(Chunk chunk, int x, int y, int z, int worldY, float groundh, float horizon,
-                          int worldX, int worldZ, float density, Biome biome) {
+                          int worldX, int worldZ, float density, Biome biome, int seaweedTop, Block cap) {
         // The world has a solid floor at y=0 (the bottom faces there are never rendered). Keep it as
         // bedrock so very deep water columns -- whose ground noise dips below 0 -- are not bottomless
         // (otherwise you see straight through the bottom of the water to the background).
@@ -512,10 +597,10 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             block = generateAboveHorizon(chunk, x, y, z);
 
         } else if (worldY == (int) horizon) {
-            block = generateSurface(chunk, x, y, z, worldY, groundh, worldX, worldZ, density, biome);
+            block = generateSurface(chunk, x, y, z, worldY, groundh, worldX, worldZ, density, biome, cap);
 
         } else {
-            block = generateUnderground(chunk, x, y, z, worldY, groundh, horizon, biome);
+            block = generateUnderground(chunk, x, y, z, worldY, groundh, horizon, biome, seaweedTop, cap);
         }
 
         if (block != null) {
@@ -529,17 +614,16 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     private Block generateSurface(Chunk chunk, int x, int y, int z, int worldY, float groundh,
-                                  int worldX, int worldZ, float density, Biome biome) {
+                                  int worldX, int worldZ, float density, Biome biome, Block cap) {
         chunk.setSunlight(x, y, z, 0);
 
         Block block;
         if (worldY > waterHeight) {
-            // Altitude tiers first : snow caps the highest peaks, bare rock below it (mountains override
-            // the biome). Lower down, the biome picks the surface block (grass / tundra / snow / sand).
-            if (worldY > snowLine) {
-                block = blockSnow;
-            } else if (worldY > rockLine) {
-                block = blockRock;
+            // Altitude strata first : where the column climbs past its own rock / snow line (or its ground
+            // is too steep to hold soil) the cap wins over the biome. Lower down, the biome picks the
+            // surface block (grass / tundra / snow / sand) and may scatter a ground plant on it.
+            if (cap != null) {
+                block = cap;
             } else {
                 block = biomeSurface[biome.ordinal()];
                 placePlant(chunk, x, y, z, worldX, worldZ, density, biome);
@@ -551,6 +635,34 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             chunk.setSunlight(x, y, z, 14);
         }
         return block;
+    }
+
+    /**
+     * Altitude cap of a land column : {@link #blockSnow}, {@link #blockRock}, or {@code null} when the
+     * biome's own surface (grass / tundra / sand) shows. Evaluated ONCE per column (see
+     * {@link #strataLinesAt} for the model) and reused by the surface block, the subsurface below it and
+     * the ground plants. Submerged columns never carry a cap : the sea floor is unchanged.
+     *
+     * @param slope       max height delta to the column's four neighbours (see {@link #slopeAt})
+     * @param sample      caller's scratch vector for the noise lookups
+     * @param strataLines caller's scratch vector receiving the column's (snow, rock) lines
+     */
+    private Block surfaceCap(float groundh, int worldX, int worldZ, float slope,
+                             Vector2f sample, Vector2f strataLines) {
+        if (groundh <= waterHeight) {
+            return null;
+        }
+        strataLinesAt(worldX, worldZ, sample, strataLines);
+        // Per-column jitter, applied to BOTH lines so the bands keep their width while their edges become
+        // a grainy interleave of the two blocks instead of a clean curve.
+        float dither = (hash01(canonical(worldX), canonical(worldZ), CH_STRATA) - 0.5f) * STRATA_DITHER;
+        float snow = snowLineWithSlope(strataLines.x, slope) + dither;
+        if (groundh > snow) {
+            return blockSnow;
+        }
+        // The rock line can only sit below the snow line : a slope steep enough to shed the snow is steep
+        // enough to be bare, so it must not end up as grass poking out of the cap.
+        return groundh > Math.min(rockLineWithSlope(strataLines.y, slope, groundh) + dither, snow) ? blockRock : null;
     }
 
     /**
@@ -585,21 +697,48 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         chunk.addBlock(x, y + 1, z, plant);
     }
 
+    /**
+     * World Y of the highest seaweed cell for a submerged column, or {@link Integer#MIN_VALUE} if the
+     * column carries no seaweed. The stalk always roots on the sea floor ({@code (int)groundh + 1}) and
+     * grows a random 1..{@link #SEAWEED_MAX_HEIGHT} blocks up, clamped so its top stays one cell below the
+     * water surface source (never above the water). Land columns (ground at/above the water line) and
+     * water too shallow to hold a single stalk cell return no seaweed. Deterministic & seamless (same
+     * per-column white-noise hash as the ground plants), so neighbouring chunks agree at the seam.
+     */
+    private int seaweedTop(float groundh, int worldX, int worldZ) {
+        int bottom = (int) groundh + 1;             // first water cell above the sea floor
+        int maxTop = (int) waterHeight - 1;         // one below the surface source cell : stays underwater
+        if (bottom > maxTop) {
+            return Integer.MIN_VALUE;               // land, or water too shallow for a stalk
+        }
+        int wx = canonical(worldX);
+        int wz = canonical(worldZ);
+        if (hash01(wx, wz, CH_SEAWEED) >= SEAWEED_COVERAGE) {
+            return Integer.MIN_VALUE;
+        }
+        int height = 1 + (int) (hash01(wx, wz, CH_SEAWEED_HEIGHT) * SEAWEED_MAX_HEIGHT);
+        return Math.min(bottom + height - 1, maxTop);
+    }
+
     private Block generateUnderground(Chunk chunk, int x, int y, int z, int worldY, float groundh,
-                                      float horizon, Biome biome) {
+                                      float horizon, Biome biome, int seaweedTop, Block cap) {
         Block block;
         if (worldY > groundh) {
             // Above ground but below horizon => in water. Water stays well-lit : its sunlight never drops
-            // below WATER_MIN_SUNLIGHT regardless of depth (so deep water is not gloomy).
-            block = blockWaterLiquid;
+            // below WATER_MIN_SUNLIGHT regardless of depth (so deep water is not gloomy). Seaweed stalks
+            // fill the lowest cells of chosen columns : the plant co-habits the water, so the cell still
+            // carries the water light/level -- only the block placed changes.
+            block = worldY <= seaweedTop ? blockItemSeaweed : blockWaterLiquid;
             chunk.setSunlight(x, y, z, Math.max(ChunkLightManager.WATER_MIN_SUNLIGHT, 14 - ((int) horizon - worldY)));
 
         } else {
             chunk.setSunlight(x, y, z, 0);
             if (waterHeight - worldY < 3 && worldY == (int) groundh) {
                 block = blockSand;
-            } else if (groundh - worldY < 3) {
-                // Shallow subsurface shelf, biome-dependent (desert = sand, others = dirt).
+            } else if (cap == null && groundh - worldY < 3) {
+                // Shallow subsurface shelf, biome-dependent (desert = sand, others = dirt). Skipped under
+                // a rock / snow cap : bare rock and snow caps sit on the mountain's own stone, not on a
+                // buried shelf of dirt (which showed as a brown seam wherever a cliff was cut).
                 block = biomeSubsurface[biome.ordinal()];
             } else {
                 block = blockRock;
@@ -678,7 +817,8 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         // One scatter cell per TREE_CELL_SIZE blocks. On the torus the hash wraps every 'cellsAcross'
         // cells (~worldSize) so the scatter stays seamless; 0 means the infinite (non-tiling) world.
         int cellsAcross = cellsAcross();
-        Vector2f sample = new Vector2f(); // reused for the per-tree species noise lookup
+        Vector2f sample = new Vector2f(); // reused for the per-tree species / strata noise lookups
+        Vector2f strataLines = new Vector2f(); // reused : the candidate column's (snow, rock) lines
 
         // Cells whose jittered position can fall inside the canopy-extended chunk footprint.
         int minCellX = Math.floorDiv(worldOffsetX - CANOPY_RADIUS, TREE_CELL_SIZE);
@@ -712,9 +852,14 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 // base above (or below) the actual ground -> trees floating 1 block over steep terrain.
                 float groundh = heights[2 + index];
                 int y = (int) groundh - chunkY;
-                // Trees grow only on the grassy band (treeBandOk) ; the y bounds are this chunk's vertical
-                // slice, so a tree whose base sits in another chunk of the column is skipped here.
-                if (y <= -TREE_HEIGHT || y >= chunkSize.z || !treeBandOk(groundh)) {
+                // Trees grow only on the grassy band (treeBandOk, against this column's own rock line) ;
+                // the y bounds are this chunk's vertical slice, so a tree whose base sits in another chunk
+                // of the column is skipped here.
+                if (y <= -TREE_HEIGHT || y >= chunkSize.z) {
+                    continue;
+                }
+                strataLinesAt(worldX, worldZ, sample, strataLines);
+                if (!treeBandOk(groundh, strataLines.y)) {
                     continue;
                 }
 
@@ -726,8 +871,15 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                     continue;
                 }
 
-                // No trees on steep ground. Same 2 + index height-grid base as groundh above.
-                if (slopeAt(heights, 2 + index, sizez, gridSize) > SLOPE_MAX) {
+                // No trees on steep ground, nor on the bare rock a steep face exposes (the slope pulls the
+                // rock line down, see rockLineWithSlope). The slope is sampled from the NOISE, not from
+                // this chunk's height grid : a tree anchored in the margin has neighbours outside the grid,
+                // so a grid slope would differ between the two chunks that both draw that tree -- one would
+                // keep it and the other drop it, leaving its canopy floating (FloatingLeavesTest). Sampling
+                // the noise makes the test a pure function of the column, which is also exactly what the
+                // far-horizon billboards do (forEachTreeAnchor), so near and far agree too.
+                float slope = farSlope(worldX, worldZ, groundh, sample);
+                if (slope > SLOPE_MAX || groundh > rockLineWithSlope(strataLines.y, slope, groundh)) {
                     continue;
                 }
 
@@ -744,9 +896,18 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     // (generateTrees) and by the far-horizon billboards (forEachTreeAnchor), so the distant trees match
     // the walked-on ones exactly at the chunk-grid seam — no divergence, no double-drawn trees.
 
-    /** Grass band where trees grow : above the shore (waterHeight + 1), at or below the barren rock line. */
-    private boolean treeBandOk(float groundh) {
-        return groundh > (waterHeight + 1) && groundh <= rockLine;
+    /**
+     * Grass band where trees grow : above the shore (waterHeight + 1), at or below the barren rock line.
+     * The rock line is the column's own ({@link #strataLinesAt}), so the tree line follows the wandering,
+     * climate-driven edge of the bare rock instead of a flat contour -- woods climb higher on the warm
+     * massifs and stop low on the cold ones, exactly where the grass itself stops.
+     *
+     * @param baseRockLine the column's rock line BEFORE the slope term ; the caller re-tests the
+     *                     slope-lowered line ({@link #rockLineWithSlope}) once it knows the slope, which
+     *                     can only be lower -- so this stays a valid (cheap) early-out.
+     */
+    private boolean treeBandOk(float groundh, float baseRockLine) {
+        return groundh > (waterHeight + 1) && groundh <= baseRockLine;
     }
 
     /** Forest-density keep test : dense woods keep most cells, clearings keep few (same hash channel). */
@@ -790,6 +951,7 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         // every 'cellsAcross' cells on the torus so the placement is seamless at the world seam.
         int cellsAcross = cellsAcross();
         Vector2f sample = new Vector2f();
+        Vector2f strataLines = new Vector2f();
 
         int minCellX = Math.floorDiv(minX, TREE_CELL_SIZE);
         int maxCellX = Math.floorDiv(maxX, TREE_CELL_SIZE);
@@ -813,14 +975,16 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
                 }
 
                 float groundh = getHeight(worldX, worldZ, sample);
-                if (!treeBandOk(groundh)) {
+                strataLinesAt(worldX, worldZ, sample, strataLines);
+                if (!treeBandOk(groundh, strataLines.y)) {
                     continue;
                 }
                 Biome biome = biomeAt(worldX, worldZ, sample);
                 if (!treeKept(hx, hz, densityAt(worldX, worldZ, sample) * biome.treeDensityMul)) {
                     continue;
                 }
-                if (farSlope(worldX, worldZ, groundh, sample) > SLOPE_MAX) {
+                float slope = farSlope(worldX, worldZ, groundh, sample);
+                if (slope > SLOPE_MAX || groundh > rockLineWithSlope(strataLines.y, slope, groundh)) {
                     continue;
                 }
 
@@ -849,6 +1013,19 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     /**
+     * How wooded a world column is, in [0, 1] : the forest-density field times the biome's tree
+     * multiplier, clamped. This is the exact product {@link #forEachTreeAnchor} tests against to decide
+     * whether to plant a tree, so anything driven by it (the ambient bird calls, for one) follows the
+     * trees the player can actually see rather than a lookalike field. Allocation-free : {@code sample}
+     * is the caller's scratch vector. Pure &amp; seamless on the torus.
+     */
+    public float treeDensityAt(float worldX, float worldZ, Vector2f sample) {
+        // FOREST multiplies by 1.3, so the product overshoots 1 and has to be clamped.
+        float d = densityAt(worldX, worldZ, sample) * biomeAt(worldX, worldZ, sample).treeDensityMul;
+        return d < 0f ? 0f : Math.min(1f, d);
+    }
+
+    /**
      * Classifies the biome at a world column from the (tiled) temperature & humidity fields. The boundary
      * is dithered by a per-column white-noise hash so the HARD block choice reads as a stippled interleave
      * of the two palettes instead of a razor-straight contour. Pure & seamless on the torus.
@@ -866,6 +1043,74 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         return h > HUM_FOREST ? Biome.FOREST : Biome.PLAINS;
     }
 
+    // --- Surface strata -------------------------------------------------------------------------------
+    // Single source of truth for the rock & snow lines, shared by the voxel surface (surfaceCap), the far
+    // horizon (FarTerrainState bakes strataLinesAt into a map and applies the slope term shader-side) and
+    // the minimap. See the STRATA_* constants for the model.
+
+    /**
+     * Writes the column's rock &amp; snow lines (world Y) into {@code out} -- {@code out.x} = snow line,
+     * {@code out.y} = rock line, guaranteed {@code out.y <= out.x}. This is the pair BEFORE the slope
+     * term ({@link #snowLineWithSlope} / {@link #rockLineWithSlope}) and before the per-column dither,
+     * i.e. the smooth, continuous field the far horizon and the minimap can sample and interpolate.
+     * Allocation-free : {@code sample} is the caller's scratch vector. Pure &amp; seamless on the torus.
+     */
+    public Vector2f strataLinesAt(float worldX, float worldZ, Vector2f sample, Vector2f out) {
+        float wander = strataNoise.evaluate(sample.set(worldX, worldZ), worldSize); // ~[-1, 1]
+        float latitude = strataClimate01(worldX, worldZ, sample) - 0.5f; // -0.5 = pole, +0.5 = equator
+        float snow = snowLine + wander * SNOW_LINE_WANDER + latitude * SNOW_LINE_LATITUDE;
+        float rock = rockLine + wander * ROCK_LINE_WANDER + latitude * ROCK_LINE_LATITUDE;
+        out.x = snow;
+        // Where the band pinches shut (cold and/or heavily wandered), the snow simply reaches down onto
+        // the biome surface : the rock line never overtakes the snow line.
+        out.y = Math.min(rock, snow);
+        return out;
+    }
+
+    /** Snow line raised by the local slope : a steep face sheds its snow and stays bare rock. */
+    public float snowLineWithSlope(float baseSnowLine, float slope) {
+        return baseSnowLine + slopeBareness(slope) * STRATA_SNOW_SLOPE_RISE;
+    }
+
+    /**
+     * Rock line lowered by the local slope : soil (hence the biome's grass/sand surface) does not hold on
+     * a steep face, so crags show bare rock well below the mountains. The drop is bounded
+     * ({@link #STRATA_ROCK_SLOPE_DROP}) and faded out with altitude ({@link #soilBareness}) : near the
+     * shore the ground keeps its soil however steep it is, and only the upper flanks of a real mountain
+     * are stripped.
+     *
+     * @param groundh the column's ground height, which drives that altitude fade
+     */
+    public float rockLineWithSlope(float baseRockLine, float slope, float groundh) {
+        float dropped = baseRockLine - soilBareness(slope, groundh) * STRATA_ROCK_SLOPE_DROP;
+        return Math.max(dropped, Math.min(waterHeight + STRATA_ROCK_SLOPE_FLOOR, baseRockLine));
+    }
+
+    /** Altitude below which no slope, however steep, strips the soil. */
+    public float soilAltitudeLow() {
+        return waterHeight + STRATA_SOIL_ALTITUDE_LOW * Math.max(1f, rockLine - waterHeight);
+    }
+
+    /** Altitude above which the slope strips the soil in full. */
+    public float soilAltitudeHigh() {
+        return waterHeight + STRATA_SOIL_ALTITUDE_HIGH * Math.max(1f, rockLine - waterHeight);
+    }
+
+    /** 0 where the snow holds (gentle ground), 1 on a face steep enough to shed it. */
+    private static float slopeBareness(float slope) {
+        return smoothstep(STRATA_SLOPE_SOIL, STRATA_SLOPE_BARE, slope);
+    }
+
+    /**
+     * 0 where the soil holds, 1 where the slope has stripped it to bare rock : the slope ramp, faded in
+     * with altitude. Only the SOIL is faded, not the snow ({@link #slopeBareness}) -- soil creeps back
+     * onto a low slope because things grow on it and debris washes down it, whereas snow slides off a
+     * steep face at any altitude it falls on.
+     */
+    private float soilBareness(float slope, float groundh) {
+        return slopeBareness(slope) * smoothstep(soilAltitudeLow(), soilAltitudeHigh(), groundh);
+    }
+
     /**
      * Grass-band colour at a world column : a CONTINUOUS blend of the biome palette by soft membership in
      * (temperature, humidity) space (NO dither), so the baked far-horizon & minimap colour is seam-free
@@ -874,6 +1119,26 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
      * read one palette. The near voxels show a dithered hard mix of the same two palettes -> they agree.
      */
     public ColorRGBA biomeColorAt(float worldX, float worldZ, Vector2f sample, ColorRGBA out) {
+        return blendBiomePalette(worldX, worldZ, sample, out, false);
+    }
+
+    /**
+     * Sea-FLOOR colour at a world column : the exact soft-membership blend of {@link #biomeColorAt}, but
+     * over each biome's {@link Biome#seabedColor} (underwater subsurface) instead of its grass band -- so
+     * the far seabed reads sand in desert seas and dirt elsewhere, matching the near voxel floor. Consumed
+     * by FarTerrainState (baked into the seabed colour map). Writes into {@code out} (no allocation).
+     */
+    public ColorRGBA biomeSeabedColorAt(float worldX, float worldZ, Vector2f sample, ColorRGBA out) {
+        return blendBiomePalette(worldX, worldZ, sample, out, true);
+    }
+
+    /**
+     * Continuous blend of a per-biome palette by soft membership in (temperature, humidity) space (NO
+     * dither), so the baked far-horizon / minimap colour is seam-free even per-texel. {@code seabed}
+     * selects the underwater sea-floor palette ({@link Biome#seabedColor}) over the grass band
+     * ({@link Biome#color}). The near voxels show a dithered hard mix of the same two palettes -> they agree.
+     */
+    private ColorRGBA blendBiomePalette(float worldX, float worldZ, Vector2f sample, ColorRGBA out, boolean seabed) {
         float t = temperature01(worldX, worldZ, sample);
         float h = humidity01(worldX, worldZ, sample);
         // Smoothsteps centered on the same thresholds as biomeAt : cold vs temperate, and, within each,
@@ -884,11 +1149,11 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         float desert = smoothstep(TEMP_HOT - 0.03f, TEMP_HOT + 0.03f, t)
                 * (1f - smoothstep(HUM_DESERT - 0.03f, HUM_DESERT + 0.03f, h));
 
-        ColorRGBA snowy = Biome.SNOWY.color;
-        ColorRGBA tai = Biome.TAIGA.color;
-        ColorRGBA plains = Biome.PLAINS.color;
-        ColorRGBA forestC = Biome.FOREST.color;
-        ColorRGBA des = Biome.DESERT.color;
+        ColorRGBA snowy = seabed ? Biome.SNOWY.seabedColor : Biome.SNOWY.color;
+        ColorRGBA tai = seabed ? Biome.TAIGA.seabedColor : Biome.TAIGA.color;
+        ColorRGBA plains = seabed ? Biome.PLAINS.seabedColor : Biome.PLAINS.color;
+        ColorRGBA forestC = seabed ? Biome.FOREST.seabedColor : Biome.FOREST.color;
+        ColorRGBA des = seabed ? Biome.DESERT.seabedColor : Biome.DESERT.color;
         // Cold side : snowy <-> taiga.
         float cr = lerp(snowy.r, tai.r, taiga);
         float cg = lerp(snowy.g, tai.g, taiga);
@@ -915,9 +1180,23 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
         if (worldSize <= 0f) {
             return norm01(temperatureNoise.evaluate(sample.set(worldX, worldZ), worldSize));
         }
-        float latitude = 0.5f + 0.5f * (float) Math.cos(2.0 * Math.PI * worldZ / worldSize);
         float wobble = norm01(temperatureNoise.evaluate(sample.set(worldX, worldZ), worldSize)) - 0.5f;
-        return clamp01(latitude + wobble * TEMP_NOISE_WEIGHT);
+        return clamp01(latitude01(worldZ) + wobble * TEMP_NOISE_WEIGHT);
+    }
+
+    /** The bare latitude term of {@link #temperature01} : 1 at the equator (Z=0), 0 at the poles. */
+    private float latitude01(float worldZ) {
+        return 0.5f + 0.5f * (float) Math.cos(2.0 * Math.PI * worldZ / worldSize);
+    }
+
+    /**
+     * The climate the strata read : the bare {@link #latitude01}, WITHOUT the temperature noise the
+     * biomes add on top. The band edges get their irregularity from their own wander field, so paying for
+     * a second noise lookup per column would buy nothing visible -- and the surface strata are evaluated
+     * for every column of every surface chunk, on the critical generation path.
+     */
+    private float strataClimate01(float worldX, float worldZ, Vector2f sample) {
+        return worldSize > 0f ? latitude01(worldZ) : temperature01(worldX, worldZ, sample);
     }
 
     /** Humidity in [0, 1] at a world column : full (tiled) noise -- decides forest/plains and desert/dry. */
@@ -939,24 +1218,31 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
     }
 
     /**
-     * Maximum absolute ground-height difference between this column and its four in-grid neighbours.
-     * Skips the legacy min/max slots (indices 0/1) and out-of-grid neighbours.
+     * Maximum absolute ground-height difference between a column and its four neighbours, read from a
+     * chunk's height grid. {@code gridIndex} is the grid-relative index (0-based, i.e. WITHOUT the two
+     * leading min/max slots of the {@code heights} layout).
+     *
+     * <p>A neighbour outside the grid is simply skipped, so the value is only chunk-independent for
+     * columns that have all four in the grid — true of every column of the chunk itself (the grid carries
+     * a {@link #CANOPY_RADIUS} margin all around) but NOT of the margin columns. Anything a neighbouring
+     * chunk must agree on (tree placement) samples the noise directly instead, see {@link #farSlope}.
      */
-    private float slopeAt(float[] heights, int index, int sizez, int gridSize) {
-        float h = heights[index];
+    private float slopeAt(float[] heights, int gridIndex, int sizex, int sizez) {
+        int x = gridIndex / sizez;
+        int z = gridIndex % sizez;
+        float h = heights[2 + gridIndex];
         float s = 0f;
-        int zpos = index % sizez;
-        if (zpos > 0 && index - 1 >= 2) {
-            s = Math.max(s, Math.abs(h - heights[index - 1]));
+        if (z > 0) {
+            s = Math.max(s, Math.abs(h - heights[2 + gridIndex - 1]));
         }
-        if (zpos < sizez - 1) {
-            s = Math.max(s, Math.abs(h - heights[index + 1]));
+        if (z < sizez - 1) {
+            s = Math.max(s, Math.abs(h - heights[2 + gridIndex + 1]));
         }
-        if (index - sizez >= 2) {
-            s = Math.max(s, Math.abs(h - heights[index - sizez]));
+        if (x > 0) {
+            s = Math.max(s, Math.abs(h - heights[2 + gridIndex - sizez]));
         }
-        if (index + sizez < gridSize) {
-            s = Math.max(s, Math.abs(h - heights[index + sizez]));
+        if (x < sizex - 1) {
+            s = Math.max(s, Math.abs(h - heights[2 + gridIndex + sizez]));
         }
         return s;
     }
@@ -1047,12 +1333,17 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
             return -1L; // not the trunk column of this cell's tree
         }
         Vector2f sample = new Vector2f();
+        Vector2f strataLines = new Vector2f();
         float groundh = getHeight(anchorX, anchorZ, sample);
+        strataLinesAt(anchorX, anchorZ, sample, strataLines);
         Biome biome = biomeAt(anchorX, anchorZ, sample);
-        if (!treeBandOk(groundh)
-                || !treeKept(hx, hz, densityAt(anchorX, anchorZ, sample) * biome.treeDensityMul)
-                || farSlope(anchorX, anchorZ, groundh, sample) > SLOPE_MAX) {
+        if (!treeBandOk(groundh, strataLines.y)
+                || !treeKept(hx, hz, densityAt(anchorX, anchorZ, sample) * biome.treeDensityMul)) {
             return -1L; // no tree is actually scattered here
+        }
+        float slope = farSlope(anchorX, anchorZ, groundh, sample);
+        if (slope > SLOPE_MAX || groundh > rockLineWithSlope(strataLines.y, slope, groundh)) {
+            return -1L; // too steep, or on the bare rock a steep face exposes
         }
         return cellKey(hx, hz);
     }
@@ -1065,7 +1356,9 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
      */
     private TreeSpecies selectSpecies(Biome biome, float groundh, float worldX, float worldZ,
                                       float speciesHash, Vector2f sample) {
-        float alt = (groundh - waterHeight) / Math.max(1f, rockLine - waterHeight); // ~[0, 1] across the band
+        // ~[0, 1] across the band. Against the BASE rock line, not the column's own : this is a soft
+        // species preference (where spruce starts taking over), not a hard boundary like the tree line.
+        float alt = (groundh - waterHeight) / Math.max(1f, rockLine - waterHeight);
         // Cool highlands cap with spruce whatever the biome (matches the rock/snow altitude tiers).
         if (alt >= SPRUCE_ALT) {
             return TreeSpecies.SPRUCE;
@@ -1269,6 +1562,16 @@ public class NoiseTerrainGenerator implements TerrainGenerator {
 
         // Deterministic white-noise hash for per-cell/per-column scatter draws (jitter, keep/skip, size).
         scatterNoise = new FastNoise(random.nextInt());
+
+        // Strata wander : mid-frequency field warping the rock & snow lines, tiled like the others.
+        // Seeded LAST, deliberately : every field above then keeps the seed it drew before this layer
+        // existed, so the heightmap and the scatter of an already-saved world are untouched (a shifted
+        // heightmap would leave a cliff wherever newly generated land meets a persisted chunk).
+        strataNoise = new NoiseLayer("strata");
+        strataNoise.setSeed(random.nextInt());
+        strataNoise.setNoiseType(FastNoise.NoiseType.SimplexFractal);
+        strataNoise.setFrequency(STRATA_FREQUENCY);
+        strataNoise.setFractalOctaves(STRATA_OCTAVES);
     }
 
     @Override

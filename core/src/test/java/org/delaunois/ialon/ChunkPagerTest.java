@@ -16,11 +16,15 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.delaunois.ialon.blocks.ChunkManager;
+import org.delaunois.ialon.blocks.ChunkManagerListener;
 import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.blocks.FacesMeshGenerator;
 import org.delaunois.ialon.blocks.generator.FlatTerrainGenerator;
@@ -74,6 +78,90 @@ class ChunkPagerTest {
 
         chunkPager.cleanup(100);
         chunkManager.cleanup(100);
+    }
+
+    /**
+     * A pager that cannot attach as fast as chunks are meshed must not re-request the meshes it is still
+     * waiting on. It used to : {@code updateQueues} diffed the grid box against the <b>attached</b> pages
+     * only, so every chunk between "meshed" and "attached" looked missing and was submitted again. The
+     * duplicated meshing made the pager fall further behind, which duplicated more meshing — measured on a
+     * simulated phone (30 fps, render distance 8) as 92% of all meshing wasted, single chunks re-meshed 17
+     * times, and a grid that never filled in. See {@code support.ChunkPagingBenchmark}.
+     *
+     * <p>The player here crosses several chunk boundaries with a per-frame attach budget of 1, i.e. a pager
+     * guaranteed to lag far behind, and every location must still be meshed exactly once.
+     */
+    @Test
+    void noRedundantMeshingWhenAttachingLagsBehind() {
+        ChunkManager chunkManager = ChunkManager.builder()
+                .generator(new FlatTerrainGenerator())
+                .poolSize(2)
+                .build();
+        chunkManager.initialize();
+
+        Map<Vec3i, Integer> meshCount = new ConcurrentHashMap<>();
+        chunkManager.addListener(new ChunkManagerListener() {
+            @Override
+            public void onChunkAvailable(Chunk chunk) {
+                meshCount.merge(chunk.getLocation().clone(), 1, Integer::sum);
+            }
+
+            @Override
+            public void onChunkFetched(Chunk chunk) {
+                // not under test
+            }
+
+            @Override
+            public void onChunkUpdated(Chunk chunk) {
+                // not under test
+            }
+        });
+
+        ChunkPager chunkPager = new ChunkPager(new Node(), chunkManager);
+        chunkPager.initialize();
+
+        // Load the initial grid without throttling, so the walk below starts from a settled state.
+        Vec3i grid = BlocksConfig.getInstance().getGrid();
+        int numPages = grid.x * grid.y * grid.z;
+        chunkPager.setMaxUpdatePerFrame(numPages);
+        Vector3f location = new Vector3f();
+        chunkPager.setLocation(location);
+        while (chunkPager.getAttachedPages().size() < numPages) {
+            chunkPager.update();
+        }
+        meshCount.clear();
+
+        // Now walk, one chunk per frame, with a budget that can never keep up.
+        chunkPager.setMaxUpdatePerFrame(1);
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        for (int crossing = 1; crossing <= 6; crossing++) {
+            location.x = (float) crossing * chunkSize.x;
+            chunkPager.setLocation(location);
+            chunkPager.update();
+            // Let the meshing threads drain, so a duplicate request would have time to show up.
+            sleep(200);
+            chunkPager.update();
+        }
+
+        assertFalse(meshCount.isEmpty(), "the walk should have meshed new chunks");
+        Map.Entry<Vec3i, Integer> worst = meshCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElseThrow(IllegalStateException::new);
+        assertEquals(1, worst.getValue().intValue(),
+                "chunk " + worst.getKey() + " was meshed " + worst.getValue() + " times : the pager"
+                        + " re-requested a mesh it had already asked for");
+
+        chunkPager.cleanup(100);
+        chunkManager.cleanup(100);
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test

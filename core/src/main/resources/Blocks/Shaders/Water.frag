@@ -29,9 +29,29 @@ uniform float m_WaveFadeNear;      // distance (world units) at which waves star
 uniform float m_WaveFadeFar;       // distance at which waves are fully flattened
 uniform float m_GlintPower;        // sun highlight tightness (higher = smaller/sharper)
 uniform float m_GlintStrength;     // sun highlight intensity
+uniform float m_UnderStrength;     // underside (underwater looking up) transmitted-light brightness
+uniform float m_UnderGlintPower;   // underside sun sparkle tightness (LOW = wide glow, HIGH = pinpoint)
+uniform float m_UnderScatter;      // underside wave-tilt exaggeration (HIGH = more shattered/spread sparkle)
 uniform float m_FresnelPower;      // Fresnel falloff exponent (~5 for water)
 uniform float m_ReflectionStrength;// how much the sky reflection tints the water (0 = pure water
                                    // colour matching the FarTerrain, 1 = full mirror)
+uniform float m_OpaqueDistance;    // horizontal distance over which the surface fades to fully opaque
+uniform float m_InnerRadius;       // FAR water plane only : discard within this square (Chebyshev) horizontal
+                                   // radius of the camera, where the near voxel water is the truth. 0 (near
+                                   // voxel water) never discards.
+uniform vec4 m_FogColor;           // horizon haze colour the FAR water fades to with distance (matches the
+uniform float m_FogDistance;       // far terrain relief). Near voxel water sets FogDensity 0 -> no fog.
+uniform float m_FogDensity;
+
+#ifdef SHORE_CLIP
+    // Analytic shoreline (FAR water plane only). See the SHORE_CLIP block in main().
+    uniform sampler2D m_HeightMap;
+    uniform float m_HeightMapSize;
+    uniform float m_HeightMapRange;
+    uniform vec2 m_HeightMapOrigin;
+    uniform float m_Extent;
+    uniform float m_ShoreMargin;
+#endif
 
 in vec3 vWorldPos;
 in vec3 vBodyColor;
@@ -72,6 +92,40 @@ vec3 noised(vec2 x) {
 }
 
 void main() {
+#ifdef FAR_WATER
+    // FAR water plane : discard within the loaded-chunk region (square/Chebyshev horizontal radius),
+    // where the near voxel water is the truth.
+    if (max(abs(vWorldPos.x - g_CameraPosition.x), abs(vWorldPos.z - g_CameraPosition.z)) < m_InnerRadius) {
+        discard;
+    }
+#endif
+
+#ifdef SHORE_CLIP
+    // ANALYTIC SHORELINE. Draw the water only where the relief is genuinely BELOW it, read from the far
+    // terrain's own height field rather than inferred from a depth comparison.
+    //
+    // The relief and this flat plane meet at a very grazing angle, so the coastline used to be the locus
+    // where their two depths tie -- and a tie is decided by whatever per-pixel depth error the driver
+    // happens to produce. That error moves with the camera, which is why the shoreline wobbled while
+    // moving and sat perfectly still at rest, on Android but never on the desktop. Sampling the field
+    // instead makes the edge a contour of the same numbers the relief mesh is built from : no tie, no
+    // driver dependence, stable by construction.
+    //
+    // The field is exactly one texel per heightmap sample, hence the texel-centre correction : shoreT is
+    // 0..1 across the extent and lands on i/(n-1) at sample i, while texel i is centred at (i+0.5)/n.
+    // Skipping that correction offsets the whole coastline by half a cell, i.e. 8 world units.
+    vec2 shoreT = (vWorldPos.xz - m_HeightMapOrigin) / m_Extent + 0.5;
+    vec2 shoreUv = (shoreT * (m_HeightMapSize - 1.0) + 0.5) / m_HeightMapSize;
+    float reliefAboveWater = (texture2D(m_HeightMap, shoreUv).r - 0.5) * m_HeightMapRange;
+    // Requiring a real margin (not just "below") is what keeps the surviving water clear of the relief by
+    // a resolvable amount, so the remaining depth test can never be close enough to tie. Erring this way
+    // is deliberate : a hair too much clipped shows a sliver of (already water-tinted) sea floor at the
+    // shore, whereas too little would drape blue over the land edge, which reads far worse.
+    if (reliefAboveWater > -m_ShoreMargin) {
+        discard;
+    }
+#endif
+
     // --- animated normal (waves) : slope of a value-noise FBM over world XZ. Noise (not a sum of
     // sines) avoids the regular interference lattice / stripes the sharp sun glint would reveal. ---
     vec2 p = vWorldPos.xz * m_WaveScale;
@@ -111,8 +165,16 @@ void main() {
 
     vec3 V = normalize(g_CameraPosition - vWorldPos);
 
-    // --- Fresnel (Schlick), water F0 ~ 0.02 ---
-    float ndv = max(dot(N, V), 0.0);
+    // 1 when the camera is ABOVE this water fragment (outside view), 0 when BELOW it (underwater / inside
+    // view). The sky reflection + sun/moon glint are gated to the outside only : underwater the surface
+    // keeps its plain water body colour (no reflection). The opacity gradient below applies to BOTH sides.
+    float aboveWater = step(vWorldPos.y, g_CameraPosition.y);
+
+    // --- Fresnel (Schlick), water F0 ~ 0.02 --- abs() so the angle law is symmetric across the surface :
+    // from BELOW (underwater) V points down relative to the up-normal, so a plain max(dot,0) would be 0 ->
+    // fresnel 1 -> the surface fully OPAQUE looking up. With abs(), looking straight up from underwater is
+    // "steep" (transparent, a Snell's-window peek at the sky) and grazing is opaque, mirroring the top side.
+    float ndv = abs(dot(N, V));
     float fresnel = 0.02 + 0.98 * pow(1.0 - ndv, m_FresnelPower);
 
     vec3 R = reflect(-V, N);
@@ -121,7 +183,8 @@ void main() {
     // stays dominant. The sky here is near-uniform, so a strong reflection would only shift the hue
     // away from the FarTerrain and create a visible near/far seam. ReflectionStrength dials it. ---
     vec3 skyRefl = mix(m_SkyHorizonColor.rgb, m_SkyColor.rgb, clamp(R.y, 0.0, 1.0));
-    float refl = fresnel * m_ReflectionStrength;
+    // Reflection only on the outside (above-water) view ; underwater the surface stays plain water body.
+    float refl = fresnel * m_ReflectionStrength * aboveWater;
 
     // --- sun glint : specular along the reflected sun direction, fading as the sun sets. This is the
     // main "alive" cue and is kept at full strength regardless of the sky reflection. ---
@@ -133,26 +196,65 @@ void main() {
     float moonUp = clamp(m_MoonDirection.y * 4.0, 0.0, 1.0);
     float moonGlint = pow(max(dot(R, m_MoonDirection), 0.0), m_GlintPower) * m_MoonGlintStrength * moonUp;
 
-    vec3 color = mix(vBodyColor, skyRefl, refl) + glint * m_SunColor.rgb + moonGlint * m_MoonColor.rgb;
-    // Bright sky leaks THROUGH the transparent water where nothing backs it (the far-terrain seam, where
-    // the voxel seabed runs out). That only happens FAR away and at GRAZING angles ; near the player the
-    // seabed backs the water, so we keep it see-through there (you can watch the bottom). So, seen from
-    // ABOVE, make the water opaque when it is grazing (Fresnel) OR distant (smoothstep) -> it then shows
-    // the sky REFLECTION, not the sky through a gap. Seen from BELOW (underwater) keep the configured
-    // alpha so you can still look out of the water.
-    // Use the HORIZONTAL distance (not the 3D one) : the missing backdrop is at the far chunk edge, a
-    // horizontal boundary. The 3D distance also grows with camera altitude, which would wrongly turn the
-    // water opaque when looking straight down from high up (where the seabed IS there, right below).
-    float aboveWater = step(vWorldPos.y, g_CameraPosition.y);
-    float horizDist = distance(g_CameraPosition.xz, vWorldPos.xz);
-    float farOpaque = smoothstep(30.0, 60.0, horizDist);
-    // Angle-based opacity : opaque unless looking fairly steeply DOWN (where the ray hits the seabed
-    // right below and we want to see it). ndv = dot(up, viewDir) -> ~1 looking straight down, ~0 grazing.
-    // A sharp ramp (sharper than the Fresnel) closes the medium/grazing angles where the ray shoots far
-    // out to the no-backdrop horizon and the sky would otherwise leak through.
-    float angleOpaque = 1.0 - smoothstep(0.05, 0.4, ndv);
-    float opaqueness = max(angleOpaque, farOpaque) * aboveWater;
-    float alpha = mix(vAlpha, 1.0, opaqueness);
+    vec3 color = mix(vBodyColor, skyRefl, refl)
+               + (glint * m_SunColor.rgb + moonGlint * m_MoonColor.rgb) * aboveWater;
+
+    // --- underside (underwater, looking up) : the surface is the brightest thing in view from below --
+    // it transmits the sky light plus a broad, ripple-broken shimmer of the sun (and the moon at night).
+    // This is the below-water counterpart of the above-water reflection/glint (both gated by aboveWater),
+    // turning the flat body-colour ceiling into a bright, dappled sheet. Additive ; the alpha law is left
+    // untouched, so straight up (steep) stays a transparent Snell's window onto the bright sky and grazing
+    // stays the opaque, shimmering sheet. Modulated by the wave normal N so the ripples read as bright
+    // caustic-like bands, and by the live SunColor/SkyColor so it dims and warms with the day/night cycle.
+    float belowWater = 1.0 - aboveWater;
+    if (belowWater > 0.0) {
+        // Sun/moon "glint" seen from BELOW : the underside equivalent of the outer-surface sun glint.
+        // Trace the view ray UP through the surface (water -> air) : refract() bends it by the wave-tilted
+        // normal, so each wavelet sends the ray a slightly different way -- where it points at the sun the
+        // fragment sparkles (exactly the "reflet du soleil" of the outer surface, transmitted).
+        //
+        // Two knobs make it WIDE and SHATTERED rather than one tight blob :
+        //   - m_UnderScatter EXAGGERATES the wave tilt used here, so the ripples throw the refracted ray
+        //     much further off-axis : the sun's image breaks up and spreads across the ceiling, and the
+        //     steepest facets tip past the Snell window into total internal reflection (dark gaps between
+        //     the glints -> the "éclaté" look) ;
+        //   - m_UnderGlintPower is a BROAD specular exponent (<< the tight outer m_GlintPower), so each
+        //     glint is a soft glow, not a pinpoint.
+        vec3 Ns = normalize(vec3(-grad.x * m_UnderScatter, 1.0, -grad.y * m_UnderScatter));
+        vec3 refr = refract(-V, -Ns, 1.33);      // -V = ray going up ; -Ns = normal facing the water side
+        float r2  = dot(refr, refr);
+        float inWindow = step(1e-4, r2);         // 0 on total internal reflection (refract returned 0)
+        vec3  refrN = refr * inversesqrt(max(r2, 1e-8));
+        float sSun  = pow(max(dot(refrN, m_SunDirection),  0.0), m_UnderGlintPower) * m_GlintStrength     * sunUp;
+        float sMoon = pow(max(dot(refrN, m_MoonDirection), 0.0), m_UnderGlintPower) * m_MoonGlintStrength * moonUp;
+        // Subtle transmitted skylight near the vertical (Snell window), so the ceiling is not pitch body-
+        // colour between sparkles.
+        float window = ndv * ndv * 0.4;
+        vec3 underLight = m_SkyColor.rgb * window
+                        + (sSun * m_SunColor.rgb + sMoon * m_MoonColor.rgb) * inWindow;
+        color = vBodyColor + underLight * m_UnderStrength;
+    }
+
+    // Distance fog : fade to the horizon haze (m_FogColor) with distance, EXACTLY like the far terrain
+    // relief -- so distant water and distant land recede into the same haze and the water never reads as a
+    // bright opaque sheet "cutting" the far relief. Starts at m_InnerRadius. The NEAR voxel water sets
+    // m_FogDensity = 0 (it is always too close to fog anyway), so this is a no-op there ; only the FAR
+    // water plane fogs. exp(-f*f), same model as FarTerrain.frag.
+    float fdist = distance(g_CameraPosition, vWorldPos);
+    float ff = (max(fdist - m_InnerRadius, 0.0) / m_FogDistance) * m_FogDensity;
+    float fog = clamp(exp(-ff * ff), 0.0, 1.0);
+    color = mix(m_FogColor.rgb, color, fog);
+
+    // Opacity from the ray's PATH LENGTH through the water -- the same law near & far, above & below the
+    // surface (one continuous body). Two contributions, whichever is larger :
+    //   - ANGLE (Fresnel) : steep (looking straight in) = short path = transparent (m_Diffuse.a, the depths
+    //     show through) ; grazing = long path = opaque and mirrors the sky ;
+    //   - horizontal DISTANCE : nearby = transparent ; PROGRESSIVELY opaque with distance (m_OpaqueDistance)
+    //     so the surface never reads clear all the way to the horizon (very visible underwater, looking up).
+    // Horizontal distance (not 3D) so looking straight DOWN from high up stays transparent (the depths are
+    // right below), only horizontal range closes it.
+    float distOpacity = smoothstep(0.0, m_OpaqueDistance, distance(g_CameraPosition.xz, vWorldPos.xz));
+    float alpha = mix(vAlpha, 1.0, max(fresnel, distOpacity));
 
 #ifdef MANUAL_SRGB
     // Emulate the sRGB framebuffer encode where the hardware one is missing (Android GLES).

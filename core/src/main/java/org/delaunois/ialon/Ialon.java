@@ -24,11 +24,13 @@ import com.jme3.app.state.AppState;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.scene.Spatial.CullHint;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.anim.AnimationState;
 
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.serialize.IalonConfigRepository;
+import org.delaunois.ialon.state.AmbientSoundState;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
@@ -43,6 +45,7 @@ import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhotoModeState;
 import org.delaunois.ialon.state.Popup;
+import org.delaunois.ialon.state.RenderReport;
 import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SettingsState;
 import org.delaunois.ialon.state.SkyState;
@@ -53,10 +56,12 @@ import org.delaunois.ialon.state.TimeFactorState;
 import org.delaunois.ialon.state.TimingNode;
 import org.delaunois.ialon.state.UnderwaterState;
 import org.delaunois.ialon.state.WaterState;
-import org.delaunois.ialon.state.WireframeState;
 import org.delaunois.ialon.state.WorldMenuState;
 import org.delaunois.ialon.state.WorldSelectionState;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.Getter;
@@ -83,6 +88,22 @@ public class Ialon extends SimpleApplication {
     // render thread. Counts simpleUpdate() calls ; the work runs once at least one frame has rendered.
     private boolean worldInitialized = false;
     private int splashFramesRendered = 0;
+
+    /**
+     * The popup states, innermost first : ESC closes the first one it finds open, so a popup laid over
+     * another goes first. Also the roster {@link #updateWorldRendering()} polls.
+     */
+    private static final List<Class<? extends AppState>> POPUP_STATES = Collections.unmodifiableList(
+            Arrays.<Class<? extends AppState>>asList(
+                    BlockSliderSelectionState.class,
+                    MinimapState.class,
+                    SettingsState.class,
+                    CreationLibraryState.class,
+                    WorldMenuState.class));
+
+    // Whether the world is currently culled because a world-hiding popup is up (see
+    // updateWorldRendering). Kept so the cull hint is only written when it actually changes.
+    private boolean worldHidden = false;
 
     public Ialon() {
         super((AppState[]) null);
@@ -177,20 +198,56 @@ public class Ialon extends SimpleApplication {
      * @return {@code true} if a popup was open and got closed ; {@code false} if none was open.
      */
     private boolean closeOpenPopup() {
-        return closeIfOpen(BlockSliderSelectionState.class)
-                || closeIfOpen(MinimapState.class)
-                || closeIfOpen(SettingsState.class)
-                || closeIfOpen(CreationLibraryState.class)
-                || closeIfOpen(WorldMenuState.class);
-    }
-
-    private boolean closeIfOpen(Class<? extends AppState> type) {
-        AppState state = stateManager.getState(type);
-        if (state instanceof Popup && ((Popup) state).isPopupOpen()) {
-            ((Popup) state).closePopup();
-            return true;
+        for (int i = 0; i < POPUP_STATES.size(); i++) {
+            Popup popup = popupState(POPUP_STATES.get(i));
+            if (popup != null && popup.isPopupOpen()) {
+                popup.closePopup();
+                return true;
+            }
         }
         return false;
+    }
+
+    /** The popup owned by an attached state, or {@code null} if that state is absent. */
+    private Popup popupState(Class<? extends AppState> type) {
+        AppState state = stateManager.getState(type);
+        return state instanceof Popup ? (Popup) state : null;
+    }
+
+    /**
+     * Stops rendering the 3D scene while a popup that hides the world is open (see
+     * {@link Popup#hidesWorld()}), and resumes it when the popup closes. Nothing in jME relates "covered
+     * by the GUI" to "culled" : the world is drawn in the main viewport, the popup in the GUI post
+     * viewport, so without this the whole scene — chunks, far terrain, sky — keeps being drawn behind an
+     * opaque veil for nobody, several hundred draw calls' worth. It costs frames where they are least
+     * useful (a menu is open) and, on a phone, battery and heat.
+     *
+     * <p>Culls the root node rather than disabling the viewport, so the viewport still <em>clears</em> the
+     * framebuffer. Disabling it would leave the previous frame's pixels wherever the popup does not paint
+     * — which is nowhere, in theory, its veil being screen-sized, but that would make correctness rest on
+     * the popup and the framebuffer agreeing on their size at every instant, including the frame a resize
+     * lands on. A cull hint on the root returns from {@code renderSubScene} before a single geometry is
+     * looked at, which is the whole saving anyway.
+     *
+     * <p>The states keep running : paging, meshing and physics carry on, so the world is live again the
+     * moment the popup closes, and only the drawing is skipped.
+     */
+    private void updateWorldRendering() {
+        boolean hide = false;
+        for (int i = 0; i < POPUP_STATES.size(); i++) {
+            Popup popup = popupState(POPUP_STATES.get(i));
+            if (popup != null && popup.hidesWorld() && popup.isPopupOpen()) {
+                hide = true;
+                break;
+            }
+        }
+        if (hide != worldHidden) {
+            worldHidden = hide;
+            // Back to Inherit, not Dynamic : it is what the root node starts as, and for a node with no
+            // parent jME resolves the two identically.
+            rootNode.setCullHint(hide ? CullHint.Always : CullHint.Inherit);
+            log.debug("World rendering {}", hide ? "suspended (popup open)" : "resumed");
+        }
     }
 
     /**
@@ -199,6 +256,9 @@ public class Ialon extends SimpleApplication {
      * original single-pass init, just delayed by one rendered frame.
      */
     private void initWorld() {
+        // Audio listener first : every sound state below is a no-op without it, and it must be attached
+        // before anything tries to place a sound.
+        IalonInitializer.setupAudio(this, config);
         IalonInitializer.setupAtlasManager(this, config);
         IalonInitializer.setupAtlasFont(this, config);
         IalonInitializer.setupBlockFramework(this, config);
@@ -214,6 +274,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new StarState(config)); // Night star field, depends on SunState; drawn over the sky, under sun/moon
         stateManager.attach(new WaterState(config)); // Animates the calm-water shader, depends on SunState + SkyState
         stateManager.attach(new UnderwaterState(config)); // Underwater post-process (bluish fog + ripple) when submerged, depends on SkyState
+        stateManager.attach(new AmbientSoundState(config)); // Birds by day / owls by night in the woods, depends on SunState + the terrain generator (both resolved lazily)
         stateManager.attach(new ButtonManagerState(config));
         stateManager.attach(new BlockSliderSelectionState(config));
         stateManager.attach(new TimeFactorState(config));
@@ -237,21 +298,74 @@ public class Ialon extends SimpleApplication {
             stateManager.attach(new AxesDebugState());
             stateManager.attach(new IalonDebugState(config));
             stateManager.attach(new DebugKeysAppState());
-            stateManager.attach(new WireframeState());
             // jME's per-step CPU/GPU frame profiler. It self-binds to F6 (toggles its own visibility)
             // and starts hidden, so it only installs the AppProfiler overhead once actually shown.
             DetailedProfilerState detailedProfiler = new DetailedProfilerState();
             detailedProfiler.setEnabled(false);
             stateManager.attach(detailedProfiler);
-            //stateManager.attach(new WagonState());
         }
 
         // Opt-in render-thread hitch profiler : -Dialon.hitch=<ms> logs each frame whose work exceeds
         // <ms>, attributing the spike to a phase (update vs render), GC, and chunk-page churn.
+        // -Dialon.rendercpu=<seconds> adds, once per window, the render thread's CPU share of wall clock :
+        // the computing-versus-waiting discriminator that tells per-draw CPU cost apart from GPU
+        // vertex/triangle throughput. Needed because -Dialon.vpscale established the opaque pass is not
+        // fragment bound (a quarter of the pixels left Opaque unchanged, ratio 1.01x) and neither survivor
+        // scales with pixels. Set it with ialon.hitch, whose state hosts the measurement.
         String hitch = System.getProperty("ialon.hitch");
         if (hitch != null) {
             long thresholdMs = hitch.trim().isEmpty() ? 15L : Long.parseLong(hitch.trim());
-            stateManager.attach(new HitchProfilerState(thresholdMs));
+            String cpuWindow = System.getProperty("ialon.rendercpu");
+            long windowSeconds = cpuWindow == null ? 0
+                    : (cpuWindow.trim().isEmpty() ? 2L : Long.parseLong(cpuWindow.trim()));
+            stateManager.attach(new HitchProfilerState(thresholdMs, windowSeconds));
+        }
+
+        // Opt-in fill-rate discriminator : -Dialon.vpscale=<0..1> squeezes the WORLD viewport into that
+        // fraction of the screen, in each axis. It answers one question and nothing else — is the render
+        // pass paying per DRAW or per FRAGMENT?
+        //
+        // The camera's frustum is untouched, so the scene, the culling and therefore the draw and triangle
+        // counts are all identical ; only the number of shaded pixels changes, by the square of the factor.
+        // So with vpscale=0.5, a quarter of the fragments :
+        //   * Opaque falls by ~4x  -> fragment bound. The lever is overdraw / shader cost / resolution.
+        //   * Opaque barely moves  -> per-draw CPU bound. The lever is the draw and GL call count.
+        // Needed because the numbers alone cannot tell : Opaque correlates only weakly with the draw count
+        // (r = 0.31 over 104 device frames, and it varies up to 2.2x at a FIXED draw count), which hints at
+        // fragments, while a small 'gap' hints at CPU — except a saturated GLES/ANGLE command queue blocks
+        // inside glDrawElements, i.e. inside the Opaque bucket, so that hint is not conclusive either.
+        //
+        // The GUI viewport is deliberately left full-size : the HUD stays readable and its (small, constant)
+        // Gui bucket keeps acting as a control on the same frame.
+        String vpScale = System.getProperty("ialon.vpscale");
+        if (vpScale != null) {
+            float s = Math.max(0.05f, Math.min(1f, Float.parseFloat(vpScale.trim())));
+            cam.setViewPort(0f, s, 0f, s);
+            log.warn("Fill-rate test ON : world viewport squeezed to {}x{} of the screen ({}% of the"
+                    + " fragments, identical draws/triangles). Opaque /4 => fragment bound ; Opaque"
+                    + " unchanged => per-draw bound.", s, s, Math.round(s * s * 100));
+        }
+
+        // Opt-in draw-call breakdown : -Dialon.renderreport=<seconds> logs which part of the scene owns
+        // the frame's draw calls. On desktop with devMode, F7 does the same on demand.
+        String renderReport = System.getProperty("ialon.renderreport");
+        if (renderReport != null) {
+            float period = renderReport.trim().isEmpty() ? 5f : Float.parseFloat(renderReport.trim());
+            if (period > 0) {
+                stateManager.attach(new RenderReport.PeriodicState(period));
+            }
+        }
+
+        // Opt-in memory breakdown : -Dialon.memreport=<seconds>. The report itself lives in
+        // IalonDebugState (it is what F9 prints), and that state is only attached in devMode — so asking
+        // for the report attaches it regardless, otherwise the property silently does nothing, which is
+        // exactly what happened the first time this was wired. The on-screen overlay comes with it : a
+        // deliberate trade, since a diagnostic run wants the numbers and the overlay's extra GUI draws
+        // are known, constant and easy to subtract.
+        if (System.getProperty("ialon.memreport") != null
+                && stateManager.getState(IalonDebugState.class) == null) {
+            log.warn("-Dialon.memreport is set : attaching IalonDebugState (and its overlay) although devMode is off");
+            stateManager.attach(new IalonDebugState(config));
         }
 
         int typeSize = BlocksConfig.getInstance().getTypeRegistry().getAll().size();
@@ -271,7 +385,12 @@ public class Ialon extends SimpleApplication {
                 worldInitialized = true;
                 initWorld();
             }
+            return;
         }
+        // Polled rather than hooked on show/hide : popups open and close from a dozen places (buttons, ESC,
+        // Back, a world switch), and a single check here catches them all. simpleUpdate() also runs before
+        // updateGeometricState(), so the cull hint is set well clear of the render pass.
+        updateWorldRendering();
     }
 
     @Override

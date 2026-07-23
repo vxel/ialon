@@ -44,9 +44,7 @@ import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
-import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.Label;
-import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseEventControl;
 
@@ -55,9 +53,11 @@ import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.WorldEditOverlay;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.blocks.generator.TerrainGenerator;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -84,8 +84,10 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     private static final float SPACING = 10f;
     // Baked minimap texture resolution. Small : it is a thumbnail, and the source heightmap is coarser still.
     private static final int TEX_SIZE = 192;
-    // Higher resolution baked once for the enlarged popup map, so it isn't blurry when scaled up. Baked
-    // lazily on first open (slight one-time cost). ~3 MB at RGBA8 — negligible against the app footprint.
+    // Higher resolution baked once for the enlarged popup map, so it isn't blurry when scaled up. ~2 MB at
+    // RGBA8 — negligible against the app footprint. Baked at WORLD LOAD, on a background thread (see
+    // startPopupBake) : it is 16x the thumbnail's texel count (~200 ms on desktop, seconds on a mid-range
+    // Android), which used to be paid on the render thread the first time the popup was opened.
     private static final int POPUP_TEX_SIZE = 768;
     // Player marker size as a fraction of the minimap side.
     private static final float MARKER_RATIO = 0.16f;
@@ -102,17 +104,41 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     private static final float DOT_PULSE_PERIOD = 2f;
 
     // Tint (and its opacity) blended over the baked terrain to mark a chunk column the player has edited.
-    private static final ColorRGBA EDIT_MARKER_COLOR = new ColorRGBA(1f, 0f, 0f, 1f); //new ColorRGBA(0.85f, 0.22f, 0.10f, 1f);
+    private static final ColorRGBA EDIT_MARKER_COLOR = new ColorRGBA(1f, 0f, 0f, 1f);
     private static final float EDIT_MARKER_ALPHA = 0.5f;
 
     private final IalonConfig config;
     private SimpleApplication app;
 
     private Node minimapNode;
-    private Geometry marker;     // camera-heading triangle (compass needle riding the inscribed circle)
-    private Node positionDot;    // player's exact position on the map
+    // Frame ring + heading triangle + position dot, merged into ONE vertex-coloured geometry (they are all
+    // flat untextured shapes over the map, so only the scene graph ever made them three draw calls).
+    // Rewritten in place each frame : 23 vertices, far cheaper than the two draw calls it replaces.
+    private Geometry overlay;
+    private FloatBuffer overlayPos;
+    private FloatBuffer overlayCol;
+    private final ColorRGBA frameColor = new ColorRGBA();
+    private float markerHeight;
+    private float dotHalf;
     private Texture2D mapTex;
     private Texture2D popupMapTex; // the popup's higher-res bake, kept so its edit markers stay in sync
+
+    // Terrain source of a bake, captured on the render thread at init : the popup bake runs on a background
+    // thread and must never reach into the state manager (nor re-sample the generator when the far-terrain
+    // heightmap is there to reuse). Heights are the FarTerrainState array, pre-divided by step.
+    private float[] bakeHeights;
+    private int bakeHmSize;
+    private float bakeHmStep;
+    private TerrainGenerator bakeGenerator;
+    private boolean manualSrgb;
+
+    // Popup bake handed over by the background thread : the raw texels, published when ready, then turned
+    // into popupMapTex on the render thread by installPopupTexture() (only the render thread may touch a
+    // material). bakeCancelled stops a bake still running when the state is cleaned up (world switch), so
+    // its result is dropped instead of installed into the next world's minimap.
+    private volatile ByteBuffer pendingPopupTexels;
+    private volatile boolean popupBakeDone;
+    private volatile boolean bakeCancelled;
 
     // Modified-chunk markers : the persisted overlay set is the source of truth ; markedColumns are the
     // ones already tinted into the textures (so a repaint never double-blends the same column), and
@@ -120,7 +146,6 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     private WorldEditOverlay editOverlay;
     private final Set<Long> markedColumns = new HashSet<>();
     private int lastModifiedCount;
-    private boolean manualSrgb;
     private int markerR; // EDIT_MARKER_COLOR quantised to bytes the same way the bake encodes texels
     private int markerG;
     private int markerB;
@@ -128,10 +153,16 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
 
     // Full-screen popup showing the minimap in large, opened by clicking the thumbnail. Built lazily.
     private Container minimapPopup;
+    // Popup counterparts of the thumbnail's heading triangle and position dot. Kept as two separate
+    // geometries (unlike the thumbnail's merged overlay) : the popup is open only while the player looks
+    // at it, so its two draw calls never sit in a gameplay frame.
     private Geometry popupMarker;
     private Node popupDot;
     private Button popupClose;
-    private Label popupTitle;   // live player-position readout, centred above the big map
+    // Live player-position readout : this popup's title, so it is the label the chrome's title signboard
+    // is built from (handed back by IalonTheme.applyChromeOver) rather than one of our own. Fixed width and
+    // centre-aligned, so setting its text each frame neither resizes nor re-centres anything.
+    private Label popupTitle;
     // Cached popup-local placement of the big map (its bottom-left corner and side), so update() can place
     // the popup marker without recomputing the layout each frame.
     private float popupMapLeft;
@@ -152,11 +183,11 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     // Reusable temporaries (no per-frame allocation in update()).
     private final Vector3f tmpDir = new Vector3f();
     private final Quaternion tmpRot = new Quaternion();
-    private final ColorRGBA tmpDotColor = new ColorRGBA(1f, 1f, 1f, 1f);
+    private final ColorRGBA tmpDotColor = new ColorRGBA(1f, 0f, 0f, 1f);
 
-    // Materials of the (white) position dots, whose alpha is pulsed each frame ; popupDotMat is rebuilt
-    // with the popup map on resize. Accumulated time driving the sine pulse.
-    private Material dotMat;
+    // Material of the POPUP's position-marker triangle, whose (red) colour alpha is pulsed each frame ;
+    // rebuilt with the popup map on resize. Accumulated time driving the sine pulse. The thumbnail's own
+    // marker needs no material : its pulse is written straight into the merged overlay's vertex colours.
     private Material popupDotMat;
     private float pulseTime;
 
@@ -176,6 +207,11 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         this.torus = worldSize > 0f;
         this.worldExtent = torus ? worldSize : config.getFarTerrainExtent();
 
+        // Captured before any bake : both the thumbnail (here, on the render thread) and the popup (on the
+        // background thread below) read this snapshot rather than the state manager.
+        this.manualSrgb = config.isManualGammaEncode();
+        captureTerrainSource();
+
         mapTex = bakeTexture(TEX_SIZE);
         if (mapTex == null) {
             log.warn("No terrain data available : minimap disabled");
@@ -183,15 +219,6 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         }
 
         minimapNode = new Node("Minimap");
-
-        // Translucent dark frame filling the whole footprint (like the button backgrounds), behind the map.
-        Material frameMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        frameMat.setColor("Color", UiHelper.overlayColor(new ColorRGBA(0f, 0f, 0f, 0.6f), config));
-        frameMat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
-        Geometry frame = new Geometry("MinimapFrame", new Quad(buttonSize, buttonSize));
-        frame.setMaterial(frameMat);
-        frame.setLocalTranslation(0, 0, -1);
-        minimapNode.attachChild(frame);
 
         // The baked top-down terrain, opaque, inset by the frame border.
         Material mapMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
@@ -201,13 +228,15 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         mapQuad.setLocalTranslation(border, border, 0);
         minimapNode.attachChild(mapQuad);
 
-        // Camera-heading triangle (white, filled) that rides the minimap's inscribed circle near the edge,
-        // plus a dot at the player's exact position. Both are placed each frame in update().
-        marker = createMarker(mapSize * MARKER_RATIO);
-        positionDot = createDot(mapSize * MARKER_RATIO * 0.4f);
-        dotMat = ((Geometry) positionDot.getChild("MinimapDot")).getMaterial();
-        minimapNode.attachChild(marker);
-        minimapNode.attachChild(positionDot);
+        // Everything that is NOT the map, in one geometry : the translucent dark frame, the heading
+        // triangle at the player's position, and the small dot marking that exact position over it.
+        // They differ only by colour, so a vertex-coloured mesh merges three draw calls into one.
+        //
+        // The frame used to be a full quad BEHIND the map ; here it is its visible border RING, in FRONT.
+        // Identical on screen -- the map is opaque and covers exactly the ring's hole -- and it is what
+        // lets the frame share a geometry with the marker, which has to be in front of the map.
+        overlay = createOverlay();
+        minimapNode.attachChild(overlay);
 
         // Clicking the thumbnail opens the large minimap popup. Consume the event so it doesn't fall
         // through to the game (look/place) behind the widget.
@@ -217,14 +246,20 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
 
         // Modified-chunk markers : encode the tint to bytes once (matching bakeTexture's encoding), then
         // paint the columns already on disk into the freshly baked thumbnail. Live edits are picked up in
-        // update(). manualSrgb / chunkSizeX cached for paintColumn (no per-edit lookups).
-        this.manualSrgb = config.isManualGammaEncode();
+        // update(). chunkSizeX cached for paintColumn (no per-edit lookups).
         this.markerR = toByte(EDIT_MARKER_COLOR.r, manualSrgb) & 0xFF;
         this.markerG = toByte(EDIT_MARKER_COLOR.g, manualSrgb) & 0xFF;
         this.markerB = toByte(EDIT_MARKER_COLOR.b, manualSrgb) & 0xFF;
         this.chunkSizeX = BlocksConfig.getInstance().getChunkSize().x;
         this.editOverlay = config.getWorldEditOverlay();
         refreshEditMarkers();
+
+        // Everything the popup needs is built HERE, at world load, rather than on the click that opens it :
+        // the widget tree (Lemur containers, nine-patch plates, their textures) now, and the big terrain bake
+        // on a background thread. Until that bake lands the popup shows the thumbnail texture (blurry, but
+        // instant) ; installPopupTexture() swaps in the sharp one as soon as it is ready.
+        createPopup();
+        startPopupBake();
 
         if (app.getStateManager().getState(ScreenState.class) != null) {
             app.getStateManager().getState(ScreenState.class).register(this);
@@ -233,8 +268,82 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
 
     @Override
     protected void cleanup(Application application) {
+        // Drop a bake still running (world switch) : its texels belong to the world being left behind.
+        bakeCancelled = true;
+        pendingPopupTexels = null;
         if (app.getStateManager().getState(ScreenState.class) != null) {
             app.getStateManager().getState(ScreenState.class).unregister(this);
+        }
+    }
+
+    /**
+     * Captures what {@link #bakeTexture} reads from the rest of the app, on the render thread : the
+     * {@link FarTerrainState} heightmap (reused as-is — no second, costly sampling of the generator) and the
+     * generator itself as a fallback. Kept in fields so the background popup bake never touches the state
+     * manager. Called at init, after FarTerrainState has replayed the persisted player edits onto its
+     * heightmap (it is attached, hence initialised, before us — see IalonInitializer.attachWorldStates).
+     */
+    private void captureTerrainSource() {
+        FarTerrainState far = app.getStateManager().getState(FarTerrainState.class);
+        float[] heights = far != null ? far.getHeightmap() : null;
+        int hmSize = heights != null ? (int) Math.round(Math.sqrt(heights.length)) : 0;
+        // sqrt-rounding may overshoot on a non-square length : keep hmSize*hmSize within the array bounds
+        // so the bilinear sampler's max index (hmSize*hmSize - 1) can never overrun heights.
+        if (hmSize > 0 && hmSize * hmSize > heights.length) {
+            hmSize--;
+        }
+        this.bakeHeights = heights;
+        this.bakeHmSize = hmSize;
+        this.bakeHmStep = far != null ? far.getStep() : 0f;
+        this.bakeGenerator = config.getTerrainGenerator();
+    }
+
+    /**
+     * Bakes the big popup texture in the background, at world load, so opening the popup costs nothing.
+     * The bake is pure arithmetic over the captured heightmap and the (read-only, thread-safe) noise fields
+     * — no jME scene, no GL — so it is safe off the render thread ; only the {@link Texture2D} it feeds is
+     * built back on the render thread, by {@link #installPopupTexture}. Runs at minimum priority so it never
+     * competes with chunk generation, which is what the player is actually waiting for while loading.
+     */
+    private void startPopupBake() {
+        Thread bake = new Thread(() -> {
+            long start = System.nanoTime();
+            ByteBuffer texels = bakeTexels(POPUP_TEX_SIZE);
+            if (bakeCancelled) {
+                return;
+            }
+            pendingPopupTexels = texels;
+            popupBakeDone = true;
+            log.info("Minimap popup texture baked ({}^2) in {} ms",
+                    POPUP_TEX_SIZE, (System.nanoTime() - start) / 1_000_000);
+        }, "minimap-bake");
+        bake.setDaemon(true);
+        bake.setPriority(Thread.MIN_PRIORITY);
+        bake.start();
+    }
+
+    /**
+     * Installs the background bake into the popup, once (render thread) : wraps the texels in a texture,
+     * replays the edit tints already shown on the thumbnail, and swaps it under the popup's map quad in
+     * place of the thumbnail placeholder. A no-op until the bake lands, and after it has been installed.
+     */
+    private void installPopupTexture() {
+        if (!popupBakeDone || popupMapTex != null) {
+            return;
+        }
+        popupBakeDone = false; // consume the hand-over, whatever it holds : a failed bake must not retry
+        ByteBuffer texels = pendingPopupTexels;
+        pendingPopupTexels = null;
+        if (texels == null) {
+            return; // no terrain source : the popup keeps the thumbnail texture
+        }
+        popupMapTex = toTexture(texels, POPUP_TEX_SIZE);
+        for (long key : markedColumns) {
+            paintColumn(popupMapTex, POPUP_TEX_SIZE, key);
+        }
+        Geometry bigMap = minimapPopup == null ? null : (Geometry) minimapPopup.getChild("MinimapPopupMap");
+        if (bigMap != null) {
+            bigMap.getMaterial().setTexture("ColorMap", popupMapTex);
         }
     }
 
@@ -255,9 +364,12 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
 
     @Override
     public void update(float tpf) {
-        if (marker == null) {
+        if (overlay == null) {
             return;
         }
+        // Hand-over point of the background popup bake started at world load : one flag test per frame.
+        installPopupTexture();
+
         Vector3f p = config.getPlayerLocation();
         if (p == null) {
             return;
@@ -280,59 +392,53 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             v = clamp01(p.z / worldExtent + 0.5f);
         }
 
-        // View heading : camera forward projected on XZ, normalised (u along +X, v along +Z). The triangle
-        // points +Y by default ; this rotation turns +Y onto that direction so the tip points where the
-        // camera looks, and the same (dxn, dzn) pushes it out onto the inscribed circle (see placeHeading).
+        // View heading : camera forward projected on XZ (u along +X, v along +Z). The triangle points +Y by
+        // default ; this rotation turns +Y onto the view direction so the tip points where the camera looks.
         Vector3f dir = app.getCamera().getDirection(tmpDir);
-        float len = FastMath.sqrt(dir.x * dir.x + dir.z * dir.z);
-        float dxn = len > 1e-4f ? dir.x / len : 0f;
-        float dzn = len > 1e-4f ? dir.z / len : 1f;
         float angle = FastMath.atan2(dir.x, dir.z);
         tmpRot.fromAngleAxis(-angle, Vector3f.UNIT_Z);
 
         // Position dot : white, with a sinusoidal alpha pulse (period DOT_PULSE_PERIOD), so it gently
         // blinks. alpha = (1 + sin) / 2 sweeps the full [0,1] range.
         pulseTime += tpf;
-        float alpha = 0.5f + 0.5f * FastMath.sin(FastMath.TWO_PI * pulseTime / DOT_PULSE_PERIOD);
-        tmpDotColor.a = alpha;
-        dotMat.setColor("Color", tmpDotColor);
+        tmpDotColor.a = 0.5f + 0.5f * FastMath.sin(FastMath.TWO_PI * pulseTime / DOT_PULSE_PERIOD);
 
-        // Thumbnail : dot at the player's position, heading triangle on the inscribed circle near the edge.
-        positionDot.setLocalTranslation(border + u * mapSize, border + v * mapSize, 1f);
-        placeHeading(marker, border + mapSize * 0.5f, border + mapSize * 0.5f, mapSize, mapSize * MARKER_RATIO, dxn, dzn, 1f);
+        // Thumbnail : triangle at the player's position pointing to the view heading, white dot just over
+        // it at the same (exact) position, both rewritten into the merged overlay (see writeOverlay).
+        float px = border + u * mapSize;
+        float py = border + v * mapSize;
+        writeOverlay(px, py, -angle, tmpDotColor);
 
         // Same on the large popup while it is open.
         if (popupMarker != null && minimapPopup != null && minimapPopup.getParent() != null) {
-            float pcx = popupMapLeft + popupMapSide * 0.5f;
-            float pcy = popupMapBottom + popupMapSide * 0.5f;
             popupDotMat.setColor("Color", tmpDotColor);
-            popupDot.setLocalTranslation(popupMapLeft + u * popupMapSide, popupMapBottom + v * popupMapSide, 2f);
-            placeHeading(popupMarker, pcx, pcy, popupMapSide, popupMapSide * POPUP_MARKER_RATIO, dxn, dzn, 2f);
+            float ppx = popupMapLeft + u * popupMapSide;
+            float ppy = popupMapBottom + v * popupMapSide;
+            popupMarker.setLocalTranslation(ppx, ppy, 2f);
+            popupMarker.setLocalRotation(tmpRot);
+            popupDot.setLocalTranslation(ppx, ppy, 2.1f);
 
-            // Title : live player position, centred over the map width, just above its top edge.
-            popupTitle.setText(formatPosition(p));
-            Vector3f ps = popupTitle.getPreferredSize();
-            float mapTop = popupMapBottom + popupMapSide;
-            popupTitle.setLocalTranslation(pcx - ps.x * 0.5f, mapTop + popupMapSide * 0.04f + ps.y, 10);
+            // Title : the live player position, on the popup's signboard. No placement to redo — the plate
+            // is a fixed size and the text is centre-aligned inside it, so a new reading cannot shift it.
+            if (popupTitle != null) {
+                popupTitle.setText(formatPosition(p));
+            }
         }
     }
 
     /** Formats the player's world position as a one-line title, e.g. {@code "X 123   Y 64   Z -45"}. */
     private static String formatPosition(Vector3f p) {
-        return String.format(Locale.ENGLISH, "X %d   Y %d   Z %d",
+        return String.format(Locale.ENGLISH, "X: %d   Y: %d   Z: %d",
                 Math.round(p.x), Math.round(p.y), Math.round(p.z));
     }
 
     /**
-     * Places the heading triangle on the minimap's inscribed circle : from the map centre {@code (cx, cy)},
-     * pushed out along the (normalised) view direction by half the map side — less half the marker, so the
-     * triangle's tip just reaches the edge rather than poking past it — and rotated to point outward.
+     * The title to build the signboard with. Taken from the current position rather than left blank, so the
+     * plate is never shown empty for the frame between opening the popup and the first {@link #update}.
      */
-    private void placeHeading(Geometry tri, float cx, float cy, float side, float markerSize,
-                              float dxn, float dzn, float z) {
-        float radius = side * 0.5f - markerSize * 0.5f;
-        tri.setLocalTranslation(cx + dxn * radius, cy + dzn * radius, z);
-        tri.setLocalRotation(tmpRot);
+    private String popupTitleText() {
+        Vector3f p = config.getPlayerLocation();
+        return p == null ? "Map" : formatPosition(p);
     }
 
     @Override
@@ -369,6 +475,11 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         }
         if (minimapPopup.getParent() == null) {
             app.getGuiNode().attachChild(minimapPopup);
+            // The chrome is a sibling of the popup, so it can only be placed once the popup is attached.
+            // It hands back the title label, which update() then fills with the live player position.
+            popupTitle = IalonTheme.applyChromeOver(minimapPopup, app.getAssetManager(),
+                    app.getCamera().getWidth(), app.getCamera().getHeight(), popupTitleText(),
+                    IalonTheme.Ornament.COMPASS_ROSE);
             setPlayerTouchEnabled(false);
         }
     }
@@ -376,6 +487,7 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     /** Closes the large minimap popup (no-op if not open) and re-enables player touch input. */
     private void hidePopup() {
         if (minimapPopup != null && minimapPopup.getParent() != null) {
+            IalonTheme.removeChromeFrom((Node) minimapPopup.getParent());
             minimapPopup.removeFromParent();
             setPlayerTouchEnabled(true);
         }
@@ -384,6 +496,15 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     @Override
     public boolean isPopupOpen() {
         return minimapPopup != null && minimapPopup.getParent() != null;
+    }
+
+    /**
+     * Full screen, opaque veil : nothing of the world shows through, so it need not be drawn. The map
+     * itself is a baked texture, not a live render of the scene.
+     */
+    @Override
+    public boolean hidesWorld() {
+        return true;
     }
 
     @Override
@@ -401,7 +522,8 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     /**
      * Builds the full-screen popup : a translucent dark backdrop (same as the settings / world-menu popups),
      * a large square map reusing the already-baked terrain texture, a player marker tracked live in
-     * {@link #update}, and a "Close" button in the top-right corner. Built once, lazily.
+     * {@link #update}, and a "Close" button in the top-right corner. Built once, at world load (so the click
+     * that opens the popup only has to attach it) ; {@link #showPopup} still guards, in case it isn't.
      */
     private void createPopup() {
         int width = app.getCamera().getWidth();
@@ -411,23 +533,17 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         minimapPopup.setName("minimapPopup");
         minimapPopup.setLocalTranslation(0, height, 100);
         minimapPopup.setPreferredSize(new Vector3f(width, height, 0));
-        UiHelper.addBackground(minimapPopup, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
+        IalonTheme.applyVeil(minimapPopup, app.getAssetManager(), config);
         // Clicking the backdrop (beside the enlarged map) closes the popup ; the click is consumed either
         // way so it doesn't reach the game.
         minimapPopup.addMouseListener(new CloseOnClickListener());
 
-        // Large map on a higher-resolution bake (so it isn't blurry when enlarged), falling back to the
-        // thumbnail texture if that bake fails. A unit quad scaled in layoutPopup() so resolution changes
-        // don't rebuild the mesh. Clicks on the map itself are consumed (so they don't bubble up to the
-        // backdrop and close the popup).
-        popupMapTex = bakeTexture(POPUP_TEX_SIZE);
-        if (popupMapTex != null && !markedColumns.isEmpty()) {
-            // The popup bake is fresh : replay the edit tints already shown on the thumbnail.
-            for (long key : markedColumns) {
-                paintColumn(popupMapTex, POPUP_TEX_SIZE, key);
-            }
-            popupMapTex.getImage().setUpdateNeeded();
-        }
+        // Large map on a higher-resolution bake (so it isn't blurry when enlarged). That bake runs in the
+        // background from world load, so at this point it is usually not ready yet : start on the thumbnail
+        // texture, which installPopupTexture() replaces as soon as the sharp one lands (and which stays for
+        // good if the bake found no terrain source). A unit quad scaled in layoutPopup() so resolution
+        // changes don't rebuild the mesh. Clicks on the map itself are consumed (so they don't bubble up to
+        // the backdrop and close the popup).
         Material mapMat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         mapMat.setTexture("ColorMap", popupMapTex != null ? popupMapTex : mapTex);
         Geometry bigMap = new Geometry("MinimapPopupMap", new Quad(1, 1));
@@ -436,16 +552,12 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         minimapPopup.attachChild(bigMap);
 
         // Close button, top-right corner, level with where popup titles sit.
-        popupClose = new Button("Close", IALON_STYLE);
-        popupClose.setTextVAlignment(VAlignment.Center);
+        popupClose = IalonTheme.cornerButton("Close", app.getAssetManager(), height);
         popupClose.addClickCommands(source -> hidePopup());
         minimapPopup.attachChild(popupClose);
 
-        // Title : the live player position, centred above the map (text + placement set in update/layout).
-        popupTitle = new Label("", IALON_STYLE);
-        popupTitle.setColor(ColorRGBA.White);
-        popupTitle.setTextHAlignment(HAlignment.Center);
-        minimapPopup.attachChild(popupTitle);
+        // The title is not built here : it is the signboard the chrome carries, and showPopup /
+        // layoutPopup take the label back from IalonTheme.applyChromeOver.
 
         layoutPopup(width, height);
     }
@@ -460,10 +572,14 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         minimapPopup.setPreferredSize(new Vector3f(width, height, 0));
         minimapPopup.setLocalTranslation(0, height, 100);
 
-        popupMapSide = Math.min(width, height) * POPUP_MAP_RATIO;
-        // Center on screen : screen center (width/2, height/2) maps to popup-local (width/2, -height/2).
+        // Centred in the band left BELOW the title signboard, not on the screen : the signboard belongs to
+        // the chrome, which is drawn over the popup, so a map centred on the screen had its top edge
+        // covered by the plate.
+        float titleOffset = IalonTheme.contentTopOffset(height);
+        float bandHeight = height - titleOffset;
+        popupMapSide = Math.min(width, bandHeight) * POPUP_MAP_RATIO;
         popupMapLeft = width * 0.5f - popupMapSide * 0.5f;
-        popupMapBottom = -height * 0.5f - popupMapSide * 0.5f;
+        popupMapBottom = -titleOffset - bandHeight * 0.5f - popupMapSide * 0.5f;
 
         Geometry bigMap = (Geometry) minimapPopup.getChild("MinimapPopupMap");
         bigMap.setLocalScale(popupMapSide, popupMapSide, 1f);
@@ -477,47 +593,180 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         if (popupDot != null) {
             popupDot.removeFromParent();
         }
-        popupMarker = createMarker(popupMapSide * POPUP_MARKER_RATIO);
-        popupDot = createDot(popupMapSide * POPUP_MARKER_RATIO * 0.4f);
-        popupDotMat = ((Geometry) popupDot.getChild("MinimapDot")).getMaterial();
+        popupMarker = createPositionMarker(popupMapSide * POPUP_MARKER_RATIO);
+        popupDot = createDot(popupMapSide * POPUP_MARKER_RATIO * 0.1f);
+        popupDotMat = popupMarker.getMaterial();
         // They sit over the map : consume their clicks too so they don't bubble up and close the popup.
         MouseEventControl.addListenersToSpatial(popupMarker, new IgnoreMouseClickListener());
         MouseEventControl.addListenersToSpatial(popupDot, new IgnoreMouseClickListener());
         minimapPopup.attachChild(popupMarker);
         minimapPopup.attachChild(popupDot);
 
-        float vh = height / 100f;
-        popupClose.setFontSize(4 * vh);
+        // The chrome is rebuilt, not just repositioned : a nine-patch bakes its scale into its mesh. That
+        // discards the previous title label with it, hence taking the new one back here — otherwise
+        // update() would keep writing the position into a label no longer on screen.
+        popupTitle = IalonTheme.applyChromeOver(minimapPopup, app.getAssetManager(), width, height,
+                popupTitleText(), IalonTheme.Ornament.COMPASS_ROSE);
+        IalonTheme.restyleCornerButton(popupClose, app.getAssetManager(), height);
         float margin = UiHelper.screenMargin(height);
         popupClose.setLocalTranslation(width - margin - popupClose.getPreferredSize().x, -margin, 10);
-
-        // Title font ; its text and centred placement (over the map width, just above it) are set in update().
-        popupTitle.setFontSize(4 * vh);
     }
 
     /**
-     * Builds the camera-heading marker : a <b>filled white</b> triangle pointing +Y by default. In
-     * {@link #update} it is rotated to the view heading and pushed out onto the minimap's inscribed circle
-     * (see {@link #placeHeading}), so it rides near the edge like a compass needle pointing where you look.
+     * Builds the player-position marker : a <b>filled white</b> isosceles triangle with a <b>30° apex
+     * angle</b>, pointing +Y by default and centred on its centroid (so {@link #update} places it directly
+     * at the player's map coordinate and rotates it about that point to the view heading). Alpha-blended :
+     * its alpha is pulsed sinusoidally each frame in {@link #update} ; face culling off so winding never
+     * hides it. {@code size} is the apex-to-base height, clamped to at least 4 px.
      */
-    private Geometry createMarker(float size) {
-        // Like the baked texture, sRGB-encode the solid colour on Android so it isn't shown too dark.
-        ColorRGBA color = encodeSrgb(ColorRGBA.White);
-        float h = size * 0.5f;
-        float w = size * 0.8f;
+    // Vertex layout of the merged overlay mesh, in DRAW order -- with alpha blending the index order IS
+    // the paint order, so the ring goes down first, the heading triangle over it, the dot last on top.
+    private static final int RING_VERTS = 16;   // 4 border strips x 4 corners
+    private static final int MARKER_VERTS = 3;
+    private static final int DOT_VERTS = 4;
+    private static final int OVERLAY_VERTS = RING_VERTS + MARKER_VERTS + DOT_VERTS;
 
-        // Filled triangle face (a single tri ; face culling off so winding never hides it).
+    /**
+     * Builds the merged overlay geometry : frame ring, heading triangle and position dot in one
+     * vertex-coloured mesh. Positions and colours are (re)written every frame by {@link #writeOverlay} ;
+     * the index buffer is fixed, so it is built once here.
+     */
+    private Geometry createOverlay() {
+        markerHeight = Math.max(4f, mapSize * MARKER_RATIO);
+        dotHalf = Math.max(2f, mapSize * MARKER_RATIO * 0.1f) * 0.5f;
+        frameColor.set(UiHelper.overlayColor(new ColorRGBA(0f, 0f, 0f, 0.6f), config));
+
+        overlayPos = BufferUtils.createFloatBuffer(OVERLAY_VERTS * 3);
+        overlayCol = BufferUtils.createFloatBuffer(OVERLAY_VERTS * 4);
+
+        short[] indices = new short[4 * 6 + 3 + 6];
+        int at = 0;
+        for (int quad = 0; quad < 5; quad++) { // 4 ring strips, then the dot -- same winding
+            int base = quad < 4 ? quad * 4 : RING_VERTS + MARKER_VERTS;
+            if (quad == 4) {
+                // the marker triangle sits between the ring and the dot in the buffer
+                indices[at++] = (short) RING_VERTS;
+                indices[at++] = (short) (RING_VERTS + 1);
+                indices[at++] = (short) (RING_VERTS + 2);
+            }
+            indices[at++] = (short) base;
+            indices[at++] = (short) (base + 1);
+            indices[at++] = (short) (base + 2);
+            indices[at++] = (short) base;
+            indices[at++] = (short) (base + 2);
+            indices[at++] = (short) (base + 3);
+        }
+
+        Mesh mesh = new Mesh();
+        mesh.setBuffer(VertexBuffer.Type.Position, 3, overlayPos);
+        mesh.setBuffer(VertexBuffer.Type.Color, 4, overlayCol);
+        mesh.setBuffer(VertexBuffer.Type.Index, 3, indices);
+        mesh.setDynamic();
+
+        Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setBoolean("VertexColor", true);
+        mat.setColor("Color", ColorRGBA.White);
+        mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
+        // Face culling off, as the standalone marker had : the triangle is rewritten with a heading-
+        // dependent winding, so a culled back face would make it vanish for half the compass.
+        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+
+        overlay = new Geometry("MinimapOverlay", mesh);
+        overlay.setMaterial(mat);
+        overlay.setLocalTranslation(0, 0, 1); // in FRONT of the opaque map (Gui bucket sorts on geometry z)
+        // Assigned before the first write : writeOverlay reads the field back to update the buffers.
+        writeOverlay(border + mapSize * 0.5f, border + mapSize * 0.5f, 0f, ColorRGBA.White);
+        return overlay;
+    }
+
+    /**
+     * Rewrites the overlay's vertices : the (static) frame ring, then the heading triangle rotated by
+     * {@code angle} about the player's map position, then the dot over it. Called every frame — 23
+     * vertices of plain arithmetic, no allocation.
+     */
+    private void writeOverlay(float px, float py, float angle, ColorRGBA markerColor) {
+        overlayPos.clear();
+        overlayCol.clear();
+
+        // Frame ring : the border strips left visible around the inset map. Drawn in front of the map
+        // rather than behind it, which is identical on screen since the map is opaque.
+        float outer = buttonSize;
+        float in0 = border;
+        float in1 = border + mapSize;
+        putQuad(0, 0, outer, in0);            // bottom
+        putQuad(0, in1, outer, outer);        // top
+        putQuad(0, in0, in0, in1);            // left
+        putQuad(in1, in0, outer, in1);        // right
+        for (int i = 0; i < RING_VERTS; i++) {
+            putColor(frameColor);
+        }
+
+        // Heading triangle : apex angle 30 degrees, centred on its centroid so it rotates about the
+        // player's exact position. Same shape as createPositionMarker, rotated here on the CPU instead
+        // of by a geometry transform (three points -- cheaper than the draw call it saves).
+        float h = markerHeight;
+        float halfBase = h * FastMath.tan(15f * FastMath.DEG_TO_RAD);
+        float cy = h / 3f;
+        float cos = FastMath.cos(angle);
+        float sin = FastMath.sin(angle);
+        putRotated(0f, h - cy, cos, sin, px, py);
+        putRotated(-halfBase, -cy, cos, sin, px, py);
+        putRotated(halfBase, -cy, cos, sin, px, py);
+        for (int i = 0; i < MARKER_VERTS; i++) {
+            putColor(markerColor);
+        }
+
+        // Position dot : a small solid white square centred on the same point, painted last.
+        putQuad(px - dotHalf, py - dotHalf, px + dotHalf, py + dotHalf);
+        for (int i = 0; i < DOT_VERTS; i++) {
+            putColor(ColorRGBA.White);
+        }
+
+        overlayPos.position(0);
+        overlayCol.position(0);
+        Mesh mesh = overlay.getMesh();
+        mesh.getBuffer(VertexBuffer.Type.Position).updateData(overlayPos);
+        mesh.getBuffer(VertexBuffer.Type.Color).updateData(overlayCol);
+        // updateModelBound(), not mesh.updateBound() : the geometry's transform never changes, so nothing
+        // else would ever flag its world bound dirty and it would keep the bound of the very first frame.
+        overlay.updateModelBound();
+    }
+
+    /** Appends a quad's four corners, counter-clockwise from the bottom-left. */
+    private void putQuad(float x0, float y0, float x1, float y1) {
+        overlayPos.put(x0).put(y0).put(0f);
+        overlayPos.put(x1).put(y0).put(0f);
+        overlayPos.put(x1).put(y1).put(0f);
+        overlayPos.put(x0).put(y1).put(0f);
+    }
+
+    /** Appends one point of the heading triangle, rotated about the origin then moved to (px, py). */
+    private void putRotated(float x, float y, float cos, float sin, float px, float py) {
+        overlayPos.put(px + x * cos - y * sin).put(py + x * sin + y * cos).put(0f);
+    }
+
+    private void putColor(ColorRGBA c) {
+        overlayCol.put(c.r).put(c.g).put(c.b).put(c.a);
+    }
+
+    private Geometry createPositionMarker(float size) {
+        float h = Math.max(4f, size);
+        // Apex angle 30° -> half-angle 15° : the base half-width is h * tan(15°).
+        float halfBase = h * FastMath.tan(15f * FastMath.DEG_TO_RAD);
+        float cy = h / 3f; // centroid height above the base : subtract it so the origin is the centroid
+
         float[] verts = {
-                0f, h * 0.5f, 0f,         // tip
-                -w * 0.5f, -h * 0.5f, 0f, // bottom-left
-                w * 0.5f, -h * 0.5f, 0f   // bottom-right
+                0f, h - cy, 0f,     // tip (apex)
+                -halfBase, -cy, 0f, // base-left
+                halfBase, -cy, 0f   // base-right
         };
         Mesh tri = new Mesh();
         tri.setBuffer(VertexBuffer.Type.Position, 3, verts);
         tri.setBuffer(VertexBuffer.Type.Index, 3, new short[]{0, 1, 2});
         tri.updateBound();
         Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.setColor("Color", color);
+        mat.setColor("Color", new ColorRGBA(1f, 1f, 1f, 1f));
+        mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
         mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
         Geometry geom = new Geometry("MinimapMarker", tri);
         geom.setMaterial(mat);
@@ -525,15 +774,14 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     }
 
     /**
-     * Builds the player-position dot : a small <b>white</b> square centred on the node origin (so
-     * {@link #update} can place it directly at the player's map coordinate). Alpha-blended : its alpha is
-     * pulsed sinusoidally each frame in {@link #update}. The diameter is clamped to at least 2 px.
+     * Builds the exact-position dot : a small <b>solid white</b> square centred on the node origin (so
+     * {@link #update} places it directly at the player's map coordinate, over the heading triangle). The
+     * diameter is clamped to at least 2 px.
      */
     private Node createDot(float diameter) {
         float d = Math.max(2f, diameter);
         Material mat = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", new ColorRGBA(1f, 1f, 1f, 1f));
-        mat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
         Geometry quad = new Geometry("MinimapDot", new Quad(d, d));
         quad.setMaterial(mat);
         quad.setLocalTranslation(-d * 0.5f, -d * 0.5f, 0f); // centre the quad on the node origin
@@ -543,23 +791,32 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     }
 
     /**
-     * Bakes the top-down terrain texture once. Reuses the {@link FarTerrainState} heightmap when present
-     * (no second generator sampling) ; otherwise samples the generator directly over the shown extent. Each
-     * texel is coloured by altitude with the same palette as {@code FarTerrain.frag} (terrain colour only —
-     * no lighting / fog / reflection). Returns {@code null} if no terrain source is available.
+     * Bakes the top-down terrain texture once, on the calling thread. Convenience wrapper : {@link
+     * #bakeTexels} then {@link #toTexture}. Returns {@code null} if no terrain source is available.
      */
     private Texture2D bakeTexture(int texSize) {
-        FarTerrainState far = app.getStateManager().getState(FarTerrainState.class);
-        float[] heights = far != null ? far.getHeightmap() : null;
-        int hmSize = heights != null ? (int) Math.round(Math.sqrt(heights.length)) : 0;
-        // sqrt-rounding may overshoot on a non-square length : keep hmSize*hmSize within the array bounds
-        // so the bilinear sampler's max index (hmSize*hmSize - 1) can never overrun heights.
-        if (hmSize > 0 && hmSize * hmSize > heights.length) {
-            hmSize--;
-        }
-        float hmStep = far != null ? far.getStep() : 0f;
+        ByteBuffer data = bakeTexels(texSize);
+        return data == null ? null : toTexture(data, texSize);
+    }
 
-        TerrainGenerator generator = config.getTerrainGenerator();
+    /**
+     * Bakes the top-down terrain texels. Reuses the {@link FarTerrainState} heightmap captured by
+     * {@link #captureTerrainSource} (no second generator sampling) ; otherwise samples the generator
+     * directly over the shown extent. Each texel is coloured by altitude with the same palette as
+     * {@code FarTerrain.frag} (terrain colour only — no lighting / fog / reflection).
+     *
+     * <p><b>Thread-safe</b> (no jME scene, no GL, no state-manager access ; the noise fields it reads are
+     * immutable after the generator is built, like the chunk-generation pool relies on) : the big popup bake
+     * runs on a background thread. Bails out early — returning {@code null} — when {@link #bakeCancelled}.
+     *
+     * @return the RGBA8 texels, flipped and ready to wrap, or {@code null} if there is no terrain source
+     *         (or the bake was cancelled)
+     */
+    private ByteBuffer bakeTexels(int texSize) {
+        float[] heights = bakeHeights;
+        int hmSize = bakeHmSize;
+        float hmStep = bakeHmStep;
+        TerrainGenerator generator = bakeGenerator;
         if (heights == null && generator == null) {
             return null;
         }
@@ -579,16 +836,23 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
                 ? (NoiseTerrainGenerator) generator : null;
         Vector2f biomeSample = new Vector2f();
         ColorRGBA biomeGrass = new ColorRGBA();
+        // Per-column rock & snow lines (the generator warps them by noise and climate, see
+        // NoiseTerrainGenerator.strataLinesAt), so the map's grey/white caps sit where the world's do.
+        // The slope term is left out : a cliff is far below one texel here.
+        Vector2f strataLines = new Vector2f();
 
         // Android (no hardware sRGB framebuffer : manualGammaEncode) does not sRGB-encode on output, and the
         // plain Unshaded GUI shader doesn't emulate it (unlike the world shaders' MANUAL_SRGB) ; so the linear
-        // palette would display far too dark. Pre-encode the texels to sRGB here in that case. On desktop the
-        // hardware framebuffer does the encode, so we keep the texels linear. (See memory: srgb-color-pipeline.)
-        boolean manualSrgb = config.isManualGammaEncode();
+        // palette would display far too dark. Pre-encode the texels to sRGB in that case (manualSrgb, cached
+        // at init). On desktop the hardware framebuffer does the encode, so we keep the texels linear.
+        // (See memory: srgb-color-pipeline.)
         ByteBuffer data = BufferUtils.createByteBuffer(texSize * texSize * 4);
         Vector3f sample = new Vector3f();
         ColorRGBA c = new ColorRGBA();
         for (int j = 0; j < texSize; j++) {
+            if (bakeCancelled) {
+                return null; // world switched while baking : the texels are already worthless
+            }
             float v = (j + 0.5f) / texSize;
             for (int i = 0; i < texSize; i++) {
                 float u = (i + 0.5f) / texSize;
@@ -603,9 +867,16 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
                     height = generator.getHeight(sample.set(worldX, 0f, worldZ));
                 }
                 // Per-texel biome grass colour (continuous blend), or the flat base colour as a fallback.
-                ColorRGBA grassColor = noise != null
-                        ? noise.biomeColorAt(worldX, worldZ, biomeSample, biomeGrass) : grass;
-                colorAt(c, height, waterHeight, rockHeight, snowHeight, sand, grassColor, rock, snow, water);
+                ColorRGBA grassColor = grass;
+                float rockLine = rockHeight;
+                float snowLine = snowHeight;
+                if (noise != null) {
+                    grassColor = noise.biomeColorAt(worldX, worldZ, biomeSample, biomeGrass);
+                    noise.strataLinesAt(worldX, worldZ, biomeSample, strataLines);
+                    snowLine = strataLines.x;
+                    rockLine = strataLines.y;
+                }
+                colorAt(c, height, waterHeight, rockLine, snowLine, sand, grassColor, rock, snow, water);
                 data.put(toByte(c.r, manualSrgb));
                 data.put(toByte(c.g, manualSrgb));
                 data.put(toByte(c.b, manualSrgb));
@@ -613,10 +884,18 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             }
         }
         data.flip();
-        // Flag the image Linear so GL never decodes it on sample : the bytes are already what we want on the
-        // wire. Desktop : linear bytes + the hardware sRGB framebuffer encodes on output. Android : bytes
-        // pre-encoded to sRGB above + no framebuffer encode. Both paths display the same shade as the far
-        // terrain. (See memory: srgb-color-pipeline.)
+        return data;
+    }
+
+    /**
+     * Wraps baked texels in the minimap's texture. Render thread (it is handed straight to a material).
+     *
+     * <p>The image is flagged Linear so GL never decodes it on sample : the bytes are already what we want on
+     * the wire. Desktop : linear bytes + the hardware sRGB framebuffer encodes on output. Android : bytes
+     * pre-encoded to sRGB by {@link #bakeTexels} + no framebuffer encode. Both paths display the same shade
+     * as the far terrain. (See memory: srgb-color-pipeline.)
+     */
+    private static Texture2D toTexture(ByteBuffer data, int texSize) {
         Image img = new Image(Image.Format.RGBA8, texSize, texSize, data, ColorSpace.Linear);
         Texture2D tex = new Texture2D(img);
         tex.setMagFilter(Texture.MagFilter.Bilinear);
@@ -779,15 +1058,6 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             x = (float) Math.pow(x, 1f / 2.2f);
         }
         return (byte) Math.round(x * 255f);
-    }
-
-    /** sRGB-encodes a solid (linear) colour when manual gamma encoding is active ; returns it unchanged else. */
-    private ColorRGBA encodeSrgb(ColorRGBA c) {
-        if (!config.isManualGammaEncode()) {
-            return c;
-        }
-        float ig = 1f / 2.2f;
-        return new ColorRGBA((float) Math.pow(c.r, ig), (float) Math.pow(c.g, ig), (float) Math.pow(c.b, ig), c.a);
     }
 
     private static int clampIdx(int i, int size) {

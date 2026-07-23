@@ -52,10 +52,20 @@ public class GameSettingsDTO {
     private boolean showFps = true;
     private boolean showPosition = false;
     private boolean showMinimap = true;
+    // Master sound gain, 0 = mute. Both launchers agree on the default, so a primitive is fine here
+    // (unlike devMode / ambiantIntensity below).
+    private float soundVolume = 0.7f;
     private int maxFramerate = IalonConfig.FPS_LIMIT_DESKTOP;
     // Desktop windowing mode. Default true (fullscreen) to match the launcher default for saves written
     // before this field existed.
     private boolean fullscreen = true;
+    /**
+     * Developer/debug overlays. Boxed, and applied only when present, because the two launchers disagree
+     * on what it should be when nothing has been saved yet — the desktop harness wants it on, Android off
+     * — and a primitive default here would silently overrule whichever of them is right for a save
+     * written before this field existed. Same reason as {@link #ambiantIntensity}.
+     */
+    private Boolean devMode;
 
     public GameSettingsDTO(IalonConfig config) {
         this.gridRadius = config.getGridRadius();
@@ -69,8 +79,10 @@ public class GameSettingsDTO {
         this.showFps = config.isShowFps();
         this.showPosition = config.isShowPosition();
         this.showMinimap = config.isShowMinimap();
+        this.soundVolume = config.getSoundVolume();
         this.maxFramerate = config.getMaxFramerate();
         this.fullscreen = config.isFullscreen();
+        this.devMode = config.isDevMode();
     }
 
     public void applyTo(IalonConfig config) {
@@ -92,8 +104,12 @@ public class GameSettingsDTO {
         config.setShowFps(showFps);
         config.setShowPosition(showPosition);
         config.setShowMinimap(showMinimap);
+        config.setSoundVolume(Math.max(0f, Math.min(1f, soundVolume)));
         // Only 60 or 120 are offered ; guard against out-of-range values from edited/old saves.
         config.setMaxFramerate(maxFramerate == 60 ? 60 : IalonConfig.FPS_LIMIT_DESKTOP);
         config.setFullscreen(fullscreen);
+        if (devMode != null) {
+            config.setDevMode(devMode);
+        }
     }
 }

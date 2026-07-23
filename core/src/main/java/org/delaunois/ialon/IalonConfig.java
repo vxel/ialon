@@ -34,7 +34,10 @@ public class IalonConfig implements WorldSettings {
 
     public static final String SAVEDIR = "./save";
     public static final String CHUNK_NODE_NAME = "chunk-node";
-    public static final String FONT_PATH = "Textures/font-apex.fnt";
+    // UI font, baked from a TTF by the support BitmapFontGenerator tool (./gradlew :core:generateFont).
+    // Single source of truth : it is packed into the texture atlas and installed as Lemur's default font
+    // by IalonInitializer, so every UI element follows this one path.
+    public static final String FONT_PATH = "Textures/font-jura.fnt";
     public static final int FPS_LIMIT_MOBILE = 120;
     public static final int FPS_LIMIT_DESKTOP = 120;
 
@@ -50,8 +53,35 @@ public class IalonConfig implements WorldSettings {
     // persisted in game.yml so the last-used mode is restored on the next launch (DesktopLauncher).
     // Ignored on Android (always fullscreen).
     private boolean fullscreen = true;
-    private int maxUpdatePerFrame = 8;
+    /**
+     * Chunk pages the pager may attach to (or detach from) the scene graph in a single frame. Counts only
+     * pages that really enter the graph — air pages are free and excluded (ChunkPager#attachNextPages).
+     *
+     * <p>Sized against what a chunk crossing actually delivers : at render distance 8 the player crossing
+     * one chunk boundary reveals a slab of {@code gridSize * gridHeight} = 170 chunks, of which ~40 carry
+     * geometry. A budget of 8 spread those over 5+ frames at best, and once the queue stopped draining fast
+     * enough the pager re-requested the meshes it was still waiting on, which snowballed :
+     * {@code ChunkPagingBenchmark} measured 92% of all meshing wasted and the grid never filling. Meshing
+     * throughput was never the limit — the phone generates and meshes a slab in a fraction of a crossing.
+     */
+    private int maxUpdatePerFrame = 32;
     private int chunkPoolsize = defaultChunkPoolSize();
+
+    /**
+     * Side, in chunks, of the regions the opaque terrain mesh is merged into (see
+     * {@link org.delaunois.ialon.state.ChunkRegionBatchState}). 1 disables merging.
+     *
+     * <p>The frame is bound by per-draw CPU, not by geometry — measured : a quarter of the pixels left the
+     * opaque pass unchanged (ratio 1.01x), the render thread's CPU matched its wall time, and 122 chunk draws
+     * under one material cost ~45-56 us each. Merging trades draws for culling granularity, and 2 is the
+     * conservative setting : ~34 draws instead of 122 while keeping cave/frustum culling nearly as tight.
+     * Raising it removes more draws and culls more coarsely — measure on device rather than assume, the
+     * balance depends on how much geometry the coarser regions drag in.
+     */
+    private int chunkBatchRegionSize = 2;
+
+    /** Regions the batcher may rebuild per frame. Regions awaiting rebuild render per chunk meanwhile. */
+    private int chunkBatchRegionsPerFrame = 2;
 
     // Grid
     private int gridRadius = 4;
@@ -100,10 +130,22 @@ public class IalonConfig implements WorldSettings {
     private ColorRGBA farTerrainWaterColor = new ColorRGBA().setAsSrgb(0.245f, 0.421f, 0.535f, 0.92f); // teal-blue, matched to the voxel water texture (Blocks/Textures/water_calm.png) so near & far seas read as one body
     private ColorRGBA farTerrainSandColor = new ColorRGBA().setAsSrgb(0.70f, 0.68f, 0.51f, 1f); // mean albedo of the voxel sand texture (Blocks/Textures/sand.png)
     private ColorRGBA farTerrainRockColor = new ColorRGBA().setAsSrgb(0.48f, 0.47f, 0.46f, 1f); // bare rock (high mountains)
+    private ColorRGBA farTerrainBedrockColor = new ColorRGBA().setAsSrgb(0.57f, 0.57f, 0.56f, 1f); // grey bedrock on the deep sea FLOOR (mean albedo of Blocks/Textures/rock.png) : brighter/greyer than the muted, fogged mountain-rock colour above, so the distant floor reads the same grey-blue as the near voxel bedrock seen through water (NoiseTerrainGenerator forces ROCK at worldY <= 0)
     private ColorRGBA farTerrainSnowColor = new ColorRGBA().setAsSrgb(0.92f, 0.94f, 0.97f, 1f); // snow caps (highest peaks)
+    private ColorRGBA farTerrainSeabedColor = new ColorRGBA().setAsSrgb(0.44f, 0.31f, 0.19f, 1f); // dirt-brown sea FLOOR (mean albedo of Blocks/Textures/dirt.png) : the second far surface shows the real seabed underwater, sand-fringed near the shore then dirt deeper -- like the voxel floor (NoiseTerrainGenerator: sand < 3 below water, then dirt)
     private float farTerrainExtent = 4096f; // world span covered by the far terrain, centered on origin
     private float farTerrainVerticalOffset = 1f; // fine vertical nudge of the far terrain to best line up with the voxel surface at the seam (poke-through/z-fighting are handled by farTerrainDepthBias)
     private float farTerrainDepthBias = 0.1f; // clip-space depth bias : voxels win the depth test over the far terrain (prevents poke-through)
+    // The two knobs below both target ONE artifact : on Android (never on desktop) the distant coastline
+    // wobbled as the camera moved, and was rock steady at rest. It is a TANGENCY problem, not a precision
+    // one -- the relief crosses the flat far water plane at a near-zero angle, so any per-pixel depth error
+    // times that slope is a large horizontal displacement of the waterline. Ruled out by measurement, so
+    // don't re-derive them: depth-buffer bits (24 granted on device, ~0.007 units of step at 130 units),
+    // shader precision (GLSLCompat forces highp), polygon offset (disabled on both surfaces), the clip-space
+    // depth bias (added identically to both, order-preserving), and the water plane's coarse triangles
+    // (tested at WATER_GRID_SIZE 257, no change). Removing the water plane entirely removes the wobble.
+    private float farTerrainWaterlineClearance = 2f; // world units the far relief is kept clear of the water plane, above (land) and below (sea floor) : collapses the grazing band from hundreds of units to a single heightmap cell (16 units) without moving the coastline contour, since each sample keeps its side. Raise to steepen the crossing further ; lower if the coastline reads too angular. 0 disables
+    private float farWaterShoreMargin = 0f; // world units : the far water plane draws itself ONLY where the relief is at least this far BELOW it, cutting its shoreline analytically from the heightmap (Water.frag SHORE_CLIP) instead of leaving the edge to a depth-test tie. Kept LOW deliberately : larger values clip away enough water to expose black artifacts at the coast junction in grazing view, so this trades wobble against those. Raise if the wobble returns, lower if the artifacts show. 0 disables the clip
     private float farTerrainNoiseStrength = 0.6f; // fBm brightness variation on the distant land, to break up the flat altitude palette (0 = flat colour, define compiled out)
     private float farTerrainNoiseScale = 0.08f; // spatial frequency of that variation (world units : ~1/feature-size, here ~25-unit blobs)
 
@@ -124,6 +166,7 @@ public class IalonConfig implements WorldSettings {
     // (behind walls, underground). Minecraft-style advanced occlusion culling.
     private boolean chunkCaveCulling = true;
     private ColorRGBA calmWaterColor = new ColorRGBA().setAsSrgb(0.19f, 0.52f, 0.70f, 0.5f); // mean albedo+alpha of Blocks/Textures/water_calm.png (alpha kept as-is by setAsSrgb)
+    private float waterOpaqueDistance = 30f; // horizontal distance (world units) over which the water surface fades from its base alpha to fully opaque (progressive opacity with distance, near & far water alike)
     private boolean simulateLiquidFlow = true;
     private int simulateLiquidFlowModel = 2;
     private float waterSimulationSpeed = 4f;
@@ -134,11 +177,15 @@ public class IalonConfig implements WorldSettings {
     // below waterHeight - a bluish distance fog that shortens the view range plus a gentle ripple
     // ("eau qui bouge"). Authored sRGB, stored linear (setAsSrgb), like the other displayed colours.
     private ColorRGBA underwaterFogColor = new ColorRGBA().setAsSrgb(0.10f, 0.30f, 0.42f, 1f); // deep blue-green
-    private float underwaterFogDistance = 80f;  // distance scale of the fog (smaller = shorter view)
+    private float underwaterFogDistance = 150;  // distance scale of the fog (smaller = shorter view)
     private float underwaterFogDensity = 1.8f;   // fog thickness
     private float underwaterDistortionAmplitude = 0.002f; // ripple strength (texCoord units)
     private float underwaterDistortionSpeed = 1.0f;       // ripple speed
     private float underwaterDistortionFrequency = 18f;    // ripple spatial frequency
+    // Depth (world units, blockScale = 1 => blocks) over which the fog fades from off (eye right at
+    // the surface, so you still see out of the water) to full. Avoids the whole view popping to blue
+    // the instant the eye dips below the surface.
+    private float underwaterFogFadeDepth = 30f;
 
     // In-lava view : same full-screen post-process as underwater but a dense, near-opaque orange fog
     // (you can barely see when submerged in lava). Authored sRGB, stored linear (setAsSrgb).
@@ -149,13 +196,41 @@ public class IalonConfig implements WorldSettings {
     private float sunIntensity = 1.0f;
     private float sunAmplitude = 10f;
 
+    // Sound
+    // Master gain, applied to the jME Listener (so it covers every sound, present and future). 0 = mute.
+    // The only sound setting exposed in the UI ; everything below is authoring, not player-facing.
+    private float soundVolume = 0.7f;
+
+    // Ambient wildlife (AmbientSoundState + AmbienceScheduler). Two banks driven by the same forest
+    // density : birds by day, owls by night. The numbers come from the offline audition rendered by
+    // local/tools/preview-ambience.sh -- change them there first, they are much faster to judge.
+    private boolean ambientSound = true;      // master switch for the wildlife layers
+    private float birdVolume = 1.0f;          // per-call gain before the random spread
+    private int birdMaxLayers = 3;            // concurrent independent call layers at full forest density
+    private float birdMinGapSeconds = 2.5f;   // gap between calls on a layer, deep in a wood
+    private float birdMaxGapSeconds = 14f;    // ... and at the density where the layer switches on
+    private float birdMinDistance = 8f;       // how close a call may be placed around the listener
+    private float birdMaxDistance = 30f;
+    private float birdPitchSpread = 0.07f;    // +/- fraction ; makes 7 clips pass for a whole wood
+    // Owls : one layer, far apart, louder per call (a single distant hoot would otherwise vanish).
+    private float owlVolume = 2.2f;
+    private int owlMaxLayers = 1;
+    private float owlMinGapSeconds = 15f;
+    private float owlMaxGapSeconds = 40f;
+    private float owlMinDistance = 20f;
+    private float owlMaxDistance = 45f;
+    private float owlPitchSpread = 0.04f;     // a hoot tolerates far less transposition than a chirp
+    // Ambience beds : continuous, non-positional loops faded in and out. Water is heard while the head
+    // is under water (never in lava, which will want its own sound).
+    private float waterBedVolume = 0.6f;
+
     private boolean showFps = true; // on-screen FPS counter (StatsAppState)
     private boolean showPosition = false; // on-screen world position, top-left (StatsAppState)
     private boolean showMinimap = true; // on-screen top-down far-terrain minimap (MinimapState)
     private int maxFramerate = FPS_LIMIT_DESKTOP; // frame rate cap ; toggled between 60 and 120 in the settings (battery on mobile)
 
     private ColorRGBA skyColor = new ColorRGBA().setAsSrgb(100 / 255f, 172 / 255f, 255 / 255f, 1f);
-    private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(14 / 255f, 62 / 255f, 138 / 255f, 1f);//new ColorRGBA().setAsSrgb(65 / 255f, 142 / 255f, 255 / 255f, 1f);
+    private ColorRGBA skyZenithColor = new ColorRGBA().setAsSrgb(14 / 255f, 62 / 255f, 138 / 255f, 1f);
     private ColorRGBA skyHorizonColor = ColorRGBA.White;
 
     private ColorRGBA skyDayColor = ColorRGBA.White;
@@ -270,13 +345,21 @@ public class IalonConfig implements WorldSettings {
      * PlayerState#createPlayer and IalonConfigRepository).
      *
      * <p>The surface height is sampled at the ACTUAL spawn column (not the origin) so the player never
-     * starts buried in a slope -- on steep, high-relief terrain the ground at (chunkSize/2, chunkSize/2)
-     * can be many blocks above the origin's. It is also clamped to the water line so a spawn over sea
-     * starts above the surface, not submerged.
+     * starts buried in a slope -- on steep, high-relief terrain the ground at (x, z) can be many blocks
+     * above the origin's. It is also clamped to the water line so a spawn over sea starts above the
+     * surface, not submerged.
+     *
+     * <p>On the finite world the terrain temperature is latitude-driven (hot deserts around the equator
+     * Z=0, cold taiga/snow at the poles Z=±worldSize/2), so spawning on the origin column drops the
+     * player in the middle of the desert. We instead spawn at Z = +worldSize/4, where the latitude
+     * cosine crosses 0.5 -- the dead centre of the (upper, positive-Z) temperate band, safely clear of
+     * both the hot desert band and the cold polar band even with the temperature noise wobble. On the
+     * infinite world biomes are pure noise with no latitude, so the origin column is kept.
      */
     public Vector3f computeSpawnLocation() {
+        float worldSize = getWorldSize();
         float x = getChunkSize() / 2f;
-        float z = getChunkSize() / 2f;
+        float z = worldSize > 0f ? worldSize / 4f : getChunkSize() / 2f;
         float surface = Math.max(getTerrainGenerator().getHeight(new Vector3f(x, 0, z)), getWaterHeight());
         return new Vector3f(x, surface + playerStartHeight, z);
     }

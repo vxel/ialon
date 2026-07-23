@@ -1,7 +1,6 @@
 MaterialDef Far Terrain {
 
     MaterialParameters {
-        Color BaseColor
         Vector3 LightDir
         Color AmbientColor
         Color SunColor
@@ -10,11 +9,20 @@ MaterialDef Far Terrain {
         Float FogDensity
         Float DepthBias
         Float InnerRadius
-        Color SeabedColor
+
+        // Altitude palette : sea floor below the water line, land above.
+        Color BaseColor          // grass band (or per-biome via BiomeMap)
+        Color SeabedColor        // dirt sea floor
+        Color BedrockColor       // grey bedrock the deepest sea floor grades to
+        Color SeabedWaterColor   // bluish through-water tint on the sea floor
         Color SandColor
-        Color RockColor
+        Color RockColor          // bare mountain rock
         Color SnowColor
-        Float WaterHeight
+        Float WaterHeight        // relief height at which the surface sits exactly on the flat water plane
+        // World units the relief is kept clear of that plane, above and below (see
+        // FarTerrainState.clampAcrossWaterline). No sample exists inside that band, so the palette
+        // branches are shifted by it : land starts at WaterHeight + this, sea floor at WaterHeight - this.
+        Float WaterlineClearance
         Float RockHeight
         Float SnowHeight
         Float HeightOffset
@@ -22,17 +30,6 @@ MaterialDef Far Terrain {
         // fBm brightness variation on the distant land, to break up the flat altitude palette.
         Float NoiseStrength
         Float NoiseScale
-
-        // Sky/sun/moon reflection on the flattened sea surface (same source/tuning as the calm water).
-        Color SkyColor
-        Color SkyHorizonColor
-        Float ReflectionStrength
-        Float FresnelPower
-        Float GlintPower
-        Float GlintStrength
-        Vector3 MoonDirection
-        Color MoonColor
-        Float MoonGlintStrength
 
         // Forest tint : darken the distant grass slopes where the forest-density field is high, so the
         // beyond-billboard woods read as dark-green relief. The density map covers [-Extent/2, +Extent/2]
@@ -47,6 +44,20 @@ MaterialDef Far Terrain {
         // Biome colour map : the per-biome grass-band colour (same source as the near voxels), sampled
         // over the same [-Extent/2, +Extent/2] local X/Z as the forest-density map (shares ForestOrigin).
         Texture2D BiomeMap
+        // Biome SEABED colour map : the per-biome underwater sea-floor (subsurface) colour, same grid/UV as
+        // BiomeMap. Lets the far seabed read sand in desert seas (dirt elsewhere), matching the near voxels.
+        Texture2D BiomeSeabedMap
+
+        // Strata map : the generator's per-column rock & snow lines (R = snow, G = rock, as a fraction of
+        // WorldCeiling), same grid/UV as BiomeMap. Without it the two lines are flat world-wide contours.
+        // SlopeStrata = (soilSlope, bareSlope, snowRise, rockDrop) : the slope ramp the shader re-applies
+        // from the relief normal, mirroring NoiseTerrainGenerator's STRATA_SLOPE_* constants.
+        Texture2D StrataMap
+        Float WorldCeiling
+        Vector4 SlopeStrata
+        // (altLow, altHigh, rockFloor) : the altitude fade of the soil half of that ramp, and the
+        // floor the slope-dropped rock line stops at.
+        Vector3 SoilStrata
 
         // Emulate the sRGB output encode in-shader when the hardware sRGB framebuffer is unavailable
         // (e.g. Android GLES). See FarTerrain.frag / IalonConfig.manualGammaEncode.
@@ -67,6 +78,8 @@ MaterialDef Far Terrain {
             MANUAL_SRGB : ManualSrgb
             FOREST_TINT : ForestDensityMap
             BIOME_MAP : BiomeMap
+            BIOME_SEABED_MAP : BiomeSeabedMap
+            STRATA_MAP : StrataMap
             FAR_NOISE : NoiseStrength
         }
     }

@@ -158,7 +158,7 @@ public class WorldPreview extends AbstractPreviewProcessor {
         done = true;
         try {
             Files.createDirectories(pngFile.getParent());
-            renderer.readFrameBuffer(out, outBuf);
+            renderer.readFrameBuffer(resolveTarget(out), outBuf);
             int targetW = Math.min(width, PREVIEW_MAX_WIDTH);
             int targetH = Math.max(1, Math.round((float) height * targetW / width));
             ByteBuffer small = downscale(outBuf, width, height, targetW, targetH);
@@ -176,6 +176,32 @@ public class WorldPreview extends AbstractPreviewProcessor {
                 onDone.run();
             }
         });
+    }
+
+    /**
+     * The framebuffer actually holding the finished frame.
+     *
+     * <p>{@code out} is the viewport's output framebuffer, which is normally the screen. But while a
+     * {@link com.jme3.post.FilterPostProcessor} is attached (the underwater/lava effect, see
+     * {@link UnderwaterState}), the FPP hijacks it : the viewport renders into the FPP's offscreen
+     * scene buffer, and only the filter chain writes the result to the screen. Reading {@code out}
+     * then yields the raw scene buffer — un-filtered AND still in linear space (the sRGB encode
+     * happens when writing to the screen), i.e. a very dark, almost black image.</p>
+     *
+     * <p>Processors run in attach order and this one is always attached last, so an FPP sitting
+     * before us has already composited the final frame into the screen framebuffer ({@code null}) :
+     * that is what we must read. Without an FPP, {@code out} is the right (and only) target.</p>
+     */
+    private FrameBuffer resolveTarget(FrameBuffer out) {
+        for (SceneProcessor processor : viewPort.getProcessors()) {
+            if (processor == this) {
+                break;
+            }
+            if (processor instanceof com.jme3.post.FilterPostProcessor) {
+                return null;
+            }
+        }
+        return out;
     }
 
     /**

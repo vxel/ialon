@@ -1,0 +1,20 @@
+User-interface font of Ialon
+============================
+
+font-jura.fnt / font-jura.png are a bitmap rendering (BMFont format) of :
+
+    Jura Bold (weight 700)
+    Copyright 2019 The Jura Project Authors
+    https://github.com/ossobuffo/jura
+
+Licensed under the SIL Open Font License, Version 1.1 (OFL-1.1)
+https://openfontlicense.org  -  full text in core/src/test/resources/fonts/jura/Jura-OFL.txt
+
+The typeface covers Latin-1, so every accented letter is the face's own glyph (nothing is
+synthesized, unlike the previous ASCII-only display face). Each glyph carries a baked black drop
+shadow, so UI text stays legible over any 3D background without a second draw pass.
+
+The bitmap page and its .fnt descriptor are derivative works of that typeface, generated from
+core/src/test/resources/fonts/jura/Jura-Bold.ttf by the BitmapFontGenerator tool of this
+project (./gradlew :core:generateFont). They are redistributed under the same OFL-1.1 terms;
+the rest of Ialon is licensed under the GNU General Public License v3.0 (see COPYING).

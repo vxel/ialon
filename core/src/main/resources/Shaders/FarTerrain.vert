@@ -4,8 +4,6 @@ uniform mat4 g_ViewProjectionMatrix;
 uniform mat4 g_WorldMatrix;
 uniform vec3 g_CameraPosition;
 uniform float m_DepthBias;
-uniform float m_WaterHeight;
-uniform float m_HeightOffset; // vertical nudge applied to the terrain mesh
 
 attribute vec3 inPosition;
 attribute vec3 inNormal;
@@ -20,19 +18,11 @@ void main() {
     vec4 worldPos = g_WorldMatrix * vec4(inPosition, 1.0);
     // Uniform world scale : direction is preserved (renormalized in the fragment shader).
     vNormal = (g_WorldMatrix * vec4(inNormal, 0.0)).xyz;
-    // TRUE generator height (the mesh is nudged up by m_HeightOffset) : kept for the fragment shader's
-    // altitude palette AND the coastal depth gradient, even after the sea is flattened below.
+    // World height, passed to the fragment shader for the altitude palette / coastal depth gradient. The
+    // far terrain is now the TRUE relief (no flatten) : the RELIEF mesh renders the real land + sea floor,
+    // and the flat sea is a SEPARATE water plane (WATER) whose geometry is already flat -- so this shader
+    // is a plain pass-through for both, no vertex displacement.
     vHeight = worldPos.y;
-
-    // Flatten everything below the water level UP to the water surface : the far sea becomes a single
-    // flat surface at the water line. Because it's part of THIS terrain mesh, the hills and the voxels
-    // occlude it natively -- there's no separate water plane, so no depth-fighting and no flooding of
-    // the hills. The submerged relief is gone from the geometry but its true height stays in vHeight,
-    // so the fragment shader can still draw the sand->deep-blue coastal gradient.
-    float trueHeight = worldPos.y - m_HeightOffset;
-    if (trueHeight < m_WaterHeight) {
-        worldPos.y = m_WaterHeight + m_HeightOffset;
-    }
     vWorldPos = worldPos.xyz;
 
     vDist = distance(worldPos.xyz, g_CameraPosition);

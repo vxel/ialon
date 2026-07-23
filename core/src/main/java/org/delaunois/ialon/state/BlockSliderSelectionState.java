@@ -33,16 +33,12 @@ import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_EAST;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
 import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_SOUTH;
-import static org.delaunois.ialon.input.IalonKeyMapping.TOUCH;
 
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
-import com.jme3.input.controls.TouchListener;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.input.event.MouseMotionEvent;
-import com.jme3.input.event.TouchEvent;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.RenderState;
@@ -61,15 +57,13 @@ import com.jme3.util.BufferUtils;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.Panel;
-import com.simsilica.lemur.anim.AbstractTween;
-import com.simsilica.lemur.anim.Animation;
-import com.simsilica.lemur.anim.Tween;
-import com.simsilica.lemur.anim.TweenAnimation;
 import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.component.SpringGridLayout;
 import com.simsilica.lemur.core.GuiControl;
-import com.simsilica.lemur.effect.AbstractEffect;
-import com.simsilica.lemur.effect.EffectInfo;
+import com.simsilica.lemur.event.CursorButtonEvent;
+import com.simsilica.lemur.event.CursorEventControl;
+import com.simsilica.lemur.event.CursorMotionEvent;
+import com.simsilica.lemur.event.DefaultCursorListener;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 import com.simsilica.mathd.Vec3i;
@@ -92,13 +86,14 @@ import java.util.List;
 import java.util.Objects;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class BlockSliderSelectionState extends BaseAppState implements Resizable, Popup {
 
     private static final String BLOCK_NAME = "blockName";
+    /** User-data key : which block of the catalog a strip button stands for. */
+    private static final String BLOCK_INDEX = "index";
     private static final ColorRGBA BLOCK_AMBIENT_LIGHT = ColorRGBA.White.mult(.7f);
     private static final String SPACER = null;
 
@@ -169,7 +164,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
 
         buttonSize = app.getCamera().getHeight() / 8f;
         containerScroller = new ContainerScroller(app.getCamera(), blockButtonSize);
-        scrollListener = new ScrollListener(containerScroller);
+        scrollListener = new ScrollListener();
         blockButtonSize = buttonSize;
 
         if (guiFont == null) {
@@ -267,7 +262,8 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             app.getStateManager().getState(WorldMenuState.class).setEnabled(true);
             app.getStateManager().getState(TimeFactorState.class).setEnabled(true);
         }
-        app.getInputManager().removeListener(scrollListener);
+        scrollListener.reset();
+        containerScroller.getInertia().stop();
     }
 
     public void showBlockMenu() {
@@ -278,7 +274,6 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             app.getStateManager().getState(SettingsState.class).setEnabled(false);
             app.getStateManager().getState(WorldMenuState.class).setEnabled(false);
             app.getStateManager().getState(TimeFactorState.class).setEnabled(false);
-            app.getInputManager().addListener(scrollListener, TOUCH);
         }
     }
 
@@ -405,33 +400,16 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         Container blockList = new Container(new SpringGridLayout(Axis.X, Axis.Y));
         blockList.setName("BlockList");
 
-        MouseListener blockButtonMouseListener = new DefaultMouseListener(20, 20) {
-            @Override
-            public void click(MouseButtonEvent event, Spatial target, Spatial capture) {
-                if (target != null) {
-                    Integer blockIndex = target.getUserData("index");
-                    if (submenuBlock != null) {
-                        submenuBlock.removeFromParent();
-                        submenuBlock = null;
-                    }
-                    if (blockIndex != null) {
-                        submenuBlock = createBlockShapeSelectionPopup(blockIndex);
-                        if (submenuBlock != null) {
-                            app.getGuiNode().attachChild(submenuBlock);
-                        }
-                    }
-                    event.setConsumed();
-                }
-            }
-        };
-
         for (int index = 0; index < blocks.length; index++) {
             Node blockNode = blocks[index];
-            Container blockButton = createBlockButton(blockNode, blockButtonSize, blockButtonMouseListener, false);
+            Container blockButton = createBlockButton(blockNode, blockButtonSize, null, false);
             QuadBackgroundComponent quadBackgroundComponent = new QuadBackgroundComponent(new ColorRGBA(0f, 0, 0, 0f));
             quadBackgroundComponent.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
             blockButton.setBackground(quadBackgroundComponent);
-            blockButton.setUserData("index", index);
+            blockButton.setUserData(BLOCK_INDEX, index);
+            // One listener for both jobs, exactly like a grid card : it scrolls the strip while the finger
+            // drags, and selects this block when the press turns out to be a tap.
+            CursorEventControl.addListenersToSpatial(blockButton, scrollListener);
             blockList.addChild(blockButton, index / BLOCK_ROWS, index % BLOCK_ROWS);
         }
 
@@ -459,7 +437,9 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
 
         containerScroller.setContainer(blockList);
 
-        background.addMouseListener(scrollListener);
+        // The backdrop catches the gaps between the buttons, so a drag started between two blocks scrolls
+        // like any other — the same job CardGrid gives its background catcher.
+        CursorEventControl.addListenersToSpatial(background, scrollListener);
 
         BatchNode batchNode = new BatchNode();
         batchNode.attachChild(blockListParent);
@@ -720,50 +700,116 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
     }
 
     /**
-     * Listens to two types of events
-     * - Mouse Scroll
-     * - Touch Scroll
-     * and calls the given ContainerScroller to apply the scroll.
-     * For touch scroll, a "force impulse" is given to the translation
+     * The block strip's gesture : press, drag, release — and a tap, which selects the block pressed.
+     *
+     * <p>A Lemur <b>cursor</b> listener, which is the whole point of it : that is the same input path the
+     * vertical lists are driven by ({@code CardGrid.ScrollListener}), so the two now behave the same by
+     * construction rather than by two implementations agreeing. Same event shape, same drag delta (the
+     * difference between two cursor positions, one event a frame), same tap-versus-drag threshold, and the
+     * same {@link ScrollInertia} behind them — there is no longer anything left to differ.
+     *
+     * <p>It replaces a jME {@link com.jme3.input.controls.TouchListener} registered on the input manager,
+     * which took its deltas from Android's own gesture detector instead. That path came with everything a
+     * raw touch stream brings : several events per frame, a {@code DOWN} / {@code UP} pair that may never
+     * arrive (hence a timeout standing in for the release), and deltas measured by someone else. None of it
+     * applies to a cursor gesture, which Lemur delivers once a frame, to the spatial that was pressed, with
+     * a guaranteed release.
+     *
+     * <p>One instance serves the whole strip — every block button and the backdrop behind them — because
+     * only one gesture can be in flight at a time, and which block was pressed is read from the event's own
+     * capture rather than bound to the listener.
      */
-    private static final class ScrollListener extends DefaultMouseListener implements TouchListener {
+    private final class ScrollListener extends DefaultCursorListener {
 
-        private final ContainerScroller containerScroller;
-        private final Vector3f tmpVector = new Vector3f();
+        /** Whether a press landed on us : a move is only a drag between a press and its release. */
+        private boolean capturing;
+        private float lastX;
+        /** Total travel of the gesture, in GUI pixels : a tap is a press that hardly moved. */
+        private float dragAccum;
 
-        private ScrollListener(ContainerScroller containerScroller) {
-            this.containerScroller = containerScroller;
+        /** Forgets a gesture cut short, e.g. by the menu closing under the finger. */
+        private void reset() {
+            capturing = false;
         }
 
         @Override
-        public void mouseMoved(MouseMotionEvent event, Spatial target, Spatial capture) {
-            if (event.getDeltaWheel() == 0) {
+        public void cursorButtonEvent(CursorButtonEvent event, Spatial target, Spatial capture) {
+            event.setConsumed();
+            if (event.isPressed()) {
+                capturing = true;
+                lastX = event.getX();
+                dragAccum = 0;
+                containerScroller.beginDrag();
                 return;
             }
-            event.setConsumed();
-            float deltaX = (int)(event.getDeltaWheel() / containerScroller.getMargin()) * containerScroller.getMargin();
-            containerScroller.scroll(deltaX);
+            if (capturing) {
+                if (dragAccum < containerScroller.getTapSlop()) {
+                    // A press that did not travel : the finger was pointing at a block, not throwing the
+                    // strip. Read from the CAPTURE — the spatial pressed — so a finger that drifted onto a
+                    // neighbour still selects the block it went down on.
+                    openShapeSelection(capture != null ? capture : target);
+                }
+                containerScroller.endDrag();
+            }
+            capturing = false;
         }
 
         @Override
-        public void onTouch(String name, TouchEvent event, float tpf) {
-            if (event.getType() == TouchEvent.Type.SCROLL && collides(event.getX(), event.getY())) {
-                containerScroller.scrollImpulse(event.getDeltaX(), tpf);
+        public void cursorMoved(CursorMotionEvent event, Spatial target, Spatial capture) {
+            // Mouse wheel : one notch scrolls the strip by one block, with no coasting.
+            int wheel = event.getScrollDelta();
+            if (wheel != 0) {
                 event.setConsumed();
+                float deltaX = (int) (wheel / containerScroller.getMargin()) * containerScroller.getMargin();
+                containerScroller.scroll(deltaX);
+                return;
             }
+            if (!capturing) {
+                return;
+            }
+            float x = event.getX();
+            float dx = x - lastX;
+            lastX = x;
+            dragAccum += Math.abs(dx);
+            containerScroller.drag(dx);
         }
-
-        public boolean collides(float x, float y) {
-            tmpVector.setX(x);
-            tmpVector.setY(y);
-            return containerScroller.getContainer().getWorldBound().contains(tmpVector);
-        }
-
     }
 
-    private static class ContainerScroller {
+    /**
+     * Opens the shape submenu of the block a tap landed on. A no-op for a tap on the strip's backdrop, which
+     * carries no block : the backdrop is only there to catch the gaps between the buttons, so that a drag
+     * started between two blocks scrolls like any other.
+     */
+    private void openShapeSelection(Spatial target) {
+        if (target == null) {
+            return;
+        }
+        Integer blockIndex = target.getUserData(BLOCK_INDEX);
+        if (submenuBlock != null) {
+            submenuBlock.removeFromParent();
+            submenuBlock = null;
+        }
+        if (blockIndex == null) {
+            return;
+        }
+        submenuBlock = createBlockShapeSelectionPopup(blockIndex);
+        if (submenuBlock != null) {
+            app.getGuiNode().attachChild(submenuBlock);
+        }
+    }
 
-        private static final float EFFECT_LEN = 0.2f;
+    /**
+     * The block strip's scroll axis : its container's x, sliding between the far end of the strip and the
+     * left margin. Nothing but the {@link ScrollInertia.Target} mapping and the ways the strip is moved — the
+     * shared inertia does the dragging, the elastic ends and the fling, the same code the worlds / creations
+     * grids and the settings columns use. It replaces a bespoke Lemur effect ({@code ScrollEffect} +
+     * {@code ImpulseSpatial}) that ramped a release speed down to zero over 0.2 s ; the inertia's decay
+     * covers the same distance in about the same time, so the strip still throws the way it used to.
+     *
+     * <p>Inner (not static) because {@link #isScrollActive()} has to know whether the block menu is open :
+     * the container stays parented to the menu node even while the menu itself is off screen.
+     */
+    private class ContainerScroller implements ScrollInertia.Target {
 
         @Getter
         private Container container;
@@ -774,7 +820,8 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
         @Getter
         private final float margin;
 
-        private final ScrollEffect scrollEffect = new ScrollEffect();
+        @Getter
+        private final ScrollInertia inertia = new ScrollInertia(this);
 
         public ContainerScroller(Camera camera, float margin) {
             this.camera = camera;
@@ -783,10 +830,9 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
 
         public void setContainer(Container container) {
             this.container = container;
-            this.scrollEffect.setLength(EFFECT_LEN);
-            container.addEffect("scroll", scrollEffect);
         }
 
+        /** Scrolls by hand, a wheel notch at a time : no coasting, and it takes over from any glide. */
         public void scroll(float deltaX) {
             if (container == null) {
                 return;
@@ -795,13 +841,30 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
                 resetToResting();
                 return;
             }
-            Vector3f location = container.getLocalTranslation();
-            float min = camera.getWidth() - container.getSize().getX() - margin;
-            float newlocation = Math.max(Math.min(location.x + deltaX, margin), min);
-            container.setLocalTranslation(container.getLocalTranslation().setX(newlocation));
+            inertia.stop();
+            setScrollPosition(Math.max(getMinScrollPosition(),
+                    Math.min(getScrollPosition() + deltaX, getMaxScrollPosition())));
         }
 
-        public void scrollImpulse(float deltaX, float tpf) {
+        /**
+         * How far a press may travel and still count as a tap rather than a drag, in GUI pixels. Taken from
+         * the screen HEIGHT, and 2 % of it, because that is the threshold the vertical lists use
+         * ({@code CardGrid.ScrollListener}) : a finger's idea of "I did not mean to move" does not change
+         * with the direction it is pointing.
+         */
+        public float getTapSlop() {
+            return camera.getHeight() * 0.02f;
+        }
+
+        /** The finger landed on the strip : the inertia takes the gesture from here. */
+        public void beginDrag() {
+            if (container != null && !fitsViewport()) {
+                inertia.press();
+            }
+        }
+
+        /** Hands one touch-scroll delta to the inertia, which is what moves the strip. */
+        public void drag(float deltaX) {
             if (container == null) {
                 return;
             }
@@ -809,10 +872,44 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
                 resetToResting();
                 return;
             }
-            scrollEffect.setMin(camera.getWidth() - container.getSize().getX() - margin);
-            scrollEffect.setMax(margin);
-            scrollEffect.setForce(deltaX / tpf / 30);
-            container.runEffect("scroll");
+            inertia.drag(deltaX);
+        }
+
+        /** The finger left : the strip flings, or springs back if it was pulled past an end. */
+        public void endDrag() {
+            if (container != null) {
+                inertia.release();
+            }
+        }
+
+        @Override
+        public float getScrollPosition() {
+            return container.getLocalTranslation().x;
+        }
+
+        @Override
+        public void setScrollPosition(float position) {
+            container.setLocalTranslation(container.getLocalTranslation().setX(position));
+        }
+
+        @Override
+        public float getMinScrollPosition() {
+            return camera.getWidth() - container.getSize().getX() - margin;
+        }
+
+        @Override
+        public float getMaxScrollPosition() {
+            return margin;
+        }
+
+        @Override
+        public boolean isScrollActive() {
+            return container != null && isPopupOpen() && !fitsViewport();
+        }
+
+        @Override
+        public float getScrollExtent() {
+            return camera.getWidth();
         }
 
         /**
@@ -821,8 +918,7 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
          * (min &gt; max), which used to snap the list to a wrong position and freeze the scroll.
          */
         private boolean fitsViewport() {
-            float min = camera.getWidth() - container.getSize().getX() - margin;
-            return min >= margin;
+            return getMinScrollPosition() >= getMaxScrollPosition();
         }
 
         /** Keeps the (centered) block list at its resting position, defensively clearing any stale offset. */
@@ -832,50 +928,5 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             }
         }
 
-    }
-
-    @Getter
-    @Setter
-    public static class ScrollEffect extends AbstractEffect<Panel> {
-
-        private float force;
-        private float length = 1;
-        private float min;
-        private float max;
-
-        @Override
-        public Animation create(Panel target, EffectInfo existing) {
-            Tween impulse = new ImpulseSpatial(target, force, length, min, max);
-            return new TweenAnimation(impulse);
-        }
-    }
-
-    public static class ImpulseSpatial extends AbstractTween {
-
-        private final Spatial target;
-        private final float force;
-        private final float min;
-        private final float max;
-        private final Vector3f translation;
-
-        public ImpulseSpatial(Spatial target, float force, float length, float min, float max) {
-            super(length);
-            this.target = target;
-            this.force = force;
-            this.min = min;
-            this.max = max;
-            this.translation = new Vector3f(target.getLocalTranslation());
-        }
-
-        @Override
-        protected void doInterpolate(double t) {
-            translation.x = Math.max(Math.min(translation.x + (1 - (float)t) * force, max), min);
-            target.setLocalTranslation(translation);
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + "[target=" + target + ", force=" + force + ", length=" + getLength() + "]";
-        }
     }
 }

@@ -45,6 +45,13 @@ public class Creation {
     private int sizeZ;
     /** Row-major block names ({@code BlockIds.NONE} = air), or {@code null} when only metadata is loaded. */
     private String[] blocks;
+    /**
+     * When true, placing this creation leaves the destination block untouched on its air cells instead of
+     * clearing them (see {@code CreationPlacementState.apply}). Set when block types have been stripped
+     * from the creation (the library's "Terrain" action) : the emptied cells must not dig a hole of their
+     * own shape into the ground the creation is placed on.
+     */
+    private boolean skipAir;
 
     /** Number of cells in the box ({@code sizeX * sizeY * sizeZ}). */
     public int volume() {

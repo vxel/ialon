@@ -1,5 +1,6 @@
 package org.delaunois.ialon.control;
 
+import com.jme3.app.state.AppStateManager;
 import com.jme3.input.InputManager;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
@@ -13,6 +14,7 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.state.ButtonManagerState;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,10 +54,17 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
     private final float minx;
     private final float maxx;
     private final Camera camera;
+    private final AppStateManager stateManager;
 
-    public PlayerHeadDirectionControl(IalonConfig config, InputManager inputManager, Camera camera) {
+    // Resolved lazily : the buttons may not be attached yet when the player is built, and they are the
+    // authoritative source of the pad geometry (see #isReservedByButtons).
+    private ButtonManagerState buttonManagerState;
+
+    public PlayerHeadDirectionControl(IalonConfig config, InputManager inputManager, Camera camera,
+                                      AppStateManager stateManager) {
         this.config = config;
         this.inputManager = inputManager;
+        this.stateManager = stateManager;
         this.rotationHelper = new RotationHelper();
         config.getInputActionManager().addListener(this, ACTIONS);
         this.miny = 150;
@@ -147,12 +156,29 @@ public class PlayerHeadDirectionControl extends AbstractControl implements Actio
         spatial.getLocalRotation().getRotationColumn(2, store);
     }
 
+    /**
+     * Tells whether the touch falls in a rectangle reserved to the on-screen walking controls (movement
+     * pad, jump button), where only those may react : without it the finger travel while holding
+     * "forward" or "jump" also drags the camera. The rectangles come from {@link ButtonManagerState}
+     * rather than from constants here, so they always match the buttons' actual size and position (both
+     * scale with the screen).
+     */
+    private boolean isReservedByButtons(TouchEvent event) {
+        if (buttonManagerState == null) {
+            buttonManagerState = stateManager.getState(ButtonManagerState.class);
+            if (buttonManagerState == null) {
+                return false; // no on-screen controls (e.g. desktop) : the whole screen turns the camera
+            }
+        }
+        return buttonManagerState.isInReservedTouchZone(event.getX(), event.getY());
+    }
+
     @Override
     public void onTouch(String name, TouchEvent event, float tpf) {
         if (event.getType() == TouchEvent.Type.MOVE) {
             if (event.getY() > miny && event.getY() < maxy
                     && event.getX() > minx && event.getX() < maxx
-                    && (event.getX() > 500 || event.getY() > 350)) {
+                    && !isReservedByButtons(event)) {
                 getUp(spatial, up);
                 getLeft(spatial, left);
                 getDirection(spatial, dir);

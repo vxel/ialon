@@ -15,6 +15,14 @@ It is based on the jMonkeyEgine and the Blocks framework library.
 
 It is released under the GNU General Public License v3.0.
 
+## Credits
+
+Third-party assets bundled with the game:
+
+- User-interface font: **Jack of Gears** by Michael W. Moss (https://michaelwmoss.com),
+  licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Baked into the
+  BMFont pair `Textures/font-jackofgears.*` (see `font-jackofgears.LICENSE.txt`).
+
 Use **Tab** key to switch between desktop and mobile mode.
 
 In Desktop mode :

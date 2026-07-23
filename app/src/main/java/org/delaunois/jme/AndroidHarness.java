@@ -6,6 +6,8 @@ import android.content.DialogInterface;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.NinePatchDrawable;
+import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
@@ -81,10 +83,20 @@ public class AndroidHarness extends Activity implements TouchListener, DialogInt
     protected int eglAlphaBits = 0;
 
     /**
-     * The number of depth bits specifies the precision of the depth buffer.
-     * (default = 16)
+     * The number of depth bits specifies the precision of the depth buffer (jME default = 16).
+     * <p>
+     * Ialon asks for 24 on general principle : the scene spans a 0.2 near plane to a 4000 far plane, and
+     * the resolvable depth step grows as {@code z^2 / (near * 2^bits)}, so 16 bits would leave tens of
+     * world units unresolved out at the horizon. 24 buys a factor 256 and is universally available on the
+     * GLES3 / minSdk 26 targets ({@code GL_OES_depth24}).
+     * <p>
+     * It is NOT, however, the cure for the distant-coastline wobble it was first reached for.
+     * {@link #logDepthBufferPrecision()} confirmed 24 bits are actually granted on device, and the wobble
+     * was still there — so depth-buffer resolution was never the mechanism (the arithmetic agrees: ~0.007
+     * units of depth step at 130 units, against a 2-unit relief/water separation). That artifact is
+     * addressed geometrically instead, in {@code FarTerrainState} and {@code Water.frag}.
      */
-    protected int eglDepthBits = 16;
+protected int eglDepthBits = 24;
 
     /**
      * Sets the number of samples to use for multisampling.<br>
@@ -521,6 +533,36 @@ public class AndroidHarness extends Activity implements TouchListener, DialogInt
             app.getInputManager().addMapping(ESCAPE_EVENT, new TouchTrigger(TouchInput.KEYCODE_BACK));
             app.getInputManager().addListener(this, new String[]{ESCAPE_EVENT});
         }
+        logDepthBufferPrecision();
+    }
+
+    /**
+     * Logs the depth buffer the driver ACTUALLY granted, next to the one that was requested.
+     * <p>
+     * {@code settings.setDepthBits()} is only a <b>request</b> : jME turns it into an EGL config
+     * constraint and the config chooser silently falls back to a shallower buffer when it cannot match
+     * (the desktop LWJGL backend ignores the value outright). So the request must never be assumed —
+     * it has to be read back.
+     * <p>
+     * This was written to test whether the Android-only wobble of the distant coastline came from a
+     * shallow depth buffer, the relief and the flat far water plane being only a couple of units apart
+     * there. The answer was <b>no</b> : the device reports {@code requested=24 granted=24} and the wobble
+     * was unchanged. Worth keeping anyway — it is the only way to know what the depth test is actually
+     * working with, and "the request was honoured" is not something to assume on either platform.
+     */
+    private void logDepthBufferPrecision() {
+        int[] depth = new int[1];
+        int[] stencil = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_DEPTH_BITS, depth, 0);
+        GLES20.glGetIntegerv(GLES20.GL_STENCIL_BITS, stencil, 0);
+        if (depth[0] == 0) {
+            // GL_DEPTH_BITS is deprecated in GLES3 and some drivers answer 0 : ask the default
+            // framebuffer's depth attachment directly instead.
+            GLES30.glGetFramebufferAttachmentParameteriv(GLES30.GL_FRAMEBUFFER, GLES30.GL_DEPTH,
+                    GLES30.GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE, depth, 0);
+        }
+        Log.i("AndroidHarness", "EGL surface : depth requested=" + eglDepthBits + " granted=" + depth[0]
+                + " bits, stencil=" + stencil[0] + " bits, GL_VERSION=" + GLES20.glGetString(GLES20.GL_VERSION));
     }
 
     @Override

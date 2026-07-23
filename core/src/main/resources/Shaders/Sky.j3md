@@ -25,6 +25,13 @@ MaterialDef Ialon Sky {
         // Gradient shaping
         Float ZenithExponent // how quickly the sky deepens towards the zenith
 
+        // Depths blackout : while the eye is under its column's terrain surface AND below the water level,
+        // every wall of the cylinder is painted black except the TOP cap, which keeps the sky. UnderSurface
+        // is 0/1 (driven by SkyState.isDeepUnderground), CapElevation is the dir.y of the cylinder's rim,
+        // i.e. where the top cap begins.
+        Float UnderSurface
+        Float CapElevation
+
         // Emulate the sRGB framebuffer encode in-shader when there is no hardware one (Android GLES)
         Boolean ManualSrgb
     }

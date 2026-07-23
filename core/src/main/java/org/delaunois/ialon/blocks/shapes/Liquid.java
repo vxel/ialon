@@ -48,9 +48,13 @@ public class Liquid implements Shape {
      * Local-space Y (relative to the cell centre) of the flat top face of a liquid at the given level :
      * {@code HEIGHTS[level] - 0.5}. Used by the calm-water mesher to place a merged surface quad at the
      * same height the textured top face would have had.
+     *
+     * The level is clamped on BOTH ends : callers may pass a level read straight off a block, and a
+     * non-liquid block carries {@link org.delaunois.ialon.blocks.Block#LIQUID_DISABLED} (-1), which would
+     * otherwise index the array out of bounds. A level &lt;= 0 has no liquid, hence the cell bottom.
      */
     public static float topOffset(int level) {
-        return HEIGHTS[Math.min(LEVEL_MAX, level)] - 0.5f;
+        return HEIGHTS[Math.max(0, Math.min(LEVEL_MAX, level))] - 0.5f;
     }
 
     @Getter

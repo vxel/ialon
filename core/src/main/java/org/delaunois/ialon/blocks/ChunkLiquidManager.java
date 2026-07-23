@@ -50,6 +50,8 @@ public class ChunkLiquidManager {
     private final Queue<LiquidNode> liquidBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> lavaBfsQueue = new LinkedList<>();
     private final Queue<LiquidNode> liquidRemovalBfsQueue = new LinkedList<>();
+    // Reused across steps : see LiquidRunningContext.
+    private final LiquidRunningContext context = new LiquidRunningContext();
 
     /** The flow queue feeding the given liquid type (lava has its own, slower-paced queue). */
     private Queue<LiquidNode> flowQueue(String liquidType) {
@@ -159,8 +161,16 @@ public class ChunkLiquidManager {
                 }));
     }
 
-    public Set<Vec3i> step() {
-        LiquidRunningContext context = new LiquidRunningContext();
+    /**
+     * Advances the water simulation by one BFS node, collecting the chunks whose mesh must be rebuilt
+     * into the caller's set.
+     *
+     * @param chunkMeshUpdateRequests the caller's accumulator, so a tick of several thousand steps
+     *                                allocates nothing (a step used to allocate its own context AND
+     *                                its own {@code HashSet})
+     */
+    public void step(Set<Vec3i> chunkMeshUpdateRequests) {
+        context.chunkMeshUpdateRequests = chunkMeshUpdateRequests;
         if (config.getSimulateLiquidFlowModel() == 1) {
             if (!stepUnFlow(context))
                 stepFlow(liquidBfsQueue, context);
@@ -168,17 +178,16 @@ public class ChunkLiquidManager {
             stepUnFlow(context);
             stepFlow(liquidBfsQueue, context);
         }
-        return context.chunkMeshUpdateRequests;
     }
 
     /**
      * Advances the lava flow by one node. Lava has its own queue so it can be paced slower than water
      * (see ChunkLiquidManagerState). Recession (un-flow) is handled by the shared {@link #step()}.
      */
-    public Set<Vec3i> stepLava() {
-        LiquidRunningContext context = new LiquidRunningContext();
+    /** Lava counterpart of {@link #step(Set)}. */
+    public void stepLava(Set<Vec3i> chunkMeshUpdateRequests) {
+        context.chunkMeshUpdateRequests = chunkMeshUpdateRequests;
         stepFlow(lavaBfsQueue, context);
-        return context.chunkMeshUpdateRequests;
     }
 
     private boolean stepUnFlow(LiquidRunningContext context) {
@@ -259,8 +268,13 @@ public class ChunkLiquidManager {
         return block.getLiquidLevel();
     }
 
+    /**
+     * Queues the mesh rebuild of the chunks a tick has touched. Deliberately the NON-blocking request :
+     * a liquid tick can touch dozens of chunks and the render thread must not wait for them (see
+     * {@link ChunkManager#requestMeshChunksNoWait}). The pager attaches each new mesh as it arrives.
+     */
     public void updateChunkMesh(Collection<Vec3i> locations) {
-        chunkManager.requestOrderedMeshChunks(locations);
+        chunkManager.requestMeshChunksNoWait(locations);
     }
 
     private boolean propagateRemovedLiquid(Chunk c, int x, int y, int z, int liquidLevel, boolean dims, LiquidRunningContext context) {
@@ -665,8 +679,13 @@ public class ChunkLiquidManager {
         int level;
     }
 
+    /**
+     * What a step accumulates while it runs. A single instance is reused : the simulation only ever runs
+     * from {@code ChunkLiquidManagerState.update} on the render thread, and its set is the caller's
+     * accumulator (see {@link #step(Set)}).
+     */
     private static class LiquidRunningContext {
-        final Set<Vec3i> chunkMeshUpdateRequests = new HashSet<>();
+        Set<Vec3i> chunkMeshUpdateRequests;
     }
 
 }

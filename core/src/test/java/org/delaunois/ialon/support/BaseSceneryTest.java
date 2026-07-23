@@ -1,5 +1,8 @@
 package org.delaunois.ialon.support;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -99,9 +102,11 @@ public abstract class BaseSceneryTest {
 
     public void waitLiquidSimulationEnd() {
         assertInitialized();
+        Set<Vec3i> touched = new HashSet<>();
         int i = 0;
         while (worldManager.getChunkLiquidManager().queueSize() > 0 && i < MAX_SIMULATION_STEPS) {
-            worldManager.getChunkLiquidManager().step();
+            touched.clear();
+            worldManager.getChunkLiquidManager().step(touched);
             i++;
         }
     }

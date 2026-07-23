@@ -38,14 +38,14 @@ public class MainActivity extends AndroidHarness {
 
     static {
         System.setProperty(BufferAllocatorFactory.PROPERTY_BUFFER_ALLOCATOR_IMPLEMENTATION, PrimitiveAllocator.class.getName());
-        // PROFILING TOGGLE : enable the render-thread hitch profiler on mobile. Logs (to logcat, tag
-        // HitchProfilerState) one line per frame slower than this many ms, splitting the spike into
-        // work (state/spatial/render) vs gap (swap/vsync/driver), the top AppStep, GC and chunk churn.
-        // Set very early (class load, before the GL app is constructed) so the TimingNodes get installed
-        // too. Steady path is allocation-free, but remove/raise this for release builds. 20 ms catches
-        // dropped frames at the 60 fps cap.
-        //
-        //System.setProperty("ialon.hitch", "40");
+        // PROFILING TOGGLE : set system property ialon.hitch to e.g. 40
+        //System.setProperty("ialon.hitch", "25");
+        //System.setProperty("ialon.rendercpu", "2");
+        //System.setProperty("ialon.batchregion", "2");
+        //System.setProperty("ialon.memreport", "20");
+        //System.setProperty("ialon.noWater", "true");
+        //System.setProperty("ialon.noRelief", "true");
+        //System.setProperty("ialon.noEnclosure", "true");
     }
 
     public MainActivity() {
@@ -94,7 +94,11 @@ public class MainActivity extends AndroidHarness {
         logger.log(Level.INFO, "Android Start Ialon");
 
         AppSettings settings = new AppSettings(true);
-        settings.setAudioRenderer(null);
+        // OpenAL Soft (from jme3-android-native), for the ambient sounds (AmbientSoundState). This has
+        // to be set HERE and not left to AndroidHarness.audioRendererType : these settings replace the
+        // harness's wholesale. AndroidHarness.onPause()/onResume() already pause and resume the
+        // renderer, so there is nothing else to wire for the activity lifecycle.
+        settings.setAudioRenderer(AppSettings.ANDROID_OPENAL_SOFT);
         settings.setFrameRate(IalonConfig.FPS_LIMIT_MOBILE);
         // Render through the sRGB pipeline (linear lighting, hardware sRGB framebuffer). This is what
         // keeps the colours consistent between desktop and Android : without it the GLES default
@@ -105,8 +109,11 @@ public class MainActivity extends AndroidHarness {
         IalonConfig config = new IalonConfig();
         config.setSavePath(getApplicationContext().getFilesDir().toPath());
         config.setSaveUserSettingsOnStop(false);
-        IalonConfigRepository.loadConfig(config);
+        // BEFORE the load, not after : the Android DEFAULT for a save that has never stored the setting.
+        // Set afterwards it would overrule what the player chose in the settings, every launch (see
+        // DesktopLauncher, which had exactly that bug).
         config.setDevMode(false);
+        IalonConfigRepository.loadConfig(config);
         // Cap the render distance to what the device's Java (ART) heap can hold. The grid loads
         // (2*gridRadius+1)^2 * gridHeight chunks, and each chunk keeps its blocks short[] + lightMap
         // byte[] on the heap : pushing gridRadius too high on a low-RAM device throws OutOfMemoryError.

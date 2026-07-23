@@ -3,8 +3,13 @@ package org.delaunois.ialon.serialize;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,6 +69,42 @@ class CreationRepositoryTest {
         assertEquals("Creation 2", CreationRepository.nextCreationName(save));
         String id = CreationRepository.generateUniqueId(save, "Creation 1");
         assertFalse(CreationRepository.exists(save, id), "generated id must be free");
+    }
+
+    @Test
+    void skipAirSurvivesSaveAndLoad(@TempDir Path save) {
+        Creation c = creation("alpha", "Alpha", 2, 1, 1, new String[]{"rock", "none"});
+        c.setSkipAir(true);
+        CreationRepository.save(save, c);
+
+        assertTrue(CreationRepository.load(save, "alpha").isSkipAir());
+        assertTrue(CreationRepository.loadMeta(save, "alpha").isSkipAir());
+        assertTrue(CreationRepository.listCreations(save).get(0).isSkipAir());
+    }
+
+    @Test
+    void skipAirDefaultsToFalse(@TempDir Path save) {
+        CreationRepository.save(save, creation("alpha", "Alpha", 1, 1, 1, new String[]{"rock"}));
+
+        assertFalse(CreationRepository.load(save, "alpha").isSkipAir());
+    }
+
+    @Test
+    void creationSavedBeforeTheFlagExistedReadsSkipAirFalse(@TempDir Path save) throws IOException {
+        // A creation whose meta entry holds only the two original lines (name + dimensions).
+        Path file = CreationRepository.creationsDir(save).resolve("legacy" + CreationRepository.EXTENSION);
+        Files.createDirectories(file.getParent());
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(file))) {
+            zip.putNextEntry(new ZipEntry("meta"));
+            zip.write("Legacy\n2 1 1".getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+
+        Creation loaded = CreationRepository.loadMeta(save, "legacy");
+        assertNotNull(loaded);
+        assertEquals("Legacy", loaded.getName());
+        assertEquals(2, loaded.getSizeX());
+        assertFalse(loaded.isSkipAir(), "an older creation must keep the original placement behaviour");
     }
 
     private static Creation creation(String id, String name, int sx, int sy, int sz, String[] grid) {

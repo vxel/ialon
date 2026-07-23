@@ -1,10 +1,10 @@
 package org.delaunois.ialon.state;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.app.Application;
 import com.jme3.app.state.BaseAppState;
 import org.delaunois.ialon.blocks.Chunk;
 import org.delaunois.ialon.blocks.ChunkManagerListener;
+import org.delaunois.ialon.blocks.ChunkThreads;
 import org.delaunois.ialon.blocks.WorldEditOverlay;
 import com.simsilica.mathd.Vec3i;
 
@@ -40,7 +40,8 @@ public class ChunkSaverState extends BaseAppState implements ChunkManagerListene
 
     @Override
     protected void initialize(Application app) {
-        executorService = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("chunk-saver").build());
+        executorService = Executors.newSingleThreadExecutor(
+                ChunkThreads.factory("chunk-saver", ChunkThreads.PERSISTENCE_PRIORITY));
     }
 
     /**

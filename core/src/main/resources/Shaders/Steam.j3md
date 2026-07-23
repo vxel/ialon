@@ -1,0 +1,65 @@
+MaterialDef Ialon Steam {
+
+    // The backdrop of a full-screen popup : the black veil, with a jet of steam escaping from a leak in
+    // the frame's bottom pipe and spreading as it rises (Shaders/Steam.frag). Procedural — no texture, no
+    // particles, one quad. Backs org.delaunois.ialon.ui.SteamBackground, which is what IalonTheme.applyVeil
+    // puts behind every full-screen popup.
+    //
+    // MANUAL_SRGB re-encodes on output where the hardware sRGB framebuffer is missing (Android GLES), like
+    // Sky / Star / IalonUnshaded : the colours below are LINEAR (built with setAsSrgb on the Java side).
+
+    MaterialParameters {
+
+        // Size of the backdrop quad, in GUI pixels. The plume is laid out in units of the quad's HEIGHT
+        // (like the ShaderToy convention of dividing by iResolution.y), so its shape is the same at every
+        // resolution and only the pixel count changes.
+        Vector2 Resolution
+
+        // Where the steam comes from : the hole in the bottom pipe, in GUI pixels from the quad's
+        // BOTTOM-LEFT corner. Set by SteamBackground from the frame's own metrics, so the jet stays on the
+        // tube's axis whatever the screen height.
+        Vector2 Origin
+
+        // The veil itself : what the backdrop is where there is no steam (opaque black — the popups must
+        // hide the world completely). Linear.
+        Color BackColor
+
+        // The steam at full density. Linear.
+        Color SteamColor
+
+        // Animation speed multiplier (1.0 = nominal).
+        Float Speed
+
+        // Overall opacity of the plume : 0 leaves the bare veil, 1 gives thick white steam.
+        Float Density
+
+        // Spatial frequency of the noise : how many puffs fit in one screen height at the hole.
+        Float Scale
+
+        // How far up the plume reaches before it has fully dissipated, in screen heights.
+        Float Reach
+
+        // How fast the column widens as it climbs, in half-widths per screen height.
+        Float Spread
+
+        // Half-width of the jet AT the hole, in screen heights : the size of the leak.
+        Float Width
+
+        // Emulate the sRGB framebuffer encode in-shader when there is no hardware one (Android GLES)
+        Boolean ManualSrgb
+    }
+
+    Technique {
+        VertexShader   GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Steam.vert
+        FragmentShader GLSL310 GLSL300 GLSL100 GLSL150: Shaders/Steam.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            Time
+        }
+
+        Defines {
+            MANUAL_SRGB : ManualSrgb
+        }
+    }
+}

@@ -57,6 +57,7 @@ import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
+import org.delaunois.ialon.blocks.ChunkLightManager;
 import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.WorldManager;
@@ -64,7 +65,9 @@ import org.delaunois.ialon.serialize.Creation;
 import org.delaunois.ialon.ui.UiHelper;
 import org.delaunois.ialon.ui.UiHelper.IconButton;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
@@ -358,21 +361,18 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
         int sy = c.getSizeY();
         int sz = c.getSizeZ();
         String[] src = c.getBlocks();
-        int nsx = sz;
-        int nsz = sx;
-        String[] dst = new String[nsx * sy * nsz];
+        String[] dst = new String[sz * sy * sx];
         for (int y = 0; y < sy; y++) {
             for (int z = 0; z < sz; z++) {
                 for (int x = 0; x < sx; x++) {
                     String name = src[((y * sz) + z) * sx + x];
                     int nx = sz - 1 - z;
-                    int nz = x;
-                    dst[((y * nsz) + nz) * nsx + nx] = rotateName(name, registry);
+                    dst[((y * sx) + x) * sz + nx] = rotateName(name, registry);
                 }
             }
         }
-        c.setSizeX(nsx);
-        c.setSizeZ(nsz);
+        c.setSizeX(sz);
+        c.setSizeZ(sx);
         c.setBlocks(dst);
     }
 
@@ -394,7 +394,7 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
         String rotatedName = name.replace(shape, rotated);
         // Doors encode the hinge side in the TYPE (door_left/door_right), and their open swing is
         // asymmetric (toggledDoorShape). A 90° rotation must therefore FLIP the hinge so the door's closed
-        // AND open positions both rotate consistently — otherwise the hinge lands on the wrong jamb and the
+        // AND open positions both rotate consistently, otherwise the hinge lands on the wrong jamb and the
         // door opens the wrong way.
         if (WorldManager.isDoor(block.getType())) {
             rotatedName = flipDoorHinge(rotatedName);
@@ -510,7 +510,12 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
 
     /**
      * Stamps the creation into the world with its lower corner at {@code anchor}. Writes directly to the
-     * paged chunks (the whole box, air included) and re-meshes the touched chunks plus their neighbours.
+     * paged chunks and re-meshes the touched chunks plus their neighbours.
+     *
+     * <p>The whole box is written, air included : an air cell clears the destination block, so a creation
+     * carves its own hollows. A creation whose blocks have been stripped ({@link Creation#isSkipAir()})
+     * behaves the opposite way : its air cells are skipped, leaving the ground it is placed on intact
+     * instead of digging the shape of the removed blocks into it.</p>
      */
     private void apply(Vec3i anchor) {
         ChunkManager chunkManager = config.getChunkManager();
@@ -521,13 +526,24 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
         int sizeY = creation.getSizeY();
         int sizeZ = creation.getSizeZ();
 
+        boolean skipAir = creation.isSkipAir();
+
         Set<Vec3i> touched = new LinkedHashSet<>();
+        // Light-emitting cells (torches, lamps, fire, lava) stamped by this creation : their torchlight
+        // must be flooded once the whole box is written (see below).
+        List<Emitter> emitters = new ArrayList<>();
         int skipped = 0;
         int idx = 0;
         for (int y = 0; y < sizeY; y++) {
             for (int z = 0; z < sizeZ; z++) {
                 for (int x = 0; x < sizeX; x++) {
                     String name = blocks[idx++];
+                    boolean air = CreationMesh.isAir(name);
+                    if (air && skipAir) {
+                        // Emptied cell : leave the destination block alone (nothing changes, so the chunk
+                        // is not marked touched here ; relight() below still visits it).
+                        continue;
+                    }
                     scratch.set((anchor.x + x + 0.5f) * scale,
                             (anchor.y + y + 0.5f) * scale,
                             (anchor.z + z + 0.5f) * scale);
@@ -538,11 +554,14 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
                         continue;
                     }
                     Vec3i local = chunk.toLocalLocation(ChunkManager.getBlockLocation(scratch));
-                    Block block = CreationMesh.isAir(name) ? null : registry.get(name);
+                    Block block = air ? null : registry.get(name);
                     if (block == null) {
                         chunk.removeBlock(local.x, local.y, local.z);
                     } else {
                         chunk.addBlock(local.x, local.y, local.z, block);
+                        if (block.isTorchlight()) {
+                            emitters.add(new Emitter(chunk, local));
+                        }
                     }
                     touched.add(chunkLoc);
                 }
@@ -556,6 +575,17 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
         // up lit ; solid cells are left untouched (no halo on the surrounding terrain). The creation is
         // therefore uniformly lit (no self-shadowing), matching the placement ghost.
         relight(chunkManager, anchor, sizeX, sizeY, sizeZ, scale, touched);
+
+        // Torchlight : the sunlight fix-up above never touches the torchlight channel, so light-emitting
+        // blocks (lamp, fire, lava) placed as part of the creation would emit no light. Flood each emitter
+        // the same way single-block placement does (WorldManager.updateChunksAfterAddBlock). Emitters are
+        // few, so the per-emitter BFS flood stays cheap. Chunks reached by the flood are meshed too.
+        if (!emitters.isEmpty()) {
+            ChunkLightManager lightManager = new ChunkLightManager(config);
+            for (Emitter emitter : emitters) {
+                touched.addAll(lightManager.addTorchlight(emitter.local, emitter.chunk, 15));
+            }
+        }
 
         // Re-mesh the touched chunks and their axis neighbours (faces at chunk borders change too).
         Set<Vec3i> toMesh = new LinkedHashSet<>(touched);
@@ -612,6 +642,17 @@ public class CreationPlacementState extends BaseAppState implements Resizable, B
                     }
                 }
             }
+        }
+    }
+
+    /** A light-emitting cell stamped by a creation : its chunk and location inside that chunk. */
+    private static final class Emitter {
+        private final Chunk chunk;
+        private final Vec3i local;
+
+        private Emitter(Chunk chunk, Vec3i local) {
+            this.chunk = chunk;
+            this.local = local;
         }
     }
 

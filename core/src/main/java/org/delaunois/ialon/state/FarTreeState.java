@@ -28,6 +28,7 @@ import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.texture.Texture;
 import com.jme3.util.BufferUtils;
@@ -96,6 +97,8 @@ public class FarTreeState extends BaseAppState {
 
     @Getter
     private Geometry treeGeom;
+    // True while the billboards are hidden because the eye is inside the ground (see update()).
+    private boolean hiddenUnderSurface = false;
     private Material material;
     // Per-species atlas UVs for the 4 quad corners (bottom-left, bottom-right, top-right, top-left),
     // packed as [species][8] = (u,v) x4, resolved once from the shared atlas. Null = textures missing.
@@ -137,10 +140,12 @@ public class FarTreeState extends BaseAppState {
         }
         this.generator = (NoiseTerrainGenerator) gen;
 
-        // Far-terrain heightmap grid spacing : extent / (HEIGHTMAP_SIZE - 1), with HEIGHTMAP_SIZE = 513
-        // and extent = 2*worldSize on the torus (else farTerrainExtent). Must match FarTerrainState.
+        // Far-terrain heightmap grid spacing : extent / (HEIGHTMAP_SIZE - 1), with extent = 2*worldSize on
+        // the torus (else farTerrainExtent). Read from FarTerrainState instead of duplicating the value :
+        // the billboards are grounded on that exact grid, so a mismatch makes them float above the far
+        // relief or sink into it.
         float extent = config.getWorldSize() > 0f ? 2f * config.getWorldSize() : config.getFarTerrainExtent();
-        farGridStep = extent / 512f;
+        farGridStep = extent / (FarTerrainState.HEIGHTMAP_SIZE - 1f);
 
         if (!resolveSpeciesUv()) {
             this.generator = null; // textures not in the atlas : disable rather than draw garbage
@@ -244,6 +249,16 @@ public class FarTreeState extends BaseAppState {
     public void update(float tpf) {
         if (generator == null || treeGeom == null) {
             return;
+        }
+
+        // The billboards stand on the far terrain, which is hidden in the depths -- so hide them on exactly
+        // the same flag (rationale on SkyState.isDeepUnderground), or they float as distant trees seen
+        // through solid rock.
+        SkyState sky = getState(SkyState.class);
+        boolean under = sky != null && sky.isDeepUnderground();
+        if (under != hiddenUnderSurface) {
+            hiddenUnderSurface = under;
+            treeGeom.setCullHint(under ? Spatial.CullHint.Always : Spatial.CullHint.Dynamic);
         }
 
         // Swap in a freshly built mesh (built off-thread, only GL-touched here on the render thread).

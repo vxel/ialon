@@ -17,7 +17,6 @@
 
 package org.delaunois.ialon.blocks;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.shapes.MeshCollisionShape;
 import com.jme3.bullet.objects.PhysicsRigidBody;
@@ -97,7 +96,8 @@ public class PhysicsChunkPager {
             log.trace("{} initialize()", getClass().getSimpleName());
         }
         chunkManager.addListener(listener);
-        requestExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("physicschunk-pager-%d").build());
+        requestExecutor = Executors.newSingleThreadExecutor(
+                ChunkThreads.factory("physicschunk-pager-%d", ChunkThreads.PAGING_PRIORITY));
     }
 
     public void update() {

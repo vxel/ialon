@@ -30,14 +30,18 @@ import com.jme3.util.PrimitiveAllocator;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
+import org.delaunois.ialon.blocks.BlockIds;
+import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.ChunkLightManager;
 import org.delaunois.ialon.blocks.ChunkLiquidManager;
 import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.ChunkPager;
+import org.delaunois.ialon.blocks.FacesMeshGenerator;
 import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.state.FarTerrainState;
 import org.delaunois.ialon.state.LightingState;
+import org.delaunois.ialon.state.RenderReport;
 import org.delaunois.ialon.state.SkyState;
 import org.delaunois.ialon.state.SunState;
 
@@ -89,8 +93,15 @@ public class ScreenshotHarness extends SimpleApplication {
         public Path output = Paths.get("core/build/screenshots/shot.png");
         /** Camera world position. */
         public Vector3f camLocation = new Vector3f(24, 60, 24);
-        /** Point the camera looks at. */
+        /** Point the camera looks at. Ignored when {@link #camRotation} is set. */
         public Vector3f camTarget = new Vector3f(0, 30, 0);
+        /**
+         * Exact camera orientation, overriding {@link #camTarget}. Set this to replay a pose taken from a
+         * device save : {@code player.yml} stores the camera quaternion verbatim (IalonConfigRepository
+         * saves {@code camera.getRotation()}), so feeding it back reproduces the reporter's frame without
+         * guessing at yaw/pitch conventions — the reason a look-at target cannot do the job.
+         */
+        public com.jme3.math.Quaternion camRotation = null;
         /** Output resolution. */
         public int width = 1280;
         public int height = 720;
@@ -142,6 +153,17 @@ public class ScreenshotHarness extends SimpleApplication {
         public long maxWaitMs = 40_000;
         /** Extra frames rendered after settling, so late meshes/lighting land before the shot. */
         public int extraFrames = 5;
+        /**
+         * Log a {@link RenderReport} for the captured frame — the per-subtree draw call and triangle
+         * breakdown, on the very frame the PNG shows. On by default : it is what makes a screenshot an
+         * A/B measurement rather than just a picture, and it costs one frame's queue read.
+         *
+         * <p>Without it, counting draws means shipping a build to a device and reading logcat, which is
+         * far too slow a loop to tune anything by (far-terrain LOD, chunk batching…). The device stays
+         * the authority on <i>timings</i> — desktop GL and ANGLE do not cost the same — but draw and
+         * triangle counts are a property of the scene, so measuring them here is sound.
+         */
+        public boolean renderReport = true;
     }
 
     private final Options options;
@@ -162,6 +184,11 @@ public class ScreenshotHarness extends SimpleApplication {
     private int frames;
     private long startMs;
     private boolean capturing;
+    // Set once the PNG is on disk. When a RenderReport was requested we do NOT stop the app there : the
+    // report needs its own frames to run (attach -> read one frame's queues -> log), and capture() calls
+    // stop(true) the moment we signal. lingerFrames is that grace period.
+    private volatile boolean shotWritten;
+    private int lingerFrames = 4;
 
     public ScreenshotHarness(Options options) {
         super((AppState[]) null);
@@ -228,7 +255,11 @@ public class ScreenshotHarness extends SimpleApplication {
         // and the camera is ours to drive directly — nothing fights the pose we set below.
         cam.setFrustumPerspective(45f, (float) options.width / options.height, 0.1f, options.frustumFar);
         cam.setLocation(options.camLocation);
-        cam.lookAt(options.camTarget, Vector3f.UNIT_Y);
+        if (options.camRotation != null) {
+            cam.setRotation(options.camRotation);
+        } else {
+            cam.lookAt(options.camTarget, Vector3f.UNIT_Y);
+        }
 
         // Chunk manager + a hand-built pager centred on the camera (setupChunkPager needs PlayerState).
         ChunkManager chunkManager = config.getChunkManager();
@@ -242,8 +273,30 @@ public class ScreenshotHarness extends SimpleApplication {
         chunkPager.setMaxUpdatePerFrame(100);
         chunkPager.initialize();
 
+        // Liquid simulation, wired exactly as the game does it : the state owns the manager and ticks it,
+        // and the WorldManager edits through that same instance (otherwise a placed source would be
+        // queued in one manager and stepped in the other). Lets a harness reproduce a flowing waterfall.
+        org.delaunois.ialon.state.ChunkLiquidManagerState liquidState =
+                new org.delaunois.ialon.state.ChunkLiquidManagerState(config);
+        stateManager.attach(liquidState);
         worldManager = new WorldManager(chunkManager,
-                new ChunkLightManager(config), new ChunkLiquidManager(config));
+                new ChunkLightManager(config), liquidState.getChunkLiquidManager());
+
+        // Same cross-chunk merging as the game (one draw call per mesh type instead of one per chunk),
+        // so a screenshot shows what the game actually renders.
+        int batchRegion = org.delaunois.ialon.state.ChunkRegionBatchState.regionSizeFrom(config);
+        if (batchRegion > 1) {
+            stateManager.attach(new org.delaunois.ialon.state.ChunkRegionBatchState(
+                    FacesMeshGenerator.CHUNK_MESH_TYPE_GENERIC, batchRegion,
+                    config.getChunkBatchRegionsPerFrame(), chunkPager));
+        }
+        stateManager.attach(new org.delaunois.ialon.state.ChunkMeshBatchState(
+                FacesMeshGenerator.CHUNK_MESH_TYPE_WATER_CALM, null, chunkPager));
+        stateManager.attach(new org.delaunois.ialon.state.ChunkMeshBatchState(
+                FacesMeshGenerator.CHUNK_MESH_TYPE_FIRE, null, chunkPager));
+        stateManager.attach(new org.delaunois.ialon.state.ChunkMeshBatchState(
+                org.delaunois.ialon.blocks.TypeIds.WATER,
+                FacesMeshGenerator.CHUNK_MESH_TYPE_WATER_INSIDE, chunkPager));
 
         if (options.realSky) {
             // Game's animated sky/sun. Dependency order : Sky needs Sun, Sun needs Lighting. All drive
@@ -279,6 +332,9 @@ public class ScreenshotHarness extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         if (capturing) {
+            if (shotWritten && lingerFrames-- <= 0) {
+                signalFinished();
+            }
             return;
         }
         chunkPager.update();
@@ -321,12 +377,26 @@ public class ScreenshotHarness extends SimpleApplication {
                     chunkPager.update();
                 }
             });
+            if (options.renderReport) {
+                // Requested BEFORE the shot so the report's collectors hook the very frame being captured :
+                // the breakdown then describes exactly the image on disk, not a later one.
+                RenderReport.request(this);
+            }
             viewPort.addProcessor(new ScreenshotProcessor(this, options.output, () -> {
-                synchronized (lock) {
-                    finished = true;
-                    lock.notifyAll();
+                if (options.renderReport) {
+                    shotWritten = true; // let the report finish logging before capture() stops the app
+                } else {
+                    signalFinished();
                 }
             }));
+        }
+    }
+
+    /** Wakes {@link #capture(Options)}, which then stops the app. */
+    private void signalFinished() {
+        synchronized (lock) {
+            finished = true;
+            lock.notifyAll();
         }
     }
 
@@ -342,6 +412,62 @@ public class ScreenshotHarness extends SimpleApplication {
      * Quick manual shot : {@code main [outputPng]} renders the seed-2 island from a high vantage with
      * the distant horizon, then writes the PNG. Run it via the Gradle task : {@code ./gradlew :core:screenshot}.
      */
+    /**
+     * Drops a water source on the best ledge near the vantage centre : the cell whose ground stands
+     * highest above its surroundings, so the water actually cascades instead of pooling on the flat.
+     * The drop is what stresses the simulation — a spreading cascade wets far more chunks per tick than
+     * a puddle, which is the shape that used to run the frame time away.
+     */
+    private static void placeWaterfallSource(ScreenshotHarness h) {
+        int bestX = 0;
+        int bestZ = 0;
+        int bestGround = Integer.MIN_VALUE;
+        int bestDrop = -1;
+        for (int x = 80; x <= 100; x++) {
+            for (int z = 80; z <= 100; z++) {
+                int ground = groundHeight(h, x, z);
+                if (ground == Integer.MIN_VALUE) {
+                    continue;
+                }
+                // How far the ground falls away within a few blocks : the bigger, the better the ledge.
+                int drop = 0;
+                for (int d = 2; d <= 4; d++) {
+                    drop = Math.max(drop, ground - groundHeight(h, x + d, z));
+                    drop = Math.max(drop, ground - groundHeight(h, x - d, z));
+                    drop = Math.max(drop, ground - groundHeight(h, x, z + d));
+                    drop = Math.max(drop, ground - groundHeight(h, x, z - d));
+                }
+                if (drop > bestDrop || (drop == bestDrop && ground > bestGround)) {
+                    bestDrop = drop;
+                    bestGround = ground;
+                    bestX = x;
+                    bestZ = z;
+                }
+            }
+        }
+        if (bestDrop < 0) {
+            log.warn("Waterfall vantage : no ground found around the vantage centre");
+            return;
+        }
+        h.getWorldManager().addBlock(new Vector3f(bestX, bestGround + 1f, bestZ),
+                BlocksConfig.getInstance().getBlockRegistry().get(BlockIds.WATER_SOURCE));
+        // Frame the ledge the search actually picked, rather than a pose hard-coded for one terrain.
+        h.getCamera().setLocation(new Vector3f(bestX + 20f, bestGround + 14f, bestZ + 34f));
+        h.getCamera().lookAt(new Vector3f(bestX, bestGround - 8f, bestZ), Vector3f.UNIT_Y);
+        log.info("Waterfall source placed at ({}, {}, {}), ledge drop {} blocks",
+                bestX, bestGround + 1, bestZ, bestDrop);
+    }
+
+    /** Height of the topmost solid block of a column, or MIN_VALUE if the column is not loaded/empty. */
+    private static int groundHeight(ScreenshotHarness h, int x, int z) {
+        for (int y = 120; y > 20; y--) {
+            if (h.getWorldManager().getBlock(new Vector3f(x, y, z)) != null) {
+                return y;
+            }
+        }
+        return Integer.MIN_VALUE;
+    }
+
     public static void main(String[] args) throws InterruptedException {
         Options o = new Options();
         o.output = args.length > 0
@@ -352,10 +478,185 @@ public class ScreenshotHarness extends SimpleApplication {
         o.config.setGridRadius(6);
         o.farTerrain = true;
         o.realSky = true;                 // TEMP
-        o.time = -1.0f; // TEMP rotated ~28deg
+        // TEMP vantage selector : main [outputPng] [island|cave|tunnel|up|ocean]
+        String shot = args.length > 1 ? args[1] : "island";
+        final float tx = -758;   // open sea : floor 23.4, water surface 30.8
+        final float tz = -758;
+        final float eyeY = 21;   // inside a tunnel just under the seabed
         o.camLocation = new Vector3f(90, 110, 90);
-        o.camTarget = new Vector3f(90, 210, -10); // TEMP: look towards the celestial pole (0,1,-1)
+        o.camTarget = new Vector3f(90, 100, -400);
+        if ("cave".equals(shot)) {
+            // Inside rock BELOW the water level (30) : far terrain hidden.
+            o.camLocation = new Vector3f(90, 12, 90);
+            o.camTarget = new Vector3f(90, 12, -400);
+        } else if ("hillcave".equals(shot)) {
+            // Inside rock but ABOVE the water level : under the surface, yet the far terrain must stay --
+            // this is the cave-mouth-on-a-mountainside case.
+            o.camLocation = new Vector3f(90, 38, 90);
+            o.camTarget = new Vector3f(90, 38, -400);
+        } else if ("up".equals(shot)) {
+            // Same underground spot, looking steeply UP : must still show sky through the top cap.
+            o.camLocation = new Vector3f(90, 12, 90);
+            o.camTarget = new Vector3f(90, 400, 60);
+        } else if ("tunnel".equals(shot)) {
+            o.camLocation = new Vector3f(tx, eyeY, tz);
+            o.camTarget = new Vector3f(tx, eyeY, tz - 400);
+        } else if ("ocean".equals(shot)) {
+            o.camLocation = new Vector3f(tx, 32, tz);
+            o.camTarget = new Vector3f(tx, 31.8f, tz + 400);
+        } else if ("waterfall".equals(shot)) {
+            // Looks at a hillside above the shore : onUpdate drops a water source on the crest, which
+            // cascades down. Reproduces the case that made the liquid simulation run away (the flow's own
+            // BFS refills its queue, so an unbounded tick grows with the wetted area) AND exercises the
+            // non-blocking liquid re-mesh end to end : if the async path did not reach the pager, the
+            // cascade would simply not appear in the shot.
+            o.camLocation = new Vector3f(90, 74, 128);
+            o.camTarget = new Vector3f(90, 54, 90);
+            if (o.config.getTerrainGenerator() instanceof NoiseTerrainGenerator) {
+                NoiseTerrainGenerator gen = (NoiseTerrainGenerator) o.config.getTerrainGenerator();
+                // No trees : the point of the shot is the water, and a canopy seen from above hides the
+                // whole hillside.
+                gen.setTreeMaxProb(0f);
+                // Steep relief : a real drop is what makes the water cascade over many chunks instead of
+                // pooling, which is the shape that used to run the simulation away.
+                gen.setReliefAmplitude(2.5f);
+                gen.setReliefFrequency(1.6f);
+            }
+        } else if ("oceanup".equals(shot)) {
+            // Above the open sea, MOVING, then tilted up : the case that catches a merged calm-water
+            // geometry whose world bound went stale (it is rebuilt as chunks page in, and jME only
+            // refreshes the bound when the geometry is flagged dirty). With a stale bound the whole sea
+            // surface is frustum-culled the moment the camera pitches up. See onUpdate below.
+            o.camLocation = new Vector3f(tx, 34, tz);
+            o.camTarget = new Vector3f(tx, 33.8f, tz + 400);
+        } else if ("shore".equals(shot)) {
+            // Elevated view DOWN onto a coastline : the one geometry that shows the far relief crossing the
+            // water line over its full width, which a grazing view at eye level (ocean) compresses to
+            // nothing. This is where farTerrainWaterlineClearance's "grazing band" lives -- the clearance
+            // pushes every sample clear of the water plane, so the crossing collapses into a single
+            // heightmap cell whose WIDTH is the heightmap step. Any change to HEIGHTMAP_SIZE resizes that
+            // band, so this vantage is the A/B that catches it.
+            //
+            // Steep relief and a HIGH water line on purpose : that floods the valleys, so the frame is full
+            // of coast instead of one distant strip, and it makes the crossings as steep as the terrain
+            // ever gets -- the worst case for the band, and the shape the artifact was reported on.
+            o.config.setWaterHeight(60);
+            o.config.setTerrainGenerator(new NoiseTerrainGenerator(
+                    2, o.config.getWaterHeight(), o.config.getMaxy(), o.config.getWorldSize()));
+            NoiseTerrainGenerator shoreGen = (NoiseTerrainGenerator) o.config.getTerrainGenerator();
+            shoreGen.setReliefAmplitude(2.5f);
+            shoreGen.setReliefFrequency(1.6f);
+            shoreGen.setTreeMaxProb(0f); // a canopy seen from above hides the very shoreline we came for
+            o.camLocation = new Vector3f(90, 150, 200);
+            o.camTarget = new Vector3f(60, 60, -100);
+        } else if ("lake".equals(shot)) {
+            // Steep PLUNGING view onto an inland body of water, the geometry a reported far-terrain
+            // shoreline artifact shows up in : a dark, smooth, sharply creased fold on the bank, dipping
+            // under the water line. The 'shore' vantage misses it -- it looks out to the open sea at a
+            // shallow angle, which foreshortens the very band the fold lives in. Same flooded high relief
+            // (that is what makes inland lakes at all), but the camera looks DOWN at the near bank.
+            o.config.setWaterHeight(60);
+            o.config.setTerrainGenerator(new NoiseTerrainGenerator(
+                    2, o.config.getWaterHeight(), o.config.getMaxy(), o.config.getWorldSize()));
+            NoiseTerrainGenerator lakeGen = (NoiseTerrainGenerator) o.config.getTerrainGenerator();
+            lakeGen.setReliefAmplitude(2.5f);
+            lakeGen.setReliefFrequency(1.6f);
+            lakeGen.setTreeMaxProb(0f);
+            o.camLocation = new Vector3f(90, 160, 260);
+            o.camTarget = new Vector3f(70, 55, 0);
+        } else if ("userlake".equals(shot)) {
+            // Byte-for-byte replay of the device world and pose a far-terrain shoreline artifact was
+            // reported from (local/debug/world.yml + player.yml). Every synthetic vantage failed to show
+            // the fold, which is exactly why this one is transcribed rather than invented : the defect
+            // depends on the relief AT the coast, so it needs the reporter's seed, water line and angle.
+            o.config.setSeed(7443);
+            o.config.setWorldSizeChunks(256);
+            o.config.setFiniteWorld(true);
+            o.config.setWaterHeight(40.630997f);
+            o.config.setReliefAmplitude(2.5f);
+            o.config.setReliefFrequency(2.0f);
+            o.config.setTreeDensity(0.7f);
+            o.config.setForestPatchSize(1.0f);
+            o.config.setTerrainGenerator(new NoiseTerrainGenerator(
+                    o.config.getSeed(), o.config.getWaterHeight(), o.config.getMaxy(), o.config.getWorldSize()));
+            NoiseTerrainGenerator userGen = (NoiseTerrainGenerator) o.config.getTerrainGenerator();
+            userGen.setReliefAmplitude(o.config.getReliefAmplitude());
+            userGen.setReliefFrequency(o.config.getReliefFrequency());
+            o.camLocation = new Vector3f(-53.644833f, 99.578f, 1083.5784f);
+            // The saved camera quaternion, applied as-is (see Options.camRotation).
+            o.camRotation = new com.jme3.math.Quaternion(0.19156869f, 0.020605633f, -0.0040228036f, 0.98125464f);
+        } else if ("strata".equals(shot)) {
+            // A mountain seen from just off its flank : the vantage for the surface strata (the rock and
+            // snow bands, their slope-driven crags and the tree line). The peak to fly to is given as
+            // "main out.png strata <x> <z>" -- the generator's own lines are a function of the column, so
+            // a warm equatorial peak (bare rock, thin cap) and a polar one (snow down onto the grass) are
+            // two different coordinates of the SAME world, not two configurations.
+            // A 4th argument sets the relief amplitude (the in-game slider) : a high relief is the case
+            // where the slope-driven bare rock is most visible, and the altitude fade of the soil most
+            // load-bearing -- without it a 2.5-relief massif was one grey wall from the sea to the snow.
+            float px = args.length > 2 ? Float.parseFloat(args[2]) : -440;
+            float pz = args.length > 3 ? Float.parseFloat(args[3]) : 448;
+            if (args.length > 4 && o.config.getTerrainGenerator() instanceof NoiseTerrainGenerator) {
+                ((NoiseTerrainGenerator) o.config.getTerrainGenerator())
+                        .setReliefAmplitude(Float.parseFloat(args[4]));
+            }
+            // A 5th argument is the horizontal stand-off : a tall massif needs a wide one to fit the whole
+            // flank (sea -> tree line -> rock -> snow) in the frame, at the price of showing it as far
+            // terrain rather than voxels. The camera is lifted above the ground it actually stands on.
+            float dist = args.length > 5 ? Float.parseFloat(args[5]) : 105;
+            float ph = o.config.getTerrainGenerator().getHeight(new Vector3f(px, 0, pz));
+            float d = dist / 1.4142f; // same stand-off on each axis
+            float camGround = o.config.getTerrainGenerator().getHeight(new Vector3f(px + d, 0, pz + d));
+            o.camLocation = new Vector3f(px + d, Math.max(camGround + 25, ph * 0.55f), pz + d);
+            o.camTarget = new Vector3f(px, ph * 0.55f, pz);
+        } else if ("underwater".equals(shot)) {
+            // Just BELOW the open-sea surface (30.8), looking up : shows the underside of the calm-water
+            // surface (Snell window + refracted sun sparkle) -- the side served by the back faces.
+            o.camLocation = new Vector3f(tx, 28.5f, tz);
+            o.camTarget = new Vector3f(tx, 40f, tz + 40);
+        }
+        final boolean[] dug = {false};
+        o.onUpdate = (h, ms) -> {
+            if ("waterfall".equals(shot)) {
+                if (dug[0] || ms < 3000) {
+                    return; // let the chunks page in first
+                }
+                dug[0] = true;
+                placeWaterfallSource(h);
+                return;
+            }
+            if ("oceanup".equals(shot)) {
+                // Walk north for the first 3 s (so the pager attaches/detaches chunks and the calm-water
+                // merge is rebuilt several times), then pitch the camera up and hold : the water surface
+                // must still be there.
+                float t = Math.min(ms, 3000L) / 1000f;
+                Vector3f p = new Vector3f(tx, 34, tz + t * 20f);
+                h.getCamera().setLocation(p);
+                h.getChunkPager().setLocation(p);
+                h.getCamera().lookAt(new Vector3f(p.x, ms > 3000 ? 120 : 33.8f, p.z + 400), Vector3f.UNIT_Y);
+                return;
+            }
+            if (dug[0] || ms < 2500 || !"tunnel".equals(shot)) {
+                return;
+            }
+            dug[0] = true;
+            // A 3x3 gallery running past the loaded-grid edge (gridRadius 6 * chunkSize 16 = 96), so the
+            // sightline leaves the voxel region -- what a long tunnel/cave does in play.
+            Vector3f p = new Vector3f();
+            for (int d = -4; d < 130; d++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        h.getWorldManager().removeBlock(p.set(tx + dx, eyeY + dy, tz - d));
+                    }
+                }
+            }
+        };
+        o.minWaitMs = 6000;
         o.maxWaitMs = 60_000;
+        if ("waterfall".equals(shot)) {
+            // The source lands at 3 s : leave the cascade time to run down the slope before the shot.
+            o.minWaitMs = 12_000;
+        }
         Path png = capture(o);
         log.info("Wrote {}", png.toAbsolutePath());
         System.exit(0);

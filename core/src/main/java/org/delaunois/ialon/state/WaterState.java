@@ -42,9 +42,9 @@ import lombok.extern.slf4j.Slf4j;
  * chunk is meshed), so this state fetches it on demand and simply skips updates until it exists.
  * It throttles its updates to match the slow {@link SunControl}/{@link SkyControl} colour cadence.
  *
- * Note (prototype limitation) : the calm-water geometry is drawn twice (an outside copy and a
- * front-culled inside copy that owns a cloned material). Only the shared outside material is updated
- * here ; the underwater (inside) view keeps the first-frame placeholder sun/sky values.
+ * The calm-water surface is a single double-sided geometry (FaceCull Off), so there is one material to
+ * feed : it drives both the above-water reflection/glint and the underside lighting seen from
+ * underwater, and Water.frag tells the two apart from vWorldPos.y vs g_CameraPosition.y.
  */
 @Slf4j
 public class WaterState extends BaseAppState {
@@ -100,8 +100,6 @@ public class WaterState extends BaseAppState {
 
         // Direction TOWARDS the sun (world space), as the shader expects for the glint.
         sunDirection.set(sunControl.getPosition()).normalizeLocal();
-        waterMaterial.setVector3("SunDirection", sunDirection);
-        waterMaterial.setColor("SunColor", sunControl.getSunColor());
 
         // Overhead sky reflection colour. skyControl.getColor() is the day/night MULTIPLIER (white at
         // noon, dark at night), not the sky's hue : the rendered sky is skyColor(blue) * thatMultiplier.
@@ -109,10 +107,6 @@ public class WaterState extends BaseAppState {
         ColorRGBA base = config.getSkyColor();
         ColorRGBA tint = skyControl.getColor();
         skyColor.set(base.r * tint.r, base.g * tint.g, base.b * tint.b, 1f);
-        waterMaterial.setColor("SkyColor", skyColor);
-        // Horizon haze for grazing reflections : the ground colour is already the dynamic horizon tint
-        // (bound to the far-terrain fog), so it tracks day/night on its own.
-        waterMaterial.setColor("SkyHorizonColor", skyControl.getGroundColor());
 
         // Moon direction (optional : only if a MoonState is present). Points TOWARDS the moon ; the
         // shader gates the moon glint by its height, so it only shows when the moon is up (night).
@@ -124,7 +118,25 @@ public class WaterState extends BaseAppState {
         }
         if (moonControl != null) {
             moonDirection.set(moonControl.getPosition()).normalizeLocal();
-            waterMaterial.setVector3("MoonDirection", moonDirection);
+        }
+
+        pushSkyUniforms(waterMaterial);
+    }
+
+    /**
+     * Pushes the current sun / sky / moon values onto the calm-water material. The surface is drawn by a
+     * single double-sided geometry, so this one material drives both the above-water reflection / glint
+     * and the underside lighting seen from underwater.
+     */
+    private void pushSkyUniforms(Material material) {
+        material.setVector3("SunDirection", sunDirection);
+        material.setColor("SunColor", sunControl.getSunColor());
+        material.setColor("SkyColor", skyColor);
+        // Horizon haze for grazing reflections : the ground colour is already the dynamic horizon tint
+        // (bound to the far-terrain fog), so it tracks day/night on its own.
+        material.setColor("SkyHorizonColor", skyControl.getGroundColor());
+        if (moonControl != null) {
+            material.setVector3("MoonDirection", moonDirection);
         }
     }
 

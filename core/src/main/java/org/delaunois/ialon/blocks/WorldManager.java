@@ -435,6 +435,7 @@ public class WorldManager {
         log.debug("Removing block at {}", location);
 
         if (location.y <= 1) {
+            log.warn("Cannot remove bedrock.");
             return Collections.emptySet();
         }
 

@@ -26,6 +26,12 @@ public class ButtonHighlightControl extends AbstractControl implements ActionLis
     @Setter
     private Supplier<Boolean> statusSupplier;
 
+    // Notified after the background colour changed, so a merged plate geometry (ButtonPlates) can pick
+    // the new colour up. Null when the panel draws its own background.
+    @Getter
+    @Setter
+    private Runnable onHighlightChanged;
+
     public ButtonHighlightControl(InputActionManager inputActionManager, String actionName) {
         this.inputActionManager = inputActionManager;
         this.actionName = actionName;
@@ -66,6 +72,9 @@ public class ButtonHighlightControl extends AbstractControl implements ActionLis
             Panel panel = (Panel) getSpatial();
             if (panel.getBackground() instanceof QuadBackgroundComponent) {
                 highlightQuad(enable, (QuadBackgroundComponent) panel.getBackground());
+                if (onHighlightChanged != null) {
+                    onHighlightChanged.run();
+                }
             }
         }
     }

@@ -1,5 +1,8 @@
 package org.delaunois.ialon;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.jme3.asset.DesktopAssetManager;
 import com.jme3.math.Vector3f;
 import com.jme3.util.BufferAllocatorFactory;
@@ -91,9 +94,11 @@ class DoorWaterFlowTest {
     }
 
     private void step() {
+        Set<Vec3i> touched = new HashSet<>();
         int i = 0;
         while (world.getChunkLiquidManager().queueSize() > 0 && i < 100000) {
-            world.getChunkLiquidManager().step();
+            touched.clear();
+            world.getChunkLiquidManager().step(touched);
             i++;
         }
     }

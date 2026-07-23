@@ -35,7 +35,10 @@ public class Chunk {
     // For CPU optimization
     private static final Vec3i CHUNK_SIZE = BlocksConfig.getInstance().getChunkSize();
     private static final BlockRegistry REGISTRY = BlocksConfig.getInstance().getBlockRegistry();
-    private static final ColorRGBA WATER_COLOR_FILTER = ColorRGBA.fromRGBA255(52, 160, 255, 1);
+    // Bluish tint multiplied into the vertex colour of block faces lit through water (see getLightLevel),
+    // so submerged voxels read blue. Public so the far-terrain sea floor can apply the SAME tint and blend
+    // with the near voxel floor (see FarTerrainState / FarTerrain.frag SEABED branch).
+    public static final ColorRGBA WATER_COLOR_FILTER = ColorRGBA.fromRGBA255(52, 160, 255, 1);
     // Blocks adjacent to / submerged in lava are tinted molten red instead of water blue.
     private static final ColorRGBA LAVA_COLOR_FILTER = ColorRGBA.fromRGBA255(255, 100, 40, 1);
     private static final String WATER_BLOCK = "water-liquid";
@@ -89,7 +92,12 @@ public class Chunk {
      * (through air / transparent / non-cube cells). Recomputed by {@link #computeFaceConnectivity()}
      * whenever the chunk is (re)meshed. Defaults to {@link #CONNECT_ALL} (nothing occludes) so a
      * not-yet-computed chunk never wrongly hides what is behind it.
+     * <p>
+     * Settable so a chunk skipped at mesh time (see {@code ChunkManager#requestMeshChunks}) can state
+     * its connectivity without running the flood-fill : an empty chunk connects everything, a fully
+     * opaque one connects nothing.
      */
+    @Setter(AccessLevel.PACKAGE)
     private short faceConnectivity = CONNECT_ALL;
 
     /**
@@ -190,6 +198,13 @@ public class Chunk {
             }
             dirty = true;
             empty = false;
+            // Keep the occlusion flags in sync with the edit (see removeBlock) : a cell that does not
+            // occlude on its own opens up the chunk. The reverse (a chunk becoming full / fully opaque
+            // again because the player walled a cave back in) is not detected here — that would need a
+            // full rescan ; leaving the flags cleared only costs a mesh that has no visible face.
+            if (!isOccluder(block.getId())) {
+                fullyOpaque = false;
+            }
             return previous;
         }
         log.warn("Block location ({}, {}, {}) is outside of the chunk boundaries!", x, y, z);
@@ -250,6 +265,13 @@ public class Chunk {
                 log.trace("Removed {} at ({}, {}, {}) from {}", block, x, y, z, this);
             }
             dirty = true;
+            // The chunk now has a hole : it is no longer full, and no longer occludes its neighbours.
+            // Without this, a chunk dug into underground keeps claiming to be a fully opaque block of
+            // rock, so both it and the rock the cave exposes are skipped at mesh time (see
+            // ChunkManager#requestMeshChunks) and the player sees straight through the cave walls.
+            // (empty is deliberately left alone : a chunk emptied by digging only costs an empty mesh.)
+            full = false;
+            fullyOpaque = false;
             return block;
         }
 
@@ -318,8 +340,9 @@ public class Chunk {
         boolean opaque = full;
         if (full) {
             for (short id : blocks) {
-                Block b = REGISTRY.get(id);
-                if (b == null || b.isTransparent()) {
+                // Same rule as the mesh generator's face-culling fast path : only a full opaque cube
+                // hides the face behind it (a chunk full of stairs or of water does not occlude).
+                if (!isOccluder(id)) {
                     opaque = false;
                     break;
                 }

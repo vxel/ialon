@@ -9,6 +9,17 @@ uniform vec3 m_SunDirection;
 uniform float m_GlowStrength;
 uniform float m_GlowSharpness;
 uniform float m_ZenithExponent;
+// 1 while the eye is in the depths -- under its column's terrain surface AND below the water level.
+// See SkyState.isDeepUnderground() ; 0 otherwise.
+uniform float m_UnderSurface;
+// dir.y at the cylinder's rim : above it the view direction lands on the TOP cap, below it on a side wall
+// or the bottom cap. Derived from the actual cylinder dimensions in SkyState, so it stays correct if they
+// change. The camera sits at the cylinder's centre (SpatialFollowCamControl), so this split is exact.
+uniform float m_CapElevation;
+
+// Angular softening of that split : the boundary is a large circle on screen, and a hard cut on it aliases
+// into a ragged ring. ~1.5 degrees is enough to clean it up without blurring the edge.
+const float CAP_FADE = 0.026;
 
 varying vec3 vDir;
 
@@ -32,6 +43,14 @@ void main() {
     float sunDot = max(dot(dir, normalize(m_SunDirection)), 0.0);
     float band = 1.0 - smoothstep(0.0, 0.4, abs(e));
     col += m_GlowColor.rgb * (pow(sunDot, m_GlowSharpness) * band * m_GlowStrength);
+
+    // In the depths : every wall of the cylinder goes BLACK except the top cap, which keeps the sky.
+    // The sky covers every direction (closed, camera-following cylinder) and below the horizon it just holds
+    // the horizon colour, so from inside the ground it read as bright daylight through the rock. Applied
+    // last, after the day/night modulation and the sun glow, so black stays black instead of picking up the
+    // glow. Above ground m_UnderSurface is 0 and this is a no-op.
+    float wall = 1.0 - smoothstep(m_CapElevation - CAP_FADE, m_CapElevation, e);
+    col = mix(col, vec3(0.0), m_UnderSurface * wall);
 
 #ifdef MANUAL_SRGB
     // No hardware sRGB framebuffer (Android GLES) : colours are linear, encode here.

@@ -1,11 +1,11 @@
 package org.delaunois.ialon;
 
-import static org.delaunois.ialon.Ialon.IALON_STYLE;
-
+import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
 import com.jme3.app.state.AppStateManager;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.audio.AudioListenerState;
 import com.jme3.asset.AssetInfo;
 import com.jme3.asset.AssetKey;
 import com.jme3.asset.AssetManager;
@@ -15,12 +15,10 @@ import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 import com.jme3.texture.Texture;
 import com.simsilica.lemur.GuiGlobals;
-import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.BasePickState;
 import com.simsilica.lemur.style.Styles;
 import com.simsilica.mathd.Vec3i;
@@ -28,6 +26,7 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.blocks.FacesMeshGenerator;
+import org.delaunois.ialon.blocks.TypeIds;
 import org.delaunois.ialon.blocks.PhysicsChunkPager;
 import org.delaunois.ialon.blocks.TextureAtlasManager;
 import org.delaunois.ialon.blocks.TypeRegistry;
@@ -36,6 +35,8 @@ import org.delaunois.ialon.blocks.jme.LayerComparator;
 import org.delaunois.ialon.input.IalonKeyMapping;
 import org.delaunois.ialon.state.ChunkLiquidManagerState;
 import org.delaunois.ialon.state.ChunkManagerState;
+import org.delaunois.ialon.state.ChunkMeshBatchState;
+import org.delaunois.ialon.state.ChunkRegionBatchState;
 import org.delaunois.ialon.state.ChunkPagerState;
 import org.delaunois.ialon.state.ChunkSaverState;
 import org.delaunois.ialon.state.FarTerrainState;
@@ -46,7 +47,7 @@ import org.delaunois.ialon.state.PlayerState;
 import org.delaunois.ialon.state.SplashscreenState;
 import org.delaunois.ialon.state.StatsAppState;
 import org.delaunois.ialon.state.WorldBuilderState;
-import org.delaunois.ialon.ui.Slider;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
@@ -56,8 +57,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class IalonInitializer {
-
-    private static final String BACKGROUND = "background";
 
     private IalonInitializer() {
         // Prevent instanciation
@@ -92,6 +91,44 @@ public class IalonInitializer {
 
     public static AppState setupMinimap(IalonConfig config) {
         return new MinimapState(config);
+    }
+
+    /**
+     * Brings up the audio listener, and returns whether audio is available at all.
+     *
+     * {@link Ialon} constructs its {@link SimpleApplication} with {@code super((AppState[]) null)}, so
+     * none of jME's default states are attached — including {@link AudioListenerState}, the one that
+     * feeds the camera's position and orientation to the {@code Listener}. Without it the listener
+     * stays at the world origin facing +Z forever, and every positional sound is heard from the wrong
+     * place (typically all from the same direction, growing quieter as the player walks away from
+     * spawn). It is not optional.
+     *
+     * Returns false when the application was started with no audio renderer — the headless support
+     * harnesses do exactly that — in which case nothing is attached and the sound states must stay off.
+     */
+    public static boolean setupAudio(SimpleApplication app, IalonConfig config) {
+        if (app.getAudioRenderer() == null) {
+            log.info("No audio renderer : ambient sounds disabled");
+            return false;
+        }
+        app.getStateManager().attach(new AudioListenerState());
+        applyMasterVolume(app, config.getSoundVolume());
+        return true;
+    }
+
+    /**
+     * Applies the master gain, the single place where {@code soundVolume} reaches the engine. Shared by
+     * the startup path and the settings slider.
+     *
+     * The null check is not defensive padding : jME only creates the {@code Listener} when there IS an
+     * audio renderer AND the context is not headless (LegacyApplication.initAudio), so
+     * {@code getListener()} is null in every test harness — and the settings popup those harnesses build
+     * would NPE on the way up without this.
+     */
+    public static void applyMasterVolume(Application app, float volume) {
+        if (app.getListener() != null) {
+            app.getListener().setVolume(volume);
+        }
     }
 
     public static ChunkSaverState setupChunkSaverState(IalonConfig config) {
@@ -192,23 +229,10 @@ public class IalonInitializer {
         Styles styles = GuiGlobals.getInstance().getStyles();
         styles.setDefault(font);
 
-        float vh = app.getCamera().getHeight() / 100f;
-
-        float buttonSize = 8 * vh;
-        styles.getSelector(Slider.VALUE_ID, IALON_STYLE).set(BACKGROUND,
-                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range-filled.png")));
-        styles.getSelector(Slider.RANGE_ID, IALON_STYLE).set(BACKGROUND,
-                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/range.png")));
-
-        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("text", "", false);
-        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set("preferredSize",
-                new Vector3f(buttonSize, buttonSize, 0), false);
-        styles.getSelector(Slider.THUMB_ID, IALON_STYLE).set(BACKGROUND,
-                new QuadBackgroundComponent(app.getAssetManager().loadTexture("Textures/cursor.png")));
-
-        styles.getSelector(Slider.LEFT_ID, IALON_STYLE).set("text", "", false);
-        styles.getSelector(Slider.RIGHT_ID, IALON_STYLE).set("text", "", false);
-
+        // The whole look — palette, copper/brass chrome, slider parts, widget defaults — lives in
+        // IalonTheme. It is re-registered on a resolution change (see ScreenState.onReshape), because
+        // the chrome is scaled from the screen height.
+        IalonTheme.registerStyles(app.getAssetManager(), app.getCamera().getHeight());
     }
 
     public static StatsAppState setupStatsAppState(IalonConfig config) {
@@ -295,6 +319,19 @@ public class IalonInitializer {
         sm.attach(setupChunkPager(app, config)); // Depends on PlayerState
         sm.attach(setupPhysicsChunkPager(app, config)); // Depends on PlayerState and BulletAppState
         sm.attach(setupChunkLiquidManager(config));
+        // One draw call per mesh type for the whole loaded area instead of one per chunk. These types are
+        // the numerous-but-tiny ones ; the generic (opaque terrain) mesh is deliberately left per-chunk,
+        // where cave culling and frustum culling earn their keep. Depend on the ChunkPager (they merge
+        // the pages it attaches). The two water halves stay two draws : the outside faces and the
+        // front-culled inside faces must keep their layer order (inside first) to blend correctly.
+        // The opaque terrain is merged too, but PER REGION : whole-scene merging would throw away the
+        // cave/frustum culling that removes ~78% of the loaded pages, which is why it was rejected before.
+        if (ChunkRegionBatchState.regionSizeFrom(config) > 1) {
+            sm.attach(ChunkRegionBatchState.of(FacesMeshGenerator.CHUNK_MESH_TYPE_GENERIC, config));
+        }
+        sm.attach(new ChunkMeshBatchState(FacesMeshGenerator.CHUNK_MESH_TYPE_WATER_CALM));
+        sm.attach(new ChunkMeshBatchState(FacesMeshGenerator.CHUNK_MESH_TYPE_FIRE));
+        sm.attach(new ChunkMeshBatchState(TypeIds.WATER, FacesMeshGenerator.CHUNK_MESH_TYPE_WATER_INSIDE));
         if (config.isFarTerrain()) {
             sm.attach(setupFarTerrain(config)); // Distant horizon, depends on camera + terrain generator
         }
@@ -319,6 +356,8 @@ public class IalonInitializer {
         detachIfPresent(sm, MinimapState.class);
         detachIfPresent(sm, FarTreeState.class);
         detachIfPresent(sm, FarTerrainState.class);
+        detachAll(sm, ChunkMeshBatchState.class); // several instances : calm water, fire, volumetric water
+        detachAll(sm, ChunkRegionBatchState.class);
         detachIfPresent(sm, ChunkLiquidManagerState.class);
         detachIfPresent(sm, PhysicsChunkPagerState.class);
         detachIfPresent(sm, ChunkPagerState.class);
@@ -331,6 +370,15 @@ public class IalonInitializer {
         BaseAppState state = sm.getState(type);
         if (state != null) {
             sm.detach(state);
+        }
+    }
+
+    /** Detaches every instance of a state class : {@code getState} only ever returns the first one. */
+    private static void detachAll(AppStateManager sm, Class<? extends BaseAppState> type) {
+        BaseAppState state = sm.getState(type);
+        while (state != null) {
+            sm.detach(state);
+            state = sm.getState(type);
         }
     }
 

@@ -12,12 +12,16 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.scene.BatchNode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.ButtonHighlightControl;
+import org.delaunois.ialon.ui.ButtonPlates;
 import org.delaunois.ialon.ui.UiHelper;
 import org.delaunois.ialon.ui.UiHelper.IconButton;
+
+import java.util.Arrays;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +42,9 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
 
     private static final float SPACING = 10;
     private static final String UDK_ACTION = "ACTION";
+
+    /** Slop added around the buttons' reserved touch zones (see {@link #isInReservedTouchZone}). */
+    private static final float TOUCH_SLOP = SPACING;
 
     @Getter
     private Node buttonParentNode;
@@ -81,6 +88,24 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
     private final Node removeBlockNode = new Node("RemoveBlockButton");
     private boolean buildMode = false;
 
+    // All the button plates in a single geometry (they are flat coloured quads that differ only by
+    // position and colour). The panels themselves stay in the graph, hidden, as the pick targets.
+    private ButtonPlates plates;
+
+    // All the button ICONS in a single geometry, the counterpart of the plates above : they all sample
+    // the same texture atlas, so only the scene graph ever kept them apart. Re-batched by refreshIcons()
+    // when the toggling buttons come and go.
+    private RebatchableNode batchNode;
+
+    // Outer edges of the two touch zones reserved to the walking controls : the movement pad owns the
+    // bottom-LEFT corner of the screen (from 0,0 up to padMax*), the jump button the bottom-RIGHT one
+    // (from jumpMinX to the right edge, up to jumpMaxY). Each zone is therefore fully described by the
+    // bounds below. Kept in sync with the button layout by layout(...).
+    private float movementPadMaxX;
+    private float movementPadMaxY;
+    private float jumpMinX;
+    private float jumpMaxY;
+
     private int buttonSize;
     private SimpleApplication app;
     private final ScreenButtonMouseListener screenButtonMouseListener;
@@ -109,22 +134,27 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         buttonRemoveBlock = createTextureButton("minus.png", buttonSize, 0, 0, ACTION_REMOVE_BLOCK);
         buttonAddBlock = createTextureButton("plus.png", buttonSize, 0, 0, ACTION_ADD_BLOCK);
         buttonAction = createTextureButton("action.png", buttonSize, 0, 0, ACTION_ACTION_OBJECT);
-        actionButtonNode.attachChild(buttonAction.icon);
+        // Add/remove/action buttons live in their own nodes so build mode and the door cursor can hide them.
+        // Only the BACKGROUND goes in : the icon is batched with all the others (see the BatchNode below),
+        // and refreshIcons() takes it in and out of that batch as the node comes and goes.
         actionButtonNode.attachChild(buttonAction.background);
-
-        // Add/remove block buttons live in their own (un-batched) nodes so build mode can hide them.
-        addBlockNode.attachChild(buttonAddBlock.icon);
         addBlockNode.attachChild(buttonAddBlock.background);
-        removeBlockNode.attachChild(buttonRemoveBlock.icon);
         removeBlockNode.attachChild(buttonRemoveBlock.background);
 
-        BatchNode batchNode = new BatchNode("ButtonBatch");
+        // EVERY HUD icon is one draw : they all come from the same texture atlas (UiHelper.createTextureButton
+        // binds the shared TextureAtlasManager diffuse map), so nothing but the scene graph was keeping them
+        // apart. The toggling ones (add / remove / action) join the batch too and are re-batched when their
+        // visibility changes -- see refreshIcons(). Their BACKGROUNDS stay in the toggle nodes, which is what
+        // ButtonPlates reads to decide which plates to draw, and what Lemur still picks.
+        batchNode = new RebatchableNode("ButtonBatch");
         batchNode.attachChild(buttonLeft.icon);
         batchNode.attachChild(buttonBackward.icon);
         batchNode.attachChild(buttonForward.icon);
         batchNode.attachChild(buttonRight.icon);
         batchNode.attachChild(buttonJump.icon);
         batchNode.attachChild(buttonFly.icon);
+        batchNode.attachChild(buttonAddBlock.icon);
+        batchNode.attachChild(buttonRemoveBlock.icon);
         batchNode.batch();
         batchNode.getMaterial().setColor("Color", ColorRGBA.White);
         buttonParentNode.attachChild(batchNode);
@@ -137,6 +167,14 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         buttonParentNode.attachChild(buttonFly.background);
         buttonParentNode.attachChild(addBlockNode);
         buttonParentNode.attachChild(removeBlockNode);
+
+        // The plates are all flat coloured quads : draw them as one geometry instead of one per button.
+        // The panels stay in the graph (hidden) — they remain the pick targets and own the colour.
+        plates = new ButtonPlates(buttonParentNode, buttonLeft.background);
+        plates.setPanels(Arrays.asList(
+                buttonLeft.background, buttonBackward.background, buttonForward.background,
+                buttonRight.background, buttonJump.background, buttonFly.background,
+                buttonAddBlock.background, buttonRemoveBlock.background, buttonAction.background));
 
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
@@ -211,7 +249,14 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         place(buttonBackward, margin + buttonSize + SPACING, margin + buttonSize);
         place(buttonForward, margin + buttonSize + SPACING, margin + buttonSize * 2 + SPACING);
         place(buttonRight, margin + (buttonSize + SPACING) * 2, margin + buttonSize);
+        // Touch zone reserved to the pad : the bounding box of the four arrows placed above (they are
+        // laid out on 3 columns and 2 rows from the bottom-left corner), plus a bit of slop.
+        movementPadMaxX = margin + buttonSize * 3 + SPACING * 2 + TOUCH_SLOP;
+        movementPadMaxY = margin + buttonSize * 2 + SPACING + TOUCH_SLOP;
         place(buttonJump, width - margin - buttonSize, margin + buttonSize);
+        // Same reservation for the jump button, in the opposite corner.
+        jumpMinX = width - margin - buttonSize - TOUCH_SLOP;
+        jumpMaxY = margin + buttonSize + TOUCH_SLOP;
         place(buttonFly, width - margin - 2 * buttonSize - SPACING, height - margin);
         place(buttonRemoveBlock, margin, height - margin);
         place(buttonAddBlock, width - margin - buttonSize, height - margin);
@@ -222,6 +267,30 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         } else {
             place(buttonAction, width - margin - 3 * buttonSize - 2 * SPACING, height - margin);
         }
+        refreshPlates(); // the merged plates carry their own copy of the positions
+    }
+
+    /**
+     * Tells whether a screen point falls in one of the touch zones reserved to the walking controls : the
+     * bottom-left corner up to the outer edge of the movement pad, and the bottom-right corner around the
+     * jump button. Inside them a drag must only press the button — it must never turn the camera,
+     * otherwise the small finger travel while walking or jumping rotates the view (see
+     * {@code PlayerHeadDirectionControl#onTouch}). Each zone runs all the way to the screen corner, which
+     * also covers the margins around the buttons, where a finger sliding off one ends up.
+     *
+     * <p>Only reserved while the on-screen controls are actually displayed : with the buttons hidden
+     * (desktop mouse-lock, photo mode) the whole screen belongs to the camera again.
+     *
+     * @param x the x coordinate of the touch, in GUI pixels (origin bottom-left)
+     * @param y the y coordinate of the touch, in GUI pixels (origin bottom-left)
+     * @return true if the point belongs to the movement pad or to the jump button zone
+     */
+    public boolean isInReservedTouchZone(float x, float y) {
+        if (buttonParentNode.getParent() == null) {
+            return false;
+        }
+        return (x <= movementPadMaxX && y <= movementPadMaxY)
+                || (x >= jumpMinX && y <= jumpMaxY);
     }
 
     /**
@@ -241,6 +310,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
             buttonParentNode.attachChild(addBlockNode);
             buttonParentNode.attachChild(removeBlockNode);
         }
+        refreshIcons(); // the + / - icons join or leave the merged icon sheet
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
     }
 
@@ -259,6 +329,8 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         } else {
             actionButtonNode.removeFromParent();
         }
+        refreshIcons();  // the action icon joins / leaves the merged icon sheet
+        refreshPlates(); // the action plate joins / leaves the merged geometry
     }
 
     private void place(IconButton button, float posx, float posy) {
@@ -271,8 +343,66 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         iconButton.background.setName(actionName);
         iconButton.background.setUserData(UDK_ACTION, actionName);
         iconButton.background.addMouseListener(screenButtonMouseListener);
-        iconButton.background.addControl(new ButtonHighlightControl(config.getInputActionManager(), actionName));
+        ButtonHighlightControl highlight = new ButtonHighlightControl(config.getInputActionManager(), actionName);
+        // The panel no longer draws itself : the press colour has to reach the merged plate geometry.
+        highlight.setOnHighlightChanged(this::refreshPlates);
+        iconButton.background.addControl(highlight);
         return iconButton;
+    }
+
+    /** Re-reads the plate positions / colours into the merged geometry. Null-safe : buttons are created
+     * before the plates exist, and their controls can fire a highlight during construction. */
+    private void refreshPlates() {
+        if (plates != null) {
+            plates.refresh();
+        }
+    }
+
+    /**
+     * Re-batches the icon sheet so it holds exactly the icons that should be visible. The six movement
+     * icons are always in ; add / remove / action come and go with build mode and the door cursor, and
+     * a BatchNode merges whatever is attached when it batches — so membership has to be restated.
+     *
+     * <p>Only ever runs on a user-driven toggle, never in the render loop, and merges nine quads.
+     */
+    private void refreshIcons() {
+        if (batchNode == null) {
+            return; // toggles can fire while the buttons are still being built
+        }
+        setIconBatched(buttonAddBlock.icon, addBlockNode.getParent() != null);
+        setIconBatched(buttonRemoveBlock.icon, removeBlockNode.getParent() != null);
+        setIconBatched(buttonAction.icon, actionButtonNode.getParent() != null);
+        batchNode.rebatch();
+    }
+
+    private void setIconBatched(Panel icon, boolean batched) {
+        if (batched) {
+            if (icon.getParent() == null) {
+                batchNode.attachChild(icon);
+            }
+        } else {
+            icon.removeFromParent();
+        }
+    }
+
+    /**
+     * A {@link BatchNode} that can be re-batched from scratch once its children have changed.
+     *
+     * <p>jME's own {@code batch()} only GROWS the batch after the first call : its incremental path folds
+     * the existing batch geometry back into the merge, so detaching a child never drops its triangles.
+     * The HUD needs the opposite — icons must be able to leave. Forcing a full rebatch is safe because
+     * {@code gatherGeometries} skips the batch geometries themselves.
+     */
+    private static class RebatchableNode extends BatchNode {
+
+        RebatchableNode(String name) {
+            super(name);
+        }
+
+        void rebatch() {
+            setNeedsFullRebatch(true);
+            batch();
+        }
     }
 
     private static class ScreenButtonMouseListener extends DefaultMouseListener {

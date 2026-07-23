@@ -40,12 +40,23 @@ import lombok.extern.slf4j.Slf4j;
 @ToString(onlyExplicitlyIncluded = true)
 public class FacesMeshGenerator implements ChunkMeshGenerator {
 
-    private static final String CHUNK_MESH_TYPE_GENERIC = "generic";
+    /**
+     * The opaque terrain mesh : every block that is not one of the special types below. Public because
+     * {@code ChunkRegionBatchState} merges it per region — it is the frame's dominant per-draw cost.
+     */
+    public static final String CHUNK_MESH_TYPE_GENERIC = "generic";
     private static final String CHUNK_MESH_TYPE_WATER = "water";
     // Flat calm-water surface : its own mesh/material (a flat colour, no texture), greedy-merged.
-    private static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
-    // Fire : its own mesh/material rendered by a procedural flame shader (no atlas texture).
-    private static final String CHUNK_MESH_TYPE_FIRE = "fire";
+    // Public because the geometry name is what ChunkMeshBatchState looks up to merge the per-chunk
+    // surfaces of every loaded chunk into a single draw call.
+    public static final String CHUNK_MESH_TYPE_WATER_CALM = "water_calm";
+    // Fire : its own mesh/material rendered by a procedural flame shader (no atlas texture). Public for
+    // the same reason as the calm water above.
+    public static final String CHUNK_MESH_TYPE_FIRE = "fire";
+    // The front-face-culled twin of the volumetric water (the faces seen from inside a body of water).
+    // It shares the water mesh but needs its own name so it can be batched separately — the two cull
+    // modes must stay two draw calls, layer-sorted inside before outside.
+    public static final String CHUNK_MESH_TYPE_WATER_INSIDE = "water_inside";
     // Lava : its own mesh/material rendered by a procedural molten-lava shader (no atlas texture).
     private static final String CHUNK_MESH_TYPE_LAVA = "lava";
     // Water shapes that do NOT emit their top face, one per liquid level : used for calm-surface cells
@@ -62,8 +73,13 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     private static final Direction[] DIRECTIONS = Direction.values();
 
     private final WorldSettings config;
-    // Built lazily and reused : the flat-colour, alpha-blended material of the calm water surface.
+    // Built lazily and reused : the flat-colour, alpha-blended material of the calm water surface. It is
+    // double-sided (FaceCull Off, see water_calm.j3m), so the same single geometry serves the top side
+    // and the underside seen from underwater ; WaterState pushes the live sun/sky/moon onto it.
     private Material calmWaterMaterial;
+    // Built lazily and reused : the volumetric-water material for the front-face-culled inside twin,
+    // one shared instance instead of one clone per water chunk (see getWaterInsideMaterial).
+    private Material waterInsideMaterial;
     // Built lazily and reused : the procedural flame material shared by every fire geometry.
     private Material fireMaterial;
     // Built lazily and reused : the procedural molten-lava material shared by every lava geometry.
@@ -151,7 +167,9 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     @Override
     public Node createNode(Chunk chunk) {
         if (chunk.isEmpty()) {
-            return new EmptyNode();
+            // Air : sight passes through, so the cave-culling BFS must be able to traverse it.
+            chunk.setFaceConnectivity(Chunk.CONNECT_ALL);
+            return EmptyNode.withConnectivity(Chunk.CONNECT_ALL);
         }
 
         long start = System.nanoTime();
@@ -344,6 +362,27 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         }
     }
 
+    /**
+     * The per-type render mesh for this chunk, taken from the thread's pool on first use.
+     *
+     * <p>Deliberately not {@code meshMap.computeIfAbsent(type, pool::acquireRender)}. {@code pool} is a
+     * local, so that method reference <b>captures</b> : the JVM allocates a fresh object for it at the call
+     * site, on every call, whether or not the key turns out to be missing. This runs once per block, so it
+     * was 4096 short-lived allocations per chunk to fill a map that never holds more than a handful of
+     * entries — the single largest allocation site in the game while chunks stream in (JFR: top
+     * {@code ObjectAllocationSample} weight, on every chunk-generator thread). The device was running a
+     * background GC every 2-4 seconds, and a concurrent GC on ART steals the render thread, which is how a
+     * cost paid on worker threads turned into frame hitches. Plain get/put allocates nothing.
+     */
+    private static ChunkMesh acquireMesh(Map<String, ChunkMesh> meshMap, MeshPool pool, String type) {
+        ChunkMesh mesh = meshMap.get(type);
+        if (mesh == null) {
+            mesh = pool.acquireRender(type);
+            meshMap.put(type, mesh);
+        }
+        return mesh;
+    }
+
     private void createMesh(Block block,
                             Vec3i blockLocation,
                             BlockNeighborhood neighborhood,
@@ -359,9 +398,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         }
 
         // create a mesh for each different block type
-        ChunkMesh mesh = meshMap.computeIfAbsent(
-                getChunkMeshType(block),
-                pool::acquireRender);
+        ChunkMesh mesh = acquireMesh(meshMap, pool, getChunkMeshType(block));
 
         // add the block mesh to the chunk mesh
         neighborhood.setLocation(blockLocation);
@@ -405,7 +442,7 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
         if (block.getLiquidLevel() > 0
                 && !Objects.equals(block.getType(), TypeIds.WATER)
                 && !Objects.equals(block.getType(), TypeIds.LAVA)) {
-            mesh = meshMap.computeIfAbsent(TypeIds.WATER, pool::acquireRender);
+            mesh = acquireMesh(meshMap, pool, TypeIds.WATER);
             Shape noTop = flagCalmTopIfExposed(block, blockLocation, neighborhood, pool, chunkSize);
             if (noTop != null) {
                 shape = noTop;
@@ -670,9 +707,39 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
             // Surface transparency at the steepest (looking-down) angle, from the configured water alpha.
             mat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, config.getCalmWaterColor().a));
             mat.setBoolean("ManualSrgb", config.isManualGammaEncode());
+            // Near voxel water is the truth everywhere it exists : never self-discard (the InnerRadius
+            // discard is a FAR-water-plane-only concern). 0 = no discard.
+            mat.setFloat("InnerRadius", 0f);
+            // No distance fog on the near voxel water (it is always too close to fog) : the horizon-haze
+            // fade is a FAR-water-plane-only concern. 0 density = no-op (the FogColor is then irrelevant).
+            mat.setColor("FogColor", new ColorRGBA(0f, 0f, 0f, 1f));
+            mat.setFloat("FogDistance", 1f);
+            mat.setFloat("FogDensity", 0f);
+            // No clip-depth bias (the near water uses PolyOffset -- see the j3m -- to win over the voxel
+            // side-faces at the seam). The clip bias is a FAR-water-plane concern only.
+            mat.setFloat("DepthBias", 0f);
+            // Progressive opacity with (horizontal) distance -- same value as the far water plane, so the
+            // surface fades to opaque consistently across near & far.
+            mat.setFloat("OpaqueDistance", config.getWaterOpaqueDistance());
             calmWaterMaterial = mat;
         }
         return calmWaterMaterial;
+    }
+
+    /**
+     * The volumetric-water material seen from INSIDE a body of water : the shared texture-array water
+     * material with only the face-cull mode flipped. One instance for every chunk — the alternative,
+     * {@code geometry.clone()}'s implicit material copy, allocated one Material per water chunk on every
+     * re-mesh and gave the renderer as many distinct instances to set up for identical values.
+     * {@code synchronized} because chunk meshing runs on worker threads.
+     */
+    public synchronized Material getWaterInsideMaterial() {
+        if (waterInsideMaterial == null) {
+            Material mat = BlocksConfig.getInstance().getTypeRegistry().getWaterMaterial().clone();
+            mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+            waterInsideMaterial = mat;
+        }
+        return waterInsideMaterial;
     }
 
     /**
@@ -907,19 +974,26 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
      */
     private static EmptyNode emptyNodeWithConnectivity(Chunk chunk) {
         chunk.computeFaceConnectivity();
-        EmptyNode emptyNode = new EmptyNode();
-        emptyNode.setUserData(Chunk.USERDATA_FACE_CONNECTIVITY, chunk.getFaceConnectivity() & 0xFFFF);
-        return emptyNode;
+        return EmptyNode.withConnectivity(chunk.getFaceConnectivity());
     }
 
     private void createGeometryAndAttach(String type, ChunkMesh chunkMesh, Node node) {
         Geometry geometry = createGeometry(type, chunkMesh);
         if (geometry != null) {
-            if (TypeIds.WATER.equals(type) || CHUNK_MESH_TYPE_WATER_CALM.equals(type)) {
+            if (CHUNK_MESH_TYPE_WATER_CALM.equals(type)) {
+                // Flat single-layer surface : one double-sided geometry (FaceCull Off, see
+                // water_calm.j3m) covers both the top side and the underside in a single draw call.
+                // Layer 2 keeps it sorted before the fire billboards (layer 3) in the Transparent bucket.
+                LayerComparator.setLayer(geometry, 2);
+                node.attachChild(geometry);
+
+            } else if (TypeIds.WATER.equals(type)) {
                 /*
-                 * Special case for water.
+                 * Special case for the VOLUMETRIC water (liquid shapes).
                  * Water must be visible from inside and outside.
-                 * Setting Face Culling to Off does not work due to incorrect sorting of the faces.
+                 * Setting Face Culling to Off does not work due to incorrect sorting of the faces :
+                 * unlike the flat calm surface, the near and far faces of the same body of water do
+                 * overlap on screen and must be blended back-to-front.
                  *
                  * The only real solution is to split the geometry into 2 objects that share the
                  * same mesh. Have one with back face culling on and one with front face culling on.
@@ -931,8 +1005,16 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
                  */
                 LayerComparator.setLayer(geometry, 2);
                 Geometry inside = geometry.clone();
+                // The clone must be told apart from its outside twin : they share the mesh AND the name,
+                // and ChunkMeshBatchState collects the geometries to merge BY NAME — collecting both
+                // under "water" would fuse the two cull modes into one and cost the water a face.
+                inside.setName(CHUNK_MESH_TYPE_WATER_INSIDE);
                 LayerComparator.setLayer(inside, 1);
-                inside.getMaterial().getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Front);
+                // One shared front-culled material for every chunk, not the per-chunk copy that
+                // Geometry.clone() makes (clone(true) clones the material) : that was one Material
+                // allocated per water chunk on every re-mesh, and as many distinct instances for the
+                // renderer to set up.
+                inside.setMaterial(getWaterInsideMaterial());
                 node.attachChild(geometry);
                 node.attachChild(inside);
 
@@ -971,6 +1053,15 @@ public class FacesMeshGenerator implements ChunkMeshGenerator {
     }
 
     private Geometry createGeometry(String type, ChunkMesh chunkMesh) {
+        // A mesh type can be started (the map entry is created on the first block of that type) and end
+        // up with no visible face at all — fully submerged water is the common case. Drop it here : an
+        // empty geometry draws nothing but still costs a cull test, a queue insertion, a Transparent
+        // sort slot and a full material/shader/uniform bind every single frame. See ChunkMesh#isEmpty.
+        if (chunkMesh.isEmpty()) {
+            chunkMesh.clear();
+            return null;
+        }
+
         Mesh mesh = chunkMesh.generateMesh();
         if (mesh == null) {
             return null;

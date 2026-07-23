@@ -245,7 +245,7 @@ public class PlayerState extends BaseAppState implements Resizable {
         PlayerRailControl railControl = new PlayerRailControl(config, worldManager);
         railControl.setWagon(wagon);
         PlayerFlyControl flyControl = new PlayerFlyControl(config, app.getCamera());
-        playerHeadDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera());
+        playerHeadDirectionControl = new PlayerHeadDirectionControl(config, app.getInputManager(), app.getCamera(), app.getStateManager());
         PlayerActionControl actionControl = new PlayerActionControl(app, config);
 
         Node player = new Node("Player");
@@ -286,7 +286,10 @@ public class PlayerState extends BaseAppState implements Resizable {
     private Label createCrossHair() {
         Label crossHairLabel = new Label("+");
         crossHairLabel.setColor(ColorRGBA.White);
-        crossHairLabel.setFontSize(30);
+        // Sized so the '+' ink is ~16px on screen : a glyph's on-screen size is fontSize scaled by the
+        // font page's authoring size, so this constant has to be re-checked whenever the UI font changes
+        // (see BitmapFontGenerator / IalonConfig.FONT_PATH).
+        crossHairLabel.setFontSize(47);
         crossHairLabel.getFont().getPage(0).clearParam(ALPHA_DISCARD_THRESHOLD);
 
         int width = camera.getWidth();

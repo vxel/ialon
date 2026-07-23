@@ -28,7 +28,6 @@ import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -36,11 +35,6 @@ import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
 import com.simsilica.lemur.FillMode;
-import com.simsilica.lemur.HAlignment;
-import com.simsilica.lemur.Label;
-import com.simsilica.lemur.Panel;
-import com.simsilica.lemur.VAlignment;
-import com.simsilica.lemur.component.DynamicInsetsComponent;
 import com.simsilica.lemur.component.SpringGridLayout;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.mathd.Vec3i;
@@ -48,6 +42,7 @@ import com.simsilica.mathd.Vec3i;
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.util.Locale;
@@ -60,11 +55,19 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
 
     private static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
+    /** Shown on the popup's title signboard (part of the chrome — see {@link IalonTheme#applyChromeOver}). */
+    private static final String TITLE = "Global Settings";
+
     private SimpleApplication app;
     private boolean isMouseLocked = false;
     private Node popup;
     private Button cornerBack;
     private Button cornerClose;
+
+    // The settings themselves : a centred, swipe/wheel-scrollable column. Scrollable because on a short
+    // screen (or after the window is shrunk) the last rows overflow the bottom edge and would otherwise
+    // be unreachable.
+    private ScrollableColumn column;
 
     private final IalonConfig config;
     private static final int FAR_TREE_MAX_DISTANCE = 1000;
@@ -73,6 +76,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     private SettingsValue ambientIntensity;
     private SettingsValue sunIntensity;
     private SettingsValue farTreeDistance;
+    private SettingsValue soundVolume;
     private SettingsToggle farTerrain;
     private SettingsToggle showFps;
     private SettingsToggle showPosition;
@@ -105,20 +109,15 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         settingsPopup.setLocalTranslation(0, app.getCamera().getHeight(), 100);
         settingsPopup.setName("settingsPopup");
         settingsPopup.setPreferredSize(new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0));
-        UiHelper.addBackground(settingsPopup, new ColorRGBA(0f, 0f, 0f, 0.95f), config);
+        // Veil in the background layer, steampunk chrome in the border layer (both re-applied by layout()).
+        IalonTheme.applyVeil(settingsPopup, app.getAssetManager(), config);
         // Consume background clicks (so they don't reach the game) but do NOT close the popup :
         // closing is done only via the Close button.
         settingsPopup.addMouseListener(new IgnoreMouseClickListener());
 
-        float vh = app.getCamera().getHeight() / 100f;
-
-        // The whole block is centered horizontally and anchored to a fixed top margin (top inset 0, all
-        // vertical slack pushed to the bottom) so the title sits at the same height regardless of how much
-        // content there is — matching the world-menu popup. A fixed top spacer (added as row 0) provides
-        // that top margin.
-        Container content = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
-        content.setInsetsComponent(new DynamicInsetsComponent(0, 50, 50, 50));
-        content.addMouseListener(new IgnoreMouseClickListener());
+        // The settings themselves : a centred, vertically scrollable column (see ScrollableColumn — the
+        // "New world" form is built the same way, so both behave identically, notably after a resize).
+        column = new ScrollableColumn(settingsPopup, app.getCamera());
 
         Container container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None), IALON_STYLE);
 
@@ -131,7 +130,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
                 0.0f, 2.0f, config.getAmbiantIntensity(),
                 v -> {
                     config.setAmbiantIntensity((float)ambientIntensity.getValue());
-                    return String.format(Locale.ENGLISH, "%.2f", v);
+                    return String.format(Locale.ENGLISH, "%.0f", v*100);
                 }
         );
 
@@ -139,7 +138,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
                 0.0f, 2.0f, config.getSunIntensity(),
                 v -> {
                     config.setSunIntensity((float)sunIntensity.getValue());
-                    return String.format(Locale.ENGLISH, "%.2f", v);
+                    return String.format(Locale.ENGLISH, "%.0f", v*100);
                 }
         );
 
@@ -152,6 +151,17 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         farTreeDistance = new SettingsValue("Far trees", app.getCamera(),
                 0, FAR_TREE_MAX_DISTANCE, config.isFarTree() ? config.getFarTreeDistance() : 0,
                 v -> v.intValue() == 0 ? "Off" : String.valueOf(v.intValue()));
+
+        // Master gain, applied live on the jME Listener so the slider is audible while dragging it.
+        // Covers every sound, not just the wildlife. Reads "Off" at 0.
+        soundVolume = new SettingsValue("Sound", app.getCamera(),
+                0.0f, 1.0f, config.getSoundVolume(),
+                v -> {
+                    config.setSoundVolume(v.floatValue());
+                    IalonInitializer.applyMasterVolume(app, v.floatValue());
+                    return v == 0 ? "Off" : String.format(Locale.ENGLISH, "%.0f", v * 100);
+                }
+        );
 
         showFps = new SettingsToggle("Show FPS", app.getCamera(),
                 config.isShowFps(), this::setShowFpsEnabled);
@@ -173,46 +183,24 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         sunIntensity.addToContainer(container, 2);
         farTerrain.addToContainer(container, 3);
         farTreeDistance.addToContainer(container, 4);
-        showFps.addToContainer(container, 5);
-        showPosition.addToContainer(container, 6);
-        minimap.addToContainer(container, 7);
-        maxFramerate.addToContainer(container, 8);
-        devMode.addToContainer(container, 9);
+        soundVolume.addToContainer(container, 5);
+        showFps.addToContainer(container, 6);
+        showPosition.addToContainer(container, 7);
+        minimap.addToContainer(container, 8);
+        maxFramerate.addToContainer(container, 9);
+        devMode.addToContainer(container, 10);
 
-        // Fixed top margin (same as the screen-edge margin used by the top buttons) so the title sits at a
-        // constant height.
-        Panel topSpacer = new Panel();
-        topSpacer.setBackground(null);
-        topSpacer.setPreferredSize(new Vector3f(1, UiHelper.screenMargin(app.getCamera().getHeight()), 0));
-        content.addChild(topSpacer, 0, 0);
-
-        // Title, centered horizontally within its cell (the widest column 0 child) by the
-        // DynamicInsetsComponent, with a small spacer row below it.
-        Label title = new Label("Global Settings", IALON_STYLE);
-        title.setFontSize(4 * vh);
-        title.setColor(ColorRGBA.White);
-        title.setTextHAlignment(HAlignment.Center);
-        title.setInsetsComponent(new DynamicInsetsComponent(0, 0.5f, 0, 0.5f));
-        content.addChild(title, 1, 0);
-
-        Panel titleSpacer = new Panel();
-        titleSpacer.setBackground(null);
-        titleSpacer.setPreferredSize(new Vector3f(1, 3 * vh, 0));
-        content.addChild(titleSpacer, 2, 0);
-
-        content.addChild(container, 3, 0);
-
-        settingsPopup.addChild(content);
+        column.addHeaderSpace();
+        column.addRow(container);
+        column.attach();
 
         // Header buttons at the popup's top corners, level with the title (positioned by layout()) :
         // Back (left) returns to the worlds menu, Close (right) returns to the game. No bottom buttons.
-        cornerBack = new Button("Back", IALON_STYLE);
-        cornerBack.setTextVAlignment(VAlignment.Center);
+        cornerBack = IalonTheme.cornerButton("Back", app.getAssetManager(), app.getCamera().getHeight());
         cornerBack.addClickCommands(source -> backToWorldMenu());
         settingsPopup.attachChild(cornerBack);
 
-        cornerClose = new Button("Close", IALON_STYLE);
-        cornerClose.setTextVAlignment(VAlignment.Center);
+        cornerClose = IalonTheme.cornerButton("Close", app.getAssetManager(), app.getCamera().getHeight());
         cornerClose.addClickCommands(source -> hidePopup());
         settingsPopup.attachChild(cornerClose);
 
@@ -323,8 +311,12 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
     /**
      * Toggles developer/debug mode live : attaches the debug overlays + hotkeys (axes, debug HUD, jME
      * debug keys, wireframe toggle) and the detailed stat view when on, detaches them when off. Mirrors the
-     * startup-time attachment in {@link org.delaunois.ialon.Ialon}. Runtime-only : not persisted, so it
-     * defaults back to off on restart.
+     * startup-time attachment in {@link org.delaunois.ialon.Ialon}.
+     *
+     * <p>Persisted with the other game settings ({@code save/game.yml}), so the choice survives a restart.
+     * Each launcher still decides what it means on a save that has never stored it — the desktop harness
+     * starts in debug mode, Android does not — but that is a default now, applied BEFORE the load, and no
+     * longer an override applied after it.
      */
     private void setDevModeEnabled(boolean enabled) {
         config.setDevMode(enabled);
@@ -337,13 +329,11 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
                 app.getStateManager().attach(new AxesDebugState());
                 app.getStateManager().attach(new IalonDebugState(config));
                 app.getStateManager().attach(new DebugKeysAppState());
-                app.getStateManager().attach(new WireframeState());
             }
         } else {
             detachState(AxesDebugState.class);
             detachState(IalonDebugState.class);
             detachState(DebugKeysAppState.class);
-            detachState(WireframeState.class);
         }
     }
 
@@ -356,14 +346,31 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
 
     public void showPopup() {
         if (popup.getParent() == null) {
+            // Always reopen at the top, so the title and the first settings are what shows up.
+            column.attach();
             app.getGuiNode().attachChild(popup);
-            app.getStateManager().getState(PlayerState.class).setTouchEnabled(false);
+            // The chrome is a sibling of the popup, so it can only be placed once the popup is attached.
+            IalonTheme.applyChromeOver(popup, app.getAssetManager(),
+                    app.getCamera().getWidth(), app.getCamera().getHeight(), TITLE);
+            setPlayerTouchEnabled(false);
         }
+    }
+
+    /** Blocks / restores the in-game touch controls while the popup is up (absent in UI previews). */
+    private void setPlayerTouchEnabled(boolean enabled) {
+        Optional.ofNullable(app.getStateManager().getState(PlayerState.class))
+                .ifPresent(ps -> ps.setTouchEnabled(enabled));
     }
 
     @Override
     public boolean isPopupOpen() {
         return popup != null && popup.getParent() != null;
+    }
+
+    /** Full screen, opaque veil : nothing of the world shows through, so it need not be drawn. */
+    @Override
+    public boolean hidesWorld() {
+        return true;
     }
 
     @Override
@@ -380,8 +387,9 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
 
     public void hidePopup() {
         if (popup.getParent() != null) {
+            IalonTheme.removeChromeFrom((Node) popup.getParent());
             popup.removeFromParent();
-            app.getStateManager().getState(PlayerState.class).setTouchEnabled(true);
+            setPlayerTouchEnabled(true);
         }
         saveConfig();
     }
@@ -454,23 +462,28 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         layout(width, height);
     }
 
-    /** Re-fits the full-screen popup to the new screen size and repositions the corner header buttons. */
+    /**
+     * Re-fits the full-screen popup to the new screen size, rebuilds its chrome and repositions the corner
+     * header buttons. The chrome has to be rebuilt, not just repositioned : a nine-patch bakes its scale
+     * into its mesh, so its thickness would otherwise stay frozen in the old resolution's pixels.
+     */
     private void layout(int width, int height) {
         ((Container) popup).setPreferredSize(new Vector3f(width, height, 0));
         popup.setLocalTranslation(0, height, 100);
-        float vh = height / 100f;
-        sizeCornerButton(cornerBack, vh);
-        sizeCornerButton(cornerClose, vh);
+        IalonTheme.applyChromeOver(popup, app.getAssetManager(), width, height, TITLE);
+        sizeCornerButton(cornerBack, height);
+        sizeCornerButton(cornerClose, height);
         UiHelper.placeCornerButtons(cornerBack, cornerClose, width, height);
+        column.layout(width, height);
     }
 
     /**
-     * Sizes a corner header button : font only, no fixed width, so the button hugs its text. That lets
+     * Restyles a corner header button : no fixed width, so it hugs its text. That lets
      * {@link UiHelper#placeCornerButtons} sit it flush in the corner (its real width is then known), so
      * Back hugs the left edge and Close hugs the right edge at the same margin.
      */
-    private void sizeCornerButton(Button button, float vh) {
-        button.setFontSize(4 * vh);
+    private void sizeCornerButton(Button button, int height) {
+        IalonTheme.restyleCornerButton(button, app.getAssetManager(), height);
     }
 
     @Override
@@ -487,6 +500,7 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         ambientIntensity.update();
         sunIntensity.update();
         farTreeDistance.update();
+        soundVolume.update();
         farTerrain.update();
         showFps.update();
         showPosition.update();

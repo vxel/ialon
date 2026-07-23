@@ -64,17 +64,20 @@ public class CreationPreview extends AbstractPreviewProcessor {
     private final ViewPort viewPort;
     private final int width;
     private final int height;
+    private final Runnable onDone;
 
     private Renderer renderer;
     private ByteBuffer outBuf;
     private boolean done;
 
-    private CreationPreview(SimpleApplication app, Path png, ViewPort viewPort, int width, int height) {
+    private CreationPreview(SimpleApplication app, Path png, ViewPort viewPort, int width, int height,
+                            Runnable onDone) {
         this.app = app;
         this.png = png;
         this.viewPort = viewPort;
         this.width = width;
         this.height = height;
+        this.onDone = onDone;
     }
 
     /**
@@ -83,6 +86,16 @@ public class CreationPreview extends AbstractPreviewProcessor {
      * attached to the throwaway preview scene).
      */
     public static void render(SimpleApplication app, Node creationNode, Vector3f boxSize, Path png) {
+        render(app, creationNode, boxSize, png, null);
+    }
+
+    /**
+     * Same as {@link #render(SimpleApplication, Node, Vector3f, Path)}, then runs {@code onDone} on the
+     * render thread once the PNG has been written (always invoked, even if the render fails), so a caller
+     * showing that thumbnail can safely refresh its UI from there.
+     */
+    public static void render(SimpleApplication app, Node creationNode, Vector3f boxSize, Path png,
+                             Runnable onDone) {
         Vector3f center = boxSize.mult(0.5f);
         // An upper corner of the box (max X/Y/Z) ; the camera sits along the centre→corner ray at twice
         // the centre-to-corner distance, i.e. at  center + 2*(corner - center) = 2*corner - center.
@@ -116,7 +129,7 @@ public class CreationPreview extends AbstractPreviewProcessor {
         vp.setBackgroundColor(new ColorRGBA(0.08f, 0.09f, 0.12f, 1f));
         vp.setOutputFrameBuffer(fb);
         vp.attachScene(scene);
-        vp.addProcessor(new CreationPreview(app, png, vp, width, height));
+        vp.addProcessor(new CreationPreview(app, png, vp, width, height, onDone));
     }
 
     @Override
@@ -151,7 +164,12 @@ public class CreationPreview extends AbstractPreviewProcessor {
         } catch (IOException | RuntimeException e) {
             log.warn("Failed to render creation preview {}: {}", png, e.getMessage());
         }
-        // Tear the throwaway viewport down outside the render iteration.
-        app.enqueue(() -> app.getRenderManager().removePreView(viewPort));
+        // Tear the throwaway viewport down and run the continuation outside the render iteration.
+        app.enqueue(() -> {
+            app.getRenderManager().removePreView(viewPort);
+            if (onDone != null) {
+                onDone.run();
+            }
+        });
     }
 }

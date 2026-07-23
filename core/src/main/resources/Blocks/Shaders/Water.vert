@@ -12,6 +12,10 @@ uniform mat4 g_WorldMatrix;
 uniform vec4 g_AmbientLightColor;
 
 uniform vec4 m_Diffuse;
+uniform float m_DepthBias; // FAR water plane : matches the far terrain relief's clip-space depth bias so
+                           // the two are compared by TRUE depth (higher land occludes the lower water,
+                           // instead of the relief's own bias making the flat water win over it). 0 for
+                           // the near voxel water (which uses PolyOffset to win over the voxel side-faces).
 
 attribute vec3 inPosition;
 
@@ -36,22 +40,29 @@ out float vAlpha;
 void main() {
     vec4 modelSpacePos = vec4(inPosition, 1.0);
     gl_Position = g_WorldViewProjectionMatrix * modelSpacePos;
+    gl_Position.z += m_DepthBias; // see m_DepthBias (0 for the near voxel water)
     vWorldPos = (g_WorldMatrix * modelSpacePos).xyz;
 
     // Water body colour = tint * current light level (so it follows the day/night cycle like the voxels).
-    vec3 tint = vec3(0.19, 0.52, 0.70);
-    float lightLevel = 0.7;
+    // Two sources, one shader :
+    //   - NEAR voxel water (VERTEX_COLOR) : tint + packed sun/torch light level from the vertex colour ;
+    //   - FAR water plane (no vertex colour) : the m_Diffuse tint (calmWaterColor) at open-sky light.
+    float lum = g_AmbientLightColor.r * 0.3 + g_AmbientLightColor.g * 0.59 + g_AmbientLightColor.b * 0.11;
+    vec3 tint;
+    float lightLevel;
     #ifdef VERTEX_COLOR
         // inColor is a normalized UnsignedByte buffer : the alpha channel (the packed light level)
         // arrives in [0,1], scale back to [0,255] with rounding before unpacking the nibbles.
         int packedLight = int(inColor.a * 255.0 + 0.5);
         int sunIntensity = (packedLight >> 4) & 0xF;
         int torchIntensity = packedLight & 0xF;
-        float lum = g_AmbientLightColor.r * 0.3 + g_AmbientLightColor.g * 0.59 + g_AmbientLightColor.b * 0.11;
         float sunlight = levels[sunIntensity] * lum;
         float torchlight = levels[torchIntensity];
         lightLevel = min(max(sunlight, torchlight), 0.7);
         tint = inColor.rgb;
+    #else
+        lightLevel = min(lum, 0.7); // open sky : full sun, same cap as the near water body
+        tint = m_Diffuse.rgb;
     #endif
 
     vBodyColor = lightLevel * tint;

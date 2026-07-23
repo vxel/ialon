@@ -61,6 +61,8 @@ public class UnderwaterState extends BaseAppState {
 
     private final IalonConfig config;
     private final ColorRGBA fogColor = new ColorRGBA();
+    // Reused when walking the liquid column upward (no per-frame allocation while submerged).
+    private final Vector3f probe = new Vector3f();
 
     private SimpleApplication app;
     private FilterPostProcessor fpp;
@@ -107,6 +109,29 @@ public class UnderwaterState extends BaseAppState {
     @Override
     protected void onDisable() {
         detach();
+        // Also clears the submerged flag : leaving it set would keep isSubmerged() answering "yes"
+        // forever to whoever asks (AmbientSoundState mutes the wildlife on it).
+        currentLiquidType = null;
+    }
+
+    /**
+     * Whether the camera (eye) is currently inside a liquid, below its actual surface. This is the same
+     * per-block test that drives the fog — worth reusing rather than repeating, because getting it right
+     * means handling a liquid cell that is only partly full and the LIQUID_DISABLED level carried by
+     * ordinary blocks. Used by {@link AmbientSoundState} to silence the wildlife underwater.
+     */
+    public boolean isSubmerged() {
+        return currentLiquidType != null;
+    }
+
+    /**
+     * Which liquid the eye is in — {@link TypeIds#WATER}, {@link TypeIds#LAVA}, or null when not
+     * submerged. Callers that react to being submerged AT ALL want {@link #isSubmerged()} ; this is for
+     * the ones that must tell the two apart, such as the water ambience loop, which would be plainly
+     * wrong playing in lava.
+     */
+    public String getSubmergedLiquid() {
+        return currentLiquidType;
     }
 
     @Override
@@ -120,6 +145,9 @@ public class UnderwaterState extends BaseAppState {
                 ? null
                 : config.getChunkManager().getBlock(eye).orElse(null);
 
+        // The liquid test comes FIRST : the eye is often inside a non-liquid block (the camera clips into
+        // the wall/floor of a freshly dug tunnel), and such a block carries liquidLevel LIQUID_DISABLED
+        // (-1), which liquidSurfaceY must never be handed.
         if (block == null || block.getLiquidLevel() <= 0 || eye.y >= liquidSurfaceY(eye, block)) {
             // Not in a liquid cell, or the eye is above the actual liquid surface inside the cell
             // (a liquid block only fills part of its cell : full = cell top, source ~0.8, lower levels
@@ -136,8 +164,19 @@ public class UnderwaterState extends BaseAppState {
             lastColorUpdate = 0; // force an immediate fog-colour refresh on liquid change
         }
 
+        // Fade the fog in with depth below the surface : right under the water line the effect is
+        // near-zero (you still see out of the water clearly), ramping to full over fadeDepth. Without
+        // this the whole view snaps to blue the instant the eye dips below the surface.
+        // The depth is measured against the ACTUAL liquid surface (top of the contiguous liquid column
+        // above the eye), not surfaceY (top of the eye's own cell) — using the latter makes the depth
+        // reset to ~0 at every cell boundary while descending, which flickers the intensity.
+        float fadeDepth = config.getUnderwaterFogFadeDepth();
+        float intensity = fadeDepth <= 0f
+                ? 1f
+                : Math.min(1f, (columnSurfaceY(eye, block, fadeDepth) - eye.y) / fadeDepth);
+
         attach();
-        filter.setIntensity(1f);
+        filter.setIntensity(intensity);
         updateFogColor();
     }
 
@@ -150,6 +189,34 @@ public class UnderwaterState extends BaseAppState {
         float scale = BlocksConfig.getInstance().getBlockScale();
         Vec3i cell = ChunkManager.getBlockLocation(worldPos);
         return (cell.y + 0.5f + Liquid.topOffset(block.getLiquidLevel())) * scale;
+    }
+
+    /**
+     * World-space Y of the actual liquid surface above the eye : the top of the contiguous liquid
+     * column starting at the eye's cell and going up. Unlike {@link #liquidSurfaceY} (which only
+     * looks at the eye's own cell), this stays stable as the eye descends through successive liquid
+     * cells, so the depth-based fog fade doesn't flicker at cell boundaries.
+     *
+     * The walk is capped : the fog saturates at {@code fadeDepth}, so there is never a need to look
+     * higher than a couple of cells above that.
+     */
+    private float columnSurfaceY(Vector3f eye, Block eyeBlock, float fadeDepth) {
+        float scale = BlocksConfig.getInstance().getBlockScale();
+        ChunkManager cm = config.getChunkManager();
+        Vec3i cell = ChunkManager.getBlockLocation(eye);
+        int maxSteps = (int) Math.ceil(fadeDepth / scale) + 1;
+        Block top = eyeBlock;
+        int topY = cell.y;
+        for (int i = 1; i <= maxSteps; i++) {
+            probe.set((cell.x + 0.5f) * scale, (cell.y + i + 0.5f) * scale, (cell.z + 0.5f) * scale);
+            Block b = cm.getBlock(probe).orElse(null);
+            if (b == null || b.getLiquidLevel() <= 0) {
+                break;
+            }
+            top = b;
+            topY = cell.y + i;
+        }
+        return (topY + 0.5f + Liquid.topOffset(top.getLiquidLevel())) * scale;
     }
 
     /** Sets the per-liquid fog distance/density (lava is denser / shorter-range than water). */

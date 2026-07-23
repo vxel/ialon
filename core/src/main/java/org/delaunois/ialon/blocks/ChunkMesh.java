@@ -40,6 +40,19 @@ public class ChunkMesh {
         this.collisionMesh = collisionMesh;
     }
 
+    /**
+     * Whether no face at all was emitted into this mesh. Happens routinely : a chunk of fully
+     * submerged water, for instance, gets a water mesh entry from the first water block met but ends
+     * up with every face hidden by its neighbours. Such a mesh must NOT become a geometry — jME still
+     * culls it, queues it, sorts it in the Transparent bucket and runs the whole
+     * {@code Material.render()} shader/uniform/texture setup for it, only for
+     * {@code GLRenderer.renderMesh} to bail out on the empty vertex buffer. Pure CPU cost, invisible
+     * in the "Objects" statistic since the counter is incremented after that early return.
+     */
+    public boolean isEmpty() {
+        return positions.isEmpty();
+    }
+
     public Mesh generateMesh() {
         long start = System.nanoTime();
         Mesh mesh = new Mesh();

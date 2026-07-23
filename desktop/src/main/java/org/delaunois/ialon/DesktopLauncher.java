@@ -85,10 +85,13 @@ public class DesktopLauncher {
 
     public static void main(String[] args) {
         IalonConfig config = new IalonConfig();
+        // BEFORE the load, not after : this is the desktop DEFAULT for a save that has never stored the
+        // setting, not an override. Set afterwards, it silently discarded the player's own choice on every
+        // launch — the debug overlays came back however often they were turned off in the settings.
+        config.setDevMode(true);
         IalonConfigRepository.loadConfig(config);
         config.setGridRadiusMin(3);
         config.setGridRadiusMax(20);
-        config.setDevMode(true);
         Ialon app = new Ialon(config);
 
         AppSettings settings = new AppSettings(false);
@@ -107,7 +110,30 @@ public class DesktopLauncher {
         }
         settings.setRenderer(AppSettings.LWJGL_OPENGL32);
         settings.setUseInput(true);
-        settings.setAudioRenderer(null);
+        // OpenAL, for the ambient sounds (AmbientSoundState). libopenal64.so sits at the repo root with
+        // the other natives. The headless support harnesses still pass null : they must not open a
+        // device. IalonInitializer.setupAudio() is what turns this into a working listener.
+        //
+        // Known desktop trap, and NOT a bug in this game : a Bluetooth headset left in the HFP/headset
+        // profile makes the OS sink mono 16 kHz, OpenAL adopts that format, and its 2013 vintage (LWJGL2
+        // ships OpenAL Soft 1.15.1) handles the path badly — a tick about twice a second. Confirmed to be
+        // below us : a plain ffmpeg tone played through OpenAL ticks too, while the same file through VLC
+        // or ffplay is clean.
+        //
+        // Not fixable from here — jME calls alc.createALC() with NO attributes, so neither the mixing
+        // rate nor the buffer can be set by the application. It is an ~/.alsoftrc job, and the content
+        // matters :
+        //     [general]
+        //     frequency=48000
+        //     channels=stereo
+        //     period_size=1024
+        //     periods=4
+        // Stopping OpenAL from adopting the sink's format is what cures it — PipeWire then does the
+        // conversion, which it does well. Note that `periods` alone is READ AND IGNORED while OpenAL
+        // follows the sink (the pulse backend forces its own 2-buffer model) ; it only takes effect once
+        // the format is forced, which is why a config with just `periods=4` changes nothing.
+        // Switching the headset to A2DP fixes it too, and is the only thing that restores 3D placement.
+        settings.setAudioRenderer(AppSettings.LWJGL_OPENAL);
         settings.setVSync(true);
 
         app.setSettings(settings);

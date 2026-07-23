@@ -47,7 +47,8 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>Each creation is one {@code <id>.zcreation} file, stored in the SAME compact format as chunks (see
  * {@code ZipFileRepository}) : a ZIP holding a Protobuf {@code ChunkProto} ({@code data} entry : size +
- * row-major block names) plus a small text {@code meta} entry (display name + dimensions). ZIP deflate
+ * row-major block names) plus a small text {@code meta} entry (display name + dimensions + flags, one per
+ * line ; a line missing from an older file keeps its default). ZIP deflate
  * collapses the long runs of repeated block names, so the file stays small without any hand-rolled
  * encoding. Listing reads only the cheap {@code meta} entry, so the (potentially large) block grid is
  * parsed only when a creation is actually loaded.</p>
@@ -242,11 +243,14 @@ public final class CreationRepository {
         return s.substring(start, end);
     }
 
-    // --- Metadata entry : "name\nsizeX sizeY sizeZ" -------------------------------------------------
+    // --- Metadata entry : "name\nsizeX sizeY sizeZ\nskipAir" ----------------------------------------
+    // The third line ("1"/"0") is optional : creations saved before it existed simply read back with
+    // skipAir = false, i.e. the original "air erases the destination block" placement behaviour.
 
     private static void writeMeta(OutputStream out, Creation creation) throws IOException {
         String meta = (creation.getName() == null ? "" : creation.getName()) + "\n"
-                + creation.getSizeX() + " " + creation.getSizeY() + " " + creation.getSizeZ();
+                + creation.getSizeX() + " " + creation.getSizeY() + " " + creation.getSizeZ() + "\n"
+                + (creation.isSkipAir() ? "1" : "0");
         out.write(meta.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -270,6 +274,7 @@ public final class CreationRepository {
                 creation.setSizeZ(parseInt(dims[2]));
             }
         }
+        creation.setSkipAir(lines.length > 2 && "1".equals(lines[2].trim()));
         return creation;
     }
 

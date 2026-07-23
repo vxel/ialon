@@ -15,6 +15,8 @@ public interface WorldSettings {
 
     ColorRGBA getCalmWaterColor();
 
+    float getWaterOpaqueDistance();
+
     boolean isGreedyCalmWater();
 
     boolean isDebugChunks();

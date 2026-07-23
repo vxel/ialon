@@ -60,6 +60,83 @@ tasks.register('screenshot', JavaExec) {
     workingDir = rootProject.projectDir
 }
 
+// Bakes a TTF into the BMFont pair the game consumes (.fnt + single .png page) via the support
+// BitmapFontGenerator. Authoring-time only, headless, no external tool. Examples :
+//   ./gradlew :core:generateFont                                   # Jura Bold 44px -> Textures/font-jura.*
+//   ./gradlew :core:generateFont --args='--size=56 --gamma=1.2'    # tweak
+//   ./gradlew :core:generateFont --args='--shadow=3'               # deeper drop shadow (0 = flat page)
+tasks.register('generateFont', JavaExec) {
+    group = 'build'
+    description = 'Bake a TTF into a BMFont .fnt + .png page (support.BitmapFontGenerator).'
+    mainClass = 'org.delaunois.ialon.support.BitmapFontGenerator'
+    classpath = sourceSets.test.runtimeClasspath
+    // Same rationale as 'screenshot' : keep the --ttf / --out paths relative to the repo root.
+    workingDir = rootProject.projectDir
+}
+
+// Renders the UI font onto the screen (real Lemur styling, atlas-remapped font) and writes a PNG, then
+// exits. Same display/GL requirements as 'screenshot'. Example :
+//   ./gradlew :core:fontPreview                            # -> core/build/screenshots/font-preview.png
+//   ./gradlew :core:fontPreview --args="out.png"
+tasks.register('fontPreview', JavaExec) {
+    group = 'verification'
+    description = 'Screenshot the UI font as the game styles it (support.FontPreview).'
+    mainClass = 'org.delaunois.ialon.support.FontPreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+}
+
+// Screenshots the steampunk UI chrome (IalonTheme) at two resolutions, so the nine-patch frames can be
+// checked for constant relative thickness and for smearing. Same display/GL requirements as 'screenshot'.
+//   ./gradlew :core:uiPreview                               # -> core/build/screenshots/ui-preview-*.png
+//   ./gradlew :core:uiPreview --args="out.png 2400 1080"    # one specific size
+//   ./gradlew :core:uiPreview -Pframes=400                  # capture later : the backdrop is animated
+tasks.register('uiPreview', JavaExec) {
+    group = 'verification'
+    description = 'Screenshot the steampunk UI chrome as the game styles it (support.UiPreview).'
+    mainClass = 'org.delaunois.ialon.support.UiPreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+    // The popup backdrop is the animated steam (ui.SteamBackground), and one still at a fixed instant
+    // says nothing about how it evolves : -Pframes renders further before capturing.
+    systemProperty 'ialon.uiPreview.frames', findProperty('frames') ?: '10'
+}
+
+// Screenshots the in-game HUD (the play-screen controls) by booting the real game and capturing the GUI
+// viewport. The only harness that shows the on-screen buttons ; same display/GL requirements as
+// 'screenshot'. Examples :
+//   ./gradlew :core:hudPreview                       # -> core/build/screenshots/hud-preview.png
+//   ./gradlew :core:hudPreview -PsettleMs=35000      # slower machine : wait longer before capturing
+tasks.register('hudPreview', JavaExec) {
+    group = 'verification'
+    description = 'Screenshot the in-game HUD from the real application (support.HudPreview).'
+    mainClass = 'org.delaunois.ialon.support.HudPreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+    systemProperty 'ialon.hudPreview.settleMs', findProperty('settleMs') ?: '25000'
+}
+
+// Plays the wildlife ambience through real OpenAL, with the real 3D placement, without loading a world
+// -- the step local/tools/preview-ambience.sh cannot do (it mixes offline and fakes the spatialisation).
+// Needs a sound device and a display. Examples :
+//   ./gradlew :core:ambiencePreview                      # 60 s : day, dusk crossfade, night
+//   ./gradlew :core:ambiencePreview --args="--night"     # owls only
+//   ./gradlew :core:ambiencePreview --args="--water 40" # the submerged water bed, in and out
+//   ./gradlew :core:ambiencePreview --args="--dive 40"  # birds cut mid-call by a dive, and back
+// Two isolating modes, for telling OUR audio apart from the machine's. Both play one sound and then
+// touch nothing at all — no fade, no listener movement, no scheduler — so anything still wrong is
+// below us. --tone needs a file : -Dialon.tone=/path/to/x.wav
+//   ./gradlew :core:ambiencePreview --args="--bedonly 18"
+//   ./gradlew :core:ambiencePreview --args="--tone 18" -Dialon.tone=/tmp/tone.wav
+//   ./gradlew :core:ambiencePreview --args="--day 30"    # birds only, 30 s
+tasks.register('ambiencePreview', JavaExec) {
+    group = 'verification'
+    description = 'Play the ambient wildlife through OpenAL, positioned (support.AmbiencePreview).'
+    mainClass = 'org.delaunois.ialon.support.AmbiencePreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+}
+
 jacocoTestReport {
     reports {
         xml.required = true
@@ -84,3 +161,5 @@ processResources {
     exclude '**/*.mtl'      // model sources -> .j3o
     exclude '**/*.bak'      // backups
 }
+
+

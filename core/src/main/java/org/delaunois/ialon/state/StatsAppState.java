@@ -48,6 +48,7 @@ import com.jme3.scene.shape.Quad;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.jme.StatsView;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.util.Locale;
@@ -60,6 +61,13 @@ import java.util.Locale;
  *  @author    Paul Speed
  */
 public class StatsAppState extends AbstractAppState implements Resizable {
+
+    /**
+     * On-screen size of the FPS / position readouts. Pinned, because a {@link BitmapText} with no
+     * explicit size renders at {@code charSet.getRenderedSize()} — the size the font page happens to
+     * have been baked at, an authoring detail that moves whenever the UI font is regenerated.
+     */
+    private static final float HUD_FONT_SIZE = 30;
 
     private Application app;
     protected StatsView statsView;
@@ -102,7 +110,13 @@ public class StatsAppState extends AbstractAppState implements Resizable {
      */
     public void setFont( BitmapFont guiFont ) {
         this.guiFont = guiFont;
-        this.fpsText = new BitmapText(guiFont);
+        this.fpsText = newHudText(guiFont);
+    }
+
+    private static BitmapText newHudText(BitmapFont font) {
+        BitmapText text = new BitmapText(font);
+        text.setSize(HUD_FONT_SIZE);
+        return text;
     }
 
     public BitmapText getFpsText() {
@@ -204,7 +218,7 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         if (fpsText != null) {
             // FPS text is top-centered ; the stats view and darken quads are bottom-anchored (origin) and
             // therefore do not move on resize.
-            fpsText.setLocalTranslation((width - fpsText.getLineWidth()) / 2f, height, 0);
+            fpsText.setLocalTranslation((width - fpsText.getLineWidth()) / 2f, height, IalonTheme.DEBUG_OVERLAY_Z);
         }
         if (positionText != null) {
             // Position text is top-left, shifted right by twice the screen margin (see loadPositionText).
@@ -218,11 +232,13 @@ public class StatsAppState extends AbstractAppState implements Resizable {
      */
     public void loadFpsText() {
         if (fpsText == null) {
-            fpsText = new BitmapText(guiFont);
+            fpsText = newHudText(guiFont);
         }
 
         fpsText.setText("FPS: 000");
-        fpsText.setLocalTranslation((app.getCamera().getWidth()  - fpsText.getLineWidth()) / 2f, app.getCamera().getHeight(), 0);
+        // Over every popup, like the stats view (see IalonTheme.DEBUG_OVERLAY_Z) : the frame rate is worth
+        // reading precisely while a menu is open, since opening one costs frames.
+        fpsText.setLocalTranslation((app.getCamera().getWidth()  - fpsText.getLineWidth()) / 2f, app.getCamera().getHeight(), IalonTheme.DEBUG_OVERLAY_Z);
         fpsText.setCullHint(showFps ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(fpsText);
 
@@ -232,7 +248,7 @@ public class StatsAppState extends AbstractAppState implements Resizable {
      * Attaches the world-position readout to guiNode, top-left, using the same font as the FPS counter.
      */
     public void loadPositionText() {
-        positionText = new BitmapText(guiFont);
+        positionText = newHudText(guiFont);
         positionText.setText("x:0 y:0 z:0");
         // Shifted right by twice the screen margin so it clears the block-removal button placed below it
         // (ButtonManagerState positions that button at x = margin).
@@ -251,8 +267,9 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         statsView = new StatsView("Statistics View",
                                   app.getAssetManager(),
                                   app.getRenderer().getStatistics(), guiFont);
-        // move it up so it appears above fps text
-        statsView.setLocalTranslation(0, fpsText.getLineHeight(), 0);
+        // move it up so it appears above fps text, and over every popup (see IalonTheme.DEBUG_OVERLAY_Z) :
+        // a debug readout is useless the moment a menu or a confirmation dialog hides it.
+        statsView.setLocalTranslation(0, fpsText.getLineHeight(), IalonTheme.DEBUG_OVERLAY_Z);
         statsView.setEnabled(showStats);
         statsView.setCullHint(showStats ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(statsView);
@@ -265,13 +282,15 @@ public class StatsAppState extends AbstractAppState implements Resizable {
 
         darkenFps = new Geometry("StatsDarken", new Quad(200, fpsText.getLineHeight()));
         darkenFps.setMaterial(mat);
-        darkenFps.setLocalTranslation(0, 0, -1);
+        // Follows the FPS text up front, one step behind it so it still reads as its backdrop.
+        darkenFps.setLocalTranslation(0, 0, IalonTheme.DEBUG_OVERLAY_Z - 1);
         darkenFps.setCullHint(showFps && darkenBehind ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(darkenFps);
 
         darkenStats = new Geometry("StatsDarken", new Quad(200, statsView.getHeight()));
         darkenStats.setMaterial(mat);
-        darkenStats.setLocalTranslation(0, fpsText.getHeight(), -1);
+        // Follows the stats view up front, one step behind it so it still reads as its backdrop.
+        darkenStats.setLocalTranslation(0, fpsText.getHeight(), IalonTheme.DEBUG_OVERLAY_Z - 1);
         darkenStats.setCullHint(showStats && darkenBehind ? CullHint.Never : CullHint.Always);
         guiNode.attachChild(darkenStats);
     }

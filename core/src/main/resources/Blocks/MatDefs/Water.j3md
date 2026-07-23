@@ -37,12 +37,58 @@ MaterialDef Water {
         Float GlintPower
         Float GlintStrength
 
+        // Underside (underwater, looking up) brightness scale : how strongly the surface transmits the
+        // sky light + sun/moon shimmer to the camera below. 0 keeps the old plain body colour ; ~1 gives
+        // the bright, ripple-dappled ceiling. Only affects the below-water view (see Water.frag).
+        Float UnderStrength
+        // Underside sun-sparkle tightness : LOW = wide soft glow, HIGH = pinpoint (its own broad value,
+        // separate from the tight outer-surface GlintPower).
+        Float UnderGlintPower
+        // Underside wave-tilt exaggeration : how much the ripples scatter the refracted sun. HIGH breaks
+        // the sun into a wide, shattered field of glints (some facets tip past the Snell window -> gaps).
+        Float UnderScatter
+
         // Fresnel falloff exponent.
         Float FresnelPower
 
         // How much the (near-uniform) sky reflection tints the water : 0 keeps the pure water colour
         // matching the FarTerrain, 1 is a full mirror. Kept low to avoid a near/far colour seam.
         Float ReflectionStrength
+
+        // Horizontal distance (world units) over which the surface fades from its base transparency
+        // (Diffuse alpha) to fully opaque -- so the water reads opaque with distance, not clear to the
+        // horizon. Combined with the Fresnel angle term (whichever makes it more opaque).
+        Float OpaqueDistance
+
+        // Set on the FAR water plane (not the near voxel water) : enables the loaded-region discard and
+        // switches the transparency law from angle-based (near) to distance-based (far). See FAR_WATER.
+        Boolean FarWater
+        // FAR water plane only : discard within this square (Chebyshev) horizontal radius of the camera,
+        // where the near voxel water is the truth.
+        Float InnerRadius
+
+        // SHORE CLIP (FAR water plane only). The far relief's height field, as a texture, encoded as a
+        // signed height relative to the water line : 0.5 IS the water line, spread over +/- HeightMapRange/2.
+        // It lets the water cut its own coastline from the same numbers the relief mesh is built from,
+        // rather than letting a depth-test tie between two near-tangent surfaces decide it -- that tie is
+        // what made the distant shoreline wobble with camera motion on Android. Binding the texture enables
+        // the SHORE_CLIP define ; the near voxel water never binds it and compiles it out.
+        Texture2D HeightMap
+        Float HeightMapSize      // texels per side, to hit texel centres exactly (a half-texel slip = 8 world units of coastline)
+        Float HeightMapRange     // world units encoded across the full 0..1 range
+        Vector2 HeightMapOrigin  // the field's world origin (the far terrain's tile snap)
+        Float Extent             // world span the field covers
+        Float ShoreMargin        // draw water only where the relief is at least this far BELOW the plane
+
+        // Distance fog (FAR water plane) : fades to FogColor (the horizon haze) with distance, matching the
+        // far terrain relief. The near voxel water sets FogDensity 0 (always too close to fog -> no-op).
+        Color FogColor
+        Float FogDistance
+        Float FogDensity
+
+        // Clip-space depth bias. FAR water plane : matches the far terrain relief's bias so higher land
+        // correctly occludes the flat water. Near voxel water leaves it 0 (uses PolyOffset instead).
+        Float DepthBias
 
         // Emulate the sRGB pipeline in-shader when the hardware sRGB framebuffer is unavailable
         // (e.g. Android GLES). See IalonConfig.manualGammaEncode.
@@ -67,6 +113,8 @@ MaterialDef Water {
         Defines {
             VERTEX_COLOR : UseVertexColor
             MANUAL_SRGB : ManualSrgb
+            FAR_WATER : FarWater
+            SHORE_CLIP : HeightMap
         }
     }
 

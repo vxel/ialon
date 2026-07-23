@@ -25,7 +25,6 @@ import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.event.MouseButtonEvent;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Spatial;
@@ -37,6 +36,7 @@ import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseListener;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class TimeFactorState extends BaseAppState implements ActionListener, Res
 
     private static final float UNIT = FastMath.TWO_PI / 86400;
     private static final float[] TIME_FACTORS = {0, 1 * UNIT, 10 * UNIT, 100 * UNIT, 1000 * UNIT, 10000 * UNIT};
-    private static final String[] TIME_FACTORS_LABELS = {"Pause", "1 x", "2 x", "3 x", "4 x", "5 x"};
+    private static final String[] TIME_FACTORS_LABELS = {"PAUSE", "1 x", "2 x", "3 x", "4 x", "5 x"};
 
     private SimpleApplication app;
     private BitmapFont guiFont;
@@ -111,19 +111,19 @@ public class TimeFactorState extends BaseAppState implements ActionListener, Res
     private Container createButton(float size, float posx, float posy, MouseListener listener) {
         Container buttonContainer = new Container();
         buttonContainer.setPreferredSize(new Vector3f(size, size, 0));
-        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(IalonTheme.SOOT_LIGHT, config));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam("AlphaDiscardThreshold");
         buttonContainer.setBackground(background);
         timeFactorLabel = new Label("");
-        timeFactorLabel.setFontSize(buttonSize / 4f);
+        timeFactorLabel.setFontSize(buttonSize / 2f);
         Label label = buttonContainer.addChild(timeFactorLabel);
         label.getFont().getPage(0).clearParam("AlphaDiscardThreshold");
         label.getFont().getPage(0).clearParam("VertexColor");
 
         // Center the text in the box.
         label.setInsetsComponent(new DynamicInsetsComponent(0.5f, 0.5f, 0.5f, 0.5f));
-        label.setColor(ColorRGBA.White);
+        label.setColor(IalonTheme.PARCHMENT);
         buttonContainer.setLocalTranslation(posx, posy, 1);
 
         buttonContainer.addMouseListener(listener);
@@ -168,8 +168,25 @@ public class TimeFactorState extends BaseAppState implements ActionListener, Res
         buttonSize = height / 12;
         float margin = UiHelper.screenMargin(height);
         buttonTimeFactor.setPreferredSize(new Vector3f(buttonSize, buttonSize, 0));
-        timeFactorLabel.setFontSize(buttonSize / 4f);
+        timeFactorLabel.setFontSize(labelFontSize());
         buttonTimeFactor.setLocalTranslation(width / 2f - 2 * buttonSize - SPACING, height - margin, 1);
+    }
+
+    /**
+     * A third of the button, unless the widest label ("PAUSE") would then overflow it and wrap onto two
+     * lines. Measured instead of hard-coded because the advance widths change with every UI font swap
+     * (see {@link IalonConfig#FONT_PATH}) : the Bold face does overflow where the lighter ones did not.
+     */
+    private float labelFontSize() {
+        BitmapFont font = timeFactorLabel.getFont();
+        float widest = 0;
+        for (String text : TIME_FACTORS_LABELS) {
+            widest = Math.max(widest, font.getLineWidth(text));
+        }
+        // getLineWidth measures at the page's authoring size, and a label's width scales linearly with
+        // its font size ; one pixel of slack absorbs Lemur rounding the laid-out line up.
+        float fitting = (buttonSize - 1) * font.getCharSet().getRenderedSize() / widest;
+        return Math.min(buttonSize / 3f, fitting);
     }
 
     @Override

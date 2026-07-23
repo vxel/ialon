@@ -27,7 +27,7 @@
     <logger name="org.delaunois.ialon.blocks.WorldManager" level="debug"/>
     <logger name="org.delaunois.ialon.blocks.ChunkManager" level="error"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
-    <logger name="org.delaunois.ialon.control.PlayerFlyControl" level="debug"/>
+    <logger name="org.delaunois.ialon.control.PlayerFlyControl" level="info"/>
     <logger name="org.delaunois.ialon.control.PlayerActionControl" level="debug"/>
     <logger name="org.delaunois.ialon.state.ChunkSaverState" level="error"/>
     <logger name="org.delaunois.ialon.state.PlayerState" level="info"/>

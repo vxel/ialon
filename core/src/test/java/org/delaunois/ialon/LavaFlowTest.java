@@ -1,5 +1,9 @@
 package org.delaunois.ialon;
 
+import java.util.HashSet;
+import java.util.Set;
+import com.simsilica.mathd.Vec3i;
+
 import com.jme3.math.Vector3f;
 
 import org.delaunois.ialon.blocks.Block;
@@ -29,10 +33,12 @@ class LavaFlowTest extends BaseSceneryTest {
     /** Drains BOTH the water (+ shared removal) and the lava flow queues until everything settles. */
     private void waitAllLiquidEnd() {
         ChunkLiquidManager m = worldManager.getChunkLiquidManager();
+        Set<Vec3i> touched = new HashSet<>();
         int i = 0;
         while ((m.queueSize() > 0 || m.lavaQueueSize() > 0) && i < MAX_SIMULATION_STEPS) {
-            m.step();
-            m.stepLava();
+            touched.clear();
+            m.step(touched);
+            m.stepLava(touched);
             i++;
         }
     }

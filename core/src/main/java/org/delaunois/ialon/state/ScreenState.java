@@ -9,6 +9,7 @@ import com.jme3.system.AppSettings;
 import com.simsilica.lemur.GuiGlobals;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.ui.IalonTheme;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -118,12 +119,28 @@ public class ScreenState extends BaseAppState implements ActionListener {
      * @param height the new GUI height
      */
     public void onReshape(int width, int height) {
+        if (!isInitialized()) {
+            // Android fires onSurfaceChanged -- hence Ialon.reshape -- before the state manager has
+            // initialised its states, and AppStateManager.getState() returns states that are merely
+            // ATTACHED as well as live ones. The caller's null check therefore lets us through with app
+            // still null, which used to NPE on the render thread (getAssetManager() below). Same guard
+            // covers the symmetric case, a reshape arriving after cleanup.
+            //
+            // Dropping the size is correct, not a papering-over : every Resizable lays itself out from
+            // the camera's own size in its initialize(), which is the very size being reported here.
+            // Returning BEFORE lastWidth/lastHeight are recorded matters -- storing it would make the
+            // first genuine reshape look like a no-op and skip the layout for real.
+            return;
+        }
         if (width == lastWidth && height == lastHeight) {
             return;
         }
         lastWidth = width;
         lastHeight = height;
         log.info("Reshaping GUI to {}x{}", width, height);
+        // Re-register the theme's chrome prototypes FIRST : a nine-patch bakes its scale into its mesh,
+        // so the style has to carry the new one before any Resizable rebuilds its widgets from it.
+        IalonTheme.registerStyles(app.getAssetManager(), height);
         for (Resizable resizable : resizables) {
             try {
                 resizable.onResize(width, height);

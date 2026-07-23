@@ -49,12 +49,14 @@ import lombok.extern.slf4j.Slf4j;
  * we can attribute to phases) and <b>gap</b> (buffer swap + vsync/fps-cap idle + GPU-driver stalls + OS
  * scheduling), plus GC activity and chunk-page churn :
  *
- * <pre>HITCH 52.0ms | work 3.4 (state 0.2 / spatial 3.0 / render 0.2) | gap 48.6 (swap/vsync/driver/OS) | top=SpatialUpdate 3.0ms | GC +1 (40ms) | chunkNode 567 (net +0) | pageOps +0</pre>
+ * <pre>HITCH 52.0ms | work 3.4 (state 0.2 / spatial 3.0 / render 0.2 [Opaque 0.1]) | gap 48.6 (swap/vsync/driver/OS) | top=SpatialUpdate 3.0ms | GC +1 (40ms) | chunkNode 567 (net +0) | pageOps +0</pre>
  *
  * Reading it :
  * <ul>
  *   <li><b>work</b> dominates ⇒ main-thread cost. Then look at the phase : <b>render</b> ⇒ GPU/VBO
- *       upload ; <b>spatial</b> ⇒ scene-graph update — {@code rootNode}/{@code guiNode}
+ *       upload, split in brackets into its costliest stages by render-queue bucket (Opaque = voxel
+ *       terrain, Transparent/Translucent = water and the merged sheets, Sky, Gui = HUD) ;
+ *       <b>spatial</b> ⇒ scene-graph update — {@code rootNode}/{@code guiNode}
  *       updateLogicalState (every Control runs here, e.g. the far-terrain LOD control) +
  *       updateGeometricState (bounding-volume refresh) ; <b>state</b> ⇒ an AppState's update.</li>
  *   <li><b>gap</b> dominates ⇒ the freeze is NOT in our code : buffer swap / vsync / GPU-driver stall /
@@ -107,8 +109,32 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
     private String lastSub;
     private long lastSubNs;
 
+    // Per-render-stage timing WITHIN the viewport render, same delta technique : jME calls
+    // vpStep(RenderBucket, vp, bucket) before flushing each queue bucket, so the interval between two
+    // vpStep calls is the previous stage's cost.
+    //
+    // This exists because 'render' turned out to be the dominant phase of the on-device hitches (40-65 ms
+    // of a 25-110 ms frame) while being uncorrelated with the draw and triangle counts — 163 draws /
+    // 97783 tris took 64.0 ms, 179 draws / 106493 tris took 15.8 ms. A cost that does not track the work
+    // submitted is episodic, and 'render' as one number cannot say which stage it lands in. Splitting by
+    // bucket separates the candidates : Opaque is the voxel terrain, Transparent/Translucent the water and
+    // the merged sheets, Sky the dome, Gui the HUD.
+    private final Map<String, long[]> renderAccum = new HashMap<>();
+    private String lastRenderStage;
+    private long lastRenderNs;
+
     public HitchProfilerState(long thresholdMs) {
+        this(thresholdMs, 0);
+    }
+
+    /**
+     * @param cpuWindowSeconds when &gt; 0, additionally reports the render thread's CPU share of wall clock
+     *                         once per window of that length — the computing-versus-waiting discriminator
+     *                         described at {@link #accumulateCpuWindow}. 0 disables it.
+     */
+    public HitchProfilerState(long thresholdMs, long cpuWindowSeconds) {
         this.thresholdNanos = thresholdMs * 1_000_000L;
+        this.windowNanos = cpuWindowSeconds * 1_000_000_000L;
     }
 
     /**
@@ -178,6 +204,17 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
     @Override
     public void appStep(AppStep step) {
         long now = System.nanoTime();
+        if (windowNanos > 0 && !tidResolved) {
+            // Resolved HERE, not in initialize() : the profiler's callbacks are by definition on the
+            // render thread, whereas whichever thread ran initialize() is an assumption. Getting that
+            // wrong would not fail loudly — it would measure some other thread's CPU and report a
+            // plausible, meaningless number, which is the worst outcome available.
+            tidResolved = true;
+            renderTid = findCurrentTid();
+            if (renderTid < 0) {
+                log.warn("RENDER CPU : could not identify the render thread's task id, measurement skipped");
+            }
+        }
         if (step == AppStep.BeginFrame) {
             // New frame : finalise the previous one (whose full wall-clock period we can now measure as
             // now - beginNs) and reset.
@@ -188,7 +225,11 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
             for (long[] v : subAccum.values()) {
                 v[0] = 0;
             }
+            for (long[] v : renderAccum.values()) {
+                v[0] = 0;
+            }
             lastSub = null;
+            lastRenderStage = null;
             beginNs = now;
             lastNs = now;
             lastStep = step;
@@ -196,6 +237,18 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         }
         if (lastStep != null) {
             bucket[lastStep.ordinal()] += now - lastNs;
+        }
+        // vpStep only fires inside the render steps, so any stage still open at an appStep boundary ends
+        // here. Without this the last stage of the render (EndRender) stayed open until the NEXT frame's
+        // BeginFrame and swallowed the whole buffer-swap/vsync gap — reporting 'EndRender 48.9' on a frame
+        // whose render really cost 0.9 ms. The gap belongs to 'gap', which measures it independently.
+        closeRenderStage(now);
+        if (step == AppStep.EndFrame) {
+            // Same trap for the per-AppState accounting, and it predates the render split : jME emits
+            // EndFrame before the buffer swap, so a substep left open here was credited with the swap +
+            // vsync idle on the next frame. That is what made 'sub=HitchProfilerState 48.9ms' appear on
+            // frames where this state did nothing at all — the profiler accusing itself of the vsync wait.
+            lastSub = null;
         }
         // Neither renderManager.render() (RenderMainViewPorts) nor rootNode.updateLogicalState()
         // (SpatialUpdate) is bracketed by appSubStep, so without this their time would be dumped on
@@ -249,6 +302,8 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         long pageOps = chunkPager != null ? chunkPager.getPageOps() : -1;
         long pageOpsDelta = (prevPageOps < 0 || pageOps < 0) ? 0 : pageOps - prevPageOps;
         prevPageOps = pageOps;
+
+        accumulateCpuWindow(nowBegin, period, work, readDrawCount());
 
         if (period < thresholdNanos) {
             return;
@@ -308,10 +363,215 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
             }
         }
 
-        log.warn("HITCH {}ms | work {} (state {} / spatial {}{} / render {}) | gap {} (swap/vsync/driver/OS) | top={} {}ms | sub={} {}ms | draws={} tris={} | GC +{} ({}ms) | chunkNode {} (net {}{}) | pageOps +{}",
-                fmt(period), fmt(work), fmt(state), fmt(spatial), spatialDetail, fmt(render), fmt(gap),
+        log.warn("HITCH {}ms | work {} (state {} / spatial {}{} / render {} [{}]) | gap {} (swap/vsync/driver/OS) | top={} {}ms | sub={} {}ms | draws={} tris={} | GC +{} ({}ms) | chunkNode {} (net {}{}) | pageOps +{}",
+                fmt(period), fmt(work), fmt(state), fmt(spatial), spatialDetail, fmt(render),
+                renderBreakdown(nowBegin), fmt(gap),
                 STEPS[top], fmt(bucket[top]), topSub, fmt(topSubNs[0]), draws, tris, gcDeltaCount, gcDeltaTime,
                 children, childDelta >= 0 ? "+" : "", childDelta, pageOpsDelta);
+    }
+
+    // ---- Is the render thread COMPUTING or WAITING? ------------------------------------------------
+    //
+    // The viewport-scale test (-Dialon.vpscale) settled that the opaque pass is not fragment bound :
+    // a quarter of the pixels left Opaque at 8.2 ms against 8.1 ms, a ratio of 1.01x. But it cannot
+    // separate the two survivors, because neither scales with pixels :
+    //   * per-draw CPU  — jME material/uniform setup plus the GL calls, through ANGLE's translation ;
+    //   * GPU vertex/triangle throughput — vertex shading and primitive assembly, ~172k triangles here.
+    //
+    // These differ in one observable way : whether the thread burns CPU or blocks. A saturated GLES
+    // command queue blocks inside glDrawElements, which is *inside* the Opaque bucket, so wall-clock
+    // timing alone cannot tell — but the thread's CPU time can.
+    //
+    // Measured from /proc/self/task/<tid>/stat (utime + stime), which is plain file I/O and so works on
+    // ART, where java.lang.management is absent (see initGcBeans). Ticks are coarse — USER_HZ is 100 on
+    // Linux and Android alike, i.e. 10 ms granularity — so this aggregates over a window of seconds
+    // instead of per frame. The assumption is self-diagnosing : were USER_HZ not 100, the reported
+    // percentage would come out absurd (well over 100%) rather than quietly wrong.
+    private static final long USER_HZ = 100;
+
+    private final long windowNanos;
+    private int renderTid = -1;
+    private boolean tidResolved;
+    private long windowStartNs = -1;
+    private long windowStartTicks;
+    private long windowPeriodNs;
+    private long windowWorkNs;
+    private long windowOpaqueNs;
+    private long windowDraws;
+    private int windowFrames;
+
+    /**
+     * This thread's kernel task id. Called on the render thread at init.
+     *
+     * <p>Asks {@code android.os.Process.myTid()} — which is just {@code gettid()} — by reflection, so
+     * {@code :core} keeps no compile-time Android dependency. Reflection rather than a name match because
+     * the name match is what failed on device: ART does not necessarily give the kernel task the same
+     * {@code comm} as the Java thread name, and there is no reason to guess when the platform will answer.
+     * The name match is kept only as the desktop fallback, where the class does not exist.
+     */
+    private static int findCurrentTid() {
+        try {
+            Class<?> process = Class.forName("android.os.Process");
+            Object tid = process.getMethod("myTid").invoke(null);
+            if (tid instanceof Integer && (Integer) tid > 0) {
+                return (Integer) tid;
+            }
+        } catch (Exception e) {
+            // not Android : fall through to the name match below
+        }
+        return findTidByName();
+    }
+
+    /** Desktop fallback : match {@code /proc/self/task/&#42;/comm} against the Java thread name. */
+    private static int findTidByName() {
+        String want = Thread.currentThread().getName();
+        if (want.length() > 15) {
+            want = want.substring(0, 15); // the kernel truncates comm to 15 characters
+        }
+        String[] tids = new java.io.File("/proc/self/task").list();
+        if (tids == null) {
+            return -1;
+        }
+        int found = -1;
+        StringBuilder seen = new StringBuilder();
+        for (String tid : tids) {
+            try {
+                byte[] raw = java.nio.file.Files.readAllBytes(
+                        java.nio.file.Paths.get("/proc/self/task/" + tid + "/comm"));
+                String comm = new String(raw, java.nio.charset.StandardCharsets.US_ASCII).trim();
+                seen.append(comm).append(' ');
+                if (comm.equals(want)) {
+                    if (found >= 0) {
+                        return -1; // ambiguous : two threads share the name, refuse to guess
+                    }
+                    found = Integer.parseInt(tid);
+                }
+            } catch (Exception e) {
+                // task vanished or unreadable : skip it
+            }
+        }
+        if (found < 0) {
+            // Name the mismatch instead of failing silently : that is what cost a round trip the first time.
+            log.warn("RENDER CPU : no kernel task named '{}' among [{}]", want, seen.toString().trim());
+        }
+        return found;
+    }
+
+    // Reused so reading the draw count every frame keeps the steady path allocation-free, as the class
+    // contract promises. Only read at all when the CPU window is enabled (an opt-in diagnostic).
+    private int[] statScratch;
+    private String[] statLabels;
+
+    /** This frame's draw count from the engine statistics, or -1 when unavailable/disabled. */
+    private int readDrawCount() {
+        if (windowNanos <= 0) {
+            return -1;
+        }
+        Statistics st = getApplication().getRenderer().getStatistics();
+        if (st == null) {
+            return -1;
+        }
+        if (statLabels == null) {
+            statLabels = st.getLabels();
+            if (statLabels == null) {
+                return -1;
+            }
+            statScratch = new int[statLabels.length];
+        }
+        st.getData(statScratch);
+        return stat(statLabels, statScratch, "Objects");
+    }
+
+    /** This thread's consumed CPU, in clock ticks (utime + stime), or -1 if unavailable. */
+    private long readCpuTicks() {
+        if (renderTid < 0) {
+            return -1;
+        }
+        try {
+            byte[] raw = java.nio.file.Files.readAllBytes(
+                    java.nio.file.Paths.get("/proc/self/task/" + renderTid + "/stat"));
+            String stat = new String(raw, java.nio.charset.StandardCharsets.US_ASCII);
+            // The comm field may contain spaces and parentheses : everything is positional AFTER the
+            // last ')'. From there, index 11 is utime and index 12 is stime.
+            String[] f = stat.substring(stat.lastIndexOf(')') + 2).trim().split("\\s+");
+            return Long.parseLong(f[11]) + Long.parseLong(f[12]);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Sums one window of frames and, when it closes, reports the render thread's CPU share of wall clock
+     * next to the two predictions this is meant to choose between — so the reading is mechanical rather
+     * than a judgement call.
+     */
+    private void accumulateCpuWindow(long nowBegin, long period, long work, int draws) {
+        if (windowNanos <= 0) {
+            return;
+        }
+        if (windowStartNs < 0) {
+            windowStartNs = nowBegin;
+            windowStartTicks = readCpuTicks();
+            return;
+        }
+        long[] opaque = renderAccum.get(RenderQueue.Bucket.Opaque.name());
+        windowPeriodNs += period;
+        windowWorkNs += work;
+        windowOpaqueNs += opaque == null ? 0 : opaque[0];
+        windowDraws += Math.max(0, draws);
+        windowFrames++;
+
+        long elapsed = nowBegin - windowStartNs;
+        if (elapsed < windowNanos) {
+            return;
+        }
+        long ticks = readCpuTicks();
+        if (ticks >= 0 && windowStartTicks >= 0 && windowFrames > 0) {
+            double cpuSeconds = (ticks - windowStartTicks) / (double) USER_HZ;
+            double wallSeconds = elapsed / 1e9;
+            // Compared PER FRAME and in milliseconds, so it sits in the same units as work and Opaque.
+            // If every millisecond of 'work' is real computation, cpu/frame lands on work/frame. If the
+            // opaque pass is really the thread blocking on the GPU, it lands on (work - Opaque)/frame.
+            double cpuPerFrame = cpuSeconds * 1000.0 / windowFrames;
+            double ifCpuBound = windowWorkNs / (double) windowFrames / MS;
+            double ifOpaqueIsGpuWait = (windowWorkNs - windowOpaqueNs) / (double) windowFrames / MS;
+            // The bracket assumes the gap costs no CPU. It sometimes does — an fps cap or vsync that
+            // busy-waits burns CPU outside 'work' — and then the measurement sits ABOVE the bracket and
+            // says nothing about the opaque pass. Say so rather than pick the nearest prediction, which
+            // would report a confident verdict from an artifact (seen on desktop : 19% measured against
+            // predictions of 9% and 5%, where the 120 fps cap idle was the real consumer).
+            String verdict;
+            if (cpuPerFrame > ifCpuBound * 1.15) {
+                verdict = "INCONCLUSIVE : cpu/frame exceeds the whole of 'work', so the gap is burning CPU"
+                        + " too (fps cap / vsync busy-wait). Compare runs, or remove the cap, before reading it";
+            } else if (Math.abs(cpuPerFrame - ifCpuBound) <= Math.abs(cpuPerFrame - ifOpaqueIsGpuWait)) {
+                verdict = "CPU-bound (the thread is computing : attack draw/GL call count)";
+            } else {
+                verdict = "GPU-bound (the thread is blocking : attack vertex/triangle throughput)";
+            }
+            long meanDraws = windowDraws / windowFrames;
+            String perDraw = meanDraws > 0
+                    ? String.format(java.util.Locale.ROOT, "%.0f", windowOpaqueNs / (double) windowDraws / 1000.0)
+                    : "?";
+            log.warn("RENDER CPU over {}s : cpu {}ms/frame ({}% of wall) | {} frames,"
+                            + " mean period {}ms = work {} + gap {} | mean Opaque {}ms over {} draws = {}us/draw"
+                            + " | expect {}ms if all work is CPU, {}ms if Opaque is GPU wait ==> {}",
+                    String.format(java.util.Locale.ROOT, "%.1f", wallSeconds),
+                    String.format(java.util.Locale.ROOT, "%.1f", cpuPerFrame),
+                    Math.round(100 * cpuSeconds / wallSeconds), windowFrames,
+                    fmt(windowPeriodNs / windowFrames), fmt(windowWorkNs / windowFrames),
+                    fmt((windowPeriodNs - windowWorkNs) / windowFrames),
+                    fmt(windowOpaqueNs / windowFrames), meanDraws, perDraw,
+                    String.format(java.util.Locale.ROOT, "%.1f", ifCpuBound),
+                    String.format(java.util.Locale.ROOT, "%.1f", ifOpaqueIsGpuWait), verdict);
+        }
+        windowStartNs = nowBegin;
+        windowStartTicks = ticks;
+        windowPeriodNs = 0;
+        windowWorkNs = 0;
+        windowOpaqueNs = 0;
+        windowDraws = 0;
+        windowFrames = 0;
     }
 
     private static String fmt(long nanos) {
@@ -328,9 +588,61 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
         return -1;
     }
 
+    /**
+     * Splits the viewport render into its stages (see {@link #renderAccum}). Labelled by bucket when jME
+     * reports one — that is the interesting axis — otherwise by the {@link VpStep} name, so stages that
+     * are not a queue flush (scene processors in {@code PostQueue}, for instance) are still accounted for
+     * rather than being folded into whichever bucket happened to be open.
+     */
     @Override
     public void vpStep(VpStep step, ViewPort vp, RenderQueue.Bucket bucket) {
-        // Not needed : appStep granularity already separates update from render.
+        long now = System.nanoTime();
+        closeRenderStage(now);
+        lastRenderStage = (step == VpStep.RenderBucket && bucket != null) ? bucket.name() : step.name();
+        lastRenderNs = now;
+    }
+
+    /** Charges the elapsed time to the stage currently open, if any. */
+    private void closeRenderStage(long now) {
+        if (lastRenderStage == null) {
+            return;
+        }
+        long[] b = renderAccum.get(lastRenderStage);
+        if (b == null) {
+            b = new long[1];
+            renderAccum.put(lastRenderStage, b);
+        }
+        b[0] += now - lastRenderNs;
+        lastRenderStage = null;
+    }
+
+    /**
+     * The render stages of this frame, costliest first, as {@code Name a.b/Name c.d} — only those above
+     * 0.5 ms, so the line stays short on a frame whose cost is concentrated (which is the case we care
+     * about) and says so explicitly when it is spread thin instead.
+     */
+    private String renderBreakdown(long nowBegin) {
+        closeRenderStage(nowBegin);
+        StringBuilder sb = new StringBuilder();
+        for (int rank = 0; rank < 3; rank++) {
+            String bestName = null;
+            long bestNs = 500_000L; // 0.5 ms floor
+            for (Map.Entry<String, long[]> e : renderAccum.entrySet()) {
+                long ns = e.getValue()[0];
+                if (ns > bestNs && sb.indexOf(e.getKey() + " ") < 0) {
+                    bestNs = ns;
+                    bestName = e.getKey();
+                }
+            }
+            if (bestName == null) {
+                break;
+            }
+            if (sb.length() > 0) {
+                sb.append(" / ");
+            }
+            sb.append(bestName).append(' ').append(fmt(bestNs));
+        }
+        return sb.length() == 0 ? "spread" : sb.toString();
     }
 
     @Override

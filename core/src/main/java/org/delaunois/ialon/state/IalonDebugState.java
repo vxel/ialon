@@ -48,6 +48,7 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.control.PlaceholderControl;
+import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
 import java.lang.management.BufferPoolMXBean;
@@ -75,6 +76,9 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     // Debug toggle (F9) : logs a detailed memory breakdown (heap, off-heap direct buffers, chunk
     // meshes, chunk data arrays, collision meshes, texture atlas) to measure where RAM actually goes.
     private static final String MEMORY_REPORT = "ialon_debug_memory_report";
+    // Debug toggle (F7) : logs the draw-call breakdown (see RenderReport). On Android, where there is
+    // no keyboard, set -Dialon.renderreport=<seconds> instead to have it logged periodically.
+    private static final String RENDER_REPORT = "ialon_debug_render_report";
     // Hypothetical far-batching parameters, used ONLY to estimate the draw-call reduction in the
     // render report (not wired to any actual batching yet) : chunks within this Chebyshev distance of
     // the player stay individual, farther ones would be merged per REPORT_REGION_SIZE^3 region.
@@ -90,6 +94,11 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     private final ActionListener memoryReportListener = (name, isPressed, tpf) -> {
         if (isPressed) {
             logMemoryReport();
+        }
+    };
+    private final ActionListener renderReportListener = (name, isPressed, tpf) -> {
+        if (isPressed) {
+            RenderReport.request(getApplication());
         }
     };
 
@@ -111,6 +120,9 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     private SunState sunState;
     private float updateTime = 0.25f;
     private float curTime = 1;
+    // -Dialon.memreport=<seconds> : -1 = not read yet, 0 = off. See maybeLogPeriodicMemoryReport.
+    private float memReportPeriod = -1f;
+    private float memReportElapsed = 0f;
     private final IalonConfig config;
 
     // Allocation / GC-pressure sampling : updated every `updateTime` in update(), printed by F9.
@@ -139,7 +151,7 @@ public class IalonDebugState extends BaseAppState implements Resizable {
 
         container = new Container(new SpringGridLayout(Axis.Y, Axis.X, FillMode.Even, FillMode.Even));
 
-        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(new ColorRGBA(0, 0, 0, 0.6f), config));
+        QuadBackgroundComponent background = new QuadBackgroundComponent(UiHelper.overlayColor(IalonTheme.SOOT_LIGHT, config));
         // Clear AlphaDiscardThreshold because it is useless here and generates a new specific Shader
         background.getMaterial().getMaterial().clearParam(APLHA_DISCARD_THRESHOLD);
 
@@ -161,6 +173,8 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         inputManager.addListener(freezePagingListener, FREEZE_PAGING);
         inputManager.addMapping(MEMORY_REPORT, new KeyTrigger(KeyInput.KEY_F9));
         inputManager.addListener(memoryReportListener, MEMORY_REPORT);
+        inputManager.addMapping(RENDER_REPORT, new KeyTrigger(KeyInput.KEY_F7));
+        inputManager.addListener(renderReportListener, RENDER_REPORT);
 
         if (app.getStateManager().getState(ScreenState.class) != null) {
             app.getStateManager().getState(ScreenState.class).register(this);
@@ -174,8 +188,10 @@ public class IalonDebugState extends BaseAppState implements Resizable {
 
     private void layout(int width, int height) {
         container.setLocalScale(height / (container.getPreferredSize().getY() * 5));
-        container.setLocalTranslation(0, height / 2f + container.getPreferredSize().getY(), 1);
-        grid.setLocalTranslation((width - container.getPreferredSize().getX()) / 2f, height - 30f, 1);
+        // Laid over every popup (see IalonTheme.DEBUG_OVERLAY_Z) : a debug readout is useless the moment a
+        // menu or a confirmation dialog hides it.
+        container.setLocalTranslation(0, height / 2f + container.getPreferredSize().getY(), IalonTheme.DEBUG_OVERLAY_Z);
+        grid.setLocalTranslation((width - container.getPreferredSize().getX()) / 2f, height - 30f, IalonTheme.DEBUG_OVERLAY_Z);
     }
 
     /**
@@ -198,6 +214,43 @@ public class IalonDebugState extends BaseAppState implements Resizable {
      * per-category sums below attribute that total to the loaded chunk meshes, chunk data arrays,
      * collision meshes and the texture atlas.
      */
+    /**
+     * Periodic memory report, the Android route to what F9 does on the desktop : set
+     * {@code -Dialon.memreport=<seconds>}. Same reasoning as {@code -Dialon.renderreport} — there is no
+     * keyboard on the device, and the breakdown is exactly what is needed to find out where the heap
+     * goes rather than guess at it.
+     *
+     * <p>Pick a GENEROUS period. {@link #logMemoryReport()} hints two full GCs so that what it prints is
+     * the live set rather than the live set plus uncollected garbage : that is the point of the report,
+     * but it also means a short period would both stall the frame and artificially relieve the very
+     * memory pressure being measured. 20-30 s is a good starting value ; repeating at all is only useful
+     * to watch the live set GROW as the world is explored.
+     */
+    private void maybeLogPeriodicMemoryReport(float tpf) {
+        if (memReportPeriod < 0f) {
+            String property = System.getProperty("ialon.memreport");
+            memReportPeriod = 0f;
+            if (property != null) {
+                try {
+                    memReportPeriod = Float.parseFloat(property.trim());
+                } catch (NumberFormatException e) {
+                    log.warn("Ignoring -Dialon.memreport={} : not a number of seconds", property);
+                }
+            }
+            if (memReportPeriod > 0f) {
+                log.warn("Periodic memory report ON — every {} s (each one forces a GC)", memReportPeriod);
+            }
+        }
+        if (memReportPeriod <= 0f) {
+            return;
+        }
+        memReportElapsed += tpf;
+        if (memReportElapsed >= memReportPeriod) {
+            memReportElapsed = 0f;
+            logMemoryReport();
+        }
+    }
+
     private void logMemoryReport() {
         Runtime rt = Runtime.getRuntime();
         // Heap "used" includes uncollected garbage, which on a multi-GB desktop heap dwarfs the live
@@ -209,13 +262,26 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         long heapUsed = rt.totalMemory() - rt.freeMemory();
         long heapMax = rt.maxMemory();
 
-        long directUsed = 0;
-        long directCount = 0;
-        for (BufferPoolMXBean pool : ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
-            if ("direct".equals(pool.getName())) {
-                directUsed = pool.getMemoryUsed();
-                directCount = pool.getCount();
+        // java.lang.management does NOT exist on ART : this block throws NoClassDefFoundError on Android,
+        // on the render thread, which is exactly what it did the first time the report was reachable there
+        // (F9 is unreachable on a device, so it had never run). Guarded like sampleAllocAndGc below, with
+        // the same catch-Throwable, since a missing class raises an Error and not an Exception.
+        //
+        // Losing this figure on Android costs less than it looks : it is the JVM-wide direct-buffer total,
+        // and everything that matters inside it -- chunk render meshes, collision meshes -- is accounted
+        // for by hand further down, on both platforms.
+        long directUsed = -1;
+        long directCount = -1;
+        try {
+            for (BufferPoolMXBean pool : ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
+                if ("direct".equals(pool.getName())) {
+                    directUsed = pool.getMemoryUsed();
+                    directCount = pool.getCount();
+                }
             }
+        } catch (Throwable t) {
+            directUsed = -1;
+            directCount = -1;
         }
 
         // Loaded chunk render meshes (the geometries attached to the scene), classified near/far around
@@ -305,11 +371,15 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         String gcStr = gcPerSec < 0
                 ? "n/a"
                 : String.format(Locale.US, "%.2f collections/s, %.1f ms/s in pauses", gcPerSec, gcMsPerSec);
+        String directStr = directUsed < 0
+                ? "n/a on this runtime (no java.lang.management) — see the per-mesh figures below"
+                : String.format(Locale.US, "%6.1f MB  (%d buffers)  <- meshes live here (off-heap)",
+                        mb(directUsed), directCount);
 
         log.info(String.format(Locale.US,
                 "%n=== MEMORY REPORT ===%n"
                 + "Heap used (live, post-GC) %6.1f MB / %.0f MB max  (was %.1f MB before GC = garbage)%n"
-                + "Direct buffers (total) .. %6.1f MB  (%d buffers)  <- meshes live here (off-heap)%n"
+                + "Direct buffers (total) .. %s%n"
                 + "  Chunk render meshes ... %6.1f MB  (%d geometries, %d vertices, %d chunks attached)%n"
                 + "  Collision meshes ...... %6.1f MB%n"
                 + "Chunk data (heap) ....... %6.1f MB  (%d non-empty / %d cached / %d in pager)%n"
@@ -325,7 +395,7 @@ public class IalonDebugState extends BaseAppState implements Resizable {
                 + "GC ...................... %s%n"
                 + "=====================",
                 mb(heapUsed), mb(heapMax), mb(heapUsedBeforeGc),
-                mb(directUsed), directCount,
+                directStr,
                 mb(renderMeshBytes), geometryCount, vertexCount, attachedPages.size(),
                 mb(collisionBytes),
                 mb(blockBytes + lightBytes), nonEmptyChunks, cachedChunks, fetchedChunks,
@@ -457,13 +527,13 @@ public class IalonDebugState extends BaseAppState implements Resizable {
     private Label addField(Container container, String title) {
         Container newContainer = container.addChild(new Container(new SpringGridLayout(Axis.X, Axis.Y, FillMode.Last, FillMode.Even), new ElementId(Container.ELEMENT_ID).child("entry")));
         Label textLabel = new Label(title);
-        textLabel.setColor(ColorRGBA.White);
+        textLabel.setColor(IalonTheme.PARCHMENT);
         textLabel.setFontSize(10);
         textLabel.getFont().getPage(0).clearParam(APLHA_DISCARD_THRESHOLD);
         newContainer.addChild(textLabel);
         Label label = newContainer.addChild(new Label("-"));
         label.setTextHAlignment(HAlignment.Right);
-        label.setColor(ColorRGBA.White);
+        label.setColor(IalonTheme.PARCHMENT);
         label.setFontSize(10);
         label.getFont().getPage(0).clearParam(APLHA_DISCARD_THRESHOLD);
         return label;
@@ -478,8 +548,12 @@ public class IalonDebugState extends BaseAppState implements Resizable {
         if (inputManager.hasMapping(MEMORY_REPORT)) {
             inputManager.deleteMapping(MEMORY_REPORT);
         }
+        if (inputManager.hasMapping(RENDER_REPORT)) {
+            inputManager.deleteMapping(RENDER_REPORT);
+        }
         inputManager.removeListener(freezePagingListener);
         inputManager.removeListener(memoryReportListener);
+        inputManager.removeListener(renderReportListener);
         // Make sure paging is resumed if it was frozen.
         if (pagingFrozen) {
             ChunkPagerState pager = app.getStateManager().getState(ChunkPagerState.class);
@@ -511,6 +585,8 @@ public class IalonDebugState extends BaseAppState implements Resizable {
 
     @Override
     public void update(float tpf) {
+        maybeLogPeriodicMemoryReport(tpf);
+
         curTime += tpf;
 
         if (curTime < updateTime) {

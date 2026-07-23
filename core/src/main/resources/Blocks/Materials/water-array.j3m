@@ -17,6 +17,10 @@ Material water-still-array : Blocks/MatDefs/IalonArray.j3md {
 
     AdditionalRenderState {
         Blend Alpha
+        // Transparent surface : do not write depth, otherwise the water depth-culls other transparents
+        // drawn after it (the emissive fire billboard, layer 3) — a fire in a dry pocket seen through
+        // submerged water would vanish. See water_calm.j3m for the full rationale.
+        DepthWrite Off
         PolyOffset -0.1 -0.1
     }
 

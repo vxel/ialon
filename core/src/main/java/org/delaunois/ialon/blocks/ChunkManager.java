@@ -1,6 +1,5 @@
 package org.delaunois.ialon.blocks;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jme3.collision.CollisionResult;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
@@ -12,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +52,22 @@ public class ChunkManager {
      */
     private final AtomicBoolean memoryPressure = new AtomicBoolean(false);
 
+    /**
+     * Locations whose <b>paging</b> mesh task has been submitted and has not finished yet.
+     *
+     * <p>The pager decides what needs meshing by diffing the grid box against the pages it has
+     * <b>attached</b>, so a chunk currently being meshed still looks missing to it. Without this guard, a
+     * pager that falls behind on attaching (its per-frame budget saturated, or a frame-rate dip)
+     * re-requests every in-flight chunk on the player's next chunk crossing — and the duplicated meshing
+     * makes it fall further behind still. That feedback loop is not theoretical : measured with
+     * {@code ChunkPagingBenchmark} at 30 fps, it wasted 92% of all meshing work, re-meshed single chunks up
+     * to 17 times, and left the whole grid unfilled. Deduplicating keeps a stall degrading gracefully.
+     *
+     * <p>Edits deliberately bypass this (see the {@code dedupe} flag) : a block the player just placed
+     * MUST be re-meshed even over an in-flight paging mesh, or it would not appear.
+     */
+    private final Set<Vec3i> meshInFlight = ConcurrentHashMap.newKeySet();
+
     @Builder
     private ChunkManager(ChunkRepository repository, ChunkGenerator generator, int poolSize) {
         this.repository = repository;
@@ -66,8 +82,12 @@ public class ChunkManager {
 
         cache = new ChunkCache();
         meshGenerator = BlocksConfig.getInstance().getChunkMeshGenerator();
-        requestExecutor = Executors.newFixedThreadPool(poolSize, new ThreadFactoryBuilder().setNameFormat("chunk-generator-%d").build());
-        editExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("chunk-editor-%d").build());
+        // Priorities, not just names : see ChunkThreads for why the generation pool must be scheduled
+        // behind the render thread and why edits must not be.
+        requestExecutor = Executors.newFixedThreadPool(poolSize,
+                ChunkThreads.factory("chunk-generator-%d", ChunkThreads.GENERATION_PRIORITY));
+        editExecutor = Executors.newSingleThreadExecutor(
+                ChunkThreads.factory("chunk-editor-%d", ChunkThreads.EDIT_PRIORITY));
         initialized = true;
     }
 
@@ -108,17 +128,24 @@ public class ChunkManager {
         return cache;
     }
 
+    /**
+     * The pager's request : generate the given locations, then mesh the given ones.
+     *
+     * <p>Returns as soon as the mesh tasks are <b>submitted</b>, not when they complete. Nothing waits on
+     * the meshes here — each one notifies the listeners from its worker thread, which is how the pager
+     * learns about it. Blocking until the last mesh of the batch was done only delayed the pager's next
+     * pass : the player can cross another chunk boundary meanwhile, and the fetch/unfetch/detach queues for
+     * that new position could not be computed until the previous batch had fully drained.
+     */
     public void requestChunks(Collection<Vec3i> locationsToGenerate, Collection<Vec3i> locationsToMesh) {
         assertInitialized();
 
-        Set<Future<Chunk>> results = requestGenerateChunks(locationsToGenerate);
         // We need to wait for all chunks to be generated before starting to mesh them
         // This is required because the mesh of a chunk depends on the blocks of the mesh AND the
         // blocks of its neighbours
-        waitForTasks(results);
+        waitForTasks(requestGenerateChunks(locationsToGenerate));
         if (!locationsToMesh.isEmpty()) {
-            results = requestMeshChunks(locationsToMesh);
-            waitForTasks(results);
+            requestMeshChunks(locationsToMesh);
         }
     }
 
@@ -129,7 +156,9 @@ public class ChunkManager {
         if (locations.isEmpty())
             return results;
 
-        log.info("Generating chunks for {} locations", locations.size());
+        if (log.isDebugEnabled()) {
+            log.debug("Generating chunks for {} locations", locations.size());
+        }
         locations.forEach(location ->
                 results.add(requestExecutor.submit(() -> generateChunk(location)))
         );
@@ -170,14 +199,32 @@ public class ChunkManager {
         return memoryPressure.getAndSet(false);
     }
 
+    /** Paging path : meshes the given locations, skipping any whose mesh is already in flight. */
     public Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations) {
-        return requestMeshChunks(locations, true, requestExecutor);
+        return requestMeshChunks(locations, true, false, requestExecutor, true);
+    }
+
+    /**
+     * Re-meshes chunks WITHOUT blocking the caller : each chunk notifies the listeners from the meshing
+     * thread as soon as it is done, so the pager attaches the new mesh on a later frame.
+     *
+     * <p>This is the variant for machine-driven edits — the liquid simulation above all. A liquid tick
+     * can touch dozens of chunks, and {@link #requestOrderedMeshChunks} would make the render thread
+     * wait for every one of them (at roughly a millisecond each, on a single thread) : that was tens of
+     * milliseconds of frame time on a spreading waterfall. Nothing is waiting on the result here — a
+     * flowing liquid appearing a frame or two later is invisible, unlike a block the player just placed.
+     *
+     * <p>It keeps the dedicated {@code editExecutor} rather than the pager's pool, so liquid re-meshes
+     * still never queue behind chunk generation.
+     */
+    public void requestMeshChunksNoWait(Collection<Vec3i> locations) {
+        requestMeshChunks(locations, true, true, editExecutor, false);
     }
 
     public void requestOrderedMeshChunks(Collection<Vec3i> locations) {
         // Interactive edits mesh on the dedicated single-thread editExecutor so they never queue behind
         // the pager's generation/meshing work : the render thread blocks on these futures below.
-        Set<Future<Chunk>> results = requestMeshChunks(locations, false, editExecutor);
+        Set<Future<Chunk>> results = requestMeshChunks(locations, false, false, editExecutor, false);
         results.forEach(result -> {
             try {
                 triggerListenerChunkAvailable(result.get());
@@ -191,7 +238,19 @@ public class ChunkManager {
         });
     }
 
-    private Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations, boolean triggers, ExecutorService executor) {
+    /**
+     * @param triggers       whether the listeners are notified from the meshing thread at all
+     * @param notifyUpdated  whether they also get {@code onChunkUpdated} (which drives persistence), as
+     *                       opposed to only {@code onChunkAvailable} (which drives attaching). Paging a
+     *                       chunk in is not an update — flagging it as one would re-save the whole world
+     *                       as the player walks.
+     * @param dedupe         whether locations whose mesh is already in flight are skipped. True for the
+     *                       pager (see {@link #meshInFlight}), false for edits and liquid flow, which must
+     *                       re-mesh whatever is already running.
+     */
+    private Set<Future<Chunk>> requestMeshChunks(Collection<Vec3i> locations, boolean triggers,
+                                                 boolean notifyUpdated, ExecutorService executor,
+                                                 boolean dedupe) {
         assertInitialized();
 
         Set<Future<Chunk>> results = new LinkedHashSet<>();
@@ -201,6 +260,7 @@ public class ChunkManager {
         }
 
         final int[] saved = {0};
+        final int[] skipped = {0};
         // First generate partially-filled chunks (usually visible)
         // Next full chunks (usually not visible because underground)
         Collection<Chunk> fullChunks = new LinkedList<>();
@@ -211,10 +271,19 @@ public class ChunkManager {
                 return;
             }
 
+            if (dedupe && meshInFlight.contains(location)) {
+                // Already being meshed : re-submitting would only duplicate the work.
+                skipped[0]++;
+                return;
+            }
+
             // All chunks should be loaded into cache, chunk is never null here
             if (chunk.isEmpty()) {
                 saved[0]++;
-                chunk.setNode(new EmptyNode());
+                // Nothing to draw, but sight passes straight through : keep it traversable for the
+                // cave-culling BFS.
+                chunk.setFaceConnectivity(Chunk.CONNECT_ALL);
+                chunk.setNode(EmptyNode.withConnectivity(Chunk.CONNECT_ALL));
                 triggerListenerChunkAvailable(chunk, triggers);
 
             } else if (chunk.isFull()) {
@@ -224,7 +293,13 @@ public class ChunkManager {
                 // though it is "full" (no air).
                 if (chunk.isFullyOpaque() && isSurroundedByOpaqueChunks(location)) {
                     saved[0]++;
-                    chunk.setNode(new EmptyNode());
+                    // Skipped, but it still blocks sight : a chunk of solid opaque rock connects none
+                    // of its faces (no flood-fill needed, that is what fully opaque means). Feeding
+                    // that to the visibility graph is what lets the cave-culling BFS stop at the rock
+                    // instead of leaking through the whole underground — where nearly every chunk is
+                    // skipped, so without it the BFS marks hundreds of buried chunks "visible".
+                    chunk.setFaceConnectivity((short) 0);
+                    chunk.setNode(EmptyNode.withConnectivity((short) 0));
                     triggerListenerChunkAvailable(chunk, triggers);
 
                 } else {
@@ -234,14 +309,17 @@ public class ChunkManager {
 
             } else {
                 // Generate mesh for partially-filled chunks
-                requestMeshChunk(results, chunk, triggers, executor);
+                requestMeshChunk(results, chunk, triggers, notifyUpdated, executor, dedupe);
             }
         });
 
         // Generate mesh for full chunks
-        fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers, executor));
+        fullChunks.forEach(chunk -> requestMeshChunk(results, chunk, triggers, notifyUpdated, executor, dedupe));
 
-        log.info("{} locations generated and {} empty locations", locations.size() - saved[0], saved[0]);
+        if (log.isDebugEnabled()) {
+            log.debug("{} locations meshed, {} empty/hidden, {} already in flight",
+                    locations.size() - saved[0] - skipped[0], saved[0], skipped[0]);
+        }
 
         return results;
     }
@@ -267,17 +345,37 @@ public class ChunkManager {
         return neighbour == null || neighbour.isFullyOpaque();
     }
 
-    private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers, ExecutorService executor) {
+    private void requestMeshChunk(Set<Future<Chunk>> results, Chunk chunk, boolean triggers,
+                                  boolean notifyUpdated, ExecutorService executor, boolean dedupe) {
+        final Vec3i location = chunk.getLocation();
+        if (dedupe) {
+            meshInFlight.add(location);
+        }
         results.add(
                 executor.submit(() -> {
                     try {
+                        // The player may have walked far enough for this chunk to have been unfetched
+                        // while the task sat in the queue. Meshing it would cost a full chunk of work for
+                        // geometry nobody will attach, and would starve the chunks that ARE still needed.
+                        if (dedupe && cache.unsafeFastGet(location) == null) {
+                            return chunk;
+                        }
                         meshGenerator.createAndSetNodeAndCollisionMesh(chunk);
                         if (triggers) {
                             triggerListenerChunkAvailable(chunk);
+                            if (notifyUpdated) {
+                                triggerListenerChunkUpdated(chunk);
+                            }
                         }
                     } catch (OutOfMemoryError e) {
                         memoryPressure.set(true);
-                        log.warn("Out of memory while meshing chunk at {} - dropping its mesh", chunk.getLocation());
+                        log.warn("Out of memory while meshing chunk at {} - dropping its mesh", location);
+                    } finally {
+                        // In a finally so a dropped mesh (OOM, stale chunk) cannot leave the location
+                        // permanently marked in flight, which would make it a permanent hole in the grid.
+                        if (dedupe) {
+                            meshInFlight.remove(location);
+                        }
                     }
                     return chunk;
                 })
@@ -361,6 +459,7 @@ public class ChunkManager {
             Thread.currentThread().interrupt();
         }
         cache.evictAll();
+        meshInFlight.clear();
         initialized = false;
     }
 

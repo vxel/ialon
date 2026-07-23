@@ -43,6 +43,10 @@ run {
     if (project.hasProperty('hitch')) {
         systemProperty 'ialon.hitch', project.property('hitch')
     }
+    // ./gradlew :desktop:run -PrenderReport=5   # log the draw-call breakdown every 5s (F7 does one shot)
+    if (project.hasProperty('renderReport')) {
+        systemProperty 'ialon.renderreport', project.property('renderReport')
+    }
 }
 
 java {
