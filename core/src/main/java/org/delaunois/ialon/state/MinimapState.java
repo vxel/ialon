@@ -552,6 +552,11 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         FarTerrainState far = app.getStateManager().getState(FarTerrainState.class);
         float[] heights = far != null ? far.getHeightmap() : null;
         int hmSize = heights != null ? (int) Math.round(Math.sqrt(heights.length)) : 0;
+        // sqrt-rounding may overshoot on a non-square length : keep hmSize*hmSize within the array bounds
+        // so the bilinear sampler's max index (hmSize*hmSize - 1) can never overrun heights.
+        if (hmSize > 0 && hmSize * hmSize > heights.length) {
+            hmSize--;
+        }
         float hmStep = far != null ? far.getStep() : 0f;
 
         TerrainGenerator generator = config.getTerrainGenerator();

@@ -759,7 +759,7 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
     }
 
     private String generateUniqueId(String name) {
-        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-++)|(-++$)", "");
+        String base = trimDashes(name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-"));
         if (base.isEmpty()) {
             base = "world";
         }
@@ -771,6 +771,19 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
             suffix++;
         }
         return base + "-" + suffix;
+    }
+
+    /** Strips leading and trailing '-' characters (linear scan ; avoids a backtracking-prone trim regex). */
+    private static String trimDashes(String s) {
+        int start = 0;
+        int end = s.length();
+        while (start < end && s.charAt(start) == '-') {
+            start++;
+        }
+        while (end > start && s.charAt(end - 1) == '-') {
+            end--;
+        }
+        return s.substring(start, end);
     }
 
     @Override

@@ -215,7 +215,7 @@ public final class CreationRepository {
 
     /** Derives a filesystem-safe, unique id from a name (e.g. "Creation 1" -> "creation-1"). */
     public static String generateUniqueId(Path savePath, String name) {
-        String base = name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-").replaceAll("(?:^-++)|(?:-++$)", "");
+        String base = trimDashes(name.toLowerCase(Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-"));
         if (base.isEmpty()) {
             base = "creation";
         }
@@ -227,6 +227,19 @@ public final class CreationRepository {
             suffix++;
         }
         return base + "-" + suffix;
+    }
+
+    /** Strips leading and trailing '-' characters (linear scan ; avoids a backtracking-prone trim regex). */
+    private static String trimDashes(String s) {
+        int start = 0;
+        int end = s.length();
+        while (start < end && s.charAt(start) == '-') {
+            start++;
+        }
+        while (end > start && s.charAt(end - 1) == '-') {
+            end--;
+        }
+        return s.substring(start, end);
     }
 
     // --- Metadata entry : "name\nsizeX sizeY sizeZ" -------------------------------------------------
