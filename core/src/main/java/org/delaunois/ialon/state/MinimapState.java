@@ -708,6 +708,9 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
      * infinite worlds), so a period maps to {@code worldExtent/step} cells centered on the heightmap center.
      */
     private float sampleHeightmap(float[] h, int size, float step, float u, float v) {
+        if (h.length == 0) {
+            return 0f;
+        }
         float periodCells = worldExtent / step;
         float start = (size - 1) * 0.5f - periodCells * 0.5f;
         float fx = start + u * periodCells;
@@ -718,14 +721,20 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         int y1 = clampIdx(y0 + 1, size);
         float tx = fx - (float) Math.floor(fx);
         float ty = fy - (float) Math.floor(fy);
-        float h00 = h[y0 * size + x0];
-        float h10 = h[y0 * size + x1];
-        float h01 = h[y1 * size + x0];
-        float h11 = h[y1 * size + x1];
+        float h00 = at(h, y0 * size + x0);
+        float h10 = at(h, y0 * size + x1);
+        float h01 = at(h, y1 * size + x0);
+        float h11 = at(h, y1 * size + x1);
         float top = h00 + (h10 - h00) * tx;
         float bot = h01 + (h11 - h01) * tx;
         // Heights are pre-divided by step (see FarTerrainState.sampleHeightmap) : un-scale to world Y.
         return (top + (bot - top) * ty) * step;
+    }
+
+    /** Reads {@code h[i]} with the flat index clamped to {@code [0, h.length-1]} (h is never empty here). */
+    private static float at(float[] h, int i) {
+        int j = i < 0 ? 0 : (i >= h.length ? h.length - 1 : i);
+        return h[j];
     }
 
     /** Altitude palette, ported from {@code FarTerrain.frag} (terrain colour only). Writes into {@code out}. */
