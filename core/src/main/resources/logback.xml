@@ -12,23 +12,26 @@
     </appender>
 
     <logger name="com.jme3.bullet.objects.PhysicsRigidBody" level="error"/>
+    <logger name="com.jme3.input.InputManager" level="info"/>
+    <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>
+
+    <logger name="org.delaunois.ialon" level="info"/>
     <logger name="org.delaunois.ialon.blocks" level="info"/>
     <logger name="org.delaunois.ialon.blocks.shapes.Liquid" level="error" />
     <logger name="org.delaunois.ialon.blocks.ChunkCache" level="info"/>
     <logger name="org.delaunois.ialon.blocks.BlockRegistry" level="error"/>
-    <logger name="org.delaunois.ialon" level="info"/>
-    <logger name="org.delaunois.jme.AndroidHarness" level="info"/>
-    <logger name="org.delaunois.ialon.blocks.ChunkManager" level="error"/>
-    <logger name="org.delaunois.ialon.state.ChunkSaverState" level="error"/>
     <logger name="org.delaunois.ialon.blocks.ChunkPager" level="warn"/>
     <logger name="org.delaunois.ialon.blocks.PhysicsChunkPager" level="error"/>
     <logger name="org.delaunois.ialon.blocks.ChunkLightManager" level="info"/>
     <logger name="org.delaunois.ialon.blocks.ChunkLiquidManager" level="info"/>
-    <logger name="org.delaunois.ialon.state.PlayerState" level="info"/>
+    <logger name="org.delaunois.ialon.blocks.WorldManager" level="debug"/>
+    <logger name="org.delaunois.ialon.blocks.ChunkManager" level="error"/>
     <logger name="org.delaunois.ialon.control.SunControl" level="info"/>
-    <logger name="com.jme3.input.InputManager" level="info"/>
-    <logger name="com.simsilica.lemur.input.InputMapper" level="info"/>
-    <logger name="org.delaunois.ialon.controlPlayerFlyControl" level="debug"/>
+    <logger name="org.delaunois.ialon.control.PlayerFlyControl" level="debug"/>
+    <logger name="org.delaunois.ialon.control.PlayerActionControl" level="debug"/>
+    <logger name="org.delaunois.ialon.state.ChunkSaverState" level="error"/>
+    <logger name="org.delaunois.ialon.state.PlayerState" level="info"/>
+    <logger name="org.delaunois.jme.AndroidHarness" level="info"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />
