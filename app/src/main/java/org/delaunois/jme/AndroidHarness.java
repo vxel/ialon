@@ -448,10 +448,12 @@ public class AndroidHarness extends Activity implements TouchListener, DialogInt
                 splashImageView.setImageResource(splashPicID);
             }
 
-            if (view.getParent() != null) {
-                ((ViewGroup) view.getParent()).removeView(view);
+            if (view != null) {
+                if (view.getParent() != null) {
+                    ((ViewGroup) view.getParent()).removeView(view);
+                }
+                frameLayout.addView(view);
             }
-            frameLayout.addView(view);
 
             if (splashImageView.getParent() != null) {
                 ((ViewGroup) splashImageView.getParent()).removeView(splashImageView);
