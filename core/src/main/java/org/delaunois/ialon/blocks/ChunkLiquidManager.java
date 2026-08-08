@@ -152,13 +152,31 @@ public class ChunkLiquidManager {
         }
 
         neighborBlockLocations.forEach(loc ->
-                chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk -> {
-                    Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));
-                    Block block = chunk.getBlock(blockLocationInsideChunk);
-                    if (block != null && block.getLiquidLevel() > 0) {
-                        flowQueue(liquidTypeOf(block)).offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, getLiquidLevel(block)));
-                    }
-                }));
+                chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk ->
+                        flowFrom(chunk, chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc))))));
+    }
+
+    /**
+     * Seeds the flow simulation from a <b>single</b> cell, if that cell carries liquid ; a no-op
+     * otherwise. This is the per-cell core of {@link #flowLiquid(Vector3f)}, which is the "one block was
+     * removed" convenience wrapper around it (it seeds the 27 cells surrounding the hole).
+     *
+     * <p>Exposed for bulk edits : carving a whole region only needs its boundary re-seeded, and going
+     * through {@code flowLiquid} per boundary cell would re-test the same 27 neighbours over and over,
+     * allocating a {@code Vector3f} and a {@code HashSet} each time. The caller walks the boundary once
+     * and calls this directly.</p>
+     *
+     * @param chunk the chunk holding the cell
+     * @param blockLocationInsideChunk the cell to seed from
+     */
+    public void flowFrom(Chunk chunk, Vec3i blockLocationInsideChunk) {
+        if (blockLocationInsideChunk == null) {
+            return;
+        }
+        Block block = chunk.getBlock(blockLocationInsideChunk);
+        if (block != null && block.getLiquidLevel() > 0) {
+            flowQueue(liquidTypeOf(block)).offer(new LiquidNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, getLiquidLevel(block)));
+        }
     }
 
     /**

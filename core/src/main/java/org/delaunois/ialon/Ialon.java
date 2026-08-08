@@ -45,6 +45,8 @@ import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhotoModeState;
 import org.delaunois.ialon.state.Popup;
+import org.delaunois.ialon.state.RegionAddState;
+import org.delaunois.ialon.state.RegionDeleteState;
 import org.delaunois.ialon.state.RenderReport;
 import org.delaunois.ialon.state.ScreenState;
 import org.delaunois.ialon.state.SettingsState;
@@ -95,6 +97,8 @@ public class Ialon extends SimpleApplication {
      */
     private static final List<Class<? extends AppState>> POPUP_STATES = Collections.unmodifiableList(
             Arrays.<Class<? extends AppState>>asList(
+                    RegionDeleteState.class,
+                    RegionAddState.class,
                     BlockSliderSelectionState.class,
                     MinimapState.class,
                     SettingsState.class,
@@ -280,6 +284,8 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new TimeFactorState(config));
         stateManager.attach(new CreationCaptureState(config)); // "New creation" capture mode (uses ButtonManagerState)
         stateManager.attach(new CreationPlacementState(config)); // Places a saved creation into the world
+        stateManager.attach(new RegionDeleteState(config)); // Bulk-delete mode, entered by holding "-" (uses ButtonManagerState)
+        stateManager.attach(new RegionAddState(config)); // Bulk-fill mode, entered by holding "+"
         stateManager.attach(new CreationLibraryState(config)); // Library of creations (opens from WorldMenuState)
         stateManager.attach(new WorldMenuState(config)); // Create / switch worlds (uses WorldSelectionState)
         stateManager.attach(new PhotoModeState(config)); // Hides all UI for a clean screenshot

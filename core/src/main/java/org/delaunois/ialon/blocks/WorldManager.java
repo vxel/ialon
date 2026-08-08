@@ -11,10 +11,12 @@ import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -46,6 +48,9 @@ public class WorldManager {
     private final NoiseTerrainGenerator noiseGenerator;
 
     private static final Vector3f NORTH = new Vector3f(0, 0, -1);
+
+    /** Topmost indestructible layer : blocks at or below this Y can never be removed by the player. */
+    private static final int BEDROCK_TOP = 1;
 
     // Door type naming convention : "door_<hinge>_<look>" (default look = "door_left"/"door_right").
     private static final String DOOR_PREFIX = "door";
@@ -434,7 +439,7 @@ public class WorldManager {
     private Set<Vec3i> doRemoveBlock(Vector3f location) {
         log.debug("Removing block at {}", location);
 
-        if (location.y <= 1) {
+        if (location.y <= BEDROCK_TOP) {
             log.warn("Cannot remove bedrock.");
             return Collections.emptySet();
         }
@@ -514,6 +519,380 @@ public class WorldManager {
     }
 
     /**
+     * Removes <b>every</b> block inside an inclusive box of block coordinates, in one pass.
+     *
+     * <p>This is deliberately not a loop over {@link #removeBlock(Vector3f)} : that path runs a full,
+     * unbudgeted light flood <i>and</i> a blocking {@code requestOrderedMeshChunks} <i>and</i> a chunk
+     * file rewrite for every single block. Over a region that is tens of thousands of floods re-lighting
+     * the same cells again and again. Here the work is done once for the whole box :</p>
+     * <ul>
+     *   <li>one sweep writing straight into the chunks (chunk lookups are memoised — the sweep is
+     *       contiguous, so consecutive cells almost always share a chunk);</li>
+     *   <li>one sunlight flood seeded from the whole carved volume plus a one-cell shell;</li>
+     *   <li>one overlay marker per distinct chunk column, instead of one per block;</li>
+     *   <li>one non-blocking re-mesh request for the touched chunks and their axis neighbours.</li>
+     * </ul>
+     *
+     * <p>The liquid simulation is only <b>seeded</b> here (recede what the removed sources fed, then
+     * re-flow from the boundary) and drained later by {@code ChunkLiquidManagerState} under its
+     * per-frame budget, so a carved-open reservoir refills progressively instead of in one frame.</p>
+     *
+     * <p>Cells whose chunk is not currently paged in are skipped, like every other edit path.</p>
+     *
+     * @param min the inclusive lower corner, in block coordinates
+     * @param max the inclusive upper corner, in block coordinates
+     * @return the locations of the chunks that were actually modified (empty if nothing was removed)
+     */
+    public Set<Vec3i> removeRegion(Vec3i min, Vec3i max) {
+        // Bedrock : the single-block path refuses y <= 1, so the region simply starts above it rather
+        // than failing as a whole.
+        int minY = Math.max(min.y, BEDROCK_TOP + 1);
+        if (minY > max.y || min.x > max.x || min.z > max.z) {
+            return Collections.emptySet();
+        }
+
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        Set<Vec3i> touched = new LinkedHashSet<>();
+        Set<Long> columns = new HashSet<>();
+        // Cells to re-seed the sunlight flood from : the carved volume plus a one-cell shell, so the
+        // flood starts from the still-lit cells around the hole and pours in.
+        List<Vector3f> sunlightSeeds = new ArrayList<>();
+        List<LiquidCell> removedSources = new ArrayList<>();
+        int removed = 0;
+
+        ChunkLookup lookup = new ChunkLookup(chunkSize);
+        for (int y = minY; y <= max.y; y++) {
+            for (int z = min.z; z <= max.z; z++) {
+                for (int x = min.x; x <= max.x; x++) {
+                    Chunk chunk = lookup.at(x, y, z);
+                    if (chunk == null) {
+                        continue;
+                    }
+                    Block previous = chunk.removeBlock(lookup.localX, lookup.localY, lookup.localZ);
+                    if (previous == null) {
+                        continue;
+                    }
+                    removed++;
+                    touched.add(chunk.getLocation());
+                    columns.add(WorldEditOverlay.pack(lookup.chunkX, lookup.chunkZ));
+
+                    if (previous.isLiquidSource() && chunkLiquidManager != null) {
+                        // The flow this source fed may extend outside the box : recede it explicitly.
+                        // (Plain flowing cells inside the box need nothing — they are gone, and the
+                        // boundary re-flow below refills whatever a remaining source still reaches.)
+                        removedSources.add(new LiquidCell(chunk,
+                                new Vec3i(lookup.localX, lookup.localY, lookup.localZ)));
+                    }
+                    if (previous.isTorchlight() && chunkLightManager != null) {
+                        touched.addAll(chunkLightManager.removeTorchlight(
+                                new Vec3i(lookup.localX, lookup.localY, lookup.localZ), chunk));
+                    }
+                    if (noiseGenerator != null && isLog(previous.getType())) {
+                        recordLogEdit(x, z, false);
+                    }
+                }
+            }
+        }
+
+        if (removed == 0) {
+            return Collections.emptySet();
+        }
+
+        // Walk the box plus its one-cell shell once : collect the sunlight seeds and, on the shell only,
+        // re-seed the liquid flow from whatever liquid still borders the hole.
+        seedLightAndLiquid(min.x, minY, min.z, max, lookup, sunlightSeeds);
+
+        for (LiquidCell source : removedSources) {
+            chunkLiquidManager.unflow(source.chunk, source.local, LEVEL_MAX);
+        }
+
+        if (chunkLightManager != null) {
+            touched.addAll(chunkLightManager.restoreSunlight(sunlightSeeds));
+        }
+
+        finishRegionEdit(touched, columns);
+
+        log.info("Removed {} blocks in region {}..{} : {} chunks touched, {} columns",
+                removed, min, max, touched.size(), columns.size());
+        return touched;
+    }
+
+    /**
+     * Common tail of the bulk edits : records the edited chunk columns in the far-horizon overlay, then
+     * requests one re-mesh for the touched chunks and their axis neighbours.
+     *
+     * <p>The non-blocking mesh variant is deliberate : the worst-case region spans dozens of chunks, and
+     * making the render thread wait for all of them on the single edit thread would freeze the frame.
+     * The liquid simulation already re-meshes at this scale the same way.</p>
+     */
+    private void finishRegionEdit(Set<Vec3i> touched, Set<Long> columns) {
+        if (noiseGenerator != null) {
+            for (Long column : columns) {
+                recordColumnEdit(WorldEditOverlay.unpackX(column), WorldEditOverlay.unpackZ(column));
+            }
+        }
+
+        // Faces at chunk borders change too, so the axis neighbours must be re-meshed as well.
+        Set<Vec3i> toMesh = new LinkedHashSet<>(touched);
+        for (Vec3i c : touched) {
+            toMesh.add(new Vec3i(c.x + 1, c.y, c.z));
+            toMesh.add(new Vec3i(c.x - 1, c.y, c.z));
+            toMesh.add(new Vec3i(c.x, c.y + 1, c.z));
+            toMesh.add(new Vec3i(c.x, c.y - 1, c.z));
+            toMesh.add(new Vec3i(c.x, c.y, c.z + 1));
+            toMesh.add(new Vec3i(c.x, c.y, c.z - 1));
+        }
+        chunkManager.requestMeshChunksNoWait(toMesh);
+    }
+
+    /**
+     * Fills every <b>empty</b> cell of an inclusive box of block coordinates with {@code block}, in one
+     * pass. Cells already holding something — terrain, buildings, water — are left exactly as they are,
+     * so a fill drapes itself around what is already there instead of overwriting it.
+     *
+     * <p>The counterpart of {@link #removeRegion} and built the same way, for the same reason : one
+     * sweep, one light flood, one overlay marker per column, one non-blocking re-mesh. The lighting is
+     * the mirror image — a fill <b>blocks</b> the sky, so the flood is a sunlight <i>removal</i> seeded
+     * from every filled cell (or a torchlight flood, when the block is itself an emitter).</p>
+     *
+     * <p>The block is placed as chosen : none of the single-block placement rules (orientation to the
+     * player, slab stacking, waterlogging) apply, since there is no aimed face nor camera direction to
+     * derive them from. The one exception is a <b>liquid source</b>, which fills as a body of liquid
+     * rather than a stack of surfaces — see {@link #submergedVariantOf}. Cells whose chunk is not
+     * currently paged in are skipped, like every other edit path.</p>
+     *
+     * @param min the inclusive lower corner, in block coordinates
+     * @param max the inclusive upper corner, in block coordinates
+     * @param block the block to place in every empty cell
+     * @param playerBlockLocation the block the player stands in, or {@code null} for no protection : a
+     *                            solid fill skips it and the cell above, so the player cannot entomb
+     *                            themselves (the same guard the single-block placement applies)
+     * @return the locations of the chunks that were actually modified (empty if nothing was placed)
+     */
+    public Set<Vec3i> fillRegion(Vec3i min, Vec3i max, Block block, Vec3i playerBlockLocation) {
+        if (block == null || min.x > max.x || min.y > max.y || min.z > max.z) {
+            return Collections.emptySet();
+        }
+
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        Set<Vec3i> touched = new LinkedHashSet<>();
+        Set<Long> columns = new HashSet<>();
+        List<Vector3f> filledCells = new ArrayList<>();
+        float scale = BlocksConfig.getInstance().getBlockScale();
+        boolean protectPlayer = block.isSolid() && playerBlockLocation != null;
+        int filled = 0;
+
+        // Filling with a liquid source builds a body of liquid, and one is not a stack of surfaces : only
+        // the topmost cell of each column is a source (drawn as the familiar slightly-sunken surface),
+        // everything under it is the brim-full variant. This is exactly how the generator lays out the
+        // sea, and without it every cell would draw its own sunken top face — a stack of visible plates
+        // inside what should be solid water.
+        Block submerged = submergedVariantOf(block);
+        int width = max.x - min.x + 1;
+        boolean[] liquidAbove = new boolean[width * (max.z - min.z + 1)];
+        primeLiquidAbove(liquidAbove, min, max, width);
+
+        ChunkLookup lookup = new ChunkLookup(chunkSize);
+        // Top-down, so each cell already knows what ended up above it.
+        for (int y = max.y; y >= min.y; y--) {
+            for (int z = min.z; z <= max.z; z++) {
+                for (int x = min.x; x <= max.x; x++) {
+                    int col = (z - min.z) * width + (x - min.x);
+                    if (protectPlayer && x == playerBlockLocation.x && z == playerBlockLocation.z
+                            && (y == playerBlockLocation.y || y == playerBlockLocation.y + 1)) {
+                        liquidAbove[col] = false;
+                        continue;
+                    }
+                    Chunk chunk = lookup.at(x, y, z);
+                    if (chunk == null) {
+                        liquidAbove[col] = false;
+                        continue; // not paged in
+                    }
+                    Block existing = chunk.getBlock(lookup.localX, lookup.localY, lookup.localZ);
+                    if (existing != null) {
+                        // A fill never overwrites : the cell keeps whatever stood there, and tells the
+                        // cell below whether it is submerged.
+                        liquidAbove[col] = existing.getLiquidLevel() > 0;
+                        continue;
+                    }
+
+                    Block placed = (submerged != null && liquidAbove[col]) ? submerged : block;
+                    chunk.addBlock(lookup.localX, lookup.localY, lookup.localZ, placed);
+                    liquidAbove[col] = placed.getLiquidLevel() > 0;
+                    filled++;
+                    touched.add(chunk.getLocation());
+                    columns.add(WorldEditOverlay.pack(lookup.chunkX, lookup.chunkZ));
+                    filledCells.add(new Vector3f((x + 0.5f) * scale, (y + 0.5f) * scale, (z + 0.5f) * scale));
+
+                    if (noiseGenerator != null && isLog(placed.getType())) {
+                        recordLogEdit(x, z, true);
+                    }
+                }
+            }
+        }
+
+        if (filled == 0) {
+            return Collections.emptySet();
+        }
+
+        if (chunkLightManager != null) {
+            if (block.isTorchlight()) {
+                touched.addAll(chunkLightManager.addTorchlight(filledCells, 15));
+            } else {
+                // Mirrors the single-block placement : the new blocks stop both the sky and any
+                // torchlight that used to pass through their cells.
+                touched.addAll(chunkLightManager.removeSunlight(filledCells));
+                touched.addAll(chunkLightManager.removeTorchlight(filledCells));
+            }
+        }
+
+        // A fill can dam or divert a flow it now borders : let the simulation re-evaluate the boundary.
+        seedShellLiquid(min.x, min.y, min.z, max, lookup);
+
+        finishRegionEdit(touched, columns);
+
+        log.info("Filled {} cells with {} in region {}..{} : {} chunks touched, {} columns",
+                filled, block.getName(), min, max, touched.size(), columns.size());
+        return touched;
+    }
+
+    /**
+     * The brim-full form of a liquid source — {@code water_source} to {@code water-liquid}, and likewise
+     * for lava — used for the cells of a filled body that end up under its surface. Returns {@code null}
+     * for anything that is not a liquid source, which is what turns the whole surface/submerged rule off
+     * for ordinary blocks.
+     */
+    private static Block submergedVariantOf(Block block) {
+        if (!block.isLiquidSource()) {
+            return null;
+        }
+        return BlocksConfig.getInstance().getBlockRegistry()
+                .get(BlockIds.getName(block.getType(), ShapeIds.LIQUID));
+    }
+
+    /**
+     * Seeds the "is this column submerged" state with what already stands <b>one cell above the box</b>,
+     * so filling under an existing lake produces full cells right up to the box's top face instead of a
+     * stray surface layer buried in the water.
+     */
+    private void primeLiquidAbove(boolean[] liquidAbove, Vec3i min, Vec3i max, int width) {
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        ChunkLookup probe = new ChunkLookup(chunkSize);
+        for (int z = min.z; z <= max.z; z++) {
+            for (int x = min.x; x <= max.x; x++) {
+                Chunk chunk = probe.at(x, max.y + 1, z);
+                if (chunk == null) {
+                    continue;
+                }
+                Block above = chunk.getBlock(probe.localX, probe.localY, probe.localZ);
+                liquidAbove[(z - min.z) * width + (x - min.x)] = above != null && above.getLiquidLevel() > 0;
+            }
+        }
+    }
+
+    /** Re-seeds the liquid flow from every cell of the box's one-cell shell that still holds liquid. */
+    private void seedShellLiquid(int minX, int minY, int minZ, Vec3i max, ChunkLookup lookup) {
+        if (chunkLiquidManager == null) {
+            return;
+        }
+        for (int y = minY - 1; y <= max.y + 1; y++) {
+            for (int z = minZ - 1; z <= max.z + 1; z++) {
+                for (int x = minX - 1; x <= max.x + 1; x++) {
+                    boolean shell = x < minX || x > max.x || y < minY || y > max.y || z < minZ || z > max.z;
+                    if (!shell) {
+                        continue;
+                    }
+                    Chunk chunk = lookup.at(x, y, z);
+                    if (chunk != null) {
+                        chunkLiquidManager.flowFrom(chunk,
+                                new Vec3i(lookup.localX, lookup.localY, lookup.localZ));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Walks the carved box plus a one-cell shell, collecting every cell as a sunlight seed and, for the
+     * shell cells only, re-seeding the liquid flow from any liquid still bordering the hole.
+     */
+    private void seedLightAndLiquid(int minX, int minY, int minZ, Vec3i max, ChunkLookup lookup,
+                                    List<Vector3f> sunlightSeeds) {
+        float scale = BlocksConfig.getInstance().getBlockScale();
+        for (int y = minY - 1; y <= max.y + 1; y++) {
+            for (int z = minZ - 1; z <= max.z + 1; z++) {
+                for (int x = minX - 1; x <= max.x + 1; x++) {
+                    boolean shell = x < minX || x > max.x || y < minY || y > max.y || z < minZ || z > max.z;
+                    Chunk chunk = lookup.at(x, y, z);
+                    if (chunk == null) {
+                        continue;
+                    }
+                    sunlightSeeds.add(new Vector3f((x + 0.5f) * scale, (y + 0.5f) * scale, (z + 0.5f) * scale));
+                    if (shell && chunkLiquidManager != null) {
+                        chunkLiquidManager.flowFrom(chunk,
+                                new Vec3i(lookup.localX, lookup.localY, lookup.localZ));
+                    }
+                }
+            }
+        }
+    }
+
+    /** A liquid cell captured during the sweep, so its flow can be receded once the sweep is done. */
+    private static final class LiquidCell {
+        private final Chunk chunk;
+        private final Vec3i local;
+
+        private LiquidCell(Chunk chunk, Vec3i local) {
+            this.chunk = chunk;
+            this.local = local;
+        }
+    }
+
+    /**
+     * Resolves block coordinates to (chunk, local coordinates) with the previous chunk memoised, and
+     * with plain integer arithmetic rather than the {@code Vector3f}-based static helpers.
+     *
+     * <p>A region sweep visits tens of thousands of cells, and the general path would allocate a
+     * {@code Vector3f} and two {@code Vec3i} for each of them while re-querying the chunk cache. The
+     * sweep is contiguous along X, so consecutive cells nearly always land in the same chunk and the
+     * memo hits.</p>
+     */
+    private final class ChunkLookup {
+        private final Vec3i chunkSize;
+        private int chunkX = Integer.MIN_VALUE;
+        private int chunkY = Integer.MIN_VALUE;
+        private int chunkZ = Integer.MIN_VALUE;
+        private Chunk chunk;
+        private int localX;
+        private int localY;
+        private int localZ;
+
+        private ChunkLookup(Vec3i chunkSize) {
+            this.chunkSize = chunkSize;
+        }
+
+        /**
+         * Positions the lookup on a block cell and returns its chunk, or {@code null} when that chunk is
+         * not paged in. On success {@code localX/Y/Z} hold the cell's coordinates inside the chunk.
+         */
+        private Chunk at(int x, int y, int z) {
+            int cx = Math.floorDiv(x, chunkSize.x);
+            int cy = Math.floorDiv(y, chunkSize.y);
+            int cz = Math.floorDiv(z, chunkSize.z);
+            if (cx != chunkX || cy != chunkY || cz != chunkZ) {
+                chunkX = cx;
+                chunkY = cy;
+                chunkZ = cz;
+                chunk = chunkManager.getChunk(new Vec3i(cx, cy, cz)).orElse(null);
+            }
+            localX = x - cx * chunkSize.x;
+            localY = y - cy * chunkSize.y;
+            localZ = z - cz * chunkSize.z;
+            return chunk;
+        }
+    }
+
+    /**
      * Records a player edit into the far-horizon overlay. Cheap : it only <b>marks the chunk column</b>
      * as edited (so the far terrain refreshes it later, when the column is unfetched and becomes visible
      * at the horizon - never on the edit itself, since the far terrain is hidden while the chunk is
@@ -525,21 +904,35 @@ public class WorldManager {
             return;
         }
         Vec3i cl = ChunkManager.getChunkLocation(location);
-        // Transient marker (raw key) : the far terrain refreshes this column's relief at unfetch.
-        worldEditOverlay.markColumnEdited(WorldEditOverlay.pack(cl.x, cl.z));
-        // Persisted marker (canonical key) : any edit, terrain OR building, so the minimap can show
-        // where the player has built. Cheap : a single set add, deduplicated, written once per column.
-        worldEditOverlay.markModifiedColumn(noiseGenerator.modifiedColumnKey(cl.x, cl.z));
+        recordColumnEdit(cl.x, cl.z);
 
         if (block != null && isLog(block.getType())) {
             Vec3i bl = ChunkManager.getBlockLocation(location);
-            long cellKey = noiseGenerator.trunkAnchorCellKeyAt(bl.x, bl.z);
-            if (cellKey != -1L) {
-                if (added) {
-                    worldEditOverlay.restoreTree(cellKey);
-                } else {
-                    worldEditOverlay.removeTree(cellKey);
-                }
+            recordLogEdit(bl.x, bl.z, added);
+        }
+    }
+
+    /**
+     * Marks one chunk column as edited in the far-horizon overlay. Split out of {@link #recordEdit} so
+     * the bulk path can mark each distinct column <b>once</b> instead of once per removed block.
+     * Both markers are idempotent set adds, but the key packing is not free at region scale.
+     */
+    private void recordColumnEdit(int chunkX, int chunkZ) {
+        // Transient marker (raw key) : the far terrain refreshes this column's relief at unfetch.
+        worldEditOverlay.markColumnEdited(WorldEditOverlay.pack(chunkX, chunkZ));
+        // Persisted marker (canonical key) : any edit, terrain OR building, so the minimap can show
+        // where the player has built. Cheap : a single set add, deduplicated, written once per column.
+        worldEditOverlay.markModifiedColumn(noiseGenerator.modifiedColumnKey(chunkX, chunkZ));
+    }
+
+    /** Fells (or restores) the far-horizon tree billboard whose trunk stands at this block column. */
+    private void recordLogEdit(int blockX, int blockZ, boolean added) {
+        long cellKey = noiseGenerator.trunkAnchorCellKeyAt(blockX, blockZ);
+        if (cellKey != -1L) {
+            if (added) {
+                worldEditOverlay.restoreTree(cellKey);
+            } else {
+                worldEditOverlay.removeTree(cellKey);
             }
         }
     }

@@ -59,7 +59,10 @@ import lombok.extern.slf4j.Slf4j;
  * smoothed over {@link #SMOOTHING_TIME} :
  * <ul>
  *   <li><b>forest</b> — {@code getForestDensity * biome.treeDensityMul}, exactly the product
- *       {@link NoiseTerrainGenerator} itself uses to decide whether to plant a tree. So the ambience
+ *       {@link NoiseTerrainGenerator} itself uses to decide whether to plant a tree, times
+ *       {@link #shoreFade} for the OTHER half of the generator's rule : nothing grows at or below the
+ *       shore. Without it the wildlife followed the forest-density field straight out over the sea,
+ *       where that field is perfectly happy to read 1 and no tree has ever stood. So the ambience
  *       tracks the trees the player can actually see, and it is a pure function of the seed and the
  *       coordinates : no allocation worth the name, and available even where no chunk is paged in.</li>
  *   <li><b>day</b> — a smoothstep on the sun height. Birds scale with it, owls with {@code 1 - day}, so
@@ -110,6 +113,12 @@ public class AmbientSoundState extends BaseAppState {
     /** Height above the terrain at which the ambience starts fading, and over how many blocks it dies. */
     private static final float FLY_FADE_START = 8f;
     private static final float FLY_FADE_DEPTH = 10f;
+
+    /**
+     * How far the sea floor has to drop below the tree line before the wildlife is gone : a shallow shelf
+     * a couple of blocks off the beach still has the shore's woods within earshot, the open sea does not.
+     */
+    private static final float SHORE_FADE_DEPTH = 5f;
 
     /**
      * Seconds over which a call ALREADY IN THE AIR is faded when the listener stops being able to hear
@@ -300,14 +309,17 @@ public class AmbientSoundState extends BaseAppState {
     private void probeEnvironment() {
         Vector3f eye = app.getCamera().getLocation();
 
+        probe.set(eye.x, 0, eye.z);
+        float ground = noise.getHeight(probe);
+
         // The same signal the generator's own tree scatter uses, so the ambience follows the trees the
-        // player can see rather than a lookalike field.
-        float forest = noise.treeDensityAt(eye.x, eye.z, sample);
+        // player can see rather than a lookalike field — BOTH halves of it : the density field says how
+        // thick the wood is, the shore test says whether this column can hold a tree at all.
+        float forest = noise.treeDensityAt(eye.x, eye.z, sample)
+                * shoreFade(ground, noise.getWaterHeight());
 
         float day = smoothstep(sunControl.getSunHeight(), DAY_FADE_LOW, DAY_FADE_HIGH);
 
-        probe.set(eye.x, 0, eye.z);
-        float ground = noise.getHeight(probe);
         // Altitude goes to the GATE, not into the targets below : climbing away from the ground has to
         // take the calls already in the air with it, and only the gate reaches those. Folding it in here
         // as well would apply it twice.
@@ -462,6 +474,27 @@ public class AmbientSoundState extends BaseAppState {
                 UNDERGROUND_FADE_START - UNDERGROUND_FADE_DEPTH, UNDERGROUND_FADE_START);
         float notFlying = 1f - smoothstep(aboveGround, FLY_FADE_START, FLY_FADE_START + FLY_FADE_DEPTH);
         return notUnderground * notFlying;
+    }
+
+    /**
+     * How much wildlife belongs to a column whose ground sits at {@code groundHeight}, given the world's
+     * {@code waterHeight} : 1 on dry land, 0 out at sea.
+     *
+     * {@link NoiseTerrainGenerator} plants a tree only where {@code groundh > waterHeight + 1} (its
+     * treeBandOk), but the forest-density field it multiplies that test with knows nothing about water —
+     * it happily reads 1 in the middle of an ocean. The ambience sampled only the field, so the dawn
+     * chorus followed the player out to sea. This is the missing half of the rule, softened into a ramp
+     * so that rowing away from a wooded beach fades rather than cuts.
+     *
+     * It belongs to the INTENSITY and not to the gate, deliberately : swimming out is walking out of a
+     * wood, so the calls already in the air are left to finish behind the player. Ducking the head under
+     * is the gate's business, and that one does cut.
+     *
+     * Package-private and static so the rule can be asserted without an audio device or a world.
+     */
+    static float shoreFade(float groundHeight, float waterHeight) {
+        float treeLine = waterHeight + 1f;
+        return smoothstep(groundHeight, treeLine - SHORE_FADE_DEPTH, treeLine);
     }
 
     /** Hermite fade from 0 at {@code edge0} to 1 at {@code edge1}. */

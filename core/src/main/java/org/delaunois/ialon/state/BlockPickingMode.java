@@ -27,11 +27,12 @@ import java.util.List;
 /**
  * A modal "block picking" interaction where the player aims at world blocks and confirms a selection
  * with the primary input (left-click on desktop, the on-screen action button on mobile). Implemented by
- * the creation-capture mode ({@link CreationCaptureState}) and the creation-placement mode
- * ({@link CreationPlacementState}), which are mutually exclusive.
+ * the creation-capture mode ({@link CreationCaptureState}), the creation-placement mode
+ * ({@link CreationPlacementState}) and the bulk-edit modes ({@link RegionDeleteState},
+ * {@link RegionAddState}), which are mutually exclusive.
  *
  * <p>Centralising the contract lets {@code PlaceholderControl} (live aim + action-button visibility),
- * {@code PlayerActionControl} (confirm) and {@link TimeFactorState} (UI hiding) treat both modes the
+ * {@code PlayerActionControl} (confirm) and {@link TimeFactorState} (UI hiding) treat every mode the
  * same way, via {@link #active(AppStateManager)}, instead of knowing each one.</p>
  *
  * @author Cedric de Launois
@@ -40,7 +41,8 @@ public interface BlockPickingMode {
 
     /** The implementing states, in priority order, that {@link #active} scans. */
     List<Class<? extends AppState>> MODES = Arrays.asList(
-            CreationCaptureState.class, CreationPlacementState.class);
+            CreationCaptureState.class, CreationPlacementState.class,
+            RegionDeleteState.class, RegionAddState.class);
 
     /** Whether this mode is currently active (the player is picking blocks). */
     boolean isPicking();

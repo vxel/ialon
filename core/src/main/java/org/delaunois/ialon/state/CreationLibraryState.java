@@ -36,14 +36,13 @@ import com.simsilica.lemur.Panel;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.component.SpringGridLayout;
 import com.simsilica.lemur.event.CursorEventControl;
-import com.simsilica.lemur.event.DefaultMouseListener;
-import com.jme3.input.event.MouseButtonEvent;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.BlockRegistry;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.serialize.Creation;
 import org.delaunois.ialon.serialize.CreationRepository;
+import org.delaunois.ialon.ui.ConfirmDialog;
 import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
@@ -626,41 +625,24 @@ public class CreationLibraryState extends BaseAppState implements Resizable, Car
         }
     }
 
-    /**
-     * A full-screen invisible container, swallowing clicks so the grid below stays inert while showing
-     * through around the dialog.
-     */
     private Container createModalOverlay() {
-        Container overlay = new Container(IALON_STYLE);
-        overlay.setLocalTranslation(0, 0, 100);
-        IalonTheme.applyClearVeil(overlay, config);
-        overlay.addMouseListener(new IgnoreMouseClickListener());
-        return overlay;
+        return ConfirmDialog.createModalOverlay(config);
     }
 
     private Container createDialogBox() {
-        return IalonTheme.dialogBox(new SpringGridLayout(Axis.Y, Axis.X, FillMode.None, FillMode.None),
-                app.getAssetManager(), app.getCamera().getHeight());
+        return ConfirmDialog.createDialogBox(app);
     }
 
     private Label dialogTitle(String text) {
-        return IalonTheme.dialogTitle(text, app.getCamera().getWidth(), app.getCamera().getHeight());
+        return ConfirmDialog.title(app, text);
     }
 
     private void showOverlay(Container overlay, Container dialog) {
-        overlay.addChild(dialog);
-        popup.attachChild(overlay);
-        // Force the full-screen size AFTER attaching + adding the dialog, otherwise the layout shrinks the
-        // overlay to its content : the dialog ends up jammed top-left, and the veil no longer spans the
-        // screen, so clicks outside it reach the grid it is meant to keep inert.
-        Vector3f screen = new Vector3f(app.getCamera().getWidth(), app.getCamera().getHeight(), 0);
-        overlay.setPreferredSize(screen);
-        overlay.setSize(screen);
+        ConfirmDialog.show(app, popup, overlay, dialog);
     }
 
     private Button dialogButton(String text) {
-        return IalonTheme.dialogButton(text, app.getAssetManager(),
-                app.getCamera().getWidth(), app.getCamera().getHeight());
+        return ConfirmDialog.button(app, text);
     }
 
     private void sizePopupToScreen() {
@@ -683,13 +665,6 @@ public class CreationLibraryState extends BaseAppState implements Resizable, Car
             sizePopupToScreen();
             rebuildGrid();
             layoutCornerButtons();
-        }
-    }
-
-    private static class IgnoreMouseClickListener extends DefaultMouseListener {
-        @Override
-        public void mouseButtonEvent(MouseButtonEvent event, Spatial target, Spatial capture) {
-            event.setConsumed();
         }
     }
 

@@ -493,7 +493,14 @@ public class HitchProfilerState extends BaseAppState implements AppProfiler {
             String stat = new String(raw, java.nio.charset.StandardCharsets.US_ASCII);
             // The comm field may contain spaces and parentheses : everything is positional AFTER the
             // last ')'. From there, index 11 is utime and index 12 is stime.
-            String[] f = stat.substring(stat.lastIndexOf(')') + 2).trim().split("\\s+");
+            int afterComm = stat.lastIndexOf(')') + 2;
+            if (afterComm >= stat.length()) {
+                return -1;
+            }
+            String[] f = stat.substring(afterComm).trim().split("\\s+");
+            if (f.length < 13) {
+                return -1;
+            }
             return Long.parseLong(f[11]) + Long.parseLong(f[12]);
         } catch (Exception e) {
             return -1;

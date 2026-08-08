@@ -20,11 +20,13 @@ package org.delaunois.ialon.blocks;
 import com.jme3.math.Vector3f;
 import com.simsilica.mathd.Vec3i;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import lombok.AllArgsConstructor;
 import lombok.Setter;
@@ -73,8 +75,21 @@ public class ChunkLightManager {
 
     public Set<Vec3i> addTorchlight(Vec3i blockLocationInsideChunk, Chunk chunk, int intensity) {
         LightRunningContext context = new LightRunningContext();
-        chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity);
-        context.lightBfsQueue.offer(new LightNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z));
+        seedTorchlightAddition(context, chunk, blockLocationInsideChunk, intensity);
+        return updateTorchLight(context);
+    }
+
+    /**
+     * Adds torchlight at many world locations at once, in a <b>single</b> flood. See
+     * {@link #restoreSunlight(Collection)} for why the bulk paths exist.
+     *
+     * @param locations the (world) locations of the emitters
+     * @param intensity the intensity level of the light (integer between 0 and 15)
+     * @return the set of chunk locations whose meshes must be updated due to the light propagation
+     */
+    public Set<Vec3i> addTorchlight(Collection<Vector3f> locations, int intensity) {
+        LightRunningContext context = new LightRunningContext();
+        forEachCell(locations, (chunk, local) -> seedTorchlightAddition(context, chunk, local, intensity));
         return updateTorchLight(context);
     }
 
@@ -99,9 +114,20 @@ public class ChunkLightManager {
 
     public Set<Vec3i> removeTorchlight(Vec3i blockLocationInsideChunk, Chunk chunk) {
         LightRunningContext context = new LightRunningContext();
-        int intensity = chunk.getTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
-        context.lightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
-        chunk.setTorchlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
+        seedTorchlightRemoval(context, chunk, blockLocationInsideChunk);
+        return updateTorchLight(context);
+    }
+
+    /**
+     * Removes the torchlight of many world locations at once, in a <b>single</b> flood. See
+     * {@link #restoreSunlight(Collection)} for why the bulk paths exist.
+     *
+     * @param locations the (world) locations that stopped letting torchlight through
+     * @return the set of chunk locations whose meshes must be updated due to the light propagation
+     */
+    public Set<Vec3i> removeTorchlight(Collection<Vector3f> locations) {
+        LightRunningContext context = new LightRunningContext();
+        forEachCell(locations, (chunk, local) -> seedTorchlightRemoval(context, chunk, local));
         return updateTorchLight(context);
     }
 
@@ -125,13 +151,25 @@ public class ChunkLightManager {
             }
         }
 
-        LightRunningContext context = new LightRunningContext();
-        neighborBlockLocations.forEach(loc ->
-                chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk -> {
-                    Vec3i blockLocationInsideChunk = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));
-                    context.sunlightBfsQueue.offer(new LightNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z));
-                }));
+        return restoreSunlight(neighborBlockLocations);
+    }
 
+    /**
+     * Restores the sunlight from many world locations at once, in a <b>single</b> flood.
+     * <p>The per-location {@link #restoreSunlight(Vector3f)} seeds its own BFS and drains it to
+     * completion, which is the right shape for a single removed block but quadratic for a bulk edit :
+     * carving a region would re-flood the very same cells once per removed block. Seeding one shared
+     * queue with every location and draining it once costs a single pass over the affected volume,
+     * because the BFS only re-visits a cell when its light level actually increases.</p>
+     *
+     * @param locations the (world) start locations, typically the carved cells plus a one-cell shell
+     *                  so the flood is seeded from the still-lit cells surrounding them
+     * @return the set of chunk locations whose meshes must be updated due to the light propagation
+     */
+    public Set<Vec3i> restoreSunlight(Collection<Vector3f> locations) {
+        LightRunningContext context = new LightRunningContext();
+        forEachCell(locations, (chunk, local) ->
+                context.sunlightBfsQueue.offer(new LightNode(chunk, local.x, local.y, local.z)));
         return updateSunlight(context);
     }
 
@@ -158,10 +196,58 @@ public class ChunkLightManager {
 
     public Set<Vec3i> removeSunlight(Vec3i blockLocationInsideChunk, Chunk chunk) {
         LightRunningContext context = new LightRunningContext();
-        int intensity = chunk.getSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z);
-        context.sunlightRemovalBfsQueue.offer(new LightRemovalNode(chunk, blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, intensity));
-        chunk.setSunlight(blockLocationInsideChunk.x, blockLocationInsideChunk.y, blockLocationInsideChunk.z, 0);
+        seedSunlightRemoval(context, chunk, blockLocationInsideChunk);
         return updateSunlight(context);
+    }
+
+    /**
+     * Removes the sunlight of many world locations at once, in a <b>single</b> flood. See
+     * {@link #restoreSunlight(Collection)} for why the bulk paths exist — filling a region blocks the
+     * sky over every cell below it, and re-flooding per cell would re-darken the same column
+     * thousands of times.
+     *
+     * @param locations the (world) locations that just stopped letting the sky through
+     * @return the set of chunk locations whose meshes must be updated due to the light propagation
+     */
+    public Set<Vec3i> removeSunlight(Collection<Vector3f> locations) {
+        LightRunningContext context = new LightRunningContext();
+        forEachCell(locations, (chunk, local) -> seedSunlightRemoval(context, chunk, local));
+        return updateSunlight(context);
+    }
+
+    // --- Seeding ------------------------------------------------------------------------------------
+
+    /**
+     * Resolves each world location to its chunk and in-chunk coordinates and hands both to
+     * {@code action}. Locations whose chunk is not paged in, or that fall outside the chunk they
+     * resolve to, are skipped.
+     */
+    private void forEachCell(Collection<Vector3f> locations, BiConsumer<Chunk, Vec3i> action) {
+        locations.forEach(loc ->
+                chunkManager.getChunk(ChunkManager.getChunkLocation(loc)).ifPresent(chunk -> {
+                    Vec3i local = chunk.toLocalLocation(toVec3i(getScaledBlockLocation(loc)));
+                    if (local != null) {
+                        action.accept(chunk, local);
+                    }
+                }));
+    }
+
+    private static void seedSunlightRemoval(LightRunningContext context, Chunk chunk, Vec3i local) {
+        int intensity = chunk.getSunlight(local.x, local.y, local.z);
+        context.sunlightRemovalBfsQueue.offer(new LightRemovalNode(chunk, local.x, local.y, local.z, intensity));
+        chunk.setSunlight(local.x, local.y, local.z, 0);
+    }
+
+    private static void seedTorchlightRemoval(LightRunningContext context, Chunk chunk, Vec3i local) {
+        int intensity = chunk.getTorchlight(local.x, local.y, local.z);
+        context.lightRemovalBfsQueue.offer(new LightRemovalNode(chunk, local.x, local.y, local.z, intensity));
+        chunk.setTorchlight(local.x, local.y, local.z, 0);
+    }
+
+    private static void seedTorchlightAddition(LightRunningContext context, Chunk chunk, Vec3i local,
+                                               int intensity) {
+        chunk.setTorchlight(local.x, local.y, local.z, intensity);
+        context.lightBfsQueue.offer(new LightNode(chunk, local.x, local.y, local.z));
     }
 
     private Set<Vec3i> updateTorchLight(LightRunningContext context) {

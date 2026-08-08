@@ -23,6 +23,9 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.state.BlockPickingMode;
+import org.delaunois.ialon.state.RegionAddState;
+import org.delaunois.ialon.state.RegionDeleteState;
+import org.delaunois.ialon.state.RegionSelectionState;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +41,28 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             ACTION_DEBUG_CHUNK
     };
 
+    /**
+     * How long the "-" button (or the DELETE key) must be held to switch to the region-delete mode
+     * instead of removing the single aimed block.
+     */
+    private static final float LONG_PRESS_SECONDS = 0.5f;
+
     @Getter
     private boolean fly;
+
+    // Press tracking for the two block-editing controls. Both act on RELEASE, because holding either of
+    // them is a gesture of its own : it opens the matching bulk mode (fill for "+", delete for "-"), and
+    // that has to be decided before a single block is placed or destroyed.
+    //
+    // The pressed flags also guard against a release that was never preceded by a press : the on-screen
+    // buttons synthesise one when the cursor leaves them (ButtonManagerState#mouseExited), so merely
+    // sliding over a button would otherwise place or break a block.
+    private boolean addPressed;
+    private float addHeld;
+    private boolean addLongFired;
+    private boolean removePressed;
+    private float removeHeld;
+    private boolean removeLongFired;
 
     private Spatial head;
     private WorldManager worldManager;
@@ -88,9 +111,54 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         }
     }
 
+    /**
+     * Times the "+" and "-" holds. This has to live here rather than in the action callback : both input
+     * routes deliver the press with {@code tpf = 0} ({@code InputActionManager.triggerAction}), so the
+     * only real clock available is the per-frame tick.
+     */
     @Override
     protected void controlUpdate(float tpf) {
-        // Nothing to do
+        if (addPressed && !addLongFired) {
+            addHeld += tpf;
+            if (addHeld >= LONG_PRESS_SECONDS) {
+                addLongFired = true;
+                enterRegionMode(RegionAddState.class, "add");
+            }
+        }
+        if (removePressed && !removeLongFired) {
+            removeHeld += tpf;
+            if (removeHeld >= LONG_PRESS_SECONDS) {
+                // Consumed either way : the timer stops here, so a missing state warns once instead of
+                // every frame for as long as the button is held.
+                removeLongFired = true;
+                enterRegionMode(RegionDeleteState.class, "remove");
+            }
+        }
+    }
+
+    /** Switches to a bulk selection mode ; the pending release will be swallowed. */
+    private void enterRegionMode(Class<? extends RegionSelectionState> type, String origin) {
+        RegionSelectionState state = app.getStateManager().getState(type);
+        if (state == null) {
+            log.warn("No {} attached : long press ignored", type.getSimpleName());
+            return;
+        }
+        log.debug("Action : long press on {} -> {}", origin, type.getSimpleName());
+        state.enter();
+    }
+
+    /** Forgets any in-flight "+" hold, so a mode switch or a disable cannot leave a phantom press. */
+    private void resetAddPress() {
+        addPressed = false;
+        addHeld = 0;
+        addLongFired = false;
+    }
+
+    /** Forgets any in-flight "-" hold, so a mode switch or a disable cannot leave a phantom press. */
+    private void resetRemovePress() {
+        removePressed = false;
+        removeHeld = 0;
+        removeLongFired = false;
     }
 
     @Override
@@ -106,6 +174,10 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             config.getInputActionManager().addListener(this, ACTIONS);
         } else {
             config.getInputActionManager().removeListener(this);
+            // No listener left to deliver the releases : drop them rather than act on them (or resume
+            // timing a hold, and open a bulk mode) when the control comes back.
+            resetAddPress();
+            resetRemovePress();
         }
     }
 
@@ -125,20 +197,26 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         switch (name) {
             case ACTION_ADD_BLOCK:
                 if (picking != null) {
+                    // A hold that just opened a picking mode must not also confirm its first point : the
+                    // press that triggered the switch is still down, and its release lands here.
+                    resetAddPress();
                     if (isPressed) {
                         picking.onPick(pickedCell());
                     }
                 } else {
-                    addBlock(isPressed);
+                    addBlockPress(isPressed);
                 }
                 break;
             case ACTION_REMOVE_BLOCK:
                 if (picking != null) {
+                    // A hold that just opened a picking mode must not immediately cancel it : the press
+                    // that triggered the switch is still down, and its release lands here.
+                    resetRemovePress();
                     if (isPressed) {
                         picking.onCancel();
                     }
                 } else {
-                    removeBlock(isPressed);
+                    removeBlockPress(isPressed);
                 }
                 break;
             case ACTION_ACTION_OBJECT:
@@ -194,9 +272,30 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         }
     }
 
-    public void addBlock(boolean isPressed) {
+    /**
+     * Handles a press or release of the "+" control : a tap places the aimed block on <b>release</b>,
+     * a hold opens the region-fill mode instead (see {@link #controlUpdate}).
+     */
+    public void addBlockPress(boolean isPressed) {
+        if (isPressed) {
+            addPressed = true;
+            addHeld = 0;
+            addLongFired = false;
+            return;
+        }
+        if (!addPressed) {
+            return; // a release we never saw the press of : the cursor merely slid off the button
+        }
+        boolean wasLongPress = addLongFired;
+        resetAddPress();
+        if (!wasLongPress) {
+            addBlock();
+        }
+    }
+
+    public void addBlock() {
         final Block selectedBlock = config.getSelectedBlock();
-        if (!isPressed || selectedBlock == null) {
+        if (selectedBlock == null) {
             return;
         }
 
@@ -253,11 +352,32 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
         worldManager.addBlock(location, orientatedBlock);
     }
 
-    public void removeBlock(boolean isPressed) {
-        if (!isPressed) {
+    /**
+     * Handles a press or release of the "-" control.
+     *
+     * <p>The single-block removal fires on <b>release</b>, not on press : the same control also opens
+     * the region-delete mode when held, and that has to be decided before anything is destroyed.
+     * A tap still removes the aimed block, one frame later than it used to.</p>
+     */
+    public void removeBlockPress(boolean isPressed) {
+        if (isPressed) {
+            removePressed = true;
+            removeHeld = 0;
+            removeLongFired = false;
             return;
         }
 
+        if (!removePressed) {
+            return; // a release we never saw the press of : the cursor merely slid off the button
+        }
+        boolean wasLongPress = removeLongFired;
+        resetRemovePress();
+        if (!wasLongPress) {
+            removeBlock();
+        }
+    }
+
+    public void removeBlock() {
         log.debug("Action : removeBlock triggered");
 
         if (placeholderControl == null || placeholderControl.getRemovePlaceholder().getParent() == null) {

@@ -241,12 +241,16 @@ public class WorldMenuState extends BaseAppState implements ActionListener, Resi
         if (popup.getParent() != null) {
             return;
         }
-        // Tapping the gear cancels an in-progress creation capture or placement (restores the normal UI).
-        // This is the cancel affordance on mobile, where there is no right-click.
+        // Tapping the gear cancels an in-progress creation capture, placement or region selection
+        // (restores the normal UI). This is the cancel affordance on mobile, where there is no right-click.
         Optional.ofNullable(app.getStateManager().getState(CreationCaptureState.class))
                 .ifPresent(CreationCaptureState::cancel);
         Optional.ofNullable(app.getStateManager().getState(CreationPlacementState.class))
                 .ifPresent(CreationPlacementState::cancel);
+        Optional.ofNullable(app.getStateManager().getState(RegionDeleteState.class))
+                .ifPresent(RegionDeleteState::cancel);
+        Optional.ofNullable(app.getStateManager().getState(RegionAddState.class))
+                .ifPresent(RegionAddState::cancel);
         rebuildGrid();
         app.getGuiNode().attachChild(popup);
         sizePopupToScreen();
