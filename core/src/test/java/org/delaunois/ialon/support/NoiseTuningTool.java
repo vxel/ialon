@@ -42,7 +42,7 @@ import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
  * The current values are printed on screen : once a pleasing relief is found, copy them into
  * {@code NoiseTerrainGenerator.createWorldNoise()}.
  */
-public class NoiseTuningTest extends SimpleApplication {
+public class NoiseTuningTool extends SimpleApplication {
 
     private static final int PREVIEW_SIZE = 257;     // (2^n + 1) for TerrainQuad
     private static final int PATCH_SIZE = 65;
@@ -74,7 +74,7 @@ public class NoiseTuningTest extends SimpleApplication {
     private float settleTimer = 0f;
 
     public static void main(String[] args) {
-        NoiseTuningTest app = new NoiseTuningTest();
+        NoiseTuningTool app = new NoiseTuningTool();
         app.start();
     }
 

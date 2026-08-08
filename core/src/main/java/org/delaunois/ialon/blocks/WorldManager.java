@@ -427,6 +427,12 @@ public class WorldManager {
     }
 
     public Set<Vec3i> removeBlock(Vector3f location) {
+        if (location == null) {
+            // No location, nothing removed. Stated here rather than assumed : the block lookups below
+            // tolerate a null location (ChunkManager#getBlock returns an empty Optional), so without this
+            // the null would travel on to doRemoveBlock, which dereferences it.
+            return Collections.emptySet();
+        }
         // Capture the block before removal so the edit recorder can tell whether a tree trunk was cut.
         Block removed = (worldEditOverlay != null) ? getBlock(location) : null;
         Set<Vec3i> result = doRemoveBlock(location);

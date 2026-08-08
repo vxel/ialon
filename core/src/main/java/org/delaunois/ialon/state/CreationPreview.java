@@ -57,7 +57,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CreationPreview extends AbstractPreviewProcessor {
 
-    private static final int WIDTH = 256;
+    /** Width, in pixels, of the rendered thumbnail ; the height follows from the card's aspect ratio. */
+    private static final int THUMBNAIL_WIDTH = 256;
 
     private final SimpleApplication app;
     private final Path png;
@@ -105,8 +106,8 @@ public class CreationPreview extends AbstractPreviewProcessor {
         // Render at the SAME aspect ratio as the card's preview panel (contentW 26vw x previewH 17vh in
         // CreationLibraryState.createCard), otherwise the square render is stretched when shown there.
         float aspect = (26f / 17f) * (app.getCamera().getWidth() / (float) app.getCamera().getHeight());
-        int width = WIDTH;
-        int height = Math.max(1, Math.round(WIDTH / aspect));
+        int width = THUMBNAIL_WIDTH;
+        int height = Math.max(1, Math.round(THUMBNAIL_WIDTH / aspect));
 
         Camera cam = new Camera(width, height);
         cam.setFrustumPerspective(45f, aspect, 0.05f, 10000f);

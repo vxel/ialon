@@ -57,6 +57,12 @@ public class TextureAtlasManager {
         if (diffuseMap == null) {
             long start = System.nanoTime();
             diffuseMap = atlas.getAtlasTexture(DIFFUSE);
+            if (diffuseMap == null) {
+                // TextureAtlas returns null when no texture was ever added under that map name. Nothing
+                // downstream can work without the atlas, so fail here where the cause is still legible.
+                throw new IllegalStateException("No '" + DIFFUSE + "' texture in the atlas : addTexture()"
+                        + " must be called for every texture before the atlas is used.");
+            }
             diffuseMap.setName("TextureAtlasRepository/DiffuseMap");
             diffuseMap.getImage().setColorSpace(ColorSpace.sRGB);
             log.info("Atlas texture {} generated (packing took {} ms)",

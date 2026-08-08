@@ -5,6 +5,7 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
+import org.delaunois.ialon.blocks.Block;
 import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.Chunk;
 import org.delaunois.ialon.blocks.ChunkMesh;
@@ -67,7 +68,11 @@ public class StairsOuterCorner implements Shape {
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         // check if we have 3 textures or only one
-        boolean multipleImages = chunk.getBlock(location.x, location.y, location.z).isUsingMultipleImages();
+        Block block = chunk.getBlock(location.x, location.y, location.z);
+        if (block == null)
+            return;
+
+        boolean multipleImages = block.isUsingMultipleImages();
 
         createUp(location, chunkMesh, rotation, blockScale, multipleImages);
         enlightFace(location, null, chunk, chunkMesh, 16);

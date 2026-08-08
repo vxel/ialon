@@ -145,6 +145,10 @@ public class SteamBackground extends AbstractGuiComponent implements Cloneable {
         material.setVector2("Origin", origin);
     }
 
+    // clone() is not ours to remove : com.simsilica.lemur.core.GuiComponent DECLARES it, and Lemur calls
+    // it — a component set on a style is a prototype, cloned into every widget the style applies to. A
+    // copy constructor would never be invoked and the widgets would share this instance's material.
+    @SuppressWarnings("java:S2975")
     @Override
     public SteamBackground clone() {
         SteamBackground result = (SteamBackground) super.clone();

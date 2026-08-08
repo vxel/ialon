@@ -214,10 +214,10 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
      */
     private void setFarTerrainEnabled(boolean enabled) {
         config.setFarTerrain(enabled);
-        FarTerrainState state = app.getStateManager().getState(FarTerrainState.class);
+        FarTerrainState state = state(FarTerrainState.class);
         if (state == null) {
             if (enabled) {
-                app.getStateManager().attach(IalonInitializer.setupFarTerrain(config));
+                attach(IalonInitializer.setupFarTerrain(config));
             }
         } else {
             state.setEnabled(enabled);
@@ -246,9 +246,9 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
             farTerrain.setValue(true);
             setFarTerrainEnabled(true);
         }
-        FarTreeState state = app.getStateManager().getState(FarTreeState.class);
+        FarTreeState state = state(FarTreeState.class);
         if (state == null) {
-            app.getStateManager().attach(IalonInitializer.setupFarTree(config));
+            attach(IalonInitializer.setupFarTree(config));
         } else {
             state.setEnabled(true);
             state.requestRebuild();
@@ -257,9 +257,27 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
 
     private void disableFarTrees() {
         config.setFarTree(false);
-        FarTreeState state = app.getStateManager().getState(FarTreeState.class);
+        FarTreeState state = state(FarTreeState.class);
         if (state != null) {
             state.setEnabled(false);
+        }
+    }
+
+    /**
+     * The attached state of the given type, or {@code null} when there is none — including when this
+     * state itself has not been initialized yet, so {@code app} is still null. That case is real :
+     * {@link MemoryGuardState} drives {@link #applyRenderDistance(int)} from the render loop and does not
+     * wait for the settings popup to be built, and the far-terrain / far-trees appliers are reached from
+     * there.
+     */
+    private <T extends AppState> T state(Class<T> type) {
+        return app == null ? null : app.getStateManager().getState(type);
+    }
+
+    /** Attaches a state, or does nothing when this state is not initialized yet (see {@link #state}). */
+    private void attach(AppState state) {
+        if (app != null) {
+            app.getStateManager().attach(state);
         }
     }
 
@@ -415,21 +433,19 @@ public class SettingsState extends BaseAppState implements ActionListener, Resiz
         int actual = config.getGridRadius(); // after clamp to [gridRadiusMin, gridRadiusMax]
         int size = actual * 2 + 1;
         BlocksConfig.getInstance().setGrid(new Vec3i(size, config.getGridHeight() * 2 + 1, size));
-        if (app != null) {
-            ChunkPagerState pagerState = app.getStateManager().getState(ChunkPagerState.class);
-            if (pagerState != null) {
-                pagerState.getChunkPager().updateGridSize();
-            }
+        ChunkPagerState pagerState = state(ChunkPagerState.class);
+        if (pagerState != null) {
+            pagerState.getChunkPager().updateGridSize();
         }
 
         if (radiusChanged) {
             // The far terrain's inner-radius discard and the enclosure box both scale with the render
             // distance ; the far trees ring starts just beyond the loaded chunks too.
-            FarTerrainState farTerrainState = app == null ? null : app.getStateManager().getState(FarTerrainState.class);
+            FarTerrainState farTerrainState = state(FarTerrainState.class);
             if (farTerrainState != null) {
                 farTerrainState.onRenderDistanceChanged();
             }
-            FarTreeState farTreeState = app == null ? null : app.getStateManager().getState(FarTreeState.class);
+            FarTreeState farTreeState = state(FarTreeState.class);
             if (farTreeState != null) {
                 farTreeState.requestRebuild();
             }

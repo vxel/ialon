@@ -57,7 +57,7 @@ import java.util.function.Consumer;
  * chunk paging, and the actual sky / sun / lighting states), positions a fixed free camera, waits for
  * the chunks around the camera to finish paging in, captures the 3D viewport to a PNG and exits.
  *
- * <p>Unlike the interactive {@code FarTerrainTest}/{@code FarTreeTest}/{@code SceneryTestBuilder}
+ * <p>Unlike the interactive {@code FarTerrainViewer}/{@code FarTreeViewer}/{@code SceneryTestBuilder}
  * harnesses (which open a window and rely on the fly-cam), this one needs NO interaction : give it a
  * camera pose and an output path, run it, and read the PNG. It deliberately skips {@code PlayerState}
  * (and physics/input), so the camera is whatever you set — no character controller fighting you.
@@ -307,7 +307,7 @@ public class ScreenshotHarness extends SimpleApplication {
             stateManager.attach(new SkyState(config));
             stateManager.attach(new org.delaunois.ialon.state.StarState(config));
         } else if (options.lighting) {
-            // Simple, robust lighting (matches FarTreeTest/FarTerrainTest) : a directional sun reveals
+            // Simple, robust lighting (matches FarTreeViewer/FarTerrainViewer) : a directional sun reveals
             // the block relief, ambient lifts the shadows. The block material is Lighting-based, so
             // WITHOUT a light the terrain renders black/invisible.
             DirectionalLight sun = new DirectionalLight();

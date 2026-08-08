@@ -147,9 +147,19 @@ public class Chunk {
         return new Chunk(location);
     }
 
+    /**
+     * Makes sure this chunk's block and light arrays exist, so a caller may write into them.
+     *
+     * <p>The two are tested SEPARATELY : they have separate setters and a chunk can legitimately carry
+     * one without the other (a generator or a deserialized chunk that sets only its blocks). Testing
+     * {@code blocks == null} alone left {@code lightMap} null in that case, and the callers
+     * ({@link #setSunlight}/{@link #setTorchlight}) write into it right after.
+     */
     private void allocate() {
         if (blocks == null) {
             setBlocks(new short[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z]);
+        }
+        if (lightMap == null) {
             byte[] lightmap = new byte[CHUNK_SIZE.x * CHUNK_SIZE.y * CHUNK_SIZE.z];
             // TODO implement when the chunk is empty but below a non-empty chunk
             // the lightmap should be properly computed

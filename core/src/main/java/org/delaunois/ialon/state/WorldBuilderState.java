@@ -32,6 +32,7 @@ public class WorldBuilderState extends BaseAppState {
 
     private int pagesAttached = 0;
     private int physicPagesAttached = 0;
+    private int pagesFetched = 0;
     private long lastProgressTime = startTime;
 
     private PlayerState playerState;
@@ -62,11 +63,20 @@ public class WorldBuilderState extends BaseAppState {
         PhysicsChunkPager physicsChunkPager = getStateManager().getState(PhysicsChunkPagerState.class).getPhysicsChunkPager();
         int numPagesAttached = chunkPager.getAttachedPages().size();
         int numPhysicPagesAttached = physicsChunkPager.getAttachedPages().size();
+        // Fetched pages count as progress too, and they are what keeps the guard honest at startup : the
+        // chunk manager generates the WHOLE slab before it meshes any of it (a mesh needs its neighbours'
+        // blocks), so not a single page attaches during that phase. On a phone it lasts well beyond
+        // STALL_TIMEOUT_MS, and the guard used to fire mid-generation — dismissing the splash and starting
+        // the player while the world was still being built, so the chunks popped in afterwards.
+        int numPagesFetched = chunkPager.getFetchedPages().size();
         int percent = numPagesAttached * 100 / total;
-        if (numPagesAttached > pagesAttached || numPhysicPagesAttached > physicPagesAttached) {
-            log.debug("{} pages - {} physic pages attached ({}%)", numPagesAttached, numPhysicPagesAttached, percent);
+        if (numPagesAttached > pagesAttached || numPhysicPagesAttached > physicPagesAttached
+                || numPagesFetched > pagesFetched) {
+            log.debug("{} pages - {} physic pages attached ({}%) - {} pages generated",
+                    numPagesAttached, numPhysicPagesAttached, percent, numPagesFetched);
             pagesAttached = numPagesAttached;
             physicPagesAttached = numPhysicPagesAttached;
+            pagesFetched = numPagesFetched;
             lastProgressTime = System.currentTimeMillis();
         }
         if (numPagesAttached >= total && physicsChunkPager.isReady()

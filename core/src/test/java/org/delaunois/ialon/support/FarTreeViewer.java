@@ -22,10 +22,10 @@ import org.delaunois.ialon.state.FarTreeState;
  * the fog, NO hard pop just beyond the inner radius, trees staying upright when looking up/down, and the
  * dark-green forest tint on the slopes beyond the billboard ring.
  */
-public class FarTreeTest extends SimpleApplication {
+public class FarTreeViewer extends SimpleApplication {
 
     public static void main(String[] args) {
-        FarTreeTest app = new FarTreeTest();
+        FarTreeViewer app = new FarTreeViewer();
         app.start();
     }
 

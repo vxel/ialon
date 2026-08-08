@@ -126,7 +126,11 @@ public class Fence implements Shape {
         // get the block scale, we multiply it with the vertex positions
         float blockScale = BlocksConfig.getInstance().getBlockScale();
         // check if we have 3 textures or only one
-        boolean multipleImages = chunk.getBlock(location.x, location.y, location.z).isUsingMultipleImages();
+        Block block = chunk.getBlock(location.x, location.y, location.z);
+        if (block == null)
+            return;
+
+        boolean multipleImages = block.isUsingMultipleImages();
         boolean cm = chunkMesh.isCollisionMesh();
 
         if (chunk.isFaceVisible(location, Shape.getFaceDirection(Direction.UP, direction))) {

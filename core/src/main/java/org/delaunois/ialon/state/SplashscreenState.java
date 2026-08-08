@@ -34,6 +34,7 @@ import com.simsilica.lemur.component.QuadBackgroundComponent;
 import com.simsilica.lemur.event.DefaultMouseListener;
 
 import org.delaunois.ialon.IalonConfig;
+import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.ui.IalonTheme;
 
 public class SplashscreenState extends BaseAppState {
@@ -112,10 +113,7 @@ public class SplashscreenState extends BaseAppState {
         WorldBuilderState worldBuilderState = getStateManager().getState(WorldBuilderState.class);
         boolean building = worldBuilderState != null && worldBuilderState.isEnabled();
         if (building && chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
-            int gridSize = config.getGridRadius() * 2 + 1;
-            float total = gridSize * gridSize * (float) config.getGridHeight();
-            int numPagesAttached = chunkPagerState.getChunkPager().getAttachedPages().size();
-            percent = numPagesAttached / total;
+            percent = buildProgress(chunkPagerState.getChunkPager());
         }
 
         int percentInt = (int) (percent * 100);
@@ -123,6 +121,30 @@ public class SplashscreenState extends BaseAppState {
         // than a stuck "0%" ; switch to the percentage as soon as progress is measurable.
         percentLabel.setText(percentInt <= 0 ? "Loading..." : percentInt + "%");
         pbContainer.setLocalScale(percent, 1, 1);
+    }
+
+    /**
+     * How far the initial world build has got, in [0, 1].
+     *
+     * <p>Built in TWO phases, and the bar has to show both. {@code ChunkManager.requestChunks} waits for
+     * the <em>whole</em> requested slab to be generated before it submits a single mesh — a chunk's mesh
+     * needs its neighbours' blocks — so not one page is attached until generation is completely done.
+     * Counting attached pages alone therefore reads exactly 0 for the entire first phase, then jumps: on
+     * a desktop that phase is ~150 ms and nobody notices, but on a phone it is the bulk of the load, which
+     * is where the bar stayed empty and the readout stuck on "Loading...". Generation progress is visible
+     * in the pager's fetched pages, which fill one chunk at a time.
+     *
+     * <p>Each phase is worth half the bar. The fetch box is the meshed box grown by one ring (the
+     * neighbours), hence {@code gridSize + 2} ; its Y range is clamped by the pager's grid bounds to the
+     * same {@code gridHeight} as the meshed box (see {@code IalonConfig#getGridLowerBound}).
+     */
+    private float buildProgress(ChunkPager chunkPager) {
+        int gridSize = config.getGridRadius() * 2 + 1;
+        float meshTotal = gridSize * gridSize * (float) config.getGridHeight();
+        float fetchTotal = (gridSize + 2f) * (gridSize + 2f) * config.getGridHeight();
+        float generated = Math.min(1f, chunkPager.getFetchedPages().size() / fetchTotal);
+        float meshed = Math.min(1f, chunkPager.getAttachedPages().size() / meshTotal);
+        return 0.5f * (generated + meshed);
     }
 
     private Container buildTitle() {

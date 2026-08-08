@@ -24,7 +24,7 @@ import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.simsilica.lemur.GuiGlobals;
 
-public class MapTest extends SimpleApplication {
+public class MapViewer extends SimpleApplication {
 
     private Geometry sphereGeom = null;
     private float angle = 0;
@@ -32,7 +32,7 @@ public class MapTest extends SimpleApplication {
     private final Quaternion rot = new Quaternion();
 
     public static void main(String[] args) {
-        MapTest app = new MapTest();
+        MapViewer app = new MapViewer();
         app.start();
     }
 

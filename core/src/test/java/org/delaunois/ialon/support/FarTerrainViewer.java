@@ -18,10 +18,10 @@ import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
  * <p>It feeds the far terrain the same {@link NoiseTerrainGenerator} the game uses, so the relief
  * shown here is exactly what the voxel world would produce.
  */
-public class FarTerrainTest extends SimpleApplication {
+public class FarTerrainViewer extends SimpleApplication {
 
     public static void main(String[] args) {
-        FarTerrainTest app = new FarTerrainTest();
+        FarTerrainViewer app = new FarTerrainViewer();
         app.start();
     }
 

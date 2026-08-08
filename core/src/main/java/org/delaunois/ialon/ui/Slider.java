@@ -172,8 +172,11 @@ public class Slider extends Panel {
                 range = layout.addChild(new Container(new SpringGridLayout(), new ElementId(RANGE_ID), style));
                 value = layout.addChild(new Panel(2, 50, elementId.child(VALUE_ID), style));
                 break;
-            case Z:
-                throw new IllegalArgumentException("Z axis not yet supported.");
+            default:
+                // Z, and anything a future Axis adds : the two branches above are the only ones that
+                // build the widgets, so every other axis must stop here rather than leave increment /
+                // decrement / value null for setupCommands() and the layout below.
+                throw new IllegalArgumentException(axis + " axis not yet supported.");
         }
         setupCommands();
 

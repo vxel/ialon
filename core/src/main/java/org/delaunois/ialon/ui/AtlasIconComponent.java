@@ -118,6 +118,10 @@ public class AtlasIconComponent extends AbstractGuiComponent
         createIcon();
     }
 
+    // Mandated by com.simsilica.lemur.core.GuiComponent, which declares clone() : Lemur clones the
+    // component held by a style into each widget that style is applied to, so a copy constructor would
+    // never be called (and every widget would end up sharing this instance's icon and material).
+    @SuppressWarnings("java:S2975")
     @Override
     public AtlasIconComponent clone() {
         AtlasIconComponent result = (AtlasIconComponent)super.clone();

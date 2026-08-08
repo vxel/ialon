@@ -348,10 +348,12 @@ public class ChunkLiquidManager {
         int y = node.y + dir.y;
         int z = node.z + dir.z;
 
-        if (BlocksConfig
+        // The source cell : air (no block) covers nothing, so the liquid flows out of it freely.
+        Block source = chunk.getBlock(node.x, node.y, node.z);
+        if (source != null && BlocksConfig
                 .getInstance()
                 .getShapeRegistry()
-                .get(chunk.getBlock(node.x, node.y, node.z).getShape())
+                .get(source.getShape())
                 .fullyCoversFace(direction)) {
             // Block does not allow liquid to flow
             log.debug("PL0 - Liquid blocked by face at ({}, {}, {})", x, y, z);

@@ -15,14 +15,6 @@ It is based on the jMonkeyEgine and the Blocks framework library.
 
 It is released under the GNU General Public License v3.0.
 
-## Credits
-
-Third-party assets bundled with the game:
-
-- User-interface font: **Jack of Gears** by Michael W. Moss (https://michaelwmoss.com),
-  licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Baked into the
-  BMFont pair `Textures/font-jackofgears.*` (see `font-jackofgears.LICENSE.txt`).
-
 Use **Tab** key to switch between desktop and mobile mode.
 
 In Desktop mode :
@@ -121,36 +113,9 @@ Water simulation and Minecraft-like lightning :
 
 [![Build Status](https://github.com/vxel/ialon/workflows/Build%20Ialon/badge.svg)](https://github.com/vxel/ialon/actions)
 
-## Building the installers
+## Credits
 
-The `:desktop` module uses the [Beryx runtime plugin](https://github.com/beryx/badass-runtime-plugin)
-to assemble a minimal JRE (via `jlink`) and a native installer (via `jpackage`). A **full JDK 21**
-is required (it must provide `jpackage` and `jmods`).
-
-```bash
-# Linux (.deb) — needs dpkg-deb + fakeroot (present on Ubuntu)
-./gradlew :desktop:jpackage -PinstallerType=deb -PappVersion=1.0.0 --no-configuration-cache
-
-# Windows (.exe) — needs the WiX Toolset v3
-./gradlew :desktop:jpackage -PinstallerType=exe -PappVersion=1.0.0 --no-configuration-cache
-```
-
-`--no-configuration-cache` is required (the `jpackage`/`runtime` tasks are not compatible with the
-configuration cache). The installer is written to `desktop/build/jpackage/`. Note that `jpackage`
-cannot cross-compile: a Windows `.exe` can only be built on Windows, and a `.deb` on Linux.
-
-Packaged builds are started with `-Dialon.packaged=true`, which redirects saved worlds and native
-library extraction to a per-user, writable directory (see *Installing Ialon* above), so the app
-works when installed in a read-only location such as `/opt`.
-
-## Publishing a release
-
-Pushing a version tag triggers the [`Release`](.github/workflows/release.yml) workflow, which builds
-the Linux and Windows installers on their respective runners and attaches them to a GitHub Release:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+Third-party assets bundled with the game:
+- User-interface font: **Jura** Copyright 2019 The Jura Project Authors
 
 Cédric de Launois
