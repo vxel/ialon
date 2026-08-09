@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -138,12 +139,27 @@ public class ChunkManager {
      * that new position could not be computed until the previous batch had fully drained.
      */
     public void requestChunks(Collection<Vec3i> locationsToGenerate, Collection<Vec3i> locationsToMesh) {
+        requestChunks(locationsToGenerate, locationsToMesh, location -> true);
+    }
+
+    /**
+     * Same, with a last-moment veto on the mesh list.
+     *
+     * <p>{@code stillNeeded} is applied <b>after</b> the generation wait below, not before : the caller
+     * chose its locations before that wait, which lasts as long as generating the whole batch takes, and
+     * a mesh that completes meanwhile is no longer tracked by {@link #meshInFlight} — it has become the
+     * caller's problem (the pager's pages-pending-attach). Re-submitting it duplicates a chunk of work
+     * for nothing. The predicate runs on this thread and must be cheap and thread-safe.
+     */
+    public void requestChunks(Collection<Vec3i> locationsToGenerate, Collection<Vec3i> locationsToMesh,
+                              Predicate<Vec3i> stillNeeded) {
         assertInitialized();
 
         // We need to wait for all chunks to be generated before starting to mesh them
         // This is required because the mesh of a chunk depends on the blocks of the mesh AND the
         // blocks of its neighbours
         waitForTasks(requestGenerateChunks(locationsToGenerate));
+        locationsToMesh.removeIf(location -> !stillNeeded.test(location));
         if (!locationsToMesh.isEmpty()) {
             requestMeshChunks(locationsToMesh);
         }

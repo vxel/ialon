@@ -379,10 +379,30 @@ public class ChunkPager {
         // Mesh pages sorted by distance to the center so the closest chunks appear first.
         List<Vec3i> meshList = new ArrayList<>(pagesToMesh);
         meshList.sort(meshDistanceComparator);
-        chunkManager.requestChunks(new ArrayList<>(pagesToFetch), meshList);
+        chunkManager.requestChunks(new ArrayList<>(pagesToFetch), meshList, this::meshStillNeeded);
 
         pagesToMesh.clear();
         pagesToFetch.clear();
+    }
+
+    /**
+     * Whether a mesh this pass decided to request is still worth submitting, re-checked by
+     * {@link ChunkManager#requestChunks} once the batch's chunks are generated.
+     *
+     * <p>The list is built at the top of {@link #updateQueues()}, but the meshes are only submitted after
+     * the generation of the whole batch has completed — tens of milliseconds later, on a device. Meshes
+     * that were in flight when the list was built can finish inside that window : they leave
+     * {@code meshInFlight} (so the manager's own dedupe no longer catches them) and land in
+     * {@link #pagesPendingAttach} instead, and re-submitting them is exactly the duplicated meshing the
+     * two sets exist to prevent. So the decision is taken again here, at submit time, when both sets can
+     * be read at once.
+     *
+     * <p>Pending is tested BEFORE attached, and {@link #attachNextPages()} clears the pending flag only
+     * after the page is tracked : together that means a page in transit between the two is always seen by
+     * one of the tests, whichever moment this runs at.
+     */
+    private boolean meshStillNeeded(Vec3i location) {
+        return !pagesPendingAttach.contains(location) && !attachedPages.containsKey(location);
     }
 
     private void addPageToMesh(Vec3i pageLocation, Vec3i meshMin, Vec3i meshMax, Set<Vec3i> pagesToMesh) {
@@ -473,8 +493,6 @@ public class ChunkPager {
         int handled = 0;
 
         while (chunk != null) {
-            pagesPendingAttach.remove(chunk.getLocation());
-
             // detach the old page if any
             Node oldPage = untrackPage(chunk.getLocation());
             if (oldPage != null) {
@@ -484,6 +502,12 @@ public class ChunkPager {
             // Create the new page
             Node newPage = createPage(chunk);
             trackPage(chunk.getLocation(), newPage);
+            // Cleared only NOW, after the page is tracked, and never before : updateQueues runs on its own
+            // thread and reads these two sets one after the other, so a location dropped from
+            // pagesPendingAttach before it appears in attachedPages is a location that pass can see in
+            // neither — and re-request a mesh for, which is precisely the duplicated meshing this set
+            // guards against. Clearing it last makes "no longer pending" imply "already attached".
+            pagesPendingAttach.remove(chunk.getLocation());
             if (newPage != null) {
                 attachPage(newPage);
                 // Air / fully-hidden pages never enter the scene graph (see attachPage) : tracking one
