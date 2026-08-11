@@ -37,16 +37,38 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.ChunkPager;
 import org.delaunois.ialon.ui.IalonTheme;
 
-public class SplashscreenState extends BaseAppState {
+public class SplashscreenState extends BaseAppState implements Resizable {
 
     /** Progress bar : hot amber, like a pressure gauge, rather than the stock green. */
     private static final ColorRGBA BAR_COLOR = IalonTheme.AMBER;
     private static final String ALPHA_DISCARD_THRESHOLD = "AlphaDiscardThreshold";
 
+    /**
+     * "0%" to "100%", built once. The readout changes at most a hundred times over a load but is looked
+     * at every frame, and during the chunk phase the splash is the only thing being drawn : concatenating
+     * it per frame would be the one allocation in an otherwise idle loop.
+     */
+    private static final String[] PERCENT_TEXT = new String[101];
+
+    static {
+        for (int i = 0; i < PERCENT_TEXT.length; i++) {
+            PERCENT_TEXT[i] = i + "%";
+        }
+    }
+
+    /** Below this, moving the bar is invisible ; not moving it keeps the GUI node's transform clean. */
+    private static final float SCALE_EPSILON = 0.002f;
+
     private SimpleApplication app;
     private Node splashScreen;
     private Container pbContainer;
     private Label percentLabel;
+    private Label phaseLabel;
+
+    // Last painted values, so a frame where nothing changed does no work at all.
+    private int lastPercent = -1;
+    private String lastLabel;
+    private float lastScale = -1f;
 
     private final IalonConfig config;
 
@@ -57,7 +79,23 @@ public class SplashscreenState extends BaseAppState {
     @Override
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
+        buildSplashScreen();
+    }
+
+    /**
+     * (Re)builds the whole splash for the current camera size. Called on initialize and on every
+     * resolution change : the widgets are sized in vh/vw, so a resize has to rebuild rather than move
+     * them — and a load is now long enough that a resize during it is a real possibility.
+     */
+    private void buildSplashScreen() {
+        boolean visible = splashScreen != null && splashScreen.getParent() != null;
+        if (splashScreen != null) {
+            splashScreen.removeFromParent();
+        }
         splashScreen = new Node("SplashScreen");
+        lastPercent = -1;
+        lastLabel = null;
+        lastScale = -1f;
 
         float vh = app.getCamera().getHeight() / 100.0f;
         float vw = app.getCamera().getWidth() / 100.0f;
@@ -86,65 +124,127 @@ public class SplashscreenState extends BaseAppState {
         pbContainer.setName("ProgressBar");
         pbContainer.setLocalTranslation(25 * vw, 25 * vh, 20);
 
-        percentLabel = new Label("Loading...");
-        // The splash is built before setupGui() remaps the default Lemur style font to the game font, so
-        // set it explicitly here to keep the percent readout consistent with the rest of the UI.
-        percentLabel.setFont(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
-        percentLabel.setFontSize(4 * vh);
-        percentLabel.setTextHAlignment(HAlignment.Center);
-        // Give the label the progress bar's width and centre the text inside it, so the readout stays
-        // centred whatever the font's glyph widths and however long the text is ("Loading..." / "42%").
-        percentLabel.setPreferredSize(new Vector3f(50 * vw, percentLabel.getPreferredSize().y, 0));
+        percentLabel = buildLabel(4 * vh, 50 * vw);
         percentLabel.setLocalTranslation(25 * vw, 30 * vh, 20);
+
+        // What the game is busy with, under the percentage : the load is a sequence of very different
+        // jobs (textures, blocks, terrain) and their durations differ enough per device that a bare
+        // percentage says nothing about which one is taking the time.
+        phaseLabel = buildLabel(2.5f * vh, 50 * vw);
+        phaseLabel.setLocalTranslation(25 * vw, 20 * vh, 20);
+        phaseLabel.setText(LoadProgress.INITIAL_LABEL);
 
         splashScreen.attachChild(splashContainer);
         splashScreen.attachChild(pbContainer);
         splashScreen.attachChild(percentLabel);
+        splashScreen.attachChild(phaseLabel);
+
+        if (visible) {
+            app.getGuiNode().attachChild(splashScreen);
+        }
+    }
+
+    private Label buildLabel(float fontSize, float width) {
+        Label label = new Label("");
+        // The splash is built before setupGui() remaps the default Lemur style font to the game font, so
+        // set it explicitly here to keep the readouts consistent with the rest of the UI.
+        label.setFont(app.getAssetManager().loadFont(IalonConfig.FONT_PATH));
+        label.setFontSize(fontSize);
+        label.setTextHAlignment(HAlignment.Center);
+        // Give the label the progress bar's width and centre the text inside it, so the readout stays
+        // centred whatever the font's glyph widths and however long the text is ("42%" / "Loading...").
+        // The height is read AFTER the font size, which is what determines it.
+        label.setPreferredSize(new Vector3f(width, label.getPreferredSize().y, 0));
+        return label;
+    }
+
+    @Override
+    public void onResize(int width, int height) {
+        buildSplashScreen();
     }
 
     @Override
     public void update(float tpf) {
-        float percent = 0;
-        // Re-fetch every frame : on a world switch the ChunkPagerState is detached and replaced, so a
-        // cached reference would point at the old (cleared) pager and the bar would stay at 0.
-        ChunkPagerState chunkPagerState = getStateManager().getState(ChunkPagerState.class);
-        // Only count progress while a build is actually running : right after the menu shows the splash
-        // (one frame before the teardown), the OLD world is still fully loaded and would flash ~100%.
-        WorldBuilderState worldBuilderState = getStateManager().getState(WorldBuilderState.class);
-        boolean building = worldBuilderState != null && worldBuilderState.isEnabled();
-        if (building && chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
-            percent = buildProgress(chunkPagerState.getChunkPager());
-        }
-
-        int percentInt = (int) (percent * 100);
-        // Before any chunk is attached (world not building yet, or just starting) show "Loading..." rather
-        // than a stuck "0%" ; switch to the percentage as soon as progress is measurable.
-        percentLabel.setText(percentInt <= 0 ? "Loading..." : percentInt + "%");
-        pbContainer.setLocalScale(percent, 1, 1);
+        refresh(tpf);
     }
 
     /**
-     * How far the initial world build has got, in [0, 1].
+     * Re-reads the progress model and repaints the bar and the labels.
      *
-     * <p>Built in TWO phases, and the bar has to show both. {@code ChunkManager.requestChunks} waits for
-     * the <em>whole</em> requested slab to be generated before it submits a single mesh — a chunk's mesh
-     * needs its neighbours' blocks — so not one page is attached until generation is completely done.
-     * Counting attached pages alone therefore reads exactly 0 for the entire first phase, then jumps: on
-     * a desktop that phase is ~150 ms and nobody notices, but on a phone it is the bulk of the load, which
-     * is where the bar stayed empty and the readout stuck on "Loading...". Generation progress is visible
-     * in the pager's fetched pages, which fill one chunk at a time.
-     *
-     * <p>Each phase is worth half the bar. The fetch box is the meshed box grown by one ring (the
-     * neighbours), hence {@code gridSize + 2} ; its Y range is clamped by the pager's grid bounds to the
-     * same {@code gridHeight} as the meshed box (see {@code IalonConfig#getGridLowerBound}).
+     * <p>Public because the init pump calls it again right after running a step, from
+     * {@code simpleUpdate} — which runs after this state's {@code update} but before the frame is drawn.
+     * Without it the bar and the label would always be one frame — that is, one whole init step — behind
+     * the work they describe, which during a load is the difference between announcing the step that is
+     * about to run and the one that has just finished.
      */
-    private float buildProgress(ChunkPager chunkPager) {
+    public void refresh(float tpf) {
+        LoadProgress progress = config.getLoadProgress();
+
+        // The chunk phases are PULLED from the pager rather than pushed by it : the blocks package must
+        // not import game code, and its listeners fire from the worker threads whereas this model is
+        // render-thread only. Re-fetched every frame : on a world switch the ChunkPagerState is detached
+        // and replaced, so a cached reference would point at the old (cleared) pager.
+        ChunkPagerState chunkPagerState = getStateManager().getState(ChunkPagerState.class);
+        // Only count pages while a build is actually running. On a world switch the splash goes up a
+        // frame before the teardown, and the OLD world is still fully paged in : feeding its counters
+        // would peg both chunk steps at 100% for good (they are monotonic) before the new world has
+        // generated a single chunk. The old builder has long since disabled itself, so this reads false.
+        WorldBuilderState worldBuilderState = getStateManager().getState(WorldBuilderState.class);
+        boolean building = worldBuilderState != null && worldBuilderState.isEnabled();
+        if (building && !progress.isComplete()
+                && chunkPagerState != null && chunkPagerState.getChunkPager() != null) {
+            feedChunkProgress(progress, chunkPagerState.getChunkPager());
+        }
+
+        float percent = progress.update(tpf);
+
+        int percentInt = progress.getDisplayedPercent();
+        if (percentInt != lastPercent) {
+            lastPercent = percentInt;
+            percentLabel.setText(PERCENT_TEXT[percentInt]);
+        }
+        // Identity comparison : the labels are enum constants, so this is free and correct.
+        String label = progress.getLabel();
+        if (label != lastLabel) {
+            lastLabel = label;
+            phaseLabel.setText(label);
+        }
+        if (Math.abs(percent - lastScale) > SCALE_EPSILON) {
+            lastScale = percent;
+            pbContainer.setLocalScale(percent, 1, 1);
+        }
+    }
+
+    /**
+     * Reports how far the world build has got to the progress model, in two phases.
+     *
+     * <p>{@code ChunkManager.requestChunks} waits for the <em>whole</em> requested slab to be generated
+     * before it submits a single mesh — a chunk's mesh needs its neighbours' blocks — so not one page is
+     * attached until generation is completely done. Counting attached pages alone therefore reads exactly
+     * 0 for the entire first phase, then jumps: on a desktop that phase is ~150 ms and nobody notices, but
+     * on a phone it is the bulk of the load. Generation progress is visible in the pager's fetched pages,
+     * which fill one chunk at a time.
+     *
+     * <p>The fetch box is the meshed box grown by one ring (the neighbours), hence {@code gridSize + 2} ;
+     * its Y range is clamped by the pager's grid bounds to the same {@code gridHeight} as the meshed box
+     * (see {@code IalonConfig#getGridLowerBound}). Both counts can go DOWN — the pager unfetches pages
+     * when the player moves — which is why they go through the model's monotonic clamp.
+     */
+    private void feedChunkProgress(LoadProgress progress, ChunkPager chunkPager) {
         int gridSize = config.getGridRadius() * 2 + 1;
         float meshTotal = gridSize * gridSize * (float) config.getGridHeight();
         float fetchTotal = (gridSize + 2f) * (gridSize + 2f) * config.getGridHeight();
-        float generated = Math.min(1f, chunkPager.getFetchedPages().size() / fetchTotal);
-        float meshed = Math.min(1f, chunkPager.getAttachedPages().size() / meshTotal);
-        return 0.5f * (generated + meshed);
+        int attached = chunkPager.getAttachedPages().size();
+        progress.setStepFraction(LoadProgress.Step.CHUNK_FETCH,
+                chunkPager.getFetchedPages().size() / fetchTotal);
+        if (attached > 0) {
+            // The first attached page is proof that generation is over — the chunk manager meshes nothing
+            // until the whole slab has been generated. Said explicitly because the totals above are only
+            // estimates, so the fetch fraction does not reliably reach exactly 1 by itself, and without
+            // this the bar would stall short of the phase and keep announcing the wrong one.
+            progress.completeStep(LoadProgress.Step.CHUNK_FETCH);
+        }
+        progress.setStepFraction(LoadProgress.Step.CHUNK_MESH, attached / meshTotal);
     }
 
     private Container buildTitle() {

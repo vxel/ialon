@@ -62,7 +62,9 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * The creation library : a modal popup, modelled on the worlds menu, listing the saved {@link Creation}s
  * as selectable thumbnail cards. Selecting a card then pressing "Build" closes the popup and starts the
- * placement mode ({@link CreationPlacementState}) to stamp the creation into the current world.
+ * placement mode ({@link CreationPlacementState}) to stamp the creation into the current world. "Preview"
+ * instead opens the creation alone in 3D, turnable, so it can be examined before that
+ * ({@link CreationViewerState}).
  *
  * <p>"Terrain" opens a checkbox dialog listing the block types the selected creation contains (the natural
  * ground ones — grass, dirt, rock, sand… — first and pre-checked) and strips the checked ones from it : a
@@ -368,6 +370,15 @@ public class CreationLibraryState extends BaseAppState implements Resizable, Car
         create.addClickCommands(source -> startNewCreation());
         buttons.addChild(create, row++, 0);
 
+        // Preview : shows the creation alone, in 3D, turnable — before deciding to build it.
+        Button preview = menuButton("Preview");
+        if (selectedId == null) {
+            preview.setCullHint(Spatial.CullHint.Always);
+        } else {
+            preview.addClickCommands(source -> previewSelected());
+        }
+        buttons.addChild(preview, row++, 0);
+
         Button build = menuButton("Build");
         if (selectedId == null) {
             build.setCullHint(Spatial.CullHint.Always);
@@ -407,6 +418,24 @@ public class CreationLibraryState extends BaseAppState implements Resizable, Car
         hidePopup();
         Optional.ofNullable(app.getStateManager().getState(CreationCaptureState.class))
                 .ifPresent(CreationCaptureState::enter);
+    }
+
+    /**
+     * Loads the selected creation fully and hands off to the 3D viewer. The library is closed first, like
+     * every other hand-off from here : two popups never stack, and the viewer's "Back" brings this one back.
+     */
+    private void previewSelected() {
+        if (selectedId == null) {
+            return;
+        }
+        Creation creation = CreationRepository.load(config.getSavePath(), selectedId);
+        if (creation == null || creation.getBlocks() == null) {
+            log.warn("Could not load creation {}", selectedId);
+            return;
+        }
+        hidePopup();
+        Optional.ofNullable(app.getStateManager().getState(CreationViewerState.class))
+                .ifPresent(vs -> vs.enter(creation));
     }
 
     /** Loads the selected creation fully and hands off to the placement mode. */

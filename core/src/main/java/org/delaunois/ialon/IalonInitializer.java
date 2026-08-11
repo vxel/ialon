@@ -15,6 +15,7 @@ import com.jme3.bullet.PhysicsSpace;
 import com.jme3.font.BitmapFont;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
 import com.jme3.texture.Texture;
@@ -76,7 +77,22 @@ public class IalonInitializer {
     public static void setupViewPort(SimpleApplication app) {
         // Authored in sRGB, stored linear : the sRGB framebuffer encodes the clear colour on output.
         app.getViewPort().setBackgroundColor(new ColorRGBA().setAsSrgb(0.5f, 0.6f, 0.7f, 1.0f));
-        RenderQueue rq = app.getViewPort().getQueue();
+        installLayerComparator(app.getViewPort());
+    }
+
+    /**
+     * Installs the block engine's transparent-bucket ordering on a viewport.
+     *
+     * <p>Any viewport rendering block geometry needs it, not only the main one : the mesh generator tags
+     * glass inner faces, water and fire with a layer ({@code FacesMeshGenerator.createGeometry}) that only
+     * this comparator honours. Without it those faces sort by distance alone and show through each other.
+     * Hence the offscreen creation renders — the card thumbnail and the 3D viewer — calling it on their own
+     * viewports too.
+     *
+     * @param viewPort the viewport to order
+     */
+    public static void installLayerComparator(ViewPort viewPort) {
+        RenderQueue rq = viewPort.getQueue();
         rq.setGeometryComparator(RenderQueue.Bucket.Transparent,
                 new LayerComparator(rq.getGeometryComparator(RenderQueue.Bucket.Transparent), -1));
     }
@@ -208,6 +224,14 @@ public class IalonInitializer {
         }
     }
 
+    /**
+     * Registers the game's look : the atlas-remapped font as the default, and the whole IalonTheme.
+     *
+     * <p>Must run BEFORE any UI state is attached — they build their widgets from the theme in their
+     * {@code initialize()}, and would otherwise get the stock Lemur style. It needs only the packed atlas
+     * and the font, NOT the block framework : the atlas holds no block tile (see
+     * {@link #setupAtlasManager}) and {@code IalonTheme} reads no block registry.
+     */
     public static void setupGui(SimpleApplication app, IalonConfig config) {
         // GuiGlobals is initialised earlier (in Ialon.simpleInitApp) so the splashscreen's Lemur UI can
         // be built and shown before the heavy world initialisation runs.
@@ -254,7 +278,16 @@ public class IalonInitializer {
     }
 
     public static void setupBlockFramework(SimpleApplication app, IalonConfig config) {
-        configureBlocksFramework(app.getAssetManager(), config);
+        setupBlockFramework(app, config, true);
+    }
+
+    /**
+     * @param buildTextureArray false to leave the block texture array unbuilt, for a caller that wants to
+     *                          build it as a separate, separately-reported step (see the init pump in
+     *                          {@code Ialon}). It must still be built before any chunk is meshed.
+     */
+    public static void setupBlockFramework(SimpleApplication app, IalonConfig config, boolean buildTextureArray) {
+        configureBlocksFramework(app.getAssetManager(), config, buildTextureArray);
         Node chunkNode = new Node(IalonConfig.CHUNK_NODE_NAME);
         app.getRootNode().attachChild(chunkNode);
     }
@@ -392,6 +425,11 @@ public class IalonInitializer {
     }
 
     public static void configureBlocksFramework(AssetManager assetManager, IalonConfig ialonConfig) {
+        configureBlocksFramework(assetManager, ialonConfig, true);
+    }
+
+    public static void configureBlocksFramework(AssetManager assetManager, IalonConfig ialonConfig,
+                                                boolean buildTextureArray) {
         BlocksConfig.initialize(assetManager, false);
         BlocksConfig blocksConfig = BlocksConfig.getInstance();
         blocksConfig.setGrid(new Vec3i(ialonConfig.getGridSize(), ialonConfig.getGridHeight() * 2 + 1, ialonConfig.getGridSize()));
@@ -412,7 +450,9 @@ public class IalonInitializer {
 
         // Prebuild the block texture array now, on the setup thread, so it is ready before any chunk
         // meshing (which runs on the background pool) calls TypeRegistry.assignLayers.
-        typeRegistry.getBlockTextureArray();
+        if (buildTextureArray) {
+            typeRegistry.getBlockTextureArray();
+        }
     }
 
 }

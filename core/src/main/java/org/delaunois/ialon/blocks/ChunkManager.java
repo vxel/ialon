@@ -208,6 +208,52 @@ public class ChunkManager {
     }
 
     /**
+     * Generates a chunk exactly as the world generator produces it, WITHOUT touching the cache or the
+     * repository : the pristine terrain of that location, free of the player edits the cached (and saved)
+     * chunk carries. The counterpart of {@link #generateChunk(Vec3i)}, which is a cache/repository lookup
+     * first and a generation only as a last resort.
+     *
+     * <p>Pure generator work, hence thread-safe (the generation pool already runs it concurrently) : a
+     * chunk reset generates the whole column on a background thread and only installs the result on the
+     * update thread, see {@link #resetChunkData}. Ten chunks of noise are a good fraction of a second on
+     * a phone, which is not something a frame can absorb.
+     */
+    public Chunk generatePristineChunk(Vec3i location) {
+        Chunk chunk = generator.generate(location);
+        chunk.update();
+        chunk.setGenerated(true);
+        return chunk;
+    }
+
+    /**
+     * Installs pristine chunk data (see {@link #generatePristineChunk}) into the cached chunk at the same
+     * location, <b>in place</b> : the cached {@link Chunk} instance is kept and only its block and light
+     * arrays are swapped.
+     *
+     * <p>Keeping the instance is the point. The chunk pager, the physics pager, the mesh batchers and the
+     * cache's own {@code ChunkResolver} wiring all hold the instance they were handed for a location ; a
+     * replacement object would leave them reading the old data until the chunk is paged out and back in.
+     * This is exactly how a block edit behaves — it mutates the cached chunk — so the reset is just a
+     * wholesale version of one, and must run on the same thread as the other edits (the update thread).
+     *
+     * @param pristine the freshly generated chunk, whose location says which cached chunk to overwrite
+     * @return {@code true} if that chunk was cached and has been reset, {@code false} if it is not paged in
+     */
+    public boolean resetChunkData(Chunk pristine) {
+        assertInitialized();
+
+        Chunk chunk = cache.unsafeFastGet(pristine.getLocation());
+        if (chunk == null) {
+            return false;
+        }
+        chunk.setLightMap(pristine.getLightMap());
+        chunk.setBlocks(pristine.getBlocks()); // also recomputes the empty / full / opaque flags
+        chunk.setGenerated(true);
+        chunk.setDirty(false);
+        return true;
+    }
+
+    /**
      * Returns and clears the "a chunk task ran out of memory" flag (see {@link #memoryPressure}).
      * Polled by the memory guard on the main thread.
      */
@@ -234,7 +280,20 @@ public class ChunkManager {
      * still never queue behind chunk generation.
      */
     public void requestMeshChunksNoWait(Collection<Vec3i> locations) {
-        requestMeshChunks(locations, true, true, editExecutor, false);
+        requestMeshChunksNoWait(locations, true);
+    }
+
+    /**
+     * Same, with a say on persistence.
+     *
+     * @param notifyUpdated {@code false} to re-mesh the chunks without flagging them as updated, i.e.
+     *                      without the persistence layer saving them (see
+     *                      {@link ChunkManagerListener#onChunkUpdated}). Used by the chunk reset, which
+     *                      <b>deletes</b> the saved chunks it just reverted : a save queued behind the
+     *                      re-mesh would write them straight back.
+     */
+    public void requestMeshChunksNoWait(Collection<Vec3i> locations, boolean notifyUpdated) {
+        requestMeshChunks(locations, true, notifyUpdated, editExecutor, false);
     }
 
     public void requestOrderedMeshChunks(Collection<Vec3i> locations) {

@@ -69,6 +69,11 @@ public class WorldSelectionState extends BaseAppState {
         // instant. The heavy teardown/rebuild is deferred one frame so the loading screen is painted
         // first (and its full-screen panel blocks input meanwhile).
         IalonInitializer.getOrAttachSplashscreen(app, config).setEnabled(true);
+        // Restart the loading bar NOW, on the frame the splash appears : the world being replaced is
+        // still fully loaded, so leaving the previous run's progress in place would flash ~100% until
+        // the teardown lands. A switch replays only the world steps, hence the reduced step set.
+        config.getLoadProgress().beginWorldSwitch();
+        config.getLoadProgress().beginStep(LoadProgress.Step.WORLD_STATES);
         WorldMenuState worldMenu = app.getStateManager().getState(WorldMenuState.class);
         if (worldMenu != null) {
             worldMenu.hidePopup();
@@ -106,7 +111,11 @@ public class WorldSelectionState extends BaseAppState {
         IalonInitializer.getOrAttachSplashscreen(app, config).setEnabled(true);
 
         // 5. Build the new world.
+        config.getLoadProgress().completeStep(LoadProgress.Step.WORLD_STATES);
         IalonInitializer.attachWorldStates(app, config);
+        // The far-terrain heightmap and the minimap bake run in these states' initialize(), at the start
+        // of the next frame : announce that phase now, it is what the player will be waiting on.
+        config.getLoadProgress().beginStep(LoadProgress.Step.WORLD_INIT);
         log.info("Switched to world '{}'", worldId);
     }
 

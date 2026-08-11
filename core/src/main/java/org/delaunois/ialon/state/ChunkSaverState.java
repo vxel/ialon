@@ -62,6 +62,29 @@ public class ChunkSaverState extends BaseAppState implements ChunkManagerListene
                 }));
     }
 
+    /**
+     * Deletes (in another thread) the saved chunk at the given location, so the world falls back to the
+     * generated terrain there. Used by the chunk reset : the player's edits must not come back on reload.
+     *
+     * <p>Queued on the <b>same single thread</b> as the saves, which is what makes it safe : a save still
+     * in flight for that chunk completes first and the delete then removes what it wrote, instead of the
+     * two racing over the same file.
+     *
+     * @param location the location of the chunk whose save file must go
+     */
+    public void asyncDelete(Vec3i location) {
+        if (config.getChunkRepository() == null) {
+            return;
+        }
+        executorService.submit(() -> {
+            try {
+                config.getChunkRepository().delete(location);
+            } catch (Exception e) {
+                log.error("Failed to delete chunk", e);
+            }
+        });
+    }
+
     @Override
     protected void cleanup(Application app) {
         log.info("Stopping chunk-saver");

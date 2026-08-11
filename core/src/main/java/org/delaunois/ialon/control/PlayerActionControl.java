@@ -5,6 +5,7 @@ import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ADD_BLOCK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_DEBUG_CHUNK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_FLY;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RESET_CHUNK;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.input.controls.ActionListener;
@@ -23,6 +24,7 @@ import org.delaunois.ialon.blocks.Direction;
 import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.state.BlockPickingMode;
+import org.delaunois.ialon.state.ChunkResetState;
 import org.delaunois.ialon.state.RegionAddState;
 import org.delaunois.ialon.state.RegionDeleteState;
 import org.delaunois.ialon.state.RegionSelectionState;
@@ -37,6 +39,7 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             ACTION_ADD_BLOCK,
             ACTION_REMOVE_BLOCK,
             ACTION_ACTION_OBJECT,
+            ACTION_RESET_CHUNK,
             ACTION_FLY,
             ACTION_DEBUG_CHUNK
     };
@@ -144,7 +147,9 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
             return;
         }
         log.debug("Action : long press on {} -> {}", origin, type.getSimpleName());
-        state.enter();
+        // The block under the crosshair when the hold fires becomes the first corner : the press already
+        // aimed at it, so the player only has the two remaining points to pick.
+        state.enter(pickedCell());
     }
 
     /** Forgets any in-flight "+" hold, so a mode switch or a disable cannot leave a phantom press. */
@@ -228,6 +233,11 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
                     toggleDoor(isPressed);
                 }
                 break;
+            case ACTION_RESET_CHUNK:
+                if (isPressed) {
+                    resetChunk();
+                }
+                break;
             case ACTION_FLY:
                 toogleFly(isPressed);
                 break;
@@ -236,6 +246,26 @@ public class PlayerActionControl extends AbstractControl implements ActionListen
                 break;
             default:
         }
+    }
+
+    /**
+     * The "Reset chunk" button, offered in the "-" slot while the region-delete selection is up : it drops
+     * that selection and asks {@link ChunkResetState} to confirm reverting the player's chunk to generated
+     * terrain. The selection goes first — the two are alternatives, and its preview box and guidance
+     * message have no business showing under the confirmation dialog.
+     */
+    private void resetChunk() {
+        ChunkResetState chunkReset = app.getStateManager().getState(ChunkResetState.class);
+        if (chunkReset == null) {
+            log.warn("No ChunkResetState attached : reset chunk ignored");
+            return;
+        }
+        log.debug("Action : reset chunk");
+        BlockPickingMode picking = BlockPickingMode.active(app.getStateManager());
+        if (picking != null) {
+            picking.onCancel();
+        }
+        chunkReset.askConfirmation();
     }
 
     public void toogleFly(boolean isPressed) {

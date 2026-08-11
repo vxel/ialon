@@ -25,4 +25,13 @@ public interface ChunkRepository {
      */
     boolean save(Chunk chunk);
 
+    /**
+     * Deletes the saved chunk at the given location, if there is one, so that loading it again falls back
+     * to the generated terrain. Used by the chunk reset, which discards the player's edits for good.
+     *
+     * @param location of the chunk
+     * @return true when a saved chunk was removed, false when there was nothing to remove (or it failed)
+     */
+    boolean delete(Vec3i location);
+
 }

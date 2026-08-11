@@ -62,6 +62,44 @@ final class CreationMesh {
     }
 
     /**
+     * The cells the creation actually occupies, as {@code {minX, minY, minZ, maxX, maxY, maxZ}} inclusive, or
+     * {@code null} if it is all air.
+     *
+     * <p>Not the same thing as its size. A creation is captured as a <b>box</b> around what the player
+     * selected, and stripping the ground out of it (the library's "Edit") only turns cells to air — so the
+     * grid routinely carries empty rows and columns on its sides. Whoever frames the creation wants these
+     * bounds rather than the grid's, or the framing spends its room on air.</p>
+     */
+    static int[] contentBounds(String[] blocks, int sizeX, int sizeY, int sizeZ) {
+        if (blocks == null) {
+            return null;
+        }
+        int minX = sizeX;
+        int minY = sizeY;
+        int minZ = sizeZ;
+        int maxX = -1;
+        int maxY = -1;
+        int maxZ = -1;
+        for (int y = 0; y < sizeY; y++) {
+            for (int z = 0; z < sizeZ; z++) {
+                int row = ((y * sizeZ) + z) * sizeX;
+                for (int x = 0; x < sizeX; x++) {
+                    if (isAir(blocks[row + x])) {
+                        continue;
+                    }
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                    minZ = Math.min(minZ, z);
+                    maxZ = Math.max(maxZ, z);
+                }
+            }
+        }
+        return maxX < 0 ? null : new int[]{minX, minY, minZ, maxX, maxY, maxZ};
+    }
+
+    /**
      * Builds the meshed node for the given grid (tiling over as many chunks as needed), or {@code null}
      * if the grid is entirely air. Internal faces at chunk seams are not culled across the temporary
      * chunks, but they are hidden by the abutting blocks, so the result looks solid.

@@ -18,6 +18,7 @@ import org.delaunois.ialon.blocks.ZipFileRepository;
 import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 import org.delaunois.ialon.blocks.generator.TerrainGenerator;
 import org.delaunois.ialon.input.InputActionManager;
+import org.delaunois.ialon.state.LoadProgress;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -286,6 +287,10 @@ public class IalonConfig implements WorldSettings {
     // Set by IalonInitializer.configureBlocksFramework ; read by the block-selection slider.
     private IalonBlockCatalog blockCatalog;
     private BitmapFont font;
+    // How far loading has got, for the splashscreen to paint. Lives here because the two halves that feed
+    // it -- the init pump in Ialon and the chunk pagers watched by SplashscreenState -- both already hold
+    // the config, and neither knows about the other. Render-thread only (see LoadProgress).
+    private final LoadProgress loadProgress = new LoadProgress();
 
     // Debug
     private boolean devMode = false;

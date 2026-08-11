@@ -34,12 +34,15 @@ import org.delaunois.ialon.state.AmbientSoundState;
 import org.delaunois.ialon.state.AxesDebugState;
 import org.delaunois.ialon.state.BlockSliderSelectionState;
 import org.delaunois.ialon.state.ButtonManagerState;
+import org.delaunois.ialon.state.ChunkResetState;
 import org.delaunois.ialon.state.CreationCaptureState;
 import org.delaunois.ialon.state.CreationLibraryState;
 import org.delaunois.ialon.state.CreationPlacementState;
+import org.delaunois.ialon.state.CreationViewerState;
 import org.delaunois.ialon.state.HitchProfilerState;
 import org.delaunois.ialon.state.IalonDebugState;
 import org.delaunois.ialon.state.LightingState;
+import org.delaunois.ialon.state.LoadProgress;
 import org.delaunois.ialon.state.MemoryGuardState;
 import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.MoonState;
@@ -61,6 +64,7 @@ import org.delaunois.ialon.state.WaterState;
 import org.delaunois.ialon.state.WorldMenuState;
 import org.delaunois.ialon.state.WorldSelectionState;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -85,29 +89,36 @@ public class Ialon extends SimpleApplication {
     @Setter
     private IalonConfig config;
 
-    // Deferred (post-splash) initialisation : the heavy world setup is delayed until the splashscreen
-    // has actually been drawn, so it appears immediately instead of after the whole init blocks the
-    // render thread. Counts simpleUpdate() calls ; the work runs once at least one frame has rendered.
-    private boolean worldInitialized = false;
-    private int splashFramesRendered = 0;
+    // Deferred (post-splash) initialisation, run ONE STEP PER FRAME by the pump in simpleUpdate(). See
+    // buildInitSteps() for why it is split rather than run in one go. Null once the pump is done.
+    private List<InitStep> initSteps;
+    private int nextInitStep = 0;
+    private boolean splashDrawn = false;
+    private long[] initStepMillis;
+    private long lastStepEndNanos;
 
     /**
      * The popup states, innermost first : ESC closes the first one it finds open, so a popup laid over
-     * another goes first. Also the roster {@link #updateWorldRendering()} polls.
+     * another goes first. Also the roster {@link #updateWorldPresence()} polls.
      */
     private static final List<Class<? extends AppState>> POPUP_STATES = Collections.unmodifiableList(
             Arrays.<Class<? extends AppState>>asList(
+                    ChunkResetState.class,
                     RegionDeleteState.class,
                     RegionAddState.class,
                     BlockSliderSelectionState.class,
                     MinimapState.class,
                     SettingsState.class,
+                    CreationViewerState.class,
                     CreationLibraryState.class,
                     WorldMenuState.class));
 
-    // Whether the world is currently culled because a world-hiding popup is up (see
-    // updateWorldRendering). Kept so the cull hint is only written when it actually changes.
+    // Whether the world is currently suspended because a world-hiding popup is up (see
+    // updateWorldPresence). Kept so the cull hint is only written when it actually changes.
     private boolean worldHidden = false;
+    // Whether the ambient sound was playing when the popup went up, so closing it restores what was there
+    // rather than turning ambience on.
+    private boolean ambienceWasEnabled = false;
 
     public Ialon() {
         super((AppState[]) null);
@@ -161,14 +172,19 @@ public class Ialon extends SimpleApplication {
                 !config.isManualGammaEncode(), config.isManualGammaEncode());
 
         // Minimal, fast setup so the splashscreen can be drawn on the very first frame. Everything heavy
-        // (atlas packing, block framework, world states, GUI styles) is deferred to initWorld(), run from
-        // simpleUpdate() once the splash has been rendered at least once.
+        // (atlas packing, block framework, world states, GUI styles) is deferred to the init steps, run
+        // one per frame from simpleUpdate() once the splash has been rendered at least once.
         IalonInitializer.setupLogging();
         IalonInitializer.setupCamera(this);
         IalonInitializer.setupViewPort(this);
         GuiGlobals.initialize(this); // required by the splashscreen's Lemur UI ; moved out of setupGui()
         setupExitAction();
         stateManager.attach(new SplashscreenState(config));
+
+        initSteps = buildInitSteps();
+        initStepMillis = new long[initSteps.size()];
+        config.getLoadProgress().begin(loadSteps());
+        config.getLoadProgress().beginStep(initSteps.get(0).step);
     }
 
     /**
@@ -219,12 +235,20 @@ public class Ialon extends SimpleApplication {
     }
 
     /**
-     * Stops rendering the 3D scene while a popup that hides the world is open (see
-     * {@link Popup#hidesWorld()}), and resumes it when the popup closes. Nothing in jME relates "covered
-     * by the GUI" to "culled" : the world is drawn in the main viewport, the popup in the GUI post
-     * viewport, so without this the whole scene — chunks, far terrain, sky — keeps being drawn behind an
-     * opaque veil for nobody, several hundred draw calls' worth. It costs frames where they are least
-     * useful (a menu is open) and, on a phone, battery and heat.
+     * Takes the world away — out of sight and out of earshot — while a popup that hides it is open (see
+     * {@link Popup#hidesWorld()}), and brings it back when the popup closes.
+     *
+     * <p><b>Sight.</b> Nothing in jME relates "covered by the GUI" to "culled" : the world is drawn in the
+     * main viewport, the popup in the GUI post viewport, so without this the whole scene — chunks, far
+     * terrain, sky — keeps being drawn behind an opaque veil for nobody, several hundred draw calls' worth.
+     * It costs frames where they are least useful (a menu is open) and, on a phone, battery and heat.
+     *
+     * <p><b>Earshot.</b> The ambient wildlife and the water bed are the world's voice, and a full-screen menu
+     * is the player having stepped out of it, so they stop too (see {@link #setAmbienceSuspended}). Only for
+     * the popups that <em>hide</em> the world, which is why this hangs off the same test rather than off
+     * "any popup is open" : the in-world modes — the block picker, the region selection, the chunk reset —
+     * leave the player standing in the world looking at it, and going silent there would be the odd
+     * behaviour, not the birds carrying on.
      *
      * <p>Culls the root node rather than disabling the viewport, so the viewport still <em>clears</em> the
      * framebuffer. Disabling it would leave the previous frame's pixels wherever the popup does not paint
@@ -236,7 +260,7 @@ public class Ialon extends SimpleApplication {
      * <p>The states keep running : paging, meshing and physics carry on, so the world is live again the
      * moment the popup closes, and only the drawing is skipped.
      */
-    private void updateWorldRendering() {
+    private void updateWorldPresence() {
         boolean hide = false;
         for (int i = 0; i < POPUP_STATES.size(); i++) {
             Popup popup = popupState(POPUP_STATES.get(i));
@@ -250,22 +274,186 @@ public class Ialon extends SimpleApplication {
             // Back to Inherit, not Dynamic : it is what the root node starts as, and for a node with no
             // parent jME resolves the two identically.
             rootNode.setCullHint(hide ? CullHint.Always : CullHint.Inherit);
-            log.debug("World rendering {}", hide ? "suspended (popup open)" : "resumed");
+            setAmbienceSuspended(hide);
+            log.debug("World {} (rendering and ambient sound)", hide ? "suspended : popup open" : "resumed");
         }
     }
 
     /**
-     * Heavy, world-building initialisation deferred out of {@link #simpleInitApp()} so it runs only after
-     * the splashscreen has been drawn (see {@link #simpleUpdate(float)}). Functionally identical to the
-     * original single-pass init, just delayed by one rendered frame.
+     * Silences the world's ambience while a popup hides it, and starts it again afterwards.
+     *
+     * <p>Done by disabling {@link AmbientSoundState}, whose {@code onDisable} already stops every voice and
+     * the water bed outright, tail included — so there is nothing to fade here and no second way of muting
+     * to keep in step with the first.</p>
+     *
+     * <p>What it was doing beforehand is remembered rather than assumed : the state disables itself when the
+     * player has turned ambient sound off in the settings, and again when there is no audio device at all
+     * (the headless harnesses), and a popup must not be what switches it back on.</p>
      */
-    private void initWorld() {
+    private void setAmbienceSuspended(boolean suspend) {
+        AmbientSoundState ambience = stateManager.getState(AmbientSoundState.class);
+        if (ambience == null) {
+            return;
+        }
+        if (suspend) {
+            ambienceWasEnabled = ambience.isEnabled();
+            ambience.setEnabled(false);
+        } else if (ambienceWasEnabled) {
+            ambience.setEnabled(true);
+        }
+    }
+
+    /** One unit of deferred initialisation : what to run, and what to tell the player while it runs. */
+    private static final class InitStep {
+
+        private final LoadProgress.Step step;
+        private final Runnable action;
+
+        InitStep(LoadProgress.Step step, Runnable action) {
+            this.step = step;
+            this.action = action;
+        }
+    }
+
+    /**
+     * The heavy, world-building initialisation, cut into steps that the pump in {@link #simpleUpdate}
+     * runs ONE PER FRAME. It used to be a single {@code initWorld()} call, which is why the loading
+     * screen said "Loading..." for most of a load and then swept 0 to 100% at the end : no frame is
+     * rendered while that call runs, so the splash was frozen and only the chunk phase — the tail of the
+     * load — could ever move the bar. A step per frame lets the splash repaint between them, so the bar
+     * and the phase label follow the whole load.
+     *
+     * <p>The grouping is not free to change. What must hold :
+     * <ul>
+     *   <li>{@code setupGui} runs BEFORE any state is attached (it registers the Lemur theme, and every
+     *       UI state builds its widgets from that theme in its {@code initialize()}). This is a change
+     *       from the original order, and it is safe : the atlas holds no block tile and the theme reads
+     *       no block registry, so the GUI does not depend on the block framework despite what the old
+     *       comment claimed.</li>
+     *   <li><b>every state is attached in ONE step</b>, in the original order. Splitting the shared
+     *       states from the world states looks tempting — two shorter frozen frames instead of one long
+     *       one — but it does not work : states attached first also start <em>updating</em> a frame
+     *       earlier, and {@code SkyState.update} queries the world through the chunk manager, which is
+     *       only initialised by {@code ChunkManagerState}, one of the world states. It throws. Several
+     *       states also resolve each other in their {@code initialize()}, and {@code AppStateManager}
+     *       only finds states attached in the same or an earlier frame : {@code ScreenState} must
+     *       precede the states that register with it, {@code PlayerState} reads
+     *       {@code ChunkLiquidManagerState} (attached after it in {@code attachWorldStates}, and
+     *       silently yielding a world manager with no liquid simulation if it were not in the same
+     *       batch), and {@code MinimapState} reuses {@code FarTerrainState}'s heightmap.</li>
+     * </ul>
+     *
+     * <p>Which is why the attach step is cheap and the step AFTER it carries the weight : what the attaches
+     * cost is not the {@code attach()} calls (microseconds) but the {@code initialize()} pass they trigger
+     * at the start of the next frame — the player model, the popups, the far-terrain heightmap, the
+     * minimap bake. That pass runs before anything is painted again, so on screen it falls under the
+     * following step's label, and the timings below attribute it to the same place.
+     */
+    private List<InitStep> buildInitSteps() {
+        List<InitStep> steps = new ArrayList<>();
         // Audio listener first : every sound state below is a no-op without it, and it must be attached
         // before anything tries to place a sound.
-        IalonInitializer.setupAudio(this, config);
-        IalonInitializer.setupAtlasManager(this, config);
-        IalonInitializer.setupAtlasFont(this, config);
-        IalonInitializer.setupBlockFramework(this, config);
+        steps.add(new InitStep(LoadProgress.Step.AUDIO, () -> IalonInitializer.setupAudio(this, config)));
+        steps.add(new InitStep(LoadProgress.Step.TEXTURES, () -> IalonInitializer.setupAtlasManager(this, config)));
+        steps.add(new InitStep(LoadProgress.Step.GUI, () -> {
+            IalonInitializer.setupAtlasFont(this, config);
+            IalonInitializer.setupGui(this, config);
+        }));
+        // The catalog only : slicing the tiles into the block texture array is the step after, so the two
+        // halves of what the player sees as "loading blocks" report separately.
+        steps.add(new InitStep(LoadProgress.Step.BLOCKS,
+                () -> IalonInitializer.setupBlockFramework(this, config, false)));
+        steps.add(new InitStep(LoadProgress.Step.BLOCK_ARRAY,
+                () -> BlocksConfig.getInstance().getTypeRegistry().getBlockTextureArray()));
+        steps.add(new InitStep(LoadProgress.Step.STATES, () -> {
+            attachSharedStates();
+            attachWorldStates();
+        }));
+        steps.add(new InitStep(LoadProgress.Step.STATES_INIT, this::finishInit));
+        return steps;
+    }
+
+    /**
+     * The steps this launch will go through : the init steps, then the two chunk phases the splashscreen
+     * feeds from the pager. Only these weigh on the bar, so it spans exactly the work that will happen.
+     */
+    private LoadProgress.Step[] loadSteps() {
+        int initCount = initSteps.size();
+        LoadProgress.Step[] steps = new LoadProgress.Step[initCount + 2];
+        for (int i = 0; i < initCount; i++) {
+            steps[i] = initSteps.get(i).step;
+        }
+        steps[initCount] = LoadProgress.Step.CHUNK_FETCH;
+        steps[initCount + 1] = LoadProgress.Step.CHUNK_MESH;
+        return steps;
+    }
+
+    /**
+     * Runs the next init step. Called from {@link #simpleUpdate}, which runs before the frame is drawn —
+     * hence the one-frame wait at the top : the splash has to be on screen before the first step blocks it.
+     */
+    private void runNextInitStep(float tpf) {
+        if (!splashDrawn) {
+            splashDrawn = true;
+            lastStepEndNanos = System.nanoTime();
+            return;
+        }
+
+        InitStep current = initSteps.get(nextInitStep);
+        long start = System.nanoTime();
+        current.action.run();
+        long now = System.nanoTime();
+        // Two numbers, and the weights are calibrated from the FIRST. It is measured from the end of the
+        // previous step, not from the start of this one, because in between sits the initialize() pass of
+        // whatever that step attached — no frame is drawn during it, so the player waits through it under
+        // this step's label. The second number is the step's own work, which tells the two apart when the
+        // machine is drawing frames slowly for reasons of its own.
+        initStepMillis[nextInitStep] = (now - lastStepEndNanos) / 1_000_000L;
+        lastStepEndNanos = now;
+        log.info("Init step {} took {} ms ({} ms of work)",
+                current.step, initStepMillis[nextInitStep], (now - start) / 1_000_000L);
+        config.getLoadProgress().completeStep(current.step);
+
+        nextInitStep++;
+        if (nextInitStep < initSteps.size()) {
+            config.getLoadProgress().beginStep(initSteps.get(nextInitStep).step);
+        } else {
+            logInitProfile();
+            initSteps = null;
+            config.getLoadProgress().beginStep(LoadProgress.Step.CHUNK_FETCH);
+        }
+
+        // Repaint now rather than at the start of the next frame : this runs before the frame is drawn,
+        // so the bar and the label land on screen with the step they describe instead of one step late.
+        SplashscreenState splash = stateManager.getState(SplashscreenState.class);
+        if (splash != null && splash.isEnabled()) {
+            splash.refresh(tpf);
+        }
+    }
+
+    /**
+     * The measured cost of each step, once per launch. This is the input for calibrating the step weights
+     * in {@link LoadProgress.Step} : they only have to be right relative to each other, but they have to
+     * be measured on the target device, where the ratios differ from the desktop's.
+     */
+    private void logInitProfile() {
+        long total = 0;
+        for (long ms : initStepMillis) {
+            total += ms;
+        }
+        StringBuilder profile = new StringBuilder();
+        for (int i = 0; i < initStepMillis.length; i++) {
+            profile.append(i == 0 ? "" : ", ")
+                    .append(initSteps.get(i).step)
+                    .append('=')
+                    .append(initStepMillis[i])
+                    .append("ms");
+        }
+        log.info("Init profile ({} ms total) : {}", total, profile);
+    }
+
+    /** The states that do not depend on which world is loaded. Kept in one step : see buildInitSteps(). */
+    private void attachSharedStates() {
         stateManager.attach(new AnimationState());
         stateManager.attach(IalonInitializer.setupBulletAppState(config));
         stateManager.attach(IalonInitializer.setupStatsAppState(config));
@@ -286,20 +474,36 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new CreationPlacementState(config)); // Places a saved creation into the world
         stateManager.attach(new RegionDeleteState(config)); // Bulk-delete mode, entered by holding "-" (uses ButtonManagerState)
         stateManager.attach(new RegionAddState(config)); // Bulk-fill mode, entered by holding "+"
+        stateManager.attach(new ChunkResetState(config)); // Reverts a chunk column to generated terrain (offered by RegionDeleteState)
         stateManager.attach(new CreationLibraryState(config)); // Library of creations (opens from WorldMenuState)
+        stateManager.attach(new CreationViewerState(config)); // 3D viewer of one creation (opens from the library)
         stateManager.attach(new WorldMenuState(config)); // Create / switch worlds (uses WorldSelectionState)
         stateManager.attach(new PhotoModeState(config)); // Hides all UI for a clean screenshot
         stateManager.attach(new WorldSelectionState(config)); // Runtime world switch service
-        // Attach the world-dependent states (chunk paging, physics, far terrain, world builder) last :
-        // they are also re-attached as a group by WorldSelectionState when the player switches world.
+        // The splash outlives this step and the load can straddle a resize, so it re-lays-out like the
+        // rest of the GUI. Registered here rather than from its own initialize() : it is attached long
+        // before ScreenState exists, and registerOn() silently does nothing when there is none.
+        ScreenState.registerOn(this, stateManager.getState(SplashscreenState.class));
+    }
+
+    /**
+     * The states that depend on which world is loaded (chunk paging, physics, far terrain, world builder).
+     * Attached as one group, exactly as {@code WorldSelectionState} re-attaches them on a world switch.
+     */
+    private void attachWorldStates() {
         IalonInitializer.attachWorldStates(this, config);
         // Memory safety net : lowers the render distance under heap pressure (depends on the chunk pager
         // attached just above). Mostly relevant on Android, harmless on desktop.
         stateManager.attach(new MemoryGuardState(config));
         stateManager.attach(new AnimationState());
+    }
 
-        IalonInitializer.setupGui(this, config); // Must be after block framework is initialized
-
+    /**
+     * The tail of the init : the opt-in diagnostic states and the startup summary. Also the step under
+     * which the world states' initialize() pass (far-terrain heightmap, minimap bake) is accounted, since
+     * that pass runs at the start of this very frame.
+     */
+    private void finishInit() {
         if (config.isDevMode()) {
             stateManager.attach(new AxesDebugState());
             stateManager.attach(new IalonDebugState(config));
@@ -383,20 +587,14 @@ public class Ialon extends SimpleApplication {
 
     @Override
     public void simpleUpdate(float tpf) {
-        if (!worldInitialized) {
-            // simpleUpdate() runs before the frame is drawn, so we wait for the SECOND call : by then the
-            // first frame (with the splashscreen) has been fully rendered and the heavy init won't hide it.
-            splashFramesRendered++;
-            if (splashFramesRendered >= 2) {
-                worldInitialized = true;
-                initWorld();
-            }
-            return;
+        if (initSteps != null) {
+            runNextInitStep(tpf);
+            return; // No world yet : nothing else to poll.
         }
         // Polled rather than hooked on show/hide : popups open and close from a dozen places (buttons, ESC,
         // Back, a world switch), and a single check here catches them all. simpleUpdate() also runs before
         // updateGeometricState(), so the cull hint is set well clear of the render pass.
-        updateWorldRendering();
+        updateWorldPresence();
     }
 
     @Override

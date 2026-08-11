@@ -73,4 +73,14 @@ public class RegionDeleteState extends RegionSelectionState {
     protected void applyEdit(WorldManager worldManager, Vec3i min, Vec3i max) {
         worldManager.removeRegion(min, max);
     }
+
+    /**
+     * Yes : the "Reset chunk" button takes the "-" slot this mode frees, so the long press that opens a
+     * bulk deletion also offers the extreme form of it — putting the whole chunk back to plain terrain
+     * (see {@link ChunkResetState}).
+     */
+    @Override
+    protected boolean offersChunkReset() {
+        return true;
+    }
 }

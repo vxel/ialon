@@ -334,7 +334,17 @@ public class PhysicsChunkPager {
                 log.debug("Chunk Physic page update available at {}", chunk.getLocation());
                 pagesToCreate.offer(chunk.getLocation());
             } else if (chunk.isEmpty()) {
-                log.debug("Ignoring empty physic grid chunk update at {}", chunk.getLocation());
+                if (attachedPages.containsKey(chunk.getLocation())) {
+                    // A chunk an edit has EMPTIED still carries the collision body of what used to be in it
+                    // (nothing else would take it away until the player walks out of the small physics grid),
+                    // so the player would keep bumping into blocks that are no longer there. Rare with
+                    // single-block edits, not with a chunk reset : a column the player had built up in the
+                    // air becomes empty again the moment it is reverted to terrain.
+                    log.debug("Physic page {} was emptied. Requesting detach.", chunk.getLocation());
+                    pagesToDetach.offer(chunk.getLocation());
+                } else {
+                    log.debug("Ignoring empty physic grid chunk update at {}", chunk.getLocation());
+                }
             } else {
                 log.debug("Ignoring outside physic grid chunk update at {}", chunk.getLocation());
             }

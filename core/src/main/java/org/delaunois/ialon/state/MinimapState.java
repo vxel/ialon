@@ -59,6 +59,7 @@ import org.delaunois.ialon.ui.UiHelper;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
 
@@ -813,33 +814,10 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
      *         (or the bake was cancelled)
      */
     private ByteBuffer bakeTexels(int texSize) {
-        float[] heights = bakeHeights;
-        int hmSize = bakeHmSize;
-        float hmStep = bakeHmStep;
-        TerrainGenerator generator = bakeGenerator;
-        if (heights == null && generator == null) {
+        TexelPalette palette = texelPalette();
+        if (palette == null) {
             return null;
         }
-
-        float waterHeight = config.getWaterHeight();
-        float rockHeight = NoiseTerrainGenerator.ROCK_LINE_RATIO * config.getMaxy();
-        float snowHeight = NoiseTerrainGenerator.SNOW_LINE_RATIO * config.getMaxy();
-        ColorRGBA sand = config.getFarTerrainSandColor();
-        ColorRGBA grass = config.getFarTerrainBaseColor();
-        ColorRGBA rock = config.getFarTerrainRockColor();
-        ColorRGBA snow = config.getFarTerrainSnowColor();
-        ColorRGBA water = config.getCalmWaterColor();
-        // Biome grass-band colour : sampled per texel from the generator (same source as the near voxels
-        // and the far horizon), so all three read one palette. Falls back to the flat base colour when the
-        // generator isn't a NoiseTerrainGenerator.
-        NoiseTerrainGenerator noise = generator instanceof NoiseTerrainGenerator
-                ? (NoiseTerrainGenerator) generator : null;
-        Vector2f biomeSample = new Vector2f();
-        ColorRGBA biomeGrass = new ColorRGBA();
-        // Per-column rock & snow lines (the generator warps them by noise and climate, see
-        // NoiseTerrainGenerator.strataLinesAt), so the map's grey/white caps sit where the world's do.
-        // The slope term is left out : a cliff is far below one texel here.
-        Vector2f strataLines = new Vector2f();
 
         // Android (no hardware sRGB framebuffer : manualGammaEncode) does not sRGB-encode on output, and the
         // plain Unshaded GUI shader doesn't emulate it (unlike the world shaders' MANUAL_SRGB) ; so the linear
@@ -847,7 +825,6 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         // at init). On desktop the hardware framebuffer does the encode, so we keep the texels linear.
         // (See memory: srgb-color-pipeline.)
         ByteBuffer data = BufferUtils.createByteBuffer(texSize * texSize * 4);
-        Vector3f sample = new Vector3f();
         ColorRGBA c = new ColorRGBA();
         for (int j = 0; j < texSize; j++) {
             if (bakeCancelled) {
@@ -855,28 +832,7 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             }
             float v = (j + 0.5f) / texSize;
             for (int i = 0; i < texSize; i++) {
-                float u = (i + 0.5f) / texSize;
-                // World coords for this texel : shown extent, centered on the origin. On the torus the
-                // biome field is periodic with worldExtent, so origin-centered coords are correct.
-                float worldX = (u - 0.5f) * worldExtent;
-                float worldZ = (v - 0.5f) * worldExtent;
-                float height;
-                if (heights != null) {
-                    height = sampleHeightmap(heights, hmSize, hmStep, u, v);
-                } else {
-                    height = generator.getHeight(sample.set(worldX, 0f, worldZ));
-                }
-                // Per-texel biome grass colour (continuous blend), or the flat base colour as a fallback.
-                ColorRGBA grassColor = grass;
-                float rockLine = rockHeight;
-                float snowLine = snowHeight;
-                if (noise != null) {
-                    grassColor = noise.biomeColorAt(worldX, worldZ, biomeSample, biomeGrass);
-                    noise.strataLinesAt(worldX, worldZ, biomeSample, strataLines);
-                    snowLine = strataLines.x;
-                    rockLine = strataLines.y;
-                }
-                colorAt(c, height, waterHeight, rockLine, snowLine, sand, grassColor, rock, snow, water);
+                palette.terrainColorAt((i + 0.5f) / texSize, v, c);
                 data.put(toByte(c.r, manualSrgb));
                 data.put(toByte(c.g, manualSrgb));
                 data.put(toByte(c.b, manualSrgb));
@@ -885,6 +841,84 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
         }
         data.flip();
         return data;
+    }
+
+    /** The palette to bake (or re-derive) texels with, or {@code null} when no terrain source is available. */
+    private TexelPalette texelPalette() {
+        return (bakeHeights == null && bakeGenerator == null) ? null : new TexelPalette();
+    }
+
+    /**
+     * The terrain colour of a map texel : the palette, the terrain source and the scratch vectors it takes
+     * to derive one, gathered in a reusable object.
+     *
+     * <p>Split out of the bake loop so that a <b>single</b> texel can be re-derived long after the bake,
+     * which is what {@link #unpaintColumn} needs : the edit tint is a destructive blend over the terrain
+     * colour, so lifting it off a reset column means recomputing that colour, not un-blending it.</p>
+     *
+     * <p>Not thread-safe (it carries scratch vectors), so each bake builds its own ; it touches neither the
+     * jME scene nor the state manager, which is what lets the popup bake run on a background thread.</p>
+     */
+    private final class TexelPalette {
+
+        private final float[] heights = bakeHeights;
+        private final int hmSize = bakeHmSize;
+        private final float hmStep = bakeHmStep;
+        private final TerrainGenerator generator = bakeGenerator;
+
+        private final float waterHeight = config.getWaterHeight();
+        private final float rockHeight = NoiseTerrainGenerator.ROCK_LINE_RATIO * config.getMaxy();
+        private final float snowHeight = NoiseTerrainGenerator.SNOW_LINE_RATIO * config.getMaxy();
+        private final ColorRGBA sand = config.getFarTerrainSandColor();
+        private final ColorRGBA grass = config.getFarTerrainBaseColor();
+        private final ColorRGBA rock = config.getFarTerrainRockColor();
+        private final ColorRGBA snow = config.getFarTerrainSnowColor();
+        private final ColorRGBA water = config.getCalmWaterColor();
+
+        // Biome grass-band colour : sampled per texel from the generator (same source as the near voxels
+        // and the far horizon), so all three read one palette. Null (flat base colour) when the generator
+        // isn't a NoiseTerrainGenerator.
+        private final NoiseTerrainGenerator noise = generator instanceof NoiseTerrainGenerator
+                ? (NoiseTerrainGenerator) generator : null;
+
+        private final Vector3f sample = new Vector3f();
+        private final Vector2f biomeSample = new Vector2f();
+        private final ColorRGBA biomeGrass = new ColorRGBA();
+        // Per-column rock & snow lines (the generator warps them by noise and climate, see
+        // NoiseTerrainGenerator.strataLinesAt), so the map's grey/white caps sit where the world's do.
+        // The slope term is left out : a cliff is far below one texel here.
+        private final Vector2f strataLines = new Vector2f();
+
+        /**
+         * The terrain colour at a map coordinate, with the same palette as {@code FarTerrain.frag}
+         * (terrain colour only — no lighting / fog / reflection).
+         *
+         * @param u horizontal map coordinate, in [0, 1]
+         * @param v vertical map coordinate, in [0, 1]
+         * @param store receives the colour, and is returned
+         */
+        ColorRGBA terrainColorAt(float u, float v, ColorRGBA store) {
+            // World coords for this texel : shown extent, centered on the origin. On the torus the biome
+            // field is periodic with worldExtent, so origin-centered coords are correct.
+            float worldX = (u - 0.5f) * worldExtent;
+            float worldZ = (v - 0.5f) * worldExtent;
+            float height = heights != null
+                    ? sampleHeightmap(heights, hmSize, hmStep, u, v)
+                    : generator.getHeight(sample.set(worldX, 0f, worldZ));
+
+            // Per-texel biome grass colour (continuous blend), or the flat base colour as a fallback.
+            ColorRGBA grassColor = grass;
+            float rockLine = rockHeight;
+            float snowLine = snowHeight;
+            if (noise != null) {
+                grassColor = noise.biomeColorAt(worldX, worldZ, biomeSample, biomeGrass);
+                noise.strataLinesAt(worldX, worldZ, biomeSample, strataLines);
+                snowLine = strataLines.x;
+                rockLine = strataLines.y;
+            }
+            colorAt(store, height, waterHeight, rockLine, snowLine, sand, grassColor, rock, snow, water);
+            return store;
+        }
     }
 
     /**
@@ -904,11 +938,16 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
     }
 
     /**
-     * Tints every chunk column the player has edited (the persisted {@link WorldEditOverlay#getModifiedColumns()}
-     * set) onto the baked minimap texture(s). Incremental and idempotent : only columns not already painted are
-     * blended, so calling it every frame is cheap — the usual case is a single O(1) size compare that finds
-     * nothing new (the set only grows during play). It mutates the existing texture in place ({@code
-     * setUpdateNeeded} re-uploads it), so there is no rebake and no extra geometry / draw call.
+     * Keeps the tint of the chunk columns the player has edited (the persisted
+     * {@link WorldEditOverlay#getModifiedColumns()} set) in step with the baked minimap texture(s).
+     * Incremental and idempotent : only columns whose state changed are touched, so calling it every frame is
+     * cheap — the usual case is a single O(1) size compare that finds nothing to do. It mutates the existing
+     * texture in place ({@code setUpdateNeeded} re-uploads it), so there is no rebake and no extra geometry /
+     * draw call.
+     *
+     * <p>The set almost only ever grows ; a <b>chunk reset</b> is the one thing that takes a column out of it
+     * (the column is procedural terrain again, see {@code WorldManager#resetColumn}), and its tint then has to
+     * come off. Either way the set's size changes, which is what the size compare detects.</p>
      */
     private void refreshEditMarkers() {
         if (editOverlay == null || mapTex == null) {
@@ -920,58 +959,153 @@ public class MinimapState extends BaseAppState implements Resizable, Popup {
             return;
         }
         lastModifiedCount = n;
-        boolean thumbChanged = false;
-        boolean popupChanged = false;
+        boolean changed = false;
         for (long key : modified) {
             if (markedColumns.add(key)) {
                 paintColumn(mapTex, TEX_SIZE, key);
-                thumbChanged = true;
                 if (popupMapTex != null) {
                     paintColumn(popupMapTex, POPUP_TEX_SIZE, key);
-                    popupChanged = true;
                 }
+                changed = true;
             }
         }
-        if (thumbChanged) {
-            mapTex.getImage().setUpdateNeeded();
+        if (markedColumns.size() > n) {
+            changed |= unpaintResetColumns(modified);
         }
-        if (popupChanged) {
-            popupMapTex.getImage().setUpdateNeeded();
+        if (changed) {
+            mapTex.getImage().setUpdateNeeded();
+            if (popupMapTex != null) {
+                popupMapTex.getImage().setUpdateNeeded();
+            }
         }
     }
 
     /**
-     * Blends the edit tint over the texels covering one chunk column in a baked map texture. The column's
-     * world centre maps to {@code (u, v)} with the SAME convention as {@link #bakeTexture}/the player marker,
-     * so the tint lands exactly where the column sits on the map. A sub-pixel chunk (the thumbnail spans the
-     * whole world) still tints at least its centre texel ; on the larger popup a chunk covers a few texels.
-     * On the torus the texel indices wrap with the map period, matching the seamless relief.
+     * Lifts the tint off every column that is painted but no longer marked as edited — one reset chunk, in
+     * practice. Returns whether anything was repainted.
+     */
+    private boolean unpaintResetColumns(Set<Long> modified) {
+        TexelPalette palette = texelPalette();
+        if (palette == null) {
+            return false; // no terrain source : the base colour cannot be re-derived, leave the tint
+        }
+        boolean changed = false;
+        Iterator<Long> painted = markedColumns.iterator();
+        while (painted.hasNext()) {
+            long key = painted.next();
+            if (modified.contains(key)) {
+                continue;
+            }
+            painted.remove();
+            unpaintColumn(mapTex, TEX_SIZE, key, palette);
+            if (popupMapTex != null) {
+                unpaintColumn(popupMapTex, POPUP_TEX_SIZE, key, palette);
+            }
+            changed = true;
+            log.info("Lifted the edit tint off chunk column {}, {}",
+                    WorldEditOverlay.unpackX(key), WorldEditOverlay.unpackZ(key));
+        }
+        return changed;
+    }
+
+    /**
+     * Blends the edit tint over the texels covering one chunk column in a baked map texture (see
+     * {@link #columnRect} for where those texels are).
      */
     private void paintColumn(Texture2D tex, int texSize, long key) {
-        float worldX = (WorldEditOverlay.unpackX(key) + 0.5f) * chunkSizeX;
-        float worldZ = (WorldEditOverlay.unpackZ(key) + 0.5f) * chunkSizeX;
-        float u = torus ? floorModF(worldX / worldExtent + 0.5f, 1f) : clamp01(worldX / worldExtent + 0.5f);
-        float v = torus ? floorModF(worldZ / worldExtent + 0.5f, 1f) : clamp01(worldZ / worldExtent + 0.5f);
-        int cx = (int) (u * texSize);
-        int cy = (int) (v * texSize);
-        int r = Math.max(0, (int) (chunkSizeX / worldExtent * texSize * 0.5f));
+        int[] rect = columnRect(key, texSize);
         ByteBuffer data = tex.getImage().getData(0);
-        for (int dj = -r; dj <= r; dj++) {
-            for (int di = -r; di <= r; di++) {
-                int i = cx + di;
-                int j = cy + dj;
-                if (torus) {
-                    i = Math.floorMod(i, texSize);
-                    j = Math.floorMod(j, texSize);
-                } else if (i < 0 || i >= texSize || j < 0 || j >= texSize) {
+        for (int dj = -rect[2]; dj <= rect[2]; dj++) {
+            for (int di = -rect[2]; di <= rect[2]; di++) {
+                int idx = texelIndex(rect[0] + di, rect[1] + dj, texSize);
+                if (idx < 0) {
                     continue;
                 }
-                int idx = (j * texSize + i) * 4;
                 data.put(idx, blendByte(data.get(idx), markerR));
                 data.put(idx + 1, blendByte(data.get(idx + 1), markerG));
                 data.put(idx + 2, blendByte(data.get(idx + 2), markerB));
             }
         }
+    }
+
+    /**
+     * The reverse of {@link #paintColumn} : restores the baked terrain colour over one chunk column's texels,
+     * for a column a chunk reset returned to procedural terrain.
+     *
+     * <p>The tint is blended <b>into</b> the stored texels, so there is nothing to un-blend : the colour is
+     * re-derived from the terrain source instead ({@link TexelPalette}), exactly as the bake computed it. A
+     * chunk is sub-pixel on the thumbnail, so several columns can share a texel — the still-marked ones close
+     * enough to have shared one are therefore re-tinted afterwards, or erasing a column would silently clear
+     * its neighbour's mark too.</p>
+     */
+    private void unpaintColumn(Texture2D tex, int texSize, long key, TexelPalette palette) {
+        int[] rect = columnRect(key, texSize);
+        ByteBuffer data = tex.getImage().getData(0);
+        ColorRGBA c = new ColorRGBA();
+        for (int dj = -rect[2]; dj <= rect[2]; dj++) {
+            for (int di = -rect[2]; di <= rect[2]; di++) {
+                int idx = texelIndex(rect[0] + di, rect[1] + dj, texSize);
+                if (idx < 0) {
+                    continue;
+                }
+                int i = (idx / 4) % texSize;
+                int j = (idx / 4) / texSize;
+                palette.terrainColorAt((i + 0.5f) / texSize, (j + 0.5f) / texSize, c);
+                data.put(idx, toByte(c.r, manualSrgb));
+                data.put(idx + 1, toByte(c.g, manualSrgb));
+                data.put(idx + 2, toByte(c.b, manualSrgb));
+            }
+        }
+        for (long other : markedColumns) {
+            int[] otherRect = columnRect(other, texSize);
+            if (overlaps(rect, otherRect, texSize)) {
+                paintColumn(tex, texSize, other);
+            }
+        }
+    }
+
+    /**
+     * The texels one chunk column covers in a baked map texture, as {@code {centreI, centreJ, radius}}. The
+     * column's world centre maps to {@code (u, v)} with the SAME convention as {@link #bakeTexture} / the
+     * player marker, so the rect lands exactly where the column sits on the map. A sub-pixel chunk (the
+     * thumbnail spans the whole world) gets radius 0 — its centre texel; on the larger popup a chunk covers a
+     * few texels.
+     */
+    private int[] columnRect(long key, int texSize) {
+        float worldX = (WorldEditOverlay.unpackX(key) + 0.5f) * chunkSizeX;
+        float worldZ = (WorldEditOverlay.unpackZ(key) + 0.5f) * chunkSizeX;
+        float u = torus ? floorModF(worldX / worldExtent + 0.5f, 1f) : clamp01(worldX / worldExtent + 0.5f);
+        float v = torus ? floorModF(worldZ / worldExtent + 0.5f, 1f) : clamp01(worldZ / worldExtent + 0.5f);
+        return new int[]{
+                (int) (u * texSize),
+                (int) (v * texSize),
+                Math.max(0, (int) (chunkSizeX / worldExtent * texSize * 0.5f))
+        };
+    }
+
+    /**
+     * Byte offset of a texel in the RGBA8 texel buffer, or {@code -1} when it falls outside the map. On the
+     * torus the indices wrap with the map period, matching the seamless relief.
+     */
+    private int texelIndex(int i, int j, int texSize) {
+        if (torus) {
+            return (Math.floorMod(j, texSize) * texSize + Math.floorMod(i, texSize)) * 4;
+        }
+        if (i < 0 || i >= texSize || j < 0 || j >= texSize) {
+            return -1;
+        }
+        return (j * texSize + i) * 4;
+    }
+
+    /** Whether two column rects share at least one texel (wrapping with the map period on the torus). */
+    private boolean overlaps(int[] a, int[] b, int texSize) {
+        int reach = a[2] + b[2];
+        return texelDistance(a[0], b[0], texSize) <= reach && texelDistance(a[1], b[1], texSize) <= reach;
+    }
+
+    private int texelDistance(int a, int b, int texSize) {
+        int d = Math.abs(a - b);
+        return torus ? Math.min(d, texSize - d) : d;
     }
 
     /** Blends a stored texel channel byte toward the marker channel byte by {@link #EDIT_MARKER_ALPHA}. */

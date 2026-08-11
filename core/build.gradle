@@ -114,6 +114,66 @@ tasks.register('hudPreview', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     workingDir = rootProject.projectDir
     systemProperty 'ialon.hudPreview.settleMs', findProperty('settleMs') ?: '25000'
+    // 'regionDelete' opens the bulk-delete selection before capturing, which is the HUD variant that hides
+    // the +/- buttons and offers "Reset chunk" in the "-" slot. 'chunkReset' goes on to the confirmation
+    // dialog, and 'chunkResetRun' confirms it -- which EDITS THE SAVED WORLD, so back up ./save first.
+    systemProperty 'ialon.hudPreview.mode', findProperty('hudMode') ?: ''
+    // World to boot against ; use a copy for the destructive mode above.
+    systemProperty 'ialon.hudPreview.savePath', findProperty('savePath') ?: ''
+}
+
+// Films the creation viewer popup : boots the real game, opens the creation library, clicks "Preview" on
+// the first creation of ./save and captures the GUI viewport repeatedly while the model turns. The only
+// harness that shows the offscreen creation render on screen, hence the only place its orientation, its
+// brightness and its framing can be checked without a device. Same display/GL requirements as 'screenshot'.
+//   ./gradlew :core:creationViewerPreview                     # -> core/build/screenshots/creation-viewer-NNN.png
+//   ./gradlew :core:creationViewerPreview -Pshots=12           # a longer filmstrip
+//   ./gradlew :core:creationViewerPreview -Pwidth=800 -Pheight=600   # a small screen
+//   ./gradlew :core:creationViewerPreview -Pinteractive=true   # leave the window up and drag the model
+tasks.register('creationViewerPreview', JavaExec) {
+    group = 'verification'
+    description = 'Film the creation 3D viewer popup (support.CreationViewerPreview).'
+    mainClass = 'org.delaunois.ialon.support.CreationViewerPreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+    systemProperty 'ialon.creationViewerPreview.settleMs', findProperty('settleMs') ?: '25000'
+    systemProperty 'ialon.creationViewerPreview.shotMs', findProperty('shotMs') ?: '500'
+    systemProperty 'ialon.creationViewerPreview.shots', findProperty('shots') ?: '8'
+    // Worth running small as well as large : the library's button column is one row taller with "Preview".
+    systemProperty 'ialon.creationViewerPreview.width', findProperty('width') ?: '1280'
+    systemProperty 'ialon.creationViewerPreview.height', findProperty('height') ?: '720'
+    // Rebuilds the framebuffer and its texture while the popup is up, which is where a leak or a deleted
+    // target still being drawn into would show.
+    systemProperty 'ialon.creationViewerPreview.resize', findProperty('resize') ?: ''
+    // Which creation to open (its id, i.e. the .zcreation file name) ; the first one by default.
+    systemProperty 'ialon.creationViewerPreview.creation', findProperty('creation') ?: ''
+    // Closes and reopens the viewer that many times (forcing a GC each time) before filming : a teardown
+    // that frees a GL object the wrong way only shows from the second viewing on.
+    systemProperty 'ialon.creationViewerPreview.reopens', findProperty('reopens') ?: '0'
+    // Second creation to alternate with while reopening : the render target is reused across viewings, so
+    // switching creations is what proves the camera is re-aimed at the new bounding box.
+    systemProperty 'ialon.creationViewerPreview.alternate', findProperty('alt') ?: ''
+    // Presses "Set image" before going back : REWRITES the creation's card PNG in ./save, so point the world
+    // at a copy if that matters.
+    systemProperty 'ialon.creationViewerPreview.setImage', findProperty('setImage') ?: ''
+    // Hands the window over instead of capturing : the drag gesture is the one thing a still cannot show.
+    systemProperty 'ialon.creationViewerPreview.interactive', findProperty('interactive') ?: ''
+}
+
+// Films the loading screen : boots the real game and captures the GUI viewport repeatedly while the
+// world loads, so the progress bar and the phase labels can be checked as a filmstrip rather than as a
+// single still. Same display/GL requirements as 'screenshot'. Examples :
+//   ./gradlew :core:splashPreview                    # -> core/build/screenshots/splash-NNN.png
+//   ./gradlew :core:splashPreview -PshotMs=250       # capture more often
+//   ./gradlew :core:splashPreview -Pshots=30         # capture more frames (slower machine)
+tasks.register('splashPreview', JavaExec) {
+    group = 'verification'
+    description = 'Film the loading screen from the real application (support.SplashPreview).'
+    mainClass = 'org.delaunois.ialon.support.SplashPreview'
+    classpath = sourceSets.test.runtimeClasspath
+    workingDir = rootProject.projectDir
+    systemProperty 'ialon.splashPreview.shotMs', findProperty('shotMs') ?: '400'
+    systemProperty 'ialon.splashPreview.shots', findProperty('shots') ?: '20'
 }
 
 // Plays the wildlife ambience through real OpenAL, with the real 3D placement, without loading a world

@@ -34,6 +34,9 @@ public class WorldBuilderState extends BaseAppState {
     private int physicPagesAttached = 0;
     private int pagesFetched = 0;
     private long lastProgressTime = startTime;
+    // When generation finished, so the fetch/mesh split of the build is measurable (it is the ratio the
+    // CHUNK_FETCH / CHUNK_MESH weights of the loading bar are calibrated from). 0 until it happens.
+    private long generationDoneTime = 0;
 
     private PlayerState playerState;
     private final IalonConfig config;
@@ -46,6 +49,9 @@ public class WorldBuilderState extends BaseAppState {
     protected void initialize(Application app) {
         playerState = app.getStateManager().getState(PlayerState.class, true);
         playerState.setEnabled(false);
+        // This state is attached last, so by the time it initialises, the far terrain and the minimap --
+        // the expensive part of the world states' initialize() pass -- are done.
+        config.getLoadProgress().completeStep(LoadProgress.Step.WORLD_INIT);
     }
 
     @Override
@@ -79,11 +85,21 @@ public class WorldBuilderState extends BaseAppState {
             pagesFetched = numPagesFetched;
             lastProgressTime = System.currentTimeMillis();
         }
+        if (generationDoneTime == 0 && numPagesAttached > 0) {
+            // The chunk manager generates the whole slab before meshing any of it, so the first attached
+            // page marks the end of generation.
+            generationDoneTime = System.currentTimeMillis();
+        }
         if (numPagesAttached >= total && physicsChunkPager.isReady()
                 || (System.currentTimeMillis() - lastProgressTime > STALL_TIMEOUT_MS)) {
             long stopTime = System.currentTimeMillis();
             long duration = stopTime - startTime;
-            log.info("World built in {}ms ({}ms per page)", duration, ((float)duration) / pagesAttached);
+            long generation = (generationDoneTime == 0 ? stopTime : generationDoneTime) - startTime;
+            log.info("World built in {}ms ({}ms generating, {}ms meshing, {}ms per page)",
+                    duration, generation, duration - generation, ((float) duration) / pagesAttached);
+            // The counters rarely reach exactly 100% (evicted pages, or the stall guard cutting in), so
+            // finish the bar off explicitly rather than leaving it just short as the splash disappears.
+            config.getLoadProgress().completeAll();
             log.info("Starting player");
             chunkPager.setMaxUpdatePerFrame(config.getMaxUpdatePerFrame());
             physicsChunkPager.setMaxUpdatePerFrame(10);

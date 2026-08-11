@@ -13,6 +13,7 @@ import org.delaunois.ialon.blocks.generator.NoiseTerrainGenerator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -638,6 +639,16 @@ public class WorldManager {
             }
         }
 
+        requestRegionMesh(touched, true);
+    }
+
+    /**
+     * Requests one non-blocking re-mesh of the given chunks and their axis neighbours.
+     *
+     * @param notifyUpdated whether the re-meshed chunks are flagged as updated, i.e. saved. True for the
+     *                      bulk edits ; false for the chunk reset, which deletes their saved files instead
+     */
+    private void requestRegionMesh(Set<Vec3i> touched, boolean notifyUpdated) {
         // Faces at chunk borders change too, so the axis neighbours must be re-meshed as well.
         Set<Vec3i> toMesh = new LinkedHashSet<>(touched);
         for (Vec3i c : touched) {
@@ -648,7 +659,85 @@ public class WorldManager {
             toMesh.add(new Vec3i(c.x, c.y, c.z + 1));
             toMesh.add(new Vec3i(c.x, c.y, c.z - 1));
         }
-        chunkManager.requestMeshChunksNoWait(toMesh);
+        chunkManager.requestMeshChunksNoWait(toMesh, notifyUpdated);
+    }
+
+    /**
+     * Reverts a whole chunk column to the terrain the generator produces : every edit the player made
+     * anywhere in the column — blocks placed, blocks removed, at any height — is discarded at once.
+     *
+     * <p>A <b>column</b>, not a single 16³ chunk, because a column is the unit the rest of the game
+     * already thinks in : the minimap marks edited columns, the far horizon samples columns, and the tree
+     * scatter is per column. Resetting less would leave the column half-reverted and still flagged as
+     * edited everywhere else.</p>
+     *
+     * <p>The blocks are not recomputed here : the caller hands over the pristine chunks, generated off the
+     * update thread (see {@link ChunkManager#generatePristineChunk}), and this only installs them — an
+     * array swap per chunk — then puts the column's overlay records back to their pristine state :</p>
+     * <ul>
+     *   <li>the persisted <b>modified</b> marker is dropped, so the minimap stops tinting the column;</li>
+     *   <li>the transient <b>edited</b> marker is set, so the far relief re-measures the column when it
+     *       leaves the loaded grid and drops any height override the edits had left;</li>
+     *   <li>the far-tree billboards of the trees standing in the column are restored — they grow back
+     *       with the terrain, so their distant silhouettes must come back too.</li>
+     * </ul>
+     *
+     * <p><b>Deliberately not done :</b> no light flood and no liquid seeding across the column's border.
+     * The pristine column is internally consistent (the generator computes its own sunlight), and the
+     * neighbours keep theirs. What the player can still see afterwards is confined to a border they had
+     * themselves edited through — sunlight that poured into a neighbouring chunk through a tunnel now
+     * walled up again, for instance — and it heals as soon as that neighbour is paged out and back in.
+     * Fixing it properly would mean re-flooding the light of a 16 x 160 x 16 border, which costs far more
+     * than the artifact.</p>
+     *
+     * @param chunkX  the column's chunk X coordinate
+     * @param chunkZ  the column's chunk Z coordinate
+     * @param pristine the freshly generated chunks of the column, in any order
+     * @return the locations actually reset (empty when none of them is paged in any more)
+     */
+    public Set<Vec3i> resetColumn(int chunkX, int chunkZ, Collection<Chunk> pristine) {
+        Set<Vec3i> touched = new LinkedHashSet<>();
+        for (Chunk chunk : pristine) {
+            if (chunkManager.resetChunkData(chunk)) {
+                touched.add(chunk.getLocation());
+            }
+        }
+
+        if (touched.isEmpty()) {
+            log.warn("Chunk column ({}, {}) is not loaded any more : nothing reset", chunkX, chunkZ);
+            return Collections.emptySet();
+        }
+
+        if (worldEditOverlay != null && noiseGenerator != null) {
+            worldEditOverlay.clearModifiedColumn(noiseGenerator.modifiedColumnKey(chunkX, chunkZ));
+            worldEditOverlay.markColumnEdited(WorldEditOverlay.pack(chunkX, chunkZ));
+            restoreTrees(chunkX, chunkZ);
+        }
+
+        requestRegionMesh(touched, false);
+
+        log.info("Reset chunk column ({}, {}) : {} chunks", chunkX, chunkZ, touched.size());
+        return touched;
+    }
+
+    /**
+     * Puts back the far-horizon billboards of every procedural tree whose trunk stands in a reset chunk
+     * column. Only the trunk column of a scattered tree yields a key ({@code -1} otherwise), and that test
+     * is two hashes deep before it does any real work, so scanning the chunk's 256 columns actually costs
+     * the handful of anchors it finds.
+     */
+    private void restoreTrees(int chunkX, int chunkZ) {
+        Vec3i chunkSize = BlocksConfig.getInstance().getChunkSize();
+        int x0 = chunkX * chunkSize.x;
+        int z0 = chunkZ * chunkSize.z;
+        for (int z = z0; z < z0 + chunkSize.z; z++) {
+            for (int x = x0; x < x0 + chunkSize.x; x++) {
+                long cellKey = noiseGenerator.trunkAnchorCellKeyAt(x, z);
+                if (cellKey != -1L) {
+                    worldEditOverlay.restoreTree(cellKey);
+                }
+            }
+        }
     }
 
     /**

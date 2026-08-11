@@ -17,8 +17,6 @@
 
 package org.delaunois.ialon.state;
 
-import static org.delaunois.ialon.Ialon.IALON_STYLE;
-
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AppState;
@@ -35,8 +33,6 @@ import com.jme3.scene.debug.WireBox;
 import com.jme3.scene.shape.Box;
 import com.simsilica.lemur.Button;
 import com.simsilica.lemur.Container;
-import com.simsilica.lemur.HAlignment;
-import com.simsilica.lemur.Label;
 import com.simsilica.mathd.Vec3i;
 
 import org.delaunois.ialon.IalonConfig;
@@ -44,8 +40,8 @@ import org.delaunois.ialon.blocks.BlocksConfig;
 import org.delaunois.ialon.blocks.ChunkManager;
 import org.delaunois.ialon.blocks.WorldManager;
 import org.delaunois.ialon.ui.ConfirmDialog;
+import org.delaunois.ialon.ui.HudMessage;
 import org.delaunois.ialon.ui.IalonTheme;
-import org.delaunois.ialon.ui.UiHelper;
 
 import java.util.Optional;
 
@@ -58,9 +54,10 @@ import lombok.extern.slf4j.Slf4j;
  * <p>The gesture is the one {@link CreationCaptureState} established — the first two picks define the
  * <b>base rectangle</b> (its X/Z footprint and base level), the third the <b>height</b> — down to
  * reusing {@link CreationCaptureState#computeVolume}. Entered by holding one of the on-screen editing
- * buttons (see {@code PlayerActionControl}). While selecting, the block-selection, minimap and
- * time-factor UI are hidden and the add/remove buttons are replaced by the action button (see
- * {@link ButtonManagerState#setBuildMode(boolean)}).</p>
+ * buttons (see {@code PlayerActionControl}), which hands over the block aimed at as the first corner :
+ * the long press already designates one, so only two picks are left to the player. While selecting, the
+ * block-selection, minimap and time-factor UI are hidden and the add/remove buttons are replaced by the
+ * action button (see {@link ButtonManagerState#setBuildMode(boolean)}).</p>
  *
  * <p>Each side of the box is capped at {@value #MAX_REGION_SIDE} blocks. Rather than refusing an
  * oversized pick, the box simply stops growing on the offending axis (see {@link #clampToMaxSide}) :
@@ -101,15 +98,13 @@ public abstract class RegionSelectionState extends BaseAppState
     private final Vec3i[] points = new Vec3i[3];
     private final Vector3f scratch = new Vector3f();
 
-    private Label hud;
+    private HudMessage hud;
     private Node previewNode;
     private boolean selecting;
     private int step;
     private Vec3i currentTarget;
     // The confirmation dialog, while it is up. Non-null means the selection is frozen.
     private Container confirmOverlay;
-    // Seconds left to display the closing confirmation message (0 = none showing).
-    private float confirmTimeLeft;
 
     protected RegionSelectionState(IalonConfig config) {
         this.config = config;
@@ -135,6 +130,15 @@ public abstract class RegionSelectionState extends BaseAppState
     /** The wording of the transient HUD message shown once the edit is under way. */
     protected abstract String doneMessage(int affected);
 
+    /**
+     * Whether the "Reset chunk" button is offered while this mode's selection is up, in the slot the
+     * hidden "-" button leaves free. Only the destructive mode does : a reset is the same intent taken to
+     * the whole chunk, and it is reached by the same long press.
+     */
+    protected boolean offersChunkReset() {
+        return false;
+    }
+
     /** Applies the edit to {@code min..max} (inclusive). Runs on the update thread. */
     protected abstract void applyEdit(WorldManager worldManager, Vec3i min, Vec3i max);
 
@@ -143,11 +147,8 @@ public abstract class RegionSelectionState extends BaseAppState
     @Override
     protected void initialize(Application application) {
         this.app = (SimpleApplication) application;
-        hud = new Label("", IALON_STYLE);
-        hud.setColor(ColorRGBA.White);
-        hud.setTextHAlignment(HAlignment.Center);
+        hud = new HudMessage(app);
         previewNode = createPreviewNode();
-        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
         ScreenState.registerOn(app, this);
     }
 
@@ -181,25 +182,45 @@ public abstract class RegionSelectionState extends BaseAppState
         cancel();
     }
 
-    /** Starts the selection : hides the editing UI and shows the action button + guidance HUD. */
+    /** Starts the selection with no point picked yet : the player has all three to select. */
     public void enter() {
+        enter(null);
+    }
+
+    /**
+     * Starts the selection : hides the editing UI and shows the action button + guidance HUD.
+     *
+     * @param firstCorner the block aimed at when the mode was opened, taken as the first base corner —
+     *                    the long press that enters the mode already designates a block, so making the
+     *                    player pick it again would be busywork. {@code null} (nothing aimed at) simply
+     *                    leaves all three points to select.
+     */
+    public void enter(Vec3i firstCorner) {
         if (selecting) {
             return;
         }
         selecting = true;
-        confirmTimeLeft = 0; // clear any lingering confirmation
+        hud.hide(); // clear any lingering confirmation
         step = 0;
         currentTarget = null;
         points[0] = null;
         points[1] = null;
         points[2] = null;
 
+        if (firstCorner != null) {
+            points[0] = new Vec3i(firstCorner);
+            step = 1;
+            // Aim at that same block until the next placeholder tick, so the preview box shows up right
+            // away on the seeded corner instead of blinking in a tenth of a second later.
+            currentTarget = points[0];
+        }
+
         setUiEnabled(false);
         ButtonManagerState buttons = app.getStateManager().getState(ButtonManagerState.class);
         if (buttons != null) {
             buttons.setBuildMode(true);
+            buttons.setResetChunkVisible(offersChunkReset());
         }
-        showHud();
         updateHud();
         refreshPreview();
     }
@@ -255,7 +276,7 @@ public abstract class RegionSelectionState extends BaseAppState
         int sizeZ = boundsMax.z - boundsMin.z + 1;
         int affected = countAffectedCells();
 
-        hideHud();
+        hud.hide();
         Container overlay = ConfirmDialog.createModalOverlay(config);
         confirmOverlay = overlay;
 
@@ -311,12 +332,9 @@ public abstract class RegionSelectionState extends BaseAppState
 
         app.enqueue(() -> applyEdit(worldManager, min, max));
 
-        // exit() has just hidden the guidance label ; re-show it with the confirmation, then update()
-        // removes it after a few seconds.
-        hud.setText(doneMessage(affected));
-        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
-        showHud();
-        confirmTimeLeft = CONFIRM_SECONDS;
+        // exit() has just hidden the guidance label ; re-show it with the confirmation, which update()
+        // then removes after a few seconds.
+        hud.show(doneMessage(affected), CONFIRM_SECONDS);
     }
 
     // --- Popup ------------------------------------------------------------------------------------
@@ -339,12 +357,7 @@ public abstract class RegionSelectionState extends BaseAppState
 
     @Override
     public void update(float tpf) {
-        if (confirmTimeLeft > 0) {
-            confirmTimeLeft -= tpf;
-            if (confirmTimeLeft <= 0) {
-                hideHud();
-            }
-        }
+        hud.update(tpf);
     }
 
     private void exit() {
@@ -354,9 +367,11 @@ public abstract class RegionSelectionState extends BaseAppState
         setUiEnabled(true);
         ButtonManagerState buttons = app.getStateManager().getState(ButtonManagerState.class);
         if (buttons != null) {
+            // Reset button first : it stands in the "-" slot, which setBuildMode(false) fills again.
+            buttons.setResetChunkVisible(false);
             buttons.setBuildMode(false);
         }
-        hideHud();
+        hud.hide();
         previewNode.removeFromParent();
     }
 
@@ -530,35 +545,13 @@ public abstract class RegionSelectionState extends BaseAppState
 
     // --- HUD --------------------------------------------------------------------------------------
 
+    /** Tells the player which of the three points they are picking. Stays up until the step changes. */
     private void updateHud() {
-        hud.setText(STEP_MESSAGES[Math.min(step, STEP_MESSAGES.length - 1)]);
-        layout(app.getCamera().getWidth(), app.getCamera().getHeight());
-    }
-
-    private void showHud() {
-        if (hud.getParent() == null) {
-            app.getGuiNode().attachChild(hud);
-        }
-    }
-
-    private void hideHud() {
-        hud.removeFromParent();
+        hud.show(STEP_MESSAGES[Math.min(step, STEP_MESSAGES.length - 1)]);
     }
 
     @Override
     public void onResize(int width, int height) {
-        layout(width, height);
-    }
-
-    /**
-     * Centers the HUD label horizontally, just below the top row of buttons (the settings gear / fly /
-     * action), so it does not overlap them.
-     */
-    private void layout(int width, int height) {
-        float vh = height / 100f;
-        float topButtonsBottom = height - UiHelper.screenMargin(height) - height / 12f;
-        hud.setFontSize(4 * vh);
-        Vector3f size = hud.getPreferredSize();
-        hud.setLocalTranslation((width - size.x) / 2f, topButtonsBottom - 2 * vh, 10);
+        hud.layout(width, height);
     }
 }

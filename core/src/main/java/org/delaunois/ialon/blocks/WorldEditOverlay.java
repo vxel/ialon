@@ -138,6 +138,19 @@ public class WorldEditOverlay {
         return modifiedColumns;
     }
 
+    /**
+     * Forgets a canonical chunk column's "modified" marker : that column carries no player edit any more.
+     * The <b>only</b> caller is the chunk reset ({@code WorldManager#resetColumn}) — every other path just
+     * adds, since a column stays modified even when its edits are undone block by block. A reset is
+     * different in kind : it puts the whole column back to the terrain the generator produces, so keeping
+     * it flagged would leave the minimap showing a build that is no longer there.
+     */
+    public void clearModifiedColumn(long chunkColumnKey) {
+        if (modifiedColumns.remove(chunkColumnKey)) {
+            dirty = true;
+        }
+    }
+
     // --- Edited-column markers (transient) -----------------------------------------------------------
 
     /** Flags a chunk column (raw {@code pack(chunkX, chunkZ)}) as edited, pending a far-relief refresh. */

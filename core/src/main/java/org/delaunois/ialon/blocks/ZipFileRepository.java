@@ -177,6 +177,28 @@ public class ZipFileRepository implements ChunkRepository {
         return writeChunkToPath(chunk, chunkPath);
     }
 
+    /**
+     * Removes the chunk file, keyed by the <b>canonical</b> coordinates like {@link #save(Chunk)} — so on
+     * the finite torus the logical tile is deleted once, wherever the player was standing when they reset it.
+     */
+    @Override
+    public boolean delete(Vec3i location) {
+        Path chunkPath = getChunkPath(location);
+        if (chunkPath == null) {
+            return false;
+        }
+        try {
+            boolean deleted = Files.deleteIfExists(chunkPath);
+            if (deleted) {
+                log.info("Deleted saved chunk {}", chunkPath.getFileName());
+            }
+            return deleted;
+        } catch (IOException e) {
+            log.error("Failed to delete chunk file {}", chunkPath.toAbsolutePath(), e);
+            return false;
+        }
+    }
+
     public Path getChunkPath(@NonNull Chunk chunk) {
         return path != null ? Paths.get(path.toAbsolutePath().toString(), getChunkFilename(canonical(chunk.getLocation()))) : null;
     }

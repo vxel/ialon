@@ -36,6 +36,7 @@ import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_REMOVE_BLOCK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RIGHT;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_SWITCH_MOUSELOCK;
 import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_ACTION_OBJECT;
+import static org.delaunois.ialon.input.IalonKeyMapping.ACTION_RESET_CHUNK;
 
 @Slf4j
 public class ButtonManagerState extends BaseAppState implements ActionListener, Resizable {
@@ -88,6 +89,13 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
     private final Node removeBlockNode = new Node("RemoveBlockButton");
     private boolean buildMode = false;
 
+    // Contextual "Reset chunk" button, offered in the "-" slot that build mode frees (see
+    // RegionDeleteState). Same un-batched arrangement as the buttons above, for the same reason.
+    @Getter
+    private IconButton buttonResetChunk;
+    private final Node resetChunkNode = new Node("ResetChunkButton");
+    private boolean resetChunkVisible = false;
+
     // All the button plates in a single geometry (they are flat coloured quads that differ only by
     // position and colour). The panels themselves stay in the graph, hidden, as the pick targets.
     private ButtonPlates plates;
@@ -134,12 +142,17 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         buttonRemoveBlock = createTextureButton("minus.png", buttonSize, 0, 0, ACTION_REMOVE_BLOCK);
         buttonAddBlock = createTextureButton("plus.png", buttonSize, 0, 0, ACTION_ADD_BLOCK);
         buttonAction = createTextureButton("action.png", buttonSize, 0, 0, ACTION_ACTION_OBJECT);
-        // Add/remove/action buttons live in their own nodes so build mode and the door cursor can hide them.
-        // Only the BACKGROUND goes in : the icon is batched with all the others (see the BatchNode below),
-        // and refreshIcons() takes it in and out of that batch as the node comes and goes.
+        // A circular arrow ("revert") rather than a trash can : the chunk is not deleted, it is put back
+        // to the terrain the generator produced.
+        buttonResetChunk = createTextureButton("rotate.png", buttonSize, 0, 0, ACTION_RESET_CHUNK);
+        // Add/remove/action/reset buttons live in their own nodes so build mode, the door cursor and the
+        // region-delete selection can hide them. Only the BACKGROUND goes in : the icon is batched with all
+        // the others (see the BatchNode below), and refreshIcons() takes it in and out of that batch as the
+        // node comes and goes.
         actionButtonNode.attachChild(buttonAction.background);
         addBlockNode.attachChild(buttonAddBlock.background);
         removeBlockNode.attachChild(buttonRemoveBlock.background);
+        resetChunkNode.attachChild(buttonResetChunk.background);
 
         // EVERY HUD icon is one draw : they all come from the same texture atlas (UiHelper.createTextureButton
         // binds the shared TextureAtlasManager diffuse map), so nothing but the scene graph was keeping them
@@ -174,7 +187,8 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         plates.setPanels(Arrays.asList(
                 buttonLeft.background, buttonBackward.background, buttonForward.background,
                 buttonRight.background, buttonJump.background, buttonFly.background,
-                buttonAddBlock.background, buttonRemoveBlock.background, buttonAction.background));
+                buttonAddBlock.background, buttonRemoveBlock.background, buttonAction.background,
+                buttonResetChunk.background));
 
         layout(app.getCamera().getWidth(), app.getCamera().getHeight());
 
@@ -260,6 +274,8 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         place(buttonFly, width - margin - 2 * buttonSize - SPACING, height - margin);
         place(buttonRemoveBlock, margin, height - margin);
         place(buttonAddBlock, width - margin - buttonSize, height - margin);
+        // The reset button takes over the "-" slot, which build mode has freed.
+        place(buttonResetChunk, margin, height - margin);
         // In build mode the action button takes the "+" (add block) slot ; otherwise it sits left of fly
         // (its contextual door-open position).
         if (buildMode) {
@@ -315,6 +331,25 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
     }
 
     /**
+     * Shows or hides the contextual "Reset chunk" button, which sits in the "-" slot. Only meaningful in
+     * build mode, where that slot is free : {@link RegionDeleteState} turns it on while its selection is up
+     * and off when the selection ends, so it can never overlap the "-" button it stands in for.
+     */
+    public void setResetChunkVisible(boolean visible) {
+        if (visible == resetChunkVisible) {
+            return;
+        }
+        resetChunkVisible = visible;
+        if (visible) {
+            buttonParentNode.attachChild(resetChunkNode);
+        } else {
+            resetChunkNode.removeFromParent();
+        }
+        refreshIcons();  // the reset icon joins / leaves the merged icon sheet
+        refreshPlates(); // the reset plate joins / leaves the merged geometry
+    }
+
+    /**
      * Shows or hides the contextual "Action" (door open/close) button. Driven by
      * {@code PlaceholderControl} : visible only while the player's cursor targets a door block.
      * Cheap and idempotent — only attaches/detaches the (un-batched) action button node.
@@ -360,10 +395,11 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
 
     /**
      * Re-batches the icon sheet so it holds exactly the icons that should be visible. The six movement
-     * icons are always in ; add / remove / action come and go with build mode and the door cursor, and
-     * a BatchNode merges whatever is attached when it batches — so membership has to be restated.
+     * icons are always in ; add / remove / action / reset chunk come and go with build mode, the door
+     * cursor and the region-delete selection, and a BatchNode merges whatever is attached when it
+     * batches — so membership has to be restated.
      *
-     * <p>Only ever runs on a user-driven toggle, never in the render loop, and merges nine quads.
+     * <p>Only ever runs on a user-driven toggle, never in the render loop, and merges ten quads.
      */
     private void refreshIcons() {
         if (batchNode == null) {
@@ -372,6 +408,7 @@ public class ButtonManagerState extends BaseAppState implements ActionListener, 
         setIconBatched(buttonAddBlock.icon, addBlockNode.getParent() != null);
         setIconBatched(buttonRemoveBlock.icon, removeBlockNode.getParent() != null);
         setIconBatched(buttonAction.icon, actionButtonNode.getParent() != null);
+        setIconBatched(buttonResetChunk.icon, resetChunkNode.getParent() != null);
         batchNode.rebatch();
     }
 

@@ -34,16 +34,20 @@ public interface Popup {
 
     /**
      * Whether this popup, while open, hides the world completely — a full-screen panel wearing the opaque
-     * veil ({@link org.delaunois.ialon.ui.IalonTheme#applyVeil}). The 3D scene is then not rendered at all
-     * while it is up (see {@code Ialon.updateWorldRendering}), which is the whole point of stating this :
-     * nothing in jME links "covered by the GUI" to "culled", so a full world — chunks, far terrain, sky —
-     * otherwise keeps being drawn behind the curtain for nobody, at full cost in draw calls, battery and
-     * heat.
+     * veil ({@link org.delaunois.ialon.ui.IalonTheme#applyVeil}). The world is then <b>neither drawn nor
+     * heard</b> while it is up (see {@code Ialon.updateWorldPresence}) : the 3D scene is culled, and the
+     * ambient wildlife and water bed are stopped.
      *
-     * <p>Defaults to {@code false}, which is the safe answer : a HUD overlay (the block picker), a modal
-     * wearing the clear veil, or any popup the world shows through must keep the world drawn.
+     * <p>That is the whole point of stating this. Nothing in jME links "covered by the GUI" to "culled", so a
+     * full world — chunks, far terrain, sky — otherwise keeps being drawn behind the curtain for nobody, at
+     * full cost in draw calls, battery and heat ; and birds carrying on over a full-screen menu is the world
+     * the player has just stepped out of still going on around them.
      *
-     * @return {@code true} if the world can stop being rendered while this popup is open
+     * <p>Defaults to {@code false}, which is the safe answer : a HUD overlay (the block picker), an in-world
+     * mode (the region selection), a modal wearing the clear veil, or any popup the world shows through must
+     * keep the world drawn — and audible, since the player is still standing in it.
+     *
+     * @return {@code true} if the world can stop being rendered and heard while this popup is open
      */
     default boolean hidesWorld() {
         return false;

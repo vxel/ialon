@@ -30,6 +30,9 @@ public class IalonKeyMapping {
     public static final String ACTION_ADD_BLOCK = "add-block";
     public static final String ACTION_REMOVE_BLOCK = "remove-block";
     public static final String ACTION_ACTION_OBJECT = "toggle_object";
+    // On-screen button only (it appears in the "-" slot while the region-delete selection is up), hence
+    // no key trigger : there is no room for a key that would do nothing 99% of the time.
+    public static final String ACTION_RESET_CHUNK = "reset-chunk";
     public static final String ACTION_DEBUG_CHUNK = "debug-chunk";
     public static final String ACTION_SWITCH_MOUSELOCK = "switch-mouselock";
 
