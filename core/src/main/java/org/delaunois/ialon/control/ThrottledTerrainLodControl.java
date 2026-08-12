@@ -23,6 +23,8 @@ import com.jme3.terrain.Terrain;
 import com.jme3.terrain.geomipmap.TerrainLodControl;
 import com.jme3.terrain.geomipmap.UpdatedTerrainPatch;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -52,12 +54,22 @@ public class ThrottledTerrainLodControl extends TerrainLodControl {
     // per-patch index-buffer rebuilds on the main thread (a multi-ms updateLogicalState spike on the
     // big far TerrainQuad), so refreshing rarely matters more than the slight LOD staleness — which is
     // imperceptible on a distant backdrop. Tunable per instance.
-    public static final float DEFAULT_MIN_MOVE = 128f;
+    public static final float DEFAULT_MIN_MOVE = 256f;
+
+    // How many patches may have their index buffer rebuilt in a single frame. THE hitch fix : jME hands
+    // back every changed patch at once and updateAll() rebuilds an index buffer each time, which on the
+    // 64-patch far quad was a 12-358 ms main-thread spike. Applying them a couple at a time spreads that
+    // over a handful of frames ; the patches still waiting simply keep their previous LOD for those frames,
+    // which is invisible on a distant backdrop.
+    private static final int PATCHES_PER_FRAME = 2;
 
     private final Camera throttleCamera;
     private final float minMoveSq;
     private final Vector3f lastUpdatePos = new Vector3f();
     private boolean firstDone;
+    // Patches from a finished computation that are not applied yet (see PATCHES_PER_FRAME). While this is
+    // non-empty no new computation is submitted, so the queue can never pile up.
+    private final Deque<UpdatedTerrainPatch> pending = new ArrayDeque<>();
 
     public ThrottledTerrainLodControl(Terrain terrain, Camera camera) {
         this(terrain, camera, DEFAULT_MIN_MOVE);
@@ -73,6 +85,12 @@ public class ThrottledTerrainLodControl extends TerrainLodControl {
     protected void controlUpdate(float tpf) {
         if (throttleCamera != null) {
             Vector3f loc = throttleCamera.getLocation();
+            // Never start a new computation while the previous one is still being applied : it would
+            // discard half-applied patches and defeat the per-frame budget.
+            if (!pending.isEmpty()) {
+                applyPendingLod();
+                return;
+            }
             if (firstDone && loc.distanceSquared(lastUpdatePos) < minMoveSq) {
                 // Not moved far enough to justify a new LOD computation -- but the PREVIOUS one may have
                 // finished and still be waiting to be applied, so we cannot simply return.
@@ -98,24 +116,35 @@ public class ThrottledTerrainLodControl extends TerrainLodControl {
      *
      * <p>So we do the apply ourselves here, without going through {@code updateLOD}, which is what keeps
      * the throttle honest : no new computation is ever submitted while throttled.
+     *
+     * <p>The apply is also BUDGETED : {@code updateAll()} rebuilds a patch's index buffer, and doing that
+     * for every changed patch in one frame is what made the far terrain's LOD the dominant
+     * {@code updateLogicalState} hitch (12-358 ms). {@link #PATCHES_PER_FRAME} at a time spreads it over a
+     * few frames instead — the patches still queued keep their previous LOD meanwhile, which on a distant
+     * backdrop nobody can see. This is what makes it affordable to keep the LOD live at all : with the
+     * control removed after a warmup, the frozen levels drifted badly out of date as the player roamed,
+     * leaving 64- to 128-unit facets right where the relief hands over to the near clipmap.
      */
     private void applyPendingLod() {
-        if (indexer == null || !indexer.isDone()) {
-            return;
-        }
-        try {
-            Map<String, UpdatedTerrainPatch> updated = indexer.get();
-            if (updated != null) {
-                for (UpdatedTerrainPatch utp : updated.values()) {
-                    utp.updateAll();
-                }
+        if (pending.isEmpty()) {
+            if (indexer == null || !indexer.isDone()) {
+                return;
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-            log.warn("Far terrain LOD computation failed", e);
-        } finally {
-            indexer = null;
+            try {
+                Map<String, UpdatedTerrainPatch> updated = indexer.get();
+                if (updated != null) {
+                    pending.addAll(updated.values());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException e) {
+                log.warn("Far terrain LOD computation failed", e);
+            } finally {
+                indexer = null;
+            }
+        }
+        for (int i = 0; i < PATCHES_PER_FRAME && !pending.isEmpty(); i++) {
+            pending.poll().updateAll();
         }
     }
 }

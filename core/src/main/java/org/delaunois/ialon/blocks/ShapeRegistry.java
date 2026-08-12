@@ -21,6 +21,8 @@ import org.delaunois.ialon.blocks.shapes.Stairs;
 import org.delaunois.ialon.blocks.shapes.StairsInnerCorner;
 import org.delaunois.ialon.blocks.shapes.StairsOuterCorner;
 import org.delaunois.ialon.blocks.shapes.Wedge;
+import org.delaunois.ialon.blocks.shapes.WedgeInnerCorner;
+import org.delaunois.ialon.blocks.shapes.WedgeOuterCorner;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -234,6 +236,24 @@ public class ShapeRegistry {
         register(ShapeIds.WEDGE_INVERTED_EAST, new Wedge(Direction.EAST, true));
         register(ShapeIds.WEDGE_INVERTED_SOUTH, new Wedge(Direction.SOUTH, true));
         register(ShapeIds.WEDGE_INVERTED_WEST, new Wedge(Direction.WEST, true));
+
+        register(ShapeIds.WEDGE_INNER_CORNER_NORTH, new WedgeInnerCorner(Direction.NORTH, false));
+        register(ShapeIds.WEDGE_INNER_CORNER_EAST, new WedgeInnerCorner(Direction.EAST, false));
+        register(ShapeIds.WEDGE_INNER_CORNER_SOUTH, new WedgeInnerCorner(Direction.SOUTH, false));
+        register(ShapeIds.WEDGE_INNER_CORNER_WEST, new WedgeInnerCorner(Direction.WEST, false));
+        register(ShapeIds.WEDGE_INVERTED_INNER_CORNER_NORTH, new WedgeInnerCorner(Direction.NORTH, true));
+        register(ShapeIds.WEDGE_INVERTED_INNER_CORNER_EAST, new WedgeInnerCorner(Direction.EAST, true));
+        register(ShapeIds.WEDGE_INVERTED_INNER_CORNER_SOUTH, new WedgeInnerCorner(Direction.SOUTH, true));
+        register(ShapeIds.WEDGE_INVERTED_INNER_CORNER_WEST, new WedgeInnerCorner(Direction.WEST, true));
+
+        register(ShapeIds.WEDGE_OUTER_CORNER_NORTH, new WedgeOuterCorner(Direction.NORTH, false));
+        register(ShapeIds.WEDGE_OUTER_CORNER_EAST, new WedgeOuterCorner(Direction.EAST, false));
+        register(ShapeIds.WEDGE_OUTER_CORNER_SOUTH, new WedgeOuterCorner(Direction.SOUTH, false));
+        register(ShapeIds.WEDGE_OUTER_CORNER_WEST, new WedgeOuterCorner(Direction.WEST, false));
+        register(ShapeIds.WEDGE_INVERTED_OUTER_CORNER_NORTH, new WedgeOuterCorner(Direction.NORTH, true));
+        register(ShapeIds.WEDGE_INVERTED_OUTER_CORNER_EAST, new WedgeOuterCorner(Direction.EAST, true));
+        register(ShapeIds.WEDGE_INVERTED_OUTER_CORNER_SOUTH, new WedgeOuterCorner(Direction.SOUTH, true));
+        register(ShapeIds.WEDGE_INVERTED_OUTER_CORNER_WEST, new WedgeOuterCorner(Direction.WEST, true));
     }
 
     private void registerPyramids() {

@@ -29,8 +29,33 @@ public interface ShapeIds {
     String WEDGE_INVERTED_EAST = "wedge_inverted_east";
     String WEDGE_INVERTED_SOUTH = "wedge_inverted_south";
     String WEDGE_INVERTED_WEST = "wedge_inverted_west";
+
+    // The corner pieces joining two perpendicular wedges : the concave (inner) and convex (outer) corner,
+    // the wedge counterpart of the stairs corners below.
+    String WEDGE_INNER_CORNER_NORTH = "wedge_inner_corner_north";
+    String WEDGE_INNER_CORNER_EAST = "wedge_inner_corner_east";
+    String WEDGE_INNER_CORNER_SOUTH = "wedge_inner_corner_south";
+    String WEDGE_INNER_CORNER_WEST = "wedge_inner_corner_west";
+    String WEDGE_INVERTED_INNER_CORNER_NORTH = "wedge_inverted_inner_corner_north";
+    String WEDGE_INVERTED_INNER_CORNER_EAST = "wedge_inverted_inner_corner_east";
+    String WEDGE_INVERTED_INNER_CORNER_SOUTH = "wedge_inverted_inner_corner_south";
+    String WEDGE_INVERTED_INNER_CORNER_WEST = "wedge_inverted_inner_corner_west";
+
+    String WEDGE_OUTER_CORNER_NORTH = "wedge_outer_corner_north";
+    String WEDGE_OUTER_CORNER_EAST = "wedge_outer_corner_east";
+    String WEDGE_OUTER_CORNER_SOUTH = "wedge_outer_corner_south";
+    String WEDGE_OUTER_CORNER_WEST = "wedge_outer_corner_west";
+    String WEDGE_INVERTED_OUTER_CORNER_NORTH = "wedge_inverted_outer_corner_north";
+    String WEDGE_INVERTED_OUTER_CORNER_EAST = "wedge_inverted_outer_corner_east";
+    String WEDGE_INVERTED_OUTER_CORNER_SOUTH = "wedge_inverted_outer_corner_south";
+    String WEDGE_INVERTED_OUTER_CORNER_WEST = "wedge_inverted_outer_corner_west";
+
     String[] ALL_WEDGES = {WEDGE_NORTH, WEDGE_EAST, WEDGE_SOUTH, WEDGE_WEST, WEDGE_INVERTED_NORTH, WEDGE_INVERTED_EAST,
-            WEDGE_INVERTED_SOUTH, WEDGE_INVERTED_WEST};
+            WEDGE_INVERTED_SOUTH, WEDGE_INVERTED_WEST,
+            WEDGE_INNER_CORNER_NORTH, WEDGE_INNER_CORNER_EAST, WEDGE_INNER_CORNER_SOUTH, WEDGE_INNER_CORNER_WEST,
+            WEDGE_INVERTED_INNER_CORNER_NORTH, WEDGE_INVERTED_INNER_CORNER_EAST, WEDGE_INVERTED_INNER_CORNER_SOUTH, WEDGE_INVERTED_INNER_CORNER_WEST,
+            WEDGE_OUTER_CORNER_NORTH, WEDGE_OUTER_CORNER_EAST, WEDGE_OUTER_CORNER_SOUTH, WEDGE_OUTER_CORNER_WEST,
+            WEDGE_INVERTED_OUTER_CORNER_NORTH, WEDGE_INVERTED_OUTER_CORNER_EAST, WEDGE_INVERTED_OUTER_CORNER_SOUTH, WEDGE_INVERTED_OUTER_CORNER_WEST};
 
     String POLE = "pole_up";
     String POLE_DOWN = "pole_down";

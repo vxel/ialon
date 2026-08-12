@@ -32,6 +32,8 @@ import static org.delaunois.ialon.blocks.ShapeIds.SQUARE_NORTH;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_EAST;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_INNER_CORNER_SOUTH;
 import static org.delaunois.ialon.blocks.ShapeIds.STAIRS_OUTER_CORNER_SOUTH;
+import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_INNER_CORNER_SOUTH;
+import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_OUTER_CORNER_SOUTH;
 import static org.delaunois.ialon.blocks.ShapeIds.WEDGE_SOUTH;
 
 import com.jme3.app.Application;
@@ -104,6 +106,8 @@ public class BlockSliderSelectionState extends BaseAppState implements Resizable
             PLATE,
             PLATE_NORTH,
             WEDGE_SOUTH,
+            WEDGE_INNER_CORNER_SOUTH,
+            WEDGE_OUTER_CORNER_SOUTH,
             PYRAMID,
             POLE,
             FENCE,

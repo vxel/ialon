@@ -32,6 +32,7 @@ import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.IalonInitializer;
 import org.delaunois.ialon.blocks.BlockIds;
 import org.delaunois.ialon.blocks.BlocksConfig;
+import org.delaunois.ialon.blocks.ShapeIds;
 import org.delaunois.ialon.blocks.ChunkLightManager;
 import org.delaunois.ialon.blocks.ChunkLiquidManager;
 import org.delaunois.ialon.blocks.ChunkManager;
@@ -458,6 +459,134 @@ public class ScreenshotHarness extends SimpleApplication {
                 bestX, bestGround + 1, bestZ, bestDrop);
     }
 
+    // Where the "wedge" vantage builds its two roofs (an empty world, so any loaded spot will do).
+    private static final int ROOF_X = 4;
+    private static final int ROOF_Y = 40;
+    private static final int ROOF_Z = 4;
+
+    /**
+     * Builds the "wedge" showcase : a 3x3 hip roof, whose 4 corners are the 4 rotations of the OUTER
+     * corner, and to its east a lean-to roof folded around an L-shaped wall, whose notch is the INNER
+     * corner. The hip roof is laid in a multi-textured type (oak_log : rings on top, bark on the sides) so
+     * a slope reading the wrong band of the stacked texture is visible, the lean-to in a plain one.
+     */
+    private static void buildWedgeShowcase(ScreenshotHarness h, boolean inverted) {
+        if (inverted) {
+            buildInvertedWedgeShowcase(h);
+            return;
+        }
+        String wall = org.delaunois.ialon.blocks.TypeIds.BRICKS;
+        String hip = org.delaunois.ialon.blocks.TypeIds.OAK_LOG;
+        String lean = org.delaunois.ialon.blocks.TypeIds.OAK_PLANKS;
+        int x = ROOF_X;
+        int y = ROOF_Y;
+        int z = ROOF_Z;
+
+        // ── A hip roof over a 3x3 house : each corner cell slopes down BOTH ways (outer corner).
+        for (int dx = 0; dx <= 2; dx++) {
+            for (int dz = 0; dz <= 2; dz++) {
+                place(h, x + dx, y - 1, z + dz, wall, ShapeIds.CUBE);
+                place(h, x + dx, y, z + dz, wall, ShapeIds.CUBE);
+            }
+        }
+        place(h, x, y + 1, z, hip, ShapeIds.WEDGE_OUTER_CORNER_NORTH);          // north-west
+        place(h, x + 1, y + 1, z, hip, ShapeIds.WEDGE_NORTH);
+        place(h, x + 2, y + 1, z, hip, ShapeIds.WEDGE_OUTER_CORNER_EAST);       // north-east
+        place(h, x, y + 1, z + 1, hip, ShapeIds.WEDGE_WEST);
+        place(h, x + 1, y + 1, z + 1, hip, ShapeIds.CUBE);                     // the ridge cell
+        place(h, x + 2, y + 1, z + 1, hip, ShapeIds.WEDGE_EAST);
+        place(h, x, y + 1, z + 2, hip, ShapeIds.WEDGE_OUTER_CORNER_WEST);      // south-west
+        place(h, x + 1, y + 1, z + 2, hip, ShapeIds.WEDGE_SOUTH);
+        place(h, x + 2, y + 1, z + 2, hip, ShapeIds.WEDGE_OUTER_CORNER_SOUTH); // south-east
+
+        // ── A lean-to roof against an L-shaped wall : the two runs meet in the notch (inner corner).
+        int lx = x + 7;
+        for (int dx = 0; dx <= 3; dx++) {
+            for (int dz = 0; dz <= 3; dz++) {
+                place(h, lx + dx, y, z + dz, wall, ShapeIds.CUBE);
+            }
+        }
+        for (int dx = 0; dx <= 3; dx++) {
+            place(h, lx + dx, y + 1, z, wall, ShapeIds.CUBE);      // north wall
+            place(h, lx + dx, y + 2, z, wall, ShapeIds.CUBE);
+        }
+        for (int dz = 1; dz <= 3; dz++) {
+            place(h, lx, y + 1, z + dz, wall, ShapeIds.CUBE);      // west wall
+            place(h, lx, y + 2, z + dz, wall, ShapeIds.CUBE);
+        }
+        place(h, lx + 1, y + 1, z + 1, lean, ShapeIds.WEDGE_INNER_CORNER_SOUTH);
+        place(h, lx + 2, y + 1, z + 1, lean, ShapeIds.WEDGE_SOUTH);
+        place(h, lx + 3, y + 1, z + 1, lean, ShapeIds.WEDGE_SOUTH);
+        place(h, lx + 1, y + 1, z + 2, lean, ShapeIds.WEDGE_EAST);
+        place(h, lx + 1, y + 1, z + 3, lean, ShapeIds.WEDGE_EAST);
+    }
+
+    /**
+     * The same two roofs hung upside down : a canopy whose skirt uses the 4 rotations of the INVERTED outer
+     * corner, and a soffit folded into an L whose notch is the INVERTED inner corner. Inverting mirrors the
+     * shape in x as well as in y (it is a half turn around Z), so the L faces north-east here where the
+     * upright one faces north-west, and each corner sits at the mirrored corner of its roof.
+     */
+    private static void buildInvertedWedgeShowcase(ScreenshotHarness h) {
+        String wall = org.delaunois.ialon.blocks.TypeIds.BRICKS;
+        String hip = org.delaunois.ialon.blocks.TypeIds.OAK_LOG;
+        String lean = org.delaunois.ialon.blocks.TypeIds.OAK_PLANKS;
+        int x = ROOF_X;
+        int y = ROOF_Y;
+        int z = ROOF_Z;
+
+        // ── A canopy : a 3x3 ceiling with the inverted hip skirt hanging under its rim.
+        for (int dx = 0; dx <= 2; dx++) {
+            for (int dz = 0; dz <= 2; dz++) {
+                place(h, x + dx, y + 1, z + dz, wall, ShapeIds.CUBE);
+            }
+        }
+        place(h, x, y, z, hip, ShapeIds.WEDGE_INVERTED_OUTER_CORNER_WEST);           // north-west
+        place(h, x + 1, y, z, hip, ShapeIds.WEDGE_INVERTED_NORTH);
+        place(h, x + 2, y, z, hip, ShapeIds.WEDGE_INVERTED_OUTER_CORNER_NORTH);      // north-east
+        place(h, x, y, z + 1, hip, ShapeIds.WEDGE_INVERTED_WEST);
+        place(h, x + 1, y, z + 1, hip, ShapeIds.CUBE);                               // the closed centre
+        place(h, x + 2, y, z + 1, hip, ShapeIds.WEDGE_INVERTED_EAST);
+        place(h, x, y, z + 2, hip, ShapeIds.WEDGE_INVERTED_OUTER_CORNER_SOUTH);      // south-west
+        place(h, x + 1, y, z + 2, hip, ShapeIds.WEDGE_INVERTED_SOUTH);
+        place(h, x + 2, y, z + 2, hip, ShapeIds.WEDGE_INVERTED_OUTER_CORNER_EAST);   // south-east
+
+        // ── A soffit : the lean-to upside down, folded around a wall hanging north and EAST.
+        int lx = x + 7;
+        for (int dx = 0; dx <= 3; dx++) {
+            for (int dz = 0; dz <= 3; dz++) {
+                place(h, lx + dx, y + 1, z + dz, wall, ShapeIds.CUBE);
+            }
+        }
+        for (int dx = 0; dx <= 3; dx++) {
+            place(h, lx + dx, y, z, wall, ShapeIds.CUBE);           // north wall
+            place(h, lx + dx, y - 1, z, wall, ShapeIds.CUBE);
+        }
+        for (int dz = 1; dz <= 3; dz++) {
+            place(h, lx + 3, y, z + dz, wall, ShapeIds.CUBE);       // east wall
+            place(h, lx + 3, y - 1, z + dz, wall, ShapeIds.CUBE);
+        }
+        place(h, lx + 2, y, z + 1, lean, ShapeIds.WEDGE_INVERTED_INNER_CORNER_SOUTH);
+        place(h, lx + 1, y, z + 1, lean, ShapeIds.WEDGE_INVERTED_SOUTH);
+        place(h, lx, y, z + 1, lean, ShapeIds.WEDGE_INVERTED_SOUTH);
+        place(h, lx + 2, y, z + 2, lean, ShapeIds.WEDGE_INVERTED_WEST);
+        place(h, lx + 2, y, z + 3, lean, ShapeIds.WEDGE_INVERTED_WEST);
+    }
+
+    /** Places one block of the given type and shape at a block location (any liquid-free variant). */
+    private static void place(ScreenshotHarness h, int x, int y, int z, String type, String shape) {
+        String name = ShapeIds.CUBE.equals(shape)
+                ? BlockIds.getName(type, shape)
+                : BlockIds.getName(type, shape, 0);
+        org.delaunois.ialon.blocks.Block block =
+                BlocksConfig.getInstance().getBlockRegistry().get(name);
+        if (block == null) {
+            log.warn("Wedge showcase : no block {}", name);
+            return;
+        }
+        h.getWorldManager().addBlock(new Vector3f(x, y, z), block);
+    }
+
     /** Height of the topmost solid block of a column, or MIN_VALUE if the column is not loaded/empty. */
     private static int groundHeight(ScreenshotHarness h, int x, int z) {
         for (int y = 120; y > 20; y--) {
@@ -480,6 +609,8 @@ public class ScreenshotHarness extends SimpleApplication {
         o.realSky = true;                 // TEMP
         // TEMP vantage selector : main [outputPng] [island|cave|tunnel|up|ocean]
         String shot = args.length > 1 ? args[1] : "island";
+        // "wedge inverted" : the wedge showcase hung upside down (see the vantage below).
+        final boolean wedgeInverted = args.length > 2 && "inverted".equals(args[2]);
         final float tx = -758;   // open sea : floor 23.4, water surface 30.8
         final float tz = -758;
         final float eyeY = 21;   // inside a tunnel just under the seabed
@@ -609,14 +740,68 @@ public class ScreenshotHarness extends SimpleApplication {
             float camGround = o.config.getTerrainGenerator().getHeight(new Vector3f(px + d, 0, pz + d));
             o.camLocation = new Vector3f(px + d, Math.max(camGround + 25, ph * 0.55f), pz + d);
             o.camTarget = new Vector3f(px, ph * 0.55f, pz);
+        } else if ("seam".equals(shot)) {
+            // THE vantage for the voxel <-> far-relief boundary : eye level on a hillside, looking almost
+            // horizontally, so the loaded-chunk edge (gridRadius * chunkSize = 96 units out) crosses the
+            // frame at a grazing angle. That is the geometry the "gaps" were reported in -- where the far
+            // relief interpolates BELOW the voxel surface, the last chunk's flank stands proud of it and
+            // the mismatch reads as a notch. Grazing is the point : head-on, a metre of vertical error is a
+            // few pixels ; along the boundary it is a long ragged edge.
+            //
+            // A steep relief on purpose (the flat plains match at any sampling step) and no trees, which
+            // would hide the very line we came to look at.
+            NoiseTerrainGenerator seamGen = (NoiseTerrainGenerator) o.config.getTerrainGenerator();
+            seamGen.setReliefAmplitude(2.0f);
+            seamGen.setReliefFrequency(1.4f);
+            seamGen.setTreeMaxProb(0f);
+            float sx = args.length > 2 ? Float.parseFloat(args[2]) : 90;
+            float sz = args.length > 3 ? Float.parseFloat(args[3]) : 90;
+            // Eye height above the ground : high enough to see OVER the near voxels down onto the boundary
+            // ring, low enough that the view onto it stays grazing. Standing at eye level looks the part
+            // but shows nothing -- the first hillside hides the whole seam.
+            float eyeUp = args.length > 4 ? Float.parseFloat(args[4]) : 40;
+            float ground = seamGen.getHeight(new Vector3f(sx, 0, sz));
+            o.camLocation = new Vector3f(sx, ground + eyeUp, sz);
+            // Aimed just under the horizon : the seam ring sits ~96 units out, the clipmap band runs from
+            // there to 384, and the far quad takes over beyond -- all three in the same frame.
+            o.camTarget = new Vector3f(sx, ground - 20, sz - 300);
         } else if ("underwater".equals(shot)) {
             // Just BELOW the open-sea surface (30.8), looking up : shows the underside of the calm-water
             // surface (Snell window + refracted sun sparkle) -- the side served by the back faces.
             o.camLocation = new Vector3f(tx, 28.5f, tz);
             o.camTarget = new Vector3f(tx, 40f, tz + 40);
+        } else if ("wedge".equals(shot)) {
+            // The wedge family, in an empty world : a hip roof (its 4 corners are the 4 rotations of the
+            // OUTER corner) next to a lean-to roof folded around an L-shaped wall (its notch is the INNER
+            // corner). What a screenshot adds over the geometry unit test is the texturing and the shading :
+            // a mis-mapped UV, an inverted normal, or a corner that does not pick up the ambient occlusion
+            // of the wedges it joins shows here and nowhere else.
+            // "main out.png wedge inverted" hangs the same two roofs upside down (a canopy and a soffit,
+            // i.e. the inverted corners) and looks up at them from below.
+            o.config.setTerrainGenerator(new org.delaunois.ialon.blocks.generator.EmptyGenerator());
+            o.config.setGridRadius(2);
+            o.farTerrain = false;
+            o.realSky = false;
+            if (wedgeInverted) {
+                o.camLocation = new Vector3f(ROOF_X + 5, ROOF_Y - 8, ROOF_Z + 17);
+                o.camTarget = new Vector3f(ROOF_X + 8, ROOF_Y + 0.5f, ROOF_Z + 4);
+            } else {
+                // From the south-east : the lean-to roof sits INSIDE the L, so the open side of the wall is
+                // the only vantage that shows its notch (from the north-west the wall hides the corner).
+                o.camLocation = new Vector3f(ROOF_X + 17, ROOF_Y + 6, ROOF_Z + 11);
+                o.camTarget = new Vector3f(ROOF_X + 9, ROOF_Y + 1.5f, ROOF_Z + 2);
+            }
         }
         final boolean[] dug = {false};
         o.onUpdate = (h, ms) -> {
+            if ("wedge".equals(shot)) {
+                if (dug[0] || ms < 1500) {
+                    return; // let the (empty) chunks page in first, they must exist to be edited
+                }
+                dug[0] = true;
+                buildWedgeShowcase(h, wedgeInverted);
+                return;
+            }
             if ("waterfall".equals(shot)) {
                 if (dug[0] || ms < 3000) {
                     return; // let the chunks page in first

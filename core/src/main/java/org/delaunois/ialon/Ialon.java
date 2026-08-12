@@ -48,6 +48,7 @@ import org.delaunois.ialon.state.MinimapState;
 import org.delaunois.ialon.state.MoonState;
 import org.delaunois.ialon.state.PhotoModeState;
 import org.delaunois.ialon.state.Popup;
+import org.delaunois.ialon.state.QuitConfirmState;
 import org.delaunois.ialon.state.RegionAddState;
 import org.delaunois.ialon.state.RegionDeleteState;
 import org.delaunois.ialon.state.RenderReport;
@@ -98,11 +99,20 @@ public class Ialon extends SimpleApplication {
     private long lastStepEndNanos;
 
     /**
+     * What leaving the game means on this platform, run once the player has confirmed. Stopping the
+     * application is the desktop answer ; Android replaces it (see {@link #setExitHandler}).
+     */
+    private Runnable exitHandler = this::stop;
+
+    /**
      * The popup states, innermost first : ESC closes the first one it finds open, so a popup laid over
      * another goes first. Also the roster {@link #updateWorldPresence()} polls.
      */
     private static final List<Class<? extends AppState>> POPUP_STATES = Collections.unmodifiableList(
             Arrays.<Class<? extends AppState>>asList(
+                    // The quit confirmation only ever opens with nothing else up (that is the condition
+                    // for asking it at all), so its rank here just makes ESC answer "stay" first.
+                    QuitConfirmState.class,
                     ChunkResetState.class,
                     RegionDeleteState.class,
                     RegionAddState.class,
@@ -190,7 +200,7 @@ public class Ialon extends SimpleApplication {
     /**
      * Overrides jME's default ESC-quits-the-game binding : when a UI popup (world menu, settings, minimap,
      * block picker...) is open, ESC closes that popup instead of stopping the application. With no popup
-     * open, ESC still quits, preserving the previous behaviour.
+     * open, ESC asks the player to confirm leaving (see {@link #requestExit()}).
      */
     private void setupExitAction() {
         if (inputManager == null) {
@@ -206,10 +216,53 @@ public class Ialon extends SimpleApplication {
     }
 
     private final ActionListener exitActionListener = (name, isPressed, tpf) -> {
-        if (!isPressed && !closeOpenPopup()) {
-            stop();
+        if (!isPressed) {
+            requestExit();
         }
     };
+
+    /**
+     * The single entry point for "the player wants out" : ESC on desktop, the back key on Android (routed
+     * here by {@code MainActivity}). Closes the open popup if there is one — the gesture reads as "back",
+     * and a menu is what it backs out of — and otherwise asks {@link QuitConfirmState} to confirm.
+     *
+     * <p>Falls back to stopping outright when that state is not attached yet, which is the whole
+     * splashscreen / init-pump window : it owns no world and holds nothing to lose, so a player leaving
+     * during the load should not be made to wait for the dialog to become possible.</p>
+     */
+    public void requestExit() {
+        if (closeOpenPopup()) {
+            return;
+        }
+        QuitConfirmState quitConfirm = stateManager.getState(QuitConfirmState.class);
+        if (quitConfirm == null) {
+            exitGame();
+        } else {
+            quitConfirm.askConfirmation();
+        }
+    }
+
+    /**
+     * Replaces what leaving the game does, for a platform on which it is not the engine's call.
+     *
+     * <p>Android needs this. Stopping the application from within the game tears the GL context down under
+     * a live activity, and the pause that follows the activity finishing then walks into the input handler
+     * that teardown has just dropped — {@code AndroidHarness.loseFocus} asking
+     * {@code OGLESContext.getJoyInput()}, which dereferences it unguarded : a fatal NPE <b>in place of</b>
+     * the rest of the shutdown, so {@code MainActivity.onStop} never ran and the player state went
+     * unsaved. Finishing the activity instead lets Android's lifecycle stop the app in the order the
+     * harness was written for.</p>
+     *
+     * @param exitHandler what to do when the player leaves ; {@code null} restores the default (stop)
+     */
+    public void setExitHandler(Runnable exitHandler) {
+        this.exitHandler = exitHandler != null ? exitHandler : this::stop;
+    }
+
+    /** Leaves the game the way this platform leaves it. Called once the player has confirmed. */
+    public void exitGame() {
+        exitHandler.run();
+    }
 
     /**
      * Closes the top open popup, if any. Only one modal is normally open at a time, so a single popup is
@@ -479,6 +532,7 @@ public class Ialon extends SimpleApplication {
         stateManager.attach(new CreationViewerState(config)); // 3D viewer of one creation (opens from the library)
         stateManager.attach(new WorldMenuState(config)); // Create / switch worlds (uses WorldSelectionState)
         stateManager.attach(new PhotoModeState(config)); // Hides all UI for a clean screenshot
+        stateManager.attach(new QuitConfirmState(config, this::exitGame)); // "Leave Ialon ?", asked by requestExit()
         stateManager.attach(new WorldSelectionState(config)); // Runtime world switch service
         // The splash outlives this step and the load can straddle a resize, so it re-lays-out like the
         // rest of the GUI. Registered here rather than from its own initialize() : it is attached long

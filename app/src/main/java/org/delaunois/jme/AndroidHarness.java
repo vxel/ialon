@@ -196,7 +196,9 @@ protected int eglDepthBits = 24;
     protected boolean isGLThreadPaused = true;
     protected ImageView splashImageView = null;
     protected FrameLayout frameLayout = null;
-    private static final String ESCAPE_EVENT = "TouchEscape";
+    // Protected so a subclass can recognise the back-key event in an overridden onTouch (MainActivity
+    // answers it with the game's own quit confirmation instead of the harness's native dialog).
+    protected static final String ESCAPE_EVENT = "TouchEscape";
     private boolean firstDrawFrame = true;
     private boolean inConfigChange = false;
 
@@ -610,7 +612,7 @@ protected int eglDepthBits = 24;
                 audioRenderer.resumeAll();
             }
             //resume the sensors (aka joysticks)
-            if (app.getContext() != null) {
+            if (isContextLive()) {
                 JoyInput joyInput = app.getContext().getJoyInput();
                 if (joyInput != null) {
                     if (joyInput instanceof AndroidSensorJoyInput) {
@@ -626,6 +628,21 @@ protected int eglDepthBits = 24;
         if (app != null) {
             app.gainFocus();
         }
+    }
+
+    /**
+     * Whether the context is not merely present but still <b>created</b> — the condition for asking it
+     * anything.
+     * <p>
+     * A destroyed context stays reachable through {@code app.getContext()} while its input handler is
+     * gone, and {@code OGLESContext.getJoyInput()} dereferences that handler with no check of its own : a
+     * plain null test on the context is therefore not enough, and a pause arriving after a shutdown (the
+     * activity finishing on the app's own request) crashed with an NPE in {@link #loseFocus()}.
+     * {@code deinitInThread} clears the created flag before dropping the handler, so this guard is never
+     * the loser of that race.
+     */
+    private boolean isContextLive() {
+        return app != null && app.getContext() != null && app.getContext().isCreated();
     }
 
     @Override
@@ -646,7 +663,7 @@ protected int eglDepthBits = 24;
                 audioRenderer.pauseAll();
             }
             //pause the sensors (aka joysticks)
-            if (app.getContext() != null) {
+            if (isContextLive()) {
                 JoyInput joyInput = app.getContext().getJoyInput();
                 if (joyInput != null) {
                     if (joyInput instanceof AndroidSensorJoyInput) {

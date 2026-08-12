@@ -50,6 +50,7 @@ test {
 // PNG, then exits. Needs a display (real or Xvfb) and a GL driver (Mesa software GL is fine). Example :
 //   ./gradlew :core:screenshot                       # default island vantage -> core/build/screenshots/
 //   ./gradlew :core:screenshot --args="out.png"      # custom output path
+//   ./gradlew :core:screenshot -Dialon.noClipmap=true --args="out.png seam"   # A/B a debug toggle
 tasks.register('screenshot', JavaExec) {
     group = 'verification'
     description = 'Render an off-screen screenshot of the world (support.ScreenshotHarness).'
@@ -58,6 +59,17 @@ tasks.register('screenshot', JavaExec) {
     // Run from the repo root so 'core/build/...' output paths (and asset-relative lookups, matching the
     // other support harnesses) resolve the same way whether invoked as :core:screenshot or from root.
     workingDir = rootProject.projectDir
+    // Forward the game's own -Dialon.* debug toggles (noClipmap, noRelief, noWater, noEnclosure, ...) to
+    // the forked JVM : without this they stay on the Gradle daemon and the A/B silently renders the same
+    // frame twice. Never cached, so a toggle change always re-renders.
+    outputs.upToDateWhen { false }
+    doFirst {
+        System.properties.each { k, v ->
+            if (k.toString().startsWith('ialon.')) {
+                systemProperty(k.toString(), v)
+            }
+        }
+    }
 }
 
 // Bakes a TTF into the BMFont pair the game consumes (.fnt + single .png page) via the support
@@ -117,6 +129,7 @@ tasks.register('hudPreview', JavaExec) {
     // 'regionDelete' opens the bulk-delete selection before capturing, which is the HUD variant that hides
     // the +/- buttons and offers "Reset chunk" in the "-" slot. 'chunkReset' goes on to the confirmation
     // dialog, and 'chunkResetRun' confirms it -- which EDITS THE SAVED WORLD, so back up ./save first.
+    // 'position' forces the top-left position / in-game clock readout on, whatever the saved settings say.
     systemProperty 'ialon.hudPreview.mode', findProperty('hudMode') ?: ''
     // World to boot against ; use a copy for the destructive mode above.
     systemProperty 'ialon.hudPreview.savePath', findProperty('savePath') ?: ''

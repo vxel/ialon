@@ -7,6 +7,18 @@ uniform vec4 m_FogColor;
 uniform float m_FogDistance; // distance scale of the fog
 uniform float m_FogDensity;  // fog thickness
 uniform float m_InnerRadius; // below this horizontal distance the voxels are the truth -> discard
+// Where the fog (and the FAR_NOISE fade) starts, in world units from the camera. This is NOT m_InnerRadius :
+// the relief is drawn by TWO meshes that hand over to each other at a fixed radius (the near clipmap up to
+// NearTerrainState.OUTER_RADIUS, the far TerrainQuad beyond), so their discard radii differ by hundreds of
+// units. Driving the fog from the discard radius would give each mesh its own fog ramp and turn the handover
+// into a visible colour seam -- so both are given the SAME FogStart (the voxel seam, see FarTerrainState).
+uniform float m_FogStart;
+#ifdef OUTER_RADIUS
+// Near clipmap only : beyond this horizontal distance the far TerrainQuad is the truth -> discard. Set to
+// exactly the TerrainQuad's m_InnerRadius, so the two tests (< inner / >= outer) are strictly complementary
+// on the same vHorizDist : every pixel gets exactly one of the two surfaces, no hole and no overlap.
+uniform float m_OuterRadius;
+#endif
 
 uniform vec3 g_CameraPosition;
 
@@ -108,6 +120,12 @@ void main() {
     if (vHorizDist < m_InnerRadius) {
         discard;
     }
+#ifdef OUTER_RADIUS
+    // Near clipmap : hand over to the far TerrainQuad (see m_OuterRadius).
+    if (vHorizDist >= m_OuterRadius) {
+        discard;
+    }
+#endif
 
     float ambientLum = dot(m_AmbientColor.rgb, vec3(0.3, 0.59, 0.11));
 
@@ -188,7 +206,7 @@ void main() {
 #ifdef FAR_NOISE
     // Break up the flat altitude palette with a touch of fBm brightness variation (both the land AND the
     // sea floor, faded with distance so the far horizon doesn't shimmer -- the fog takes over there anyway).
-    float noiseFade = 1.0 - smoothstep(m_InnerRadius, m_InnerRadius + m_FogDistance, vDist);
+    float noiseFade = 1.0 - smoothstep(m_FogStart, m_FogStart + m_FogDistance, vDist);
     float n = fbm(vWorldPos.xz * m_NoiseScale);
     float noiseMod = 1.0 + (n - 0.5) * 2.0 * m_NoiseStrength * noiseFade;
     land *= noiseMod;
@@ -212,10 +230,11 @@ void main() {
     vec3 landLit = land * (vec3(ambientLum) + m_SunColor.rgb * diffuse);
     vec3 color = mix(floorLit, landLit, landAmount);
 
-    // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour). Starts at the inner
-    // radius (the seam with the near water/voxels), not the camera, so the far terrain is clear where it
-    // meets the unfogged near water and only fades toward the horizon.
-    float f = (max(vDist - m_InnerRadius, 0.0) / m_FogDistance) * m_FogDensity;
+    // Exponential-squared distance fog : 1 near (clear) -> 0 far (full fog colour). Starts at the VOXEL
+    // seam (m_FogStart), not the camera and not this mesh's discard radius, so the far terrain is clear
+    // where it meets the unfogged near water and only fades toward the horizon -- and so the near clipmap
+    // and the far TerrainQuad share one continuous ramp across their handover.
+    float f = (max(vDist - m_FogStart, 0.0) / m_FogDistance) * m_FogDensity;
     float fog = clamp(exp(-f * f), 0.0, 1.0);
     vec3 outColor = mix(m_FogColor.rgb, color, fog);
 

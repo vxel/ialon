@@ -187,11 +187,15 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     private Geometry water;
     private Material waterMaterial;
 
-    // The far-terrain LOD machinery is dropped after a short warmup (-1 = done). The LOD recompute and
-    // jME's auto-added NormalRecalcControl both run on the MAIN thread on every LOD change (the dominant
-    // updateLogicalState hitch while moving — confirmed by an on-device A/B). On a distant, periodic
-    // backdrop that follows the player, the LOD + normals can stay frozen at their warmup-computed values
-    // (imperceptible), so once computed we remove both controls and pay that cost zero further times.
+    // jME's auto-added NormalRecalcControl is dropped after a short warmup (-1 = done). It runs on the
+    // MAIN thread on every LOD change, and the far heightmap never moves except at a player edit, so once
+    // the normals are computed there is nothing left for it to do.
+    //
+    // The LOD control itself used to be removed here as well, for the same hitch. That went too far : the
+    // mesh only re-centres in whole world periods (4096 units), so the levels frozen at the spawn camera
+    // position drifted badly out of date as the player roamed — a patch computed at LOD 2-3 could end up
+    // right in front of them, drawing the relief in 64- to 128-unit facets. It is now kept live, with the
+    // index-buffer rebuilds budgeted per frame instead (see ThrottledTerrainLodControl).
     private int farLodWarmup = 0;
 
     // The procedural heightmap (HEIGHTMAP_SIZE^2, heights pre-divided by step) sampled at init. Kept so the
@@ -234,6 +238,29 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     private float enclosureWallTopY;
 
     private Material material;
+    // The NEAR relief : a 2-level clipmap centred on the camera that resolves the first few hundred units
+    // at a 4 / 8-unit step, where this TerrainQuad's 16-unit step is far too coarse (the far relief becomes
+    // visible only ~48 units from the eye, and a 16-unit linear interpolation misses the true surface by
+    // 1 to 3 blocks there -- which is what opened the notches at the voxel seam). It hands over to this
+    // quad at a fixed camera-relative radius ; see NearTerrainClipmap.
+    private NearTerrainClipmap clipmap;
+    // Radius at which the near clipmap hands the relief over to this quad, i.e. this quad's discard radius.
+    // NaN until a clipmap registers itself (see setReliefHandoverRadius) : without one the quad keeps the
+    // historical "just beyond the loaded chunks" radius, so a harness that attaches this state alone still
+    // renders a complete horizon.
+    private float handoverRadius = Float.NaN;
+    // Every material rendering the RELIEF shader : this quad's, plus the clipmap's two levels. update()
+    // binds the live day/night colours BY REFERENCE on all of them, so they can never drift apart.
+    private final List<Material> reliefMaterials = new ArrayList<>(3);
+    // Procedural maps (forest density, biome, biome seabed, strata), built once from the generator and
+    // SHARED by every relief material -- they are plain textures covering the whole extent, so binding the
+    // same instance on the clipmap costs nothing and guarantees the two meshes are coloured identically.
+    private Texture2D forestDensityMap;
+    private Texture2D biomeMap;
+    private Texture2D biomeSeabedMap;
+    private Texture2D strataMap;
+    private Vector4f slopeStrata;
+    private Vector3f soilStrata;
     // Sun direction, shared by reference with the RELIEF material and refreshed each frame from LightingState.
     private final Vector3f lightDir = new Vector3f(-0.5f, -0.7f, -0.5f).normalizeLocal();
     // The fog colour is bound (once) to SkyControl's live ground colour so it follows the day/night cycle.
@@ -300,8 +327,10 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
 
         // The RELIEF : one mesh of the true relief (land + sea floor). Single-sided, opaque (see below).
         terrain = new TerrainQuad("FarTerrain", PATCH_SIZE, HEIGHTMAP_SIZE, heightmap);
-        material = createMaterial();
-        bindProceduralMaps(generator, step);
+        // Built BEFORE the materials : createReliefMaterial binds them, so every relief material (this
+        // quad's and the clipmap's) shares the same texture instances.
+        buildProceduralMaps(generator, step);
+        material = createReliefMaterial(reliefInnerRadius(), 0f);
         terrain.setMaterial(material);
         // Uniform scale : heights were pre-divided by step (see sampleHeightmap), so world Y is exact
         // again after scaling, AND a uniform scale keeps the terrain normals correct in world space.
@@ -353,6 +382,13 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         // loaded grid (unfetch) and becomes visible at the horizon — never on the edit itself.
         if (config.getChunkManager() != null) {
             config.getChunkManager().addListener(this);
+        }
+
+        // The NEAR relief : a camera-centred clipmap resolving the first few hundred units at 4 / 8 units
+        // instead of this quad's 16, then handing over. Built last, so it can register its handover radius
+        // on the (existing) quad material. -Dialon.noClipmap keeps the old single-mesh horizon for an A/B.
+        if (!Boolean.getBoolean("ialon.noClipmap")) {
+            clipmap = new NearTerrainClipmap(this, config, app.getCamera(), generator);
         }
 
         log.info("Far terrain generated : {}x{} heightmap, extent {} units (step {})",
@@ -533,7 +569,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
     }
 
     /** Canonical key (wrapped to the world period) identifying a heightmap sample across tiles. */
-    private long sampleKey(float sampleWorldX, float sampleWorldZ) {
+    long sampleKey(float sampleWorldX, float sampleWorldZ) { // package-private : used by NearTerrainClipmap
         int x = Math.round(sampleWorldX);
         int z = Math.round(sampleWorldZ);
         float w = config.getWorldSize();
@@ -550,7 +586,7 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
      * seen from above — its under-side is never drawn, so a submerged eye never sees a peak's interior).
      * No reflection (that belongs to the separate {@link #water} plane).
      */
-    private Material createMaterial() {
+    Material createReliefMaterial(float innerRadius, float outerRadius) {
         // Custom material : fog lives HERE (only the terrain fades to the horizon colour), so the
         // sky — rendered separately by SkyState — keeps its blue gradient untouched.
         Material mat = new Material(app.getAssetManager(), "Shaders/FarTerrain.j3md");
@@ -564,10 +600,17 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         mat.setFloat("FogDistance", config.getFarTerrainFogDistance());
         mat.setFloat("FogDensity", config.getFarTerrainFogDensity());
         mat.setFloat("DepthBias", config.getFarTerrainDepthBias());
-        // Discard the far terrain within the loaded-chunk region : it only shows beyond the voxels.
-        // Interpreted as a square (Chebyshev) half-extent in the shader, so it matches the square chunk
-        // footprint ; the -chunkSize margin keeps it safely inside as the camera moves within a chunk.
-        mat.setFloat("InnerRadius", (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
+        // Discard this mesh below/above its share of the relief. Interpreted as a square (Chebyshev)
+        // half-extent in the shader, so it matches the square chunk footprint. The near clipmap gets
+        // [voxel seam, handover] and this quad [handover, horizon] ; the two bounds are the SAME number,
+        // and the tests are complementary (< inner / >= outer), so no pixel is drawn twice or left out.
+        mat.setFloat("InnerRadius", innerRadius);
+        if (outerRadius > 0f) {
+            mat.setFloat("OuterRadius", outerRadius); // switches the OUTER_RADIUS define on (clipmap only)
+        }
+        // Fog origin : the VOXEL seam, on every relief material regardless of its discard radii, so the
+        // clipmap and this quad share one continuous ramp across their handover (see FarTerrain.frag).
+        mat.setFloat("FogStart", fogStart());
         // Altitude palette. Below the water line : sand fringe -> dirt sea floor -> grey bedrock, tinted by
         // the water column (SeabedWaterColor = the same filter the submerged voxels get) so the distant
         // floor reads blue like the near voxel floor. Above : sand shore -> grass -> rock -> snow, the rock
@@ -608,7 +651,57 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         // drawn, so a submerged eye never sees a peak's interior "through" the water surface (the artifact
         // the old double-sided flatten produced) ; underwater, looking up shows the separate water plane.
         mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+        applyProceduralMaps(mat);
+        reliefMaterials.add(mat);
         return mat;
+    }
+
+    /**
+     * Where the far relief starts, i.e. just beyond the loaded voxel chunks : a square (Chebyshev)
+     * half-extent, with one chunk of margin so the boundary stays inside the loaded region as the camera
+     * roams within its own chunk. This is the near clipmap's inner discard AND the fog origin of every
+     * relief material ; the {@link #terrain} quad only uses it as a discard radius when no clipmap has
+     * taken the near band over.
+     */
+    float fogStart() {
+        return (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize();
+    }
+
+    /** Discard radius of the {@link #terrain} quad : the clipmap handover if there is one, else the seam. */
+    private float reliefInnerRadius() {
+        return Float.isNaN(handoverRadius) ? fogStart() : handoverRadius;
+    }
+
+    /**
+     * Declares that a near clipmap covers the relief out to {@code radius}, so this quad must not draw
+     * inside it. Called by {@link NearTerrainClipmap} as it is created ; tolerates being called before or
+     * after the quad's material exists.
+     */
+    void setReliefHandoverRadius(float radius) {
+        handoverRadius = radius;
+        if (material != null) {
+            material.setFloat("InnerRadius", reliefInnerRadius());
+        }
+    }
+
+    /**
+     * World-unit spacing of the relief lattice actually rendered at (wx, wz) : the near clipmap's fine or
+     * coarse step where it covers the point, else this quad's {@link #step}. Anything that must sit ON the
+     * far relief (the far tree billboards) has to interpolate over this exact lattice, or it floats above
+     * / sinks into the surface the player sees. Callable from any thread.
+     *
+     * @param wx world X
+     * @param wz world Z
+     * @return the lattice spacing in world units
+     */
+    public float reliefStepAt(float wx, float wz) {
+        if (clipmap != null) {
+            float clipStep = clipmap.stepAt(wx, wz);
+            if (clipStep > 0f) {
+                return clipStep;
+            }
+        }
+        return step;
     }
 
     /**
@@ -830,39 +923,59 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
      * grass slopes where this field is high, so the beyond-billboard woods read as dark-green relief. Only
      * the noise generator carries a forest field ; for the others the FOREST_TINT define stays off.
      */
-    private void bindProceduralMaps(TerrainGenerator generator, float step) {
+    private void buildProceduralMaps(TerrainGenerator generator, float step) {
         if (!(generator instanceof NoiseTerrainGenerator)) {
             return;
         }
         NoiseTerrainGenerator noise = (NoiseTerrainGenerator) generator;
-        material.setTexture("ForestDensityMap", createForestDensityTexture(noise, step));
-        material.setColor("ForestTintColor", config.getForestTintColor());
-        material.setFloat("ForestTintStrength", config.getForestTintStrength());
-        // Ramp the tint in where the billboards thin out, so the two layers don't double-darken the slopes.
-        material.setFloat("ForestTintStart", config.getFarTreeDistance());
+        forestDensityMap = createForestDensityTexture(noise, step);
         // Biome colour map : the grass band is tinted per biome (same source as the near voxels), so the
         // distant horizon reads with the same biome palette. Shares the Extent/ForestOrigin UV below.
-        material.setTexture("BiomeMap", createBiomeColorTexture(noise, step, false));
+        biomeMap = createBiomeColorTexture(noise, step, false);
         // Debug : -Dialon.noBiomeSeabed skips the per-biome seabed map, so the seabed falls back to the
         // flat dirt SeabedColor (the pre-fix behaviour) for an A/B on the desert-sea sand colour.
         if (!Boolean.getBoolean("ialon.noBiomeSeabed")) {
-            material.setTexture("BiomeSeabedMap", createBiomeColorTexture(noise, step, true));
+            biomeSeabedMap = createBiomeColorTexture(noise, step, true);
         }
         // Strata map : the generator's per-column rock & snow lines, so the distant tiers wander and
         // follow the climate exactly like the voxel ones. The slope term is NOT baked -- the shader
         // re-applies it from the relief normal, which varies per fragment.
-        material.setTexture("StrataMap", createStrataTexture(noise, step));
-        material.setFloat("WorldCeiling", config.getMaxy());
-        material.setVector4("SlopeStrata", new Vector4f(
+        strataMap = createStrataTexture(noise, step);
+        slopeStrata = new Vector4f(
                 NoiseTerrainGenerator.STRATA_SLOPE_SOIL,
                 NoiseTerrainGenerator.STRATA_SLOPE_BARE,
                 NoiseTerrainGenerator.STRATA_SNOW_SLOPE_RISE,
-                NoiseTerrainGenerator.STRATA_ROCK_SLOPE_DROP));
-        material.setVector3("SoilStrata", new Vector3f(noise.soilAltitudeLow(), noise.soilAltitudeHigh(),
-                config.getWaterHeight() + NoiseTerrainGenerator.STRATA_ROCK_SLOPE_FLOOR));
-        material.setFloat("Extent", extent);
-        material.setVector2("ForestOrigin", forestOrigin); // mutated in place in update() on tile snaps
+                NoiseTerrainGenerator.STRATA_ROCK_SLOPE_DROP);
+        soilStrata = new Vector3f(noise.soilAltitudeLow(), noise.soilAltitudeHigh(),
+                config.getWaterHeight() + NoiseTerrainGenerator.STRATA_ROCK_SLOPE_FLOOR);
         forestTintEnabled = true;
+    }
+
+    /**
+     * Binds the maps built by {@link #buildProceduralMaps} (plus the UV frame they are sampled in) to one
+     * relief material. Called for the far quad and for each clipmap level, so the two meshes take their
+     * forest tint, biome colours and strata lines from the very same textures and cannot disagree at the
+     * handover. Textures and the UV origin are shared instances, not copies.
+     */
+    private void applyProceduralMaps(Material mat) {
+        if (forestDensityMap == null) {
+            return; // generator carries no forest/biome field : the defines stay off
+        }
+        mat.setTexture("ForestDensityMap", forestDensityMap);
+        mat.setColor("ForestTintColor", config.getForestTintColor());
+        mat.setFloat("ForestTintStrength", config.getForestTintStrength());
+        // Ramp the tint in where the billboards thin out, so the two layers don't double-darken the slopes.
+        mat.setFloat("ForestTintStart", config.getFarTreeDistance());
+        mat.setTexture("BiomeMap", biomeMap);
+        if (biomeSeabedMap != null) {
+            mat.setTexture("BiomeSeabedMap", biomeSeabedMap);
+        }
+        mat.setTexture("StrataMap", strataMap);
+        mat.setFloat("WorldCeiling", config.getMaxy());
+        mat.setVector4("SlopeStrata", slopeStrata);
+        mat.setVector3("SoilStrata", soilStrata);
+        mat.setFloat("Extent", extent);
+        mat.setVector2("ForestOrigin", forestOrigin); // mutated in place in update() on tile snaps
     }
 
     /**
@@ -1056,6 +1169,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         if (config.getChunkManager() != null) {
             config.getChunkManager().removeListener(this);
         }
+        if (clipmap != null) {
+            clipmap.cleanup();
+        }
         // nothing else to release : the terrain mesh is GC'd with this state
     }
 
@@ -1072,6 +1188,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         if (enclosure != null && enclosure.getParent() == null && !Boolean.getBoolean("ialon.noEnclosure")) {
             node.attachChild(enclosure);
         }
+        if (clipmap != null && !Boolean.getBoolean("ialon.noRelief")) {
+            clipmap.attachTo(node);
+        }
     }
 
     @Override
@@ -1085,6 +1204,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
         if (enclosure != null && enclosure.getParent() != null) {
             enclosure.removeFromParent();
         }
+        if (clipmap != null) {
+            clipmap.detach();
+        }
     }
 
     /**
@@ -1093,13 +1215,22 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
      * enclosure box half-size both scale with the render distance and must be refreshed.
      */
     public void onRenderDistanceChanged() {
+        float seam = fogStart();
+        // The fog origin is the VOXEL seam on every relief material, whatever their discard radii, so the
+        // clipmap and the far quad keep one continuous ramp (see FarTerrain.frag).
+        for (int i = 0; i < reliefMaterials.size(); i++) {
+            reliefMaterials.get(i).setFloat("FogStart", seam);
+        }
         if (material != null) {
-            material.setFloat("InnerRadius",
-                    (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
+            // With a clipmap attached this is the fixed handover radius and does NOT move with the render
+            // distance ; without one it falls back to the seam.
+            material.setFloat("InnerRadius", reliefInnerRadius());
+        }
+        if (clipmap != null) {
+            clipmap.onRenderDistanceChanged(seam);
         }
         if (waterMaterial != null) {
-            waterMaterial.setFloat("InnerRadius",
-                    (float) config.getGridRadius() * config.getChunkSize() - config.getChunkSize());
+            waterMaterial.setFloat("InnerRadius", seam);
         }
         // The enclosure walls no longer scale with the render distance (fixed ENCLOSURE_RADIUS horizon
         // failsafe), so a render-distance change leaves them untouched.
@@ -1107,12 +1238,12 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
 
     @Override
     public void update(float tpf) {
-        // After a couple of frames (so the LOD + normals have been computed once), drop both far-terrain
-        // mesh controls : the backdrop then keeps that fixed LOD/normals, removing the recurrent
-        // main-thread LOD-apply + normal-recompute hitch (see field doc).
+        // After a couple of frames (so the normals have been computed once), drop the normal recompute :
+        // jME re-runs it on the main thread on every LOD change, and the far heightmap is fixed (only a
+        // player edit ever moves a sample), so there is nothing for it to recompute. The LOD control
+        // itself STAYS (see field doc).
         if (farLodWarmup >= 0 && terrain != null) {
             if (farLodWarmup >= 2) {
-                terrain.removeControl(ThrottledTerrainLodControl.class);
                 terrain.removeControl(NormalRecalcControl.class);
                 farLodWarmup = -1;
             } else {
@@ -1150,6 +1281,12 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
             }
         }
 
+        // The near clipmap follows the CAMERA (it is a small ring around the eye, not a world-periodic
+        // mesh), re-sampling itself off-thread whenever it leaves its snap cell. A no-op most frames.
+        if (clipmap != null) {
+            clipmap.update();
+        }
+
         // The enclosure follows the CAMERA (not the world tile) at a radius within the far clip plane,
         // so its walls are never clipped and seal the horizon in every direction (a world-edge box would
         // sit beyond the far plane). Y is baked into the mesh, so only shift X/Z.
@@ -1167,9 +1304,11 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
             // Bind the ambient / sun colours to the scene's live light colours (mutated in place by
             // SunControl as time passes). Bound once : the shared references then track the day/night
             // cycle automatically, so the far terrain dims and tints exactly like the voxels.
-            if (!lightColorsBound && material != null) {
-                material.setColor("AmbientColor", lighting.getAmbientLight().getColor());
-                material.setColor("SunColor", lighting.getDirectionalLight().getColor());
+            if (!lightColorsBound && !reliefMaterials.isEmpty()) {
+                for (int i = 0; i < reliefMaterials.size(); i++) {
+                    reliefMaterials.get(i).setColor("AmbientColor", lighting.getAmbientLight().getColor());
+                    reliefMaterials.get(i).setColor("SunColor", lighting.getDirectionalLight().getColor());
+                }
                 lightColorsBound = true;
             }
         }
@@ -1195,6 +1334,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
             if (terrain != null) {
                 terrain.setCullHint(hint);
             }
+            if (clipmap != null) {
+                clipmap.setCullHint(hint);
+            }
             if (water != null) {
                 water.setCullHint(hint);
             }
@@ -1209,7 +1351,9 @@ public class FarTerrainState extends BaseAppState implements ChunkManagerListene
             // Bind the RELIEF fog colour to SkyControl's live ground colour (mutated in place as time
             // passes), so the terrain fades into the current ground colour at the horizon. Bound once.
             if (!fogColorBound) {
-                material.setColor("FogColor", skyControl.getGroundColor());
+                for (int i = 0; i < reliefMaterials.size(); i++) {
+                    reliefMaterials.get(i).setColor("FogColor", skyControl.getGroundColor());
+                }
                 if (waterMaterial != null) {
                     waterMaterial.setColor("FogColor", skyControl.getGroundColor());
                 }

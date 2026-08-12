@@ -138,7 +138,19 @@ public class SunControl extends AbstractControl {
     }
 
     public LocalTime getLocalTime() {
-        return LocalTime.ofSecondOfDay((long)((config.getTime() / FastMath.TWO_PI) * 86400)).plusHours(6);
+        return localTimeOf(config.getTime());
+    }
+
+    /**
+     * Maps a raw day angle (the {@code time} carried by {@link IalonConfig}, in [0, 2*PI[) to the
+     * in-game time of day. Static so that readouts can convert the time without holding a sun.
+     *
+     * @param time the day angle, in radians
+     * @return the corresponding in-game local time
+     */
+    public static LocalTime localTimeOf(float time) {
+        long secondOfDay = Math.floorMod((long) ((time / FastMath.TWO_PI) * 86400), 86400L);
+        return LocalTime.ofSecondOfDay(secondOfDay).plusHours(6);
     }
 
     public float getUpdateThreshold() {

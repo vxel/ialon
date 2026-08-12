@@ -59,6 +59,22 @@ shapeSets:
     - wedge_inverted_east
     - wedge_inverted_south
     - wedge_inverted_west
+    - wedge_inner_corner_north
+    - wedge_inner_corner_east
+    - wedge_inner_corner_south
+    - wedge_inner_corner_west
+    - wedge_inverted_inner_corner_north
+    - wedge_inverted_inner_corner_east
+    - wedge_inverted_inner_corner_south
+    - wedge_inverted_inner_corner_west
+    - wedge_outer_corner_north
+    - wedge_outer_corner_east
+    - wedge_outer_corner_south
+    - wedge_outer_corner_west
+    - wedge_inverted_outer_corner_north
+    - wedge_inverted_outer_corner_east
+    - wedge_inverted_outer_corner_south
+    - wedge_inverted_outer_corner_west
     - stairs_north
     - stairs_east
     - stairs_south
@@ -99,6 +115,22 @@ shapeSets:
     - wedge_inverted_east
     - wedge_inverted_south
     - wedge_inverted_west
+    - wedge_inner_corner_north
+    - wedge_inner_corner_east
+    - wedge_inner_corner_south
+    - wedge_inner_corner_west
+    - wedge_inverted_inner_corner_north
+    - wedge_inverted_inner_corner_east
+    - wedge_inverted_inner_corner_south
+    - wedge_inverted_inner_corner_west
+    - wedge_outer_corner_north
+    - wedge_outer_corner_east
+    - wedge_outer_corner_south
+    - wedge_outer_corner_west
+    - wedge_inverted_outer_corner_north
+    - wedge_inverted_outer_corner_east
+    - wedge_inverted_outer_corner_south
+    - wedge_inverted_outer_corner_west
 
 blocks:
   - type: window
@@ -299,7 +331,7 @@ blocks:
     palette: { order: 310, shape: cube_up }
   - type: hay
     texture: Textures/hay.png
-    shapeSet: standard
+    shapeSet: standardNoStairs
     palette: { order: 311, shape: cube_up }
   - type: birch_log
     texture: Textures/birch_log.png

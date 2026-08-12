@@ -152,6 +152,46 @@ public interface Shape {
     }
 
     /**
+     * Emits one triangle (3 vertices) into the chunk mesh. Same contract as {@link #emitQuad} : the local
+     * vertices and the {@code normal} are never mutated (pass shared {@code static final} constants), and
+     * the {@code normal} must already be expressed in the shape's world orientation.
+     * <p>
+     * A triangle has no diagonal to choose, so there is no {@code flip} parameter ; per-vertex
+     * (smooth-shadow) colours are emitted by the caller exactly as for a quad.
+     *
+     * @param rotation      the shape rotation, or {@code null} for an axis-aligned (identity) shape
+     * @param v0 v1 v2      the 3 local vertices, counter-clockwise as seen from outside the face
+     * @param normal        the (already world-oriented) face normal, shared across the 3 vertices
+     * @param uvs           the 3 texture coordinates
+     * @param collisionMesh when {@code true}, only positions + indices are emitted (no normals / uvs)
+     */
+    static void emitTriangle(ChunkMesh mesh, Vec3i location, float blockScale, Quaternion rotation,
+                             Vector3f v0, Vector3f v1, Vector3f v2,
+                             Vector3f normal, Vector2f[] uvs, boolean collisionMesh) {
+        int offset = mesh.getPositions().size();
+        Vector3f scratch = VERTEX_SCRATCH.get();
+        emitVertex(mesh, scratch, rotation, v0, location, blockScale);
+        emitVertex(mesh, scratch, rotation, v1, location, blockScale);
+        emitVertex(mesh, scratch, rotation, v2, location, blockScale);
+
+        DirectIntBuffer indices = mesh.getIndices();
+        indices.add(offset);
+        indices.add(offset + 1);
+        indices.add(offset + 2);
+
+        if (!collisionMesh) {
+            DirectVector3fBuffer normals = mesh.getNormals();
+            normals.add(normal);
+            normals.add(normal);
+            normals.add(normal);
+            DirectVector2fBuffer uvBuffer = mesh.getUvs();
+            uvBuffer.add(uvs[0]);
+            uvBuffer.add(uvs[1]);
+            uvBuffer.add(uvs[2]);
+        }
+    }
+
+    /**
      * Rotates (when {@code rotation} is non-null), offsets by the block location and scales the
      * {@code local} vertex into the supplied {@code scratch} instance, then appends it to the mesh
      * positions. No allocation : {@code scratch} is mutated and the buffer copies its components.

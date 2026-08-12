@@ -9,6 +9,12 @@ MaterialDef Far Terrain {
         Float FogDensity
         Float DepthBias
         Float InnerRadius
+        // Near clipmap only : the outer handover radius to the far TerrainQuad. Its presence switches the
+        // OUTER_RADIUS define on, so the TerrainQuad's own shader keeps a single (inner) discard test.
+        Float OuterRadius
+        // Where the distance fog starts. Deliberately separate from InnerRadius : the two relief meshes
+        // have different discard radii but must share one fog ramp. See FarTerrain.frag.
+        Float FogStart
 
         // Altitude palette : sea floor below the water line, land above.
         Color BaseColor          // grass band (or per-biome via BiomeMap)
@@ -81,6 +87,7 @@ MaterialDef Far Terrain {
             BIOME_SEABED_MAP : BiomeSeabedMap
             STRATA_MAP : StrataMap
             FAR_NOISE : NoiseStrength
+            OUTER_RADIUS : OuterRadius
         }
     }
 }

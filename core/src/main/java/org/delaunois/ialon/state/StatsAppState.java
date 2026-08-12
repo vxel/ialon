@@ -48,9 +48,11 @@ import com.jme3.scene.shape.Quad;
 
 import org.delaunois.ialon.IalonConfig;
 import org.delaunois.ialon.blocks.jme.StatsView;
+import org.delaunois.ialon.control.SunControl;
 import org.delaunois.ialon.ui.IalonTheme;
 import org.delaunois.ialon.ui.UiHelper;
 
+import java.time.LocalTime;
 import java.util.Locale;
 
 
@@ -87,10 +89,12 @@ public class StatsAppState extends AbstractAppState implements Resizable {
 
     /** Optional config used to read the live player world position for {@link #positionText}. */
     private IalonConfig config;
-    // Last displayed rounded coordinates ; the text geometry is only rebuilt when they change.
+    // Last displayed rounded coordinates and in-game minute ; the text geometry is only rebuilt when
+    // one of them changes.
     private int lastX = Integer.MIN_VALUE;
     private int lastY = Integer.MIN_VALUE;
     private int lastZ = Integer.MIN_VALUE;
+    private int lastMinuteOfDay = Integer.MIN_VALUE;
 
     public StatsAppState() {
     }
@@ -245,11 +249,12 @@ public class StatsAppState extends AbstractAppState implements Resizable {
     }
 
     /**
-     * Attaches the world-position readout to guiNode, top-left, using the same font as the FPS counter.
+     * Attaches the world-position and in-game clock readout to guiNode, top-left, using the same font
+     * as the FPS counter.
      */
     public void loadPositionText() {
         positionText = newHudText(guiFont);
-        positionText.setText("x:0 y:0 z:0");
+        positionText.setText("x:0 y:0 z:0  00:00");
         // Shifted right by twice the screen margin so it clears the block-removal button placed below it
         // (ButtonManagerState positions that button at x = margin).
         float height = app.getCamera().getHeight();
@@ -331,7 +336,10 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         updatePositionText();
     }
 
-    /** Refreshes the position readout, rebuilding the text only when the rounded coordinates change. */
+    /**
+     * Refreshes the position and in-game clock readout, rebuilding the text only when the rounded
+     * coordinates or the displayed minute change.
+     */
     private void updatePositionText() {
         if (!showPosition || positionText == null || config == null) {
             return;
@@ -343,11 +351,15 @@ public class StatsAppState extends AbstractAppState implements Resizable {
         int x = Math.round(loc.x);
         int y = Math.round(loc.y);
         int z = Math.round(loc.z);
-        if (x != lastX || y != lastY || z != lastZ) {
+        LocalTime time = SunControl.localTimeOf(config.getTime());
+        int minuteOfDay = time.getHour() * 60 + time.getMinute();
+        if (x != lastX || y != lastY || z != lastZ || minuteOfDay != lastMinuteOfDay) {
             lastX = x;
             lastY = y;
             lastZ = z;
-            positionText.setText(String.format(Locale.ENGLISH, "x:%d y:%d z:%d", x, y, z));
+            lastMinuteOfDay = minuteOfDay;
+            positionText.setText(String.format(Locale.ENGLISH, "x:%d y:%d z:%d  %02d:%02d",
+                    x, y, z, time.getHour(), time.getMinute()));
         }
     }
 

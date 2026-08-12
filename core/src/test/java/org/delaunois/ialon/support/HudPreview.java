@@ -57,6 +57,8 @@ import java.nio.file.Paths;
  * ./gradlew :core:hudPreview -PhudMode=regionDelete           # HUD as the region-delete selection shows it
  * ./gradlew :core:hudPreview -PhudMode=chunkReset             # the "Reset chunk" confirmation dialog
  * ./gradlew :core:hudPreview -PhudMode=chunkResetRun -PsavePath=/tmp/save-copy   # digs a hole, confirms the reset
+ * ./gradlew :core:hudPreview -PhudMode=quit                   # the "Leave Ialon ?" confirmation dialog
+ * ./gradlew :core:hudPreview -PhudMode=position               # forces the position / in-game clock readout on
  * </pre>
  *
  * <p><b>chunkResetRun EDITS THE SAVED WORLD</b> (that is the point : it digs, then resets a whole chunk
@@ -92,6 +94,14 @@ public class HudPreview {
             config.setSavePath(Paths.get(savePath));
         }
         IalonConfigRepository.loadConfig(config);
+        String mode = System.getProperty("ialon.hudPreview.mode", "");
+        if ("position".equals(mode)) {
+            // The position/clock readout is a settings toggle, off in most saved configs : force it on so
+            // the top-left readout is in the shot. Set before start(), since IalonInitializer reads it once.
+            // Note that the game saves its preferences on exit, so this leaves the toggle ON in the world
+            // it booted against -- turn it back off in the settings, or point -PsavePath at a copy.
+            config.setShowPosition(true);
+        }
         Ialon app = new Ialon(config);
         AppSettings settings = new AppSettings(true);
         settings.setTitle("Ialon HUD preview");
@@ -109,7 +119,6 @@ public class HudPreview {
         // Optionally open an editing mode first : the HUD is not one screen but several (the region
         // selection hides the +/- buttons and offers "Reset chunk" instead), and those variants need
         // checking as much as the default one.
-        String mode = System.getProperty("ialon.hudPreview.mode", "");
         if ("regionDelete".equals(mode) || "chunkReset".equals(mode)) {
             log.info("Entering the region-delete selection");
             app.enqueue(() -> {
@@ -129,6 +138,13 @@ public class HudPreview {
         }
         if ("chunkResetRun".equals(mode)) {
             runChunkReset(app, config);
+        }
+        if ("quit".equals(mode)) {
+            // Through requestExit(), the very method ESC and the Android back key call, so what is captured
+            // is the dialog as the exit gesture puts it up (and not just a dialog this harness built).
+            log.info("Requesting the exit");
+            app.enqueue(app::requestExit);
+            Thread.sleep(500L);
         }
 
         // Draw-call breakdown of the settled HUD, logged before the shot. This is the only harness that

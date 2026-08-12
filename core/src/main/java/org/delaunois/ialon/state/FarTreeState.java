@@ -124,6 +124,10 @@ public class FarTreeState extends BaseAppState {
     // grounded on the COARSE far-terrain surface (this grid), not the per-block height, so they don't
     // float above the under-sampled relief the far terrain actually renders. Mirrors FarTerrainState.
     private float farGridStep;
+    // The far-terrain state, resolved on the render thread and read by the builder thread : it knows which
+    // relief lattice is actually rendered where (the near clipmap's fine/coarse step, or the far quad's).
+    // Volatile, and null until the first update -- fall back to farGridStep then.
+    private volatile FarTerrainState farTerrain;
 
     public FarTreeState(IalonConfig config) {
         this.config = config;
@@ -261,6 +265,10 @@ public class FarTreeState extends BaseAppState {
             treeGeom.setCullHint(under ? Spatial.CullHint.Always : Spatial.CullHint.Dynamic);
         }
 
+        if (farTerrain == null) {
+            farTerrain = getState(FarTerrainState.class); // resolved here, read by the builder thread
+        }
+
         // Swap in a freshly built mesh (built off-thread, only GL-touched here on the render thread).
         Mesh ready = pendingMesh;
         if (ready != null) {
@@ -361,7 +369,10 @@ public class FarTreeState extends BaseAppState {
      * trees on it (rather than the per-block height) stops them floating above the under-sampled relief.
      */
     private float coarseHeight(float wx, float wz, Vector3f scratch) {
-        float step = farGridStep;
+        // The near clipmap renders the first few hundred units at a 4 / 8-unit step instead of the far
+        // quad's 16, and the whole billboard ring normally falls inside it -- so ask which lattice is
+        // actually drawn here rather than assuming the coarse one, or the trees float above it.
+        float step = reliefStepAt(wx, wz);
         float x0 = (float) Math.floor(wx / step) * step;
         float z0 = (float) Math.floor(wz / step) * step;
         float fx = (wx - x0) / step;
@@ -373,6 +384,15 @@ public class FarTreeState extends BaseAppState {
         float hx0 = h00 + (h10 - h00) * fx;
         float hx1 = h01 + (h11 - h01) * fx;
         return hx0 + (hx1 - hx0) * fz;
+    }
+
+    /** Spacing of the relief lattice drawn at (wx, wz), or the far quad's grid if it cannot be resolved. */
+    private float reliefStepAt(float wx, float wz) {
+        FarTerrainState state = farTerrain;
+        float step = state != null ? state.reliefStepAt(wx, wz) : 0f;
+        // Never let a zero through : coarseHeight divides by it, and the far terrain reports 0 until it has
+        // sampled its heightmap (or if it gave up for want of a generator).
+        return step > 0f ? step : farGridStep;
     }
 
     private Mesh packMesh(AnchorList a) {
