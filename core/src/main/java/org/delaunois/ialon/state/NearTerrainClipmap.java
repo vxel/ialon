@@ -172,7 +172,7 @@ class NearTerrainClipmap {
     // far-tree builder thread.
     private volatile float snapX;
     private volatile float snapZ;
-    // World XZ the in-flight rebuild is sampling for (only meaningful while building is true).
+    // World XZ that the in-flight rebuild is sampling — only meaningful while building is true.
     private float buildX;
     private float buildZ;
     private final AtomicBoolean building = new AtomicBoolean(false);
@@ -585,22 +585,32 @@ class NearTerrainClipmap {
                     continue; // already a lattice vertex : the quad has the very same height here
                 }
                 float t = morphFactor(Math.max(Math.abs((i - half) * step), dz));
-                if (t <= 0f) {
-                    continue;
+                if (t > 0f) {
+                    int at = (j + 1) * stride + i + 1;
+                    float lattice = latticeHeight(h, at, stride, oddX, oddZ);
+                    h[at] = t >= 1f ? lattice : h[at] + (lattice - h[at]) * t;
                 }
-                int at = (j + 1) * stride + i + 1;
-                float lattice;
-                if (!oddZ) {
-                    lattice = 0.5f * (h[at - 1] + h[at + 1]);                   // midpoint along X
-                } else if (!oddX) {
-                    lattice = 0.5f * (h[at - stride] + h[at + stride]);         // midpoint along Z
-                } else {
-                    lattice = 0.25f * (h[at - stride - 1] + h[at - stride + 1]  // lattice cell centre
-                            + h[at + stride - 1] + h[at + stride + 1]);
-                }
-                h[at] = t >= 1f ? lattice : h[at] + (lattice - h[at]) * t;
             }
         }
+    }
+
+    /**
+     * The far quad's own surface at an off-lattice coarse vertex : the interpolation of the lattice
+     * vertices around it, which are the even-indexed neighbours. Never called for an even/even vertex —
+     * that one already carries the quad's height.
+     *
+     * @param oddX true if the vertex sits between two lattice columns
+     * @param oddZ true if it sits between two lattice rows
+     */
+    private static float latticeHeight(float[] h, int at, int stride, boolean oddX, boolean oddZ) {
+        if (!oddZ) {
+            return 0.5f * (h[at - 1] + h[at + 1]);                   // midpoint along X
+        }
+        if (!oddX) {
+            return 0.5f * (h[at - stride] + h[at + stride]);         // midpoint along Z
+        }
+        return 0.25f * (h[at - stride - 1] + h[at - stride + 1]      // lattice cell centre
+                + h[at + stride - 1] + h[at + stride + 1]);
     }
 
     /**

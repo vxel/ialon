@@ -203,9 +203,12 @@ public class SplashscreenState extends BaseAppState implements Resizable {
             lastPercent = percentInt;
             percentLabel.setText(PERCENT_TEXT[percentInt]);
         }
-        // Identity comparison : the labels are enum constants, so this is free and correct.
+        // Every label is a compile-time constant (a Step's, or INITIAL_LABEL), so the common case where
+        // nothing changed is settled by equals()' own identity short-circuit — as cheap as comparing the
+        // references, without depending on interning to stay correct if a label ever stops being a literal.
+        // getLabel() never returns null ; lastLabel does, on the first frame, which equals() handles.
         String label = progress.getLabel();
-        if (label != lastLabel) {
+        if (!label.equals(lastLabel)) {
             lastLabel = label;
             phaseLabel.setText(label);
         }
